@@ -1,0 +1,62 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# ML-Agents
+.venv/
+results/
+models/
+summaries/
+
+# Asset store tools
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# IDE
+.idea/
+.vs/
+.vsconfig
+*.csproj
+*.slnx
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Crash reports
+sysinfo.txt
+*.stackdump
+
+# Claude Code local settings and session state
+.claude/settings.local.json
+.claude/state/*.json
+.claude/state/*.jsonl
+.claude/state/*.txt
+.claude/state/*.md
+
+# Unity addressables / builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*

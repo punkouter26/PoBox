@@ -1,0 +1,19 @@
+{
+    "name": "PoBox.Runtime",
+    "rootNamespace": "PoBox",
+    "references": [
+        "Unity.ML-Agents",
+        "UniTask",
+        "VContainer",
+        "MessagePipe"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
