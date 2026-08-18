@@ -41,7 +41,6 @@ MonoBehaviour:
     - com.yasirkula.assetusagedetector
     - com.dbrizov.naughtyattributes
     - com.veriorpies.parrelsync
-    - com.annulusgames.lit-motion
     m_IsDefault: 0
     m_IsUnityRegistry: 0
     m_Capabilities: 0

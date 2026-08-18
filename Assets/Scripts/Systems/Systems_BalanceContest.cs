@@ -7,8 +7,11 @@ namespace PoBox
     /// <summary>
     /// Referee for the balance contest test scene: every fighter stands until
     /// a fall sensor touches ground or its head collapses; longest time wins.
-    /// Self-discovers contestants at Start, shows a UI Toolkit scoreboard,
-    /// announces the winner, then resets everyone for the next round.
+    /// Self-discovers contestants at Start, shows a UI Toolkit scoreboard
+    /// (styled by USS_Contest.uss: title chip up top, name plates at the
+    /// bottom so the ring stays unobstructed), announces the winner, then
+    /// resets everyone for the next round. Raises RoundEnded/RoundStarted for
+    /// presentation systems (banner, crowd, FX).
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -16,6 +19,11 @@ namespace PoBox
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float ROUND_RESTART_DELAY = 4f;
+
+        [SerializeField] private StyleSheet _styleSheet;
+
+        public event System.Action<string> RoundEnded;
+        public event System.Action<int> RoundStarted;
 
         private sealed class Contestant
         {
@@ -36,12 +44,31 @@ namespace PoBox
         private void Start()
         {
             var root = GetComponent<UIDocument>().rootVisualElement;
-            root.style.position = Position.Absolute;
-            root.style.left = 12;
-            root.style.top = 12;
+            if (_styleSheet != null)
+            {
+                root.styleSheets.Add(_styleSheet);
+            }
+            Systems_UiTheme.ApplyDefaultFont(root);
 
-            _title = MakeLabel(root, 22, FontStyle.Bold);
+            var hudRoot = new VisualElement();
+            hudRoot.AddToClassList("hud-root");
+            hudRoot.pickingMode = PickingMode.Ignore;
+            root.Add(hudRoot);
+
+            var topBar = new VisualElement();
+            topBar.AddToClassList("top-bar");
+            topBar.pickingMode = PickingMode.Ignore;
+            hudRoot.Add(topBar);
+
+            _title = new Label();
+            _title.AddToClassList("title-chip");
+            topBar.Add(_title);
             _title.text = "Balance Contest — Round 1";
+
+            var platesRow = new VisualElement();
+            platesRow.AddToClassList("plates-row");
+            platesRow.pickingMode = PickingMode.Ignore;
+            hudRoot.Add(platesRow);
 
             Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
             for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
@@ -55,32 +82,19 @@ namespace PoBox
                         fallSensors.Add(sensor);
                     }
                 }
+                var plate = new Label();
+                plate.AddToClassList("plate");
+                platesRow.Add(plate);
                 var contestant = new Contestant
                 {
                     displayName = rig.gameObject.name.Replace("Contest_", ""),
                     rig = rig,
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y,
-                    label = MakeLabel(root, 17, FontStyle.Normal)
+                    label = plate
                 };
                 _contestants.Add(contestant);
             }
-        }
-
-        private Label MakeLabel(VisualElement root, int size, FontStyle style)
-        {
-            var label = new Label();
-            // The contest panel uses an empty theme, which supplies no font —
-            // without an explicit one the labels render as nothing at all.
-            label.style.unityFontDefinition = FontDefinition.FromFont(
-                Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
-            label.style.fontSize = size;
-            label.style.unityFontStyleAndWeight = style;
-            label.style.color = Color.white;
-            label.style.textShadow = new TextShadow { offset = new Vector2(1f, 1f), blurRadius = 2f, color = Color.black };
-            label.style.marginBottom = 2;
-            root.Add(label);
-            return label;
         }
 
         private void FixedUpdate()
@@ -115,12 +129,28 @@ namespace PoBox
             if (aliveCount == 0 && _contestants.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
+                RoundEnded?.Invoke(FindLeader()?.displayName ?? "");
             }
         }
 
         private void Update()
         {
             bool roundOver = _restartTimer >= 0f;
+            Contestant leader = FindLeader();
+            for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
+            {
+                Contestant contestant = _contestants[contestantIndex];
+                contestant.label.text = $"{contestant.displayName}  {contestant.aliveTime:F1}s";
+                contestant.label.EnableInClassList("plate--down", contestant.fallen && !(roundOver && contestant == leader));
+                contestant.label.EnableInClassList("plate--winner", roundOver && contestant == leader);
+            }
+            _title.text = roundOver
+                ? $"Round {_round} over — next in {Mathf.Max(0f, _restartTimer):F0}s"
+                : $"Balance Contest — Round {_round}";
+        }
+
+        private Contestant FindLeader()
+        {
             Contestant leader = null;
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
@@ -130,16 +160,7 @@ namespace PoBox
                     leader = contestant;
                 }
             }
-            for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
-            {
-                Contestant contestant = _contestants[contestantIndex];
-                string status = contestant.fallen ? "DOWN" : "standing";
-                string crown = roundOver && contestant == leader ? "  << WINNER" : "";
-                contestant.label.text = $"{contestant.displayName}: {contestant.aliveTime:F1} s  ({status}){crown}";
-            }
-            _title.text = roundOver
-                ? $"Balance Contest — Round {_round} over, next in {Mathf.Max(0f, _restartTimer):F0} s"
-                : $"Balance Contest — Round {_round}";
+            return leader;
         }
 
         private bool HasFallen(Contestant contestant)
@@ -169,6 +190,7 @@ namespace PoBox
                 contestant.aliveTime = 0f;
                 contestant.fallen = false;
             }
+            RoundStarted?.Invoke(_round);
         }
     }
 }

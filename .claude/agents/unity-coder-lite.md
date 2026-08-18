@@ -3,7 +3,7 @@ name: unity-coder-lite
 description: "Lightweight feature implementation — for simple additions like new fields, methods, or straightforward components. Uses sonnet for faster, cheaper execution."
 model: sonnet
 color: green
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unity-editor-mcp__*
 ---
 
 # Unity Feature Coder (Lite)

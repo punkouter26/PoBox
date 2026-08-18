@@ -11,7 +11,16 @@
 | **ML** | ML-Agents 4.1.0 (Unity package) + `mlagents` Python in `.venv/` |
 
 ### Scenes in Build
-0. `Assets/Scenes/SampleScene.unity`
+0. `Assets/Scenes/SCN_MENU.unity` — opening menu (version stamp lives here)
+1. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity` — balance contest
+
+Training scenes (not in player build; env build passes them explicitly):
+`SCN_TRAIN_BALANCE`, `SCN_TRAIN_BALANCE_GRANDMA`, `SCN_TRAIN_BALANCE_GRANDPA` —
+each has 16 fighters. Headless env build: `Builds/BoxerBalanceEnv/`.
+
+### Key docs
+- `Docs/TRAINING.md` — training commands, run-02 changes, curriculum
+- `CREDITS.md` — third-party asset attribution (crowd audio is CC-BY, must ship in credits)
 
 ---
 

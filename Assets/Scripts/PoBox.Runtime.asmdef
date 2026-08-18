@@ -3,6 +3,7 @@
     "rootNamespace": "PoBox",
     "references": [
         "Unity.ML-Agents",
+        "Unity.InputSystem",
         "UniTask",
         "VContainer",
         "MessagePipe"

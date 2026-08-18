@@ -3,7 +3,7 @@ name: unity-fixer-lite
 description: "Quick bug fixes — for simple issues like missing references, typos, import errors, or obvious one-line fixes. Uses sonnet for faster execution."
 model: sonnet
 color: red
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unity-editor-mcp__*
 ---
 
 # Unity Bug Fixer (Lite)

@@ -1,0 +1,134 @@
+/* Contest HUD theme — single source of style for the test-scene UI. */
+
+.hud-root {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.top-bar {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    align-items: center;
+}
+
+.title-chip {
+    background-color: rgba(10, 10, 20, 0.72);
+    color: rgb(255, 255, 255);
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 20px;
+    -unity-font-style: bold;
+}
+
+.plates-row {
+    position: absolute;
+    bottom: 14px;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.plate {
+    background-color: rgba(10, 10, 20, 0.72);
+    color: rgb(255, 255, 255);
+    margin-left: 6px;
+    margin-right: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.plate--down {
+    color: rgb(255, 110, 100);
+}
+
+.plate--winner {
+    background-color: rgb(212, 175, 55);
+    color: rgb(20, 16, 4);
+    -unity-font-style: bold;
+}
+
+.winner-banner {
+    position: absolute;
+    top: 30%;
+    left: 0;
+    right: 0;
+    align-items: center;
+}
+
+.winner-text {
+    font-size: 44px;
+    color: rgb(255, 215, 80);
+    -unity-font-style: bold;
+}
+
+.countdown-label {
+    position: absolute;
+    top: 38%;
+    left: 0;
+    right: 0;
+    font-size: 110px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.version-stamp {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.menu-root {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(10, 10, 20);
+}
+
+.menu-title {
+    font-size: 84px;
+    color: rgb(255, 215, 80);
+    -unity-font-style: bold;
+}
+
+.menu-subtitle {
+    font-size: 24px;
+    color: rgb(255, 255, 255);
+    margin-bottom: 60px;
+    letter-spacing: 8px;
+}
+
+.menu-play {
+    width: 260px;
+    height: 78px;
+    font-size: 32px;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    color: rgb(20, 16, 4);
+    background-color: rgb(212, 175, 55);
+    border-radius: 16px;
+    border-width: 0;
+    margin-bottom: 40px;
+}
+
+.menu-play:hover {
+    background-color: rgb(240, 205, 90);
+}
+
+.menu-roster {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.6);
+}

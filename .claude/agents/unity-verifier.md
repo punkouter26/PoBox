@@ -3,7 +3,7 @@ name: unity-verifier
 description: "Verify-fix loop — reviews code changes, auto-fixes issues, re-verifies up to 3 iterations. Used by /unity-workflow and embeddable in any command."
 model: opus
 color: cyan
-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__unity-editor-mcp__*
 ---
 
 # Unity Verify-Fix Loop Agent

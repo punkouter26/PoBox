@@ -3,7 +3,7 @@ name: unity-ui-builder
 description: "Builds UI screens with both code and visual setup via MCP. Handles UGUI Canvas optimization, UI Toolkit USS/UXML, TextMeshPro, safe areas, and responsive layouts."
 model: opus
 color: blue
-tools: Read, Write, Edit, Glob, Grep, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, mcp__unity-editor-mcp__*
 skills: ui-toolkit, textmeshpro
 ---
 

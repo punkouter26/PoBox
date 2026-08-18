@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace PoBox
 {
@@ -38,7 +40,7 @@ namespace PoBox
                 joints[jointIndex].body.useGravity = false;
             }
             AdvanceDof();
-            Debug.Log($"JointRangeTester: sweeping {_rig.DofCount} DOF, {_secondsPerDof}s each. Watch for FLIPPED lines.");
+            LogInfo($"JointRangeTester: sweeping {_rig.DofCount} DOF, {_secondsPerDof}s each. Watch for FLIPPED lines.");
         }
 
         private void FixedUpdate()
@@ -77,7 +79,7 @@ namespace PoBox
             _peakLogged = false;
             if (_currentDof >= _rig.DofCount)
             {
-                Debug.Log("JointRangeTester: sweep complete. If any DOF was FLIPPED, enable Invert Target Rotation on Systems_FighterRig, rebuild the prefab, and re-run.");
+                LogInfo("JointRangeTester: sweep complete. If any DOF was FLIPPED, enable Invert Target Rotation on Systems_FighterRig, rebuild the prefab, and re-run.");
                 enabled = false;
             }
         }
@@ -94,7 +96,13 @@ namespace PoBox
             string verdict = Mathf.Abs(commanded) < SIGN_CHECK_MIN_DEGREES || Mathf.Abs(measured) < SIGN_CHECK_MIN_DEGREES
                 ? "inconclusive (small range)"
                 : Mathf.Sign(commanded) == Mathf.Sign(measured) ? "OK" : "FLIPPED";
-            Debug.Log($"JointRangeTester: {entry.body.name} {axisName} commanded {commanded:F1} measured {measured:F1} -> {verdict}");
+            LogInfo($"JointRangeTester: {entry.body.name} {axisName} commanded {commanded:F1} measured {measured:F1} -> {verdict}");
+        }
+
+        [Conditional("UNITY_EDITOR")]
+        private static void LogInfo(string message)
+        {
+            Debug.Log(message);
         }
 
         private bool TryResolveDof(int dofIndex, out RigJointEntry entry, out int axis, out float peakAngle)

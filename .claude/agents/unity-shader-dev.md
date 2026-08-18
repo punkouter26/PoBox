@@ -3,7 +3,7 @@ name: unity-shader-dev
 description: "Creates and debugs mobile-optimized shaders — HLSL/ShaderLab, ShaderGraph custom nodes, URP shader structure, SRP Batcher compatibility, half-precision optimization. Uses MCP to test shaders live with materials and rendering stats."
 model: opus
 color: cyan
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unity-editor-mcp__*
 skills: urp-pipeline, shader-graph
 ---
 

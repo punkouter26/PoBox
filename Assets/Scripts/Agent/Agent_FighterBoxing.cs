@@ -21,6 +21,17 @@ namespace PoBox
         private const int FOOT_OBSERVATIONS = 8;
         private const int OPPONENT_OBSERVATIONS = 19;
 
+        // Heuristic balance bot (project rule: every app has one code-driven
+        // heuristic bot). Ankle strategy + counter hip strategy, PD on the
+        // horizontal center-of-mass offset over the feet. DOF roles are
+        // precomputed in Initialize — zero per-step allocations.
+        private const float HEURISTIC_MAX_ACTION = 0.6f;
+        private const byte DOF_ROLE_NONE = 0;
+        private const byte DOF_ROLE_ANKLE_PITCH = 1;
+        private const byte DOF_ROLE_ANKLE_ROLL = 2;
+        private const byte DOF_ROLE_HIP_PITCH = 3;
+        private const byte DOF_ROLE_HIP_ROLL = 4;
+
         [SerializeField] private Systems_FighterRig _rig;
         [SerializeField] private Systems_Stamina _stamina;
         [SerializeField] private Sensor_GroundContact _footLeft;
@@ -28,16 +39,28 @@ namespace PoBox
         [SerializeField] private Systems_FighterRig _opponentRig;
         [SerializeField] private Systems_Stamina _opponentStamina;
         [SerializeField] private Transform _ringCenter;
+        // False in balance-phase prefabs/scenes: drops the 19 opponent-relative
+        // observations that are always zero without an opponent. Flip to true
+        // (and re-run Prepare for Training) for the boxing phase.
+        [SerializeField] private bool _observeOpponent = true;
+        // Negative by calibration (2026-08-17 contest-scene A/B): with
+        // _invertTargetRotation fixed, negative gains stabilize the capsule
+        // and Grandma rigs; positive gains actively topple them. Grandpa's
+        // bone axes differ — tune per-rig if his bot underperforms.
+        [SerializeField] private float _heuristicKp = -4f;
+        [SerializeField] private float _heuristicKd = -1.2f;
 
         private float[] _pendingActions;
         private bool _hasPendingActions;
         private Sensor_GroundContact[] _contactSensors;
+        private byte[] _dofRoles;
 
         public Systems_FighterRig Rig => _rig;
 
-        public static int ComputeObservationCount(int jointCount)
+        public static int ComputeObservationCount(int jointCount, bool observeOpponent)
         {
-            return ROOT_OBSERVATIONS + PER_JOINT_OBSERVATIONS * jointCount + FOOT_OBSERVATIONS + OPPONENT_OBSERVATIONS;
+            int count = ROOT_OBSERVATIONS + PER_JOINT_OBSERVATIONS * jointCount + FOOT_OBSERVATIONS;
+            return observeOpponent ? count + OPPONENT_OBSERVATIONS : count;
         }
 
         // Called by the editor rig tool while building the prefab.
@@ -59,6 +82,36 @@ namespace PoBox
         {
             _pendingActions = new float[_rig.DofCount];
             _contactSensors = GetComponentsInChildren<Sensor_GroundContact>(true);
+            BuildDofRoles();
+        }
+
+        private void BuildDofRoles()
+        {
+            _dofRoles = new byte[_rig.DofCount];
+            var joints = _rig.Joints;
+            int dofIndex = 0;
+            for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++)
+            {
+                RigJointEntry entry = joints[jointIndex];
+                string bodyName = entry.body.name;
+                bool isAnkle = bodyName.IndexOf("foot", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                bool isHip = bodyName.IndexOf("thigh", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (entry.hasPitch)
+                {
+                    _dofRoles[dofIndex] = isAnkle ? DOF_ROLE_ANKLE_PITCH : isHip ? DOF_ROLE_HIP_PITCH : DOF_ROLE_NONE;
+                    dofIndex++;
+                }
+                if (entry.hasRoll)
+                {
+                    _dofRoles[dofIndex] = isAnkle ? DOF_ROLE_ANKLE_ROLL : isHip ? DOF_ROLE_HIP_ROLL : DOF_ROLE_NONE;
+                    dofIndex++;
+                }
+                if (entry.hasYaw)
+                {
+                    _dofRoles[dofIndex] = DOF_ROLE_NONE;
+                    dofIndex++;
+                }
+            }
         }
 
         public override void OnEpisodeBegin()
@@ -103,7 +156,11 @@ namespace PoBox
             sensor.AddObservation(_footRight != null && _footRight.IsGrounded);
             sensor.AddObservation(_footRight != null ? _footRight.ContactNormal : Vector3.zero);
 
-            // Opponent-relative (19); zeros when no opponent (staging/balance scenes)
+            // Opponent-relative (19); omitted entirely in balance-phase rigs
+            if (!_observeOpponent)
+            {
+                return;
+            }
             if (_opponentRig != null)
             {
                 Rigidbody opponentPelvis = _opponentRig.Pelvis;
@@ -125,6 +182,43 @@ namespace PoBox
             sensor.AddObservation(_ringCenter != null
                 ? pelvisTransform.InverseTransformPoint(_ringCenter.position)
                 : Vector3.zero);
+        }
+
+        public override void Heuristic(in ActionBuffers actionsOut)
+        {
+            var continuous = actionsOut.ContinuousActions;
+            for (int actionIndex = 0; actionIndex < continuous.Length; actionIndex++)
+            {
+                continuous[actionIndex] = 0f;
+            }
+            if (_dofRoles == null)
+            {
+                return;
+            }
+
+            Rigidbody pelvis = _rig.Pelvis;
+            Vector3 support = (_footLeft.transform.position + _footRight.transform.position) * 0.5f;
+            Vector3 lean = pelvis.worldCenterOfMass - support;
+            Vector3 velocity = pelvis.linearVelocity;
+            Transform pelvisTransform = pelvis.transform;
+            Vector3 localLean = pelvisTransform.InverseTransformDirection(new Vector3(lean.x, 0f, lean.z));
+            Vector3 localVelocity = pelvisTransform.InverseTransformDirection(new Vector3(velocity.x, 0f, velocity.z));
+
+            float pitch = Mathf.Clamp(-(_heuristicKp * localLean.z + _heuristicKd * localVelocity.z),
+                -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
+            float roll = Mathf.Clamp(-(_heuristicKp * localLean.x + _heuristicKd * localVelocity.x),
+                -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
+
+            for (int dofIndex = 0; dofIndex < _dofRoles.Length; dofIndex++)
+            {
+                switch (_dofRoles[dofIndex])
+                {
+                    case DOF_ROLE_ANKLE_PITCH: continuous[dofIndex] = pitch; break;
+                    case DOF_ROLE_ANKLE_ROLL: continuous[dofIndex] = roll; break;
+                    case DOF_ROLE_HIP_PITCH: continuous[dofIndex] = -0.5f * pitch; break;
+                    case DOF_ROLE_HIP_ROLL: continuous[dofIndex] = -0.5f * roll; break;
+                }
+            }
         }
 
         public override void OnActionReceived(ActionBuffers actions)

@@ -53,7 +53,11 @@ namespace PoBox.Editor
             agent.EditorInitialize(rig, stamina, rig.FootLeftSensor, rig.FootRightSensor);
             agent.MaxStep = 0;
 
-            int observationCount = Agent_FighterBoxing.ComputeObservationCount(rig.JointCount);
+            // Balance phase ships without opponent observations; the boxing
+            // phase flips _observeOpponent on the agent and re-runs this tool.
+            var agentSo = new SerializedObject(agent);
+            bool observeOpponent = agentSo.FindProperty("_observeOpponent").boolValue;
+            int observationCount = Agent_FighterBoxing.ComputeObservationCount(rig.JointCount, observeOpponent);
             int actionCount = rig.DofCount;
 
             var behavior = root.GetComponent<BehaviorParameters>();

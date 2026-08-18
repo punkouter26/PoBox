@@ -39,7 +39,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1223220428022075513}
-  m_Material: {fileID: 13400000, guid: b5705a245babe41468e86b32c2d74924, type: 2}
+  m_Material: {fileID: 13400000, guid: 00d608a9c795a7a4da75c92549be87bf, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -92,7 +92,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6944559246994604001}
-  m_Material: {fileID: 13400000, guid: b5705a245babe41468e86b32c2d74924, type: 2}
+  m_Material: {fileID: 13400000, guid: 00d608a9c795a7a4da75c92549be87bf, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -1809,7 +1809,7 @@ MonoBehaviour:
     baseSpring: 1000
     baseDamper: 80
     baseMaxForce: 1500
-  _invertTargetRotation: 0
+  _invertTargetRotation: 1
 --- !u!114 &6938369447749101748
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1840,7 +1840,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
   m_BrainParameters:
-    VectorObservationSize: 138
+    VectorObservationSize: 119
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 30
@@ -1881,6 +1881,9 @@ MonoBehaviour:
   _opponentRig: {fileID: 0}
   _opponentStamina: {fileID: 0}
   _ringCenter: {fileID: 0}
+  _observeOpponent: 0
+  _heuristicKp: 4
+  _heuristicKd: 1.2
 --- !u!114 &4961781327497580444
 MonoBehaviour:
   m_ObjectHideFlags: 0
