@@ -42,6 +42,14 @@ environment_parameters:
           min_lesson_length: 100
           threshold: 0.5
         value: 0.0
+      - name: GentleShoves
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.5
+        value: 60.0
       - name: LightShoves
         completion_criteria:
           measure: reward
