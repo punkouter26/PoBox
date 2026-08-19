@@ -6,11 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SCN_TRAIN_BALANCE.unity
-    guid: d7cf5c42b14292c4f984344b9df8fa86
-  - enabled: 1
-    path: Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity
-    guid: 593ca622f49622147892f89fc78bd90f
+    path: Assets/Scenes/SCN_TRAIN_LOCOMOTION.unity
+    guid: 08683b80866d975478200dfa940b99d6
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

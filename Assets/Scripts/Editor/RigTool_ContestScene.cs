@@ -101,7 +101,7 @@ namespace PoBox.Editor
             Debug.Log("RigTool: Contest_Bot added (heuristic PD, no brain) and scene saved.");
         }
 
-        private static void SpawnContestant(GameObject prefab, string display, Vector3 position, bool forceHeuristic)
+        internal static GameObject SpawnContestant(GameObject prefab, string display, Vector3 position, bool forceHeuristic)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
@@ -126,7 +126,7 @@ namespace PoBox.Editor
             {
                 behavior.BehaviorType = BehaviorType.HeuristicOnly; // code-driven PD bot
                 TintRenderers(instance, BOT_MATERIAL_PATH); // red = code bot, tell it apart at a glance
-                return;
+                return instance;
             }
             var model = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>($"Assets/Agents/{display}/Boxer.onnx");
             if (model != null)
@@ -139,6 +139,10 @@ namespace PoBox.Editor
                 behavior.BehaviorType = BehaviorType.HeuristicOnly; // zero actions: pure physics
                 Debug.LogWarning($"RigTool: no brain at Assets/Agents/{display}/Boxer.onnx — {display} competes on raw physics.");
             }
+
+            // Returned so the walk contest builder can re-aim and re-brand the
+            // same contestant without duplicating this wiring.
+            return instance;
         }
 
         /// <summary>
@@ -491,7 +495,7 @@ namespace PoBox.Editor
             refereeObject.AddComponent<Systems_BalanceContest>();
         }
 
-        private static PanelSettings GetOrCreatePanelSettings()
+        internal static PanelSettings GetOrCreatePanelSettings()
         {
             var settings = AssetDatabase.LoadAssetAtPath<PanelSettings>(PANEL_SETTINGS_PATH);
             if (settings != null)

@@ -17,6 +17,12 @@ namespace PoBox
         private const float FALL_PENALTY = -1f;
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float HEIGHT_KERNEL_SHARPNESS = 20f;
+        // Under _productReward a single factor of exactly 0 zeroes the whole
+        // step and erases the signal from every other criterion. Observed on
+        // grandma_balance04: flat -1.000 mean reward, 0.000 spread, 1.85 M
+        // steps, while Balance/UprightMean sat at 0.87. Flooring each factor
+        // makes a failing criterion damp the step instead of deleting it.
+        private const float PRODUCT_FACTOR_FLOOR = 0.05f;
 
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
@@ -159,10 +165,10 @@ namespace PoBox
                 // weight 0 drops a term out (pow -> 1), higher weight makes it
                 // matter more. A zero in any weighted factor zeroes the step.
                 balanceReward =
-                    Mathf.Pow(uprightReward, _uprightWeight) *
-                    Mathf.Pow(heightReward, _heightWeight) *
-                    Mathf.Pow(comReward, _comWeight) *
-                    Mathf.Pow(legUprightReward, _legUprightWeight);
+                    ProductFactor(uprightReward, _uprightWeight) *
+                    ProductFactor(heightReward, _heightWeight) *
+                    ProductFactor(comReward, _comWeight) *
+                    ProductFactor(legUprightReward, _legUprightWeight);
             }
             else
             {
@@ -208,11 +214,25 @@ namespace PoBox
             return false;
         }
 
+        // Clamps a [0,1] criterion away from zero before it enters the product,
+        // then applies its weight as an exponent.
+        private static float ProductFactor(float value, float weight)
+        {
+            return Mathf.Pow(Mathf.Max(PRODUCT_FACTOR_FLOOR, value), weight);
+        }
+
         private float ComputeLegUprightReward()
         {
-            if (_legUprightWeight <= 0f || _legTransforms.Length == 0)
+            if (_legUprightWeight <= 0f)
             {
                 return 0f;
+            }
+            if (_legTransforms.Length == 0)
+            {
+                // Imported skeletons (grandma/grandpa) name no body "thigh" or
+                // "shin", so no segments are found. Neutral, never 0 — a 0 here
+                // multiplied out to a dead reward on those two rigs.
+                return 1f;
             }
             float sum = 0f;
             for (int legIndex = 0; legIndex < _legTransforms.Length; legIndex++)

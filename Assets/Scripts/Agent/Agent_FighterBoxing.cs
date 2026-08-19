@@ -21,6 +21,8 @@ namespace PoBox
         private const int FOOT_OBSERVATIONS = 8;
         private const int FOOT_HEIGHT_OBSERVATIONS = 2;
         private const int OPPONENT_OBSERVATIONS = 19;
+        // Commanded speed (1) + goal direction in pelvis-local space (3).
+        private const int LOCOMOTION_OBSERVATIONS = 4;
         private const float FOOT_RAY_MAX_METERS = 1f;
 
         // Heuristic balance bot (project rule: every app has one code-driven
@@ -50,6 +52,13 @@ namespace PoBox
         // trained .onnx and requires re-running Prepare for Training plus a
         // fresh run. Leave false unless starting a new model line.
         [SerializeField] private bool _observeFootHeight;
+        // Adds the commanded walking speed and the goal direction, turning one
+        // brain into both mini-games: command 0 m/s and it stands (balance
+        // contest), command 1 m/s and it walks (walk race). Randomized during
+        // training so the brain learns to obey the command rather than
+        // memorizing one behaviour. CHANGES THE OBSERVATION SIZE: enabling it
+        // invalidates every trained .onnx and needs a fresh model line.
+        [SerializeField] private bool _observeLocomotionCommand;
         // Negative by calibration (2026-08-17 contest-scene A/B): with
         // _invertTargetRotation fixed, negative gains stabilize the capsule
         // and Grandma rigs; positive gains actively topple them. Grandpa's
@@ -74,12 +83,39 @@ namespace PoBox
             _observeFootHeight = observeFootHeight;
         }
 
-        public static int ComputeObservationCount(int jointCount, bool observeOpponent, bool observeFootHeight)
+        /// <summary>Speed the brain is being told to travel at, m/s. 0 stands still.</summary>
+        public float CommandedSpeed { get; private set; }
+
+        /// <summary>Unit world direction the brain is being told to travel in.</summary>
+        public Vector3 CommandedDirection { get; private set; } = Vector3.forward;
+
+        /// <summary>
+        /// Sets this step's locomotion command. Written by Reward_Locomotion,
+        /// which owns the curriculum and re-rolls the command each episode.
+        /// </summary>
+        public void SetLocomotionCommand(float speed, Vector3 direction)
+        {
+            CommandedSpeed = speed;
+            CommandedDirection = direction.sqrMagnitude > 0f ? direction.normalized : Vector3.forward;
+        }
+
+        // Called by the editor scene builder when starting the locomotion model line.
+        public void SetObserveLocomotionCommand(bool observeLocomotionCommand)
+        {
+            _observeLocomotionCommand = observeLocomotionCommand;
+        }
+
+        public static int ComputeObservationCount(int jointCount, bool observeOpponent, bool observeFootHeight,
+            bool observeLocomotionCommand = false)
         {
             int count = ROOT_OBSERVATIONS + PER_JOINT_OBSERVATIONS * jointCount + FOOT_OBSERVATIONS;
             if (observeFootHeight)
             {
                 count += FOOT_HEIGHT_OBSERVATIONS;
+            }
+            if (observeLocomotionCommand)
+            {
+                count += LOCOMOTION_OBSERVATIONS;
             }
             return observeOpponent ? count + OPPONENT_OBSERVATIONS : count;
         }
@@ -182,6 +218,15 @@ namespace PoBox
             {
                 sensor.AddObservation(FootGroundDistance01(_footLeft));
                 sensor.AddObservation(FootGroundDistance01(_footRight));
+            }
+
+            if (_observeLocomotionCommand)
+            {
+                // Direction is pelvis-local so the command means the same thing
+                // whichever way the fighter happens to be facing — that is what
+                // makes the brain steerable instead of locked to one world axis.
+                sensor.AddObservation(CommandedSpeed);
+                sensor.AddObservation(pelvisTransform.InverseTransformDirection(CommandedDirection));
             }
 
             // Opponent-relative (19); omitted entirely in balance-phase rigs.

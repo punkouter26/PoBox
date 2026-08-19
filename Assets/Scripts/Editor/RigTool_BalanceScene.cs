@@ -100,7 +100,7 @@ namespace PoBox.Editor
             Debug.Log($"RigTool: balance training scene saved to {scenePath} — {GRID_SIZE * GRID_SIZE} fighters. {trainHint}");
         }
 
-        private static void BuildGround()
+        internal static void BuildGround()
         {
             // Box, not a scaled plane: a thin MeshCollider invites tunneling
             // when a body gets flung at high angular velocity.
@@ -115,7 +115,7 @@ namespace PoBox.Editor
             }
         }
 
-        private static Systems_FighterVariation GetOrCreateVariationAsset()
+        internal static Systems_FighterVariation GetOrCreateVariationAsset()
         {
             var variation = AssetDatabase.LoadAssetAtPath<Systems_FighterVariation>(VARIATION_ASSET_PATH);
             if (variation != null)
@@ -221,7 +221,7 @@ namespace PoBox.Editor
             return 1f + ((float)random.NextDouble() * 2f - 1f) * range;
         }
 
-        private static void SpawnFighter(GameObject prefab, Vector3 position, int index, Systems_FighterVariation variation)
+        internal static GameObject SpawnFighter(GameObject prefab, Vector3 position, int index, Systems_FighterVariation variation)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
@@ -270,6 +270,10 @@ namespace PoBox.Editor
             ApplyGen2Settings(instance, rig, agent);
 
             ApplyVariation(instance, rig, variation, index);
+
+            // Returned so the walk scene builder can layer Reward_Walk on top
+            // and switch off the balance-only curricula.
+            return instance;
         }
 
         private static void RegisterAsFirstBuildScene()
