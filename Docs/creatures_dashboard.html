@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PoBox — Creatures Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1020;--panel:#141a33;--panel-2:#1b2347;--ink:#e6ecff;--muted:#9aa6c8;
+    --accent:#f6c453;--accent-2:#ff7a59;--good:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+    --line:#26305a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  a{color:var(--accent)}
+  header{padding:24px 28px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#101736,#0b1020)}
+  header h1{margin:0;font-size:28px;letter-spacing:.5px}
+  header .sub{color:var(--muted);margin-top:4px;font-size:13px}
+  nav{display:flex;flex-wrap:wrap;gap:10px;padding:14px 28px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  nav button{appearance:none;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px}
+  nav button:hover{background:#222b5e}
+  nav button.active{background:var(--accent);color:#1b1100;border-color:var(--accent)}
+  .mode{display:flex;gap:0;margin-left:auto;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .mode button{margin:0;border:0;border-radius:0;background:transparent;color:var(--ink)}
+  .mode button.active{background:var(--accent-2);color:#fff}
+
+  main{padding:28px;display:grid;gap:24px;grid-template-columns:1fr;max-width:1320px;margin:0 auto}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  section h2{margin:0 0 12px;font-size:20px;color:var(--accent)}
+  section h3{margin:18px 0 8px;font-size:15px;color:var(--accent-2)}
+  section .lede{color:var(--muted);margin:0 0 14px}
+
+  /* Tag pills */
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;border:1px solid transparent}
+  .pill.staging{background:#1e3a8a;color:#bfdbfe;border-color:#1d4ed8}
+  .pill.production{background:#14532d;color:#bbf7d0;border-color:#16a34a}
+  .pill.training{background:#7c2d12;color:#fed7aa;border-color:#c2410c}
+  .pill.frozen{background:#374151;color:#d1d5db;border-color:#6b7280}
+  .pill.bal{background:#1e3a8a;color:#bfdbfe}
+  .pill.loc{background:#5b21b6;color:#ddd6fe}
+  .pill.walk{background:#0f766e;color:#ccfbf1}
+  .pill.self{background:#9d174d;color:#fbcfe8}
+
+  /* Cards grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .card{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .card .name{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .card .path{font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all}
+  .card .meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px;font-size:12px}
+  .card .meta div span{color:var(--muted);display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* Progress bars */
+  .bar{position:relative;height:18px;background:#0e1530;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:6px 0 2px}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .4s}
+  .bar .target{position:absolute;top:0;bottom:0;width:2px;background:var(--good)}
+  .bar .label{position:relative;z-index:1;text-align:center;font-size:11px;font-weight:700;line-height:18px;color:#0b1020;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel-2);font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  td code,th code{background:#0e1530;padding:1px 6px;border-radius:4px;font-size:12px}
+
+  /* Diagram block */
+  figure{margin:0;background:#0e1530;border:1px solid var(--line);border-radius:10px;padding:12px}
+  figure img{max-width:100%;height:auto;display:block;margin:auto}
+  figure figcaption{color:var(--muted);font-size:12px;margin-top:6px;text-align:center}
+
+  .tier{display:grid;gap:8px}
+  .tier details{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .tier summary{cursor:pointer;font-weight:700;font-size:14px;outline:none}
+  .tier details[open] summary{color:var(--accent)}
+  .tier details .body{color:var(--ink);margin-top:8px}
+  .tier details .body p{margin:6px 0}
+  .tier ul{margin:6px 0 6px 20px}
+
+  /* Technical sections hidden in executive mode */
+  body[data-mode="executive"] .tech{display:none}
+  body[data-mode="technical"] .exec-only{display:none}
+  body[data-mode="executive"] .progress-target{display:none}
+  body[data-mode="technical"] .progress-target{display:inline}
+
+  footer{padding:24px 28px;color:var(--muted);border-top:1px solid var(--line);font-size:12px;text-align:center}
+</style>
+</head>
+<body data-mode="executive">
+
+<header>
+  <h1>PoBox — Creatures Dashboard</h1>
+  <div class="sub">Active-ragdoll boxing • Unity ML-Agents 4.1.0 • Unity Inference Engine (Sentis) • PhysX ArticulationBody</div>
+</header>
+
+<nav>
+  <button data-section="overview" class="active">Overview</button>
+  <button data-section="roster">Roster</button>
+  <button data-section="lifecycle">Lifecycle</button>
+  <button data-section="tensor">Tensor &amp; Actuators</button>
+  <button data-section="sensors">Sensors &amp; Reward</button>
+  <button data-section="hyper">Hyperparameters</button>
+  <div class="mode" role="tablist" aria-label="View mode">
+    <button id="btn-exec" class="active">Executive</button>
+    <button id="btn-tech">Technical</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <h2>Overview</h2>
+  <p class="lede">Three rigged fighters (Capsule, Grandma, Grandpa) trained with PPO in Unity ML-Agents. Each brain controls a 14-joint active ragdoll via a 3×512 MLP. The contest scene lets a player pick any combination of brains or heuristic bots and watch them fight to stay upright.</p>
+
+  <div class="tier">
+    <details open>
+      <summary>Tier 1 — 30-second summary</summary>
+      <div class="body">
+        <ul>
+          <li><b>What is PoBox?</b> A balance-and-walk contest: every fighter is an active ragdoll with 14 driven joints.</li>
+          <li><b>What trains it?</b> PPO with extrinsic-only rewards, 3 curricula (drive strength, shoves, projectile cubes), 15–50 M steps depending on the run.</li>
+          <li><b>What runs it?</b> Unity Inference Engine (Sentis) loads the exported <code>.onnx</code>, executes the MLP on every decision, and writes joint target rotations for PhysX to follow.</li>
+          <li><b>Status today:</b> 3 promoted brains in <code>Assets/Agents/&lt;Name&gt;/</code> plus 6 historical runs in <code>results/</code>.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>Tier 2 — Component &amp; flow overview</summary>
+      <div class="body">
+        <ul>
+          <li><b>Model</b> — Active ragdoll driven by <code>ConfigurableJoint</code> slerp drives (14 per fighter). Joint axes are PD-controlled by joint-specific <code>baseSpring</code>/<code>baseDamper</code>/<code>baseMaxForce</code>.</li>
+          <li><b>Agent</b> — <code>Agent_FighterBoxing</code> collects 121 floats (root + per-joint proprio + feet + foot-height rays), receives continuous actions, applies them in <code>FixedUpdate</code> only.</li>
+          <li><b>Reward</b> — <code>Reward_Balance</code> (stage 1) or <code>Reward_Locomotion</code> (unified stand-and-walk) add per-step extrinsic reward; product-form geometric mean available as an option.</li>
+          <li><b>Runtime</b> — Sentis executes the MLP, <code>Systems_FighterRig.ApplyActions</code> maps the action vector to per-joint target rotations, <code>Systems_Stamina</code> attenuates springs from motor power, <code>PhysX</code> steps the world at 0.02 s.</li>
+          <li><b>UI</b> — UI Toolkit scoreboard, drama camera, crowd audio, announcer, cube thrower — all driven off the referee (<code>Systems_BalanceContest</code>) events.</li>
+        </ul>
+      </div>
+    </details>
+    <details class="tech">
+      <summary>Tier 3 — Implementation specifics</summary>
+      <div class="body">
+        <p>Fixed step 0.02 s, solver iterations locked. <code>ActionBuffers.ContinuousActions</code> shape equals <code>Systems_FighterRig.DofCount</code> (active axes across 14 joints, typically 42). <code>VectorSensor</code> writes 121 floats exactly (<code>ROOT_OBSERVATIONS 13</code> + <code>PER_JOINT_OBSERVATIONS 7 × 14</code> + <code>FOOT_OBSERVATIONS 8</code> + <code>FOOT_HEIGHT_OBSERVATIONS 2</code>). LSTM disabled on balance/locomotion; enabled (128 cell × 64 seq) on self-play. PPO gamma 0.999 balance, 0.99 self-play. <code>OnActionReceived</code> computes mean |Δaction| for the smoothness penalty; <code>ApplyActions</code> applies exponential smoothing with α = 1 − e<sup>−dt/τ</sup> when <code>_actionSmoothingSeconds &gt; 0</code>.</p>
+      </div>
+    </details>
+  </div>
+
+  <h3 class="exec-only">Behavior evolution at a glance</h3>
+  <div class="exec-only">
+    <div class="card">
+      <div class="name">Capsule — balance05 <span class="pill production">Production</span></div>
+      <div class="meta">
+        <div><span>Obs</span>121</div><div><span>Steps</span>25 M</div>
+        <div><span>Reward form</span>product</div><div><span>Status</span>standing</div>
+      </div>
+      <div class="bar" title="Episode return"><div class="fill" style="width:72%"></div><div class="target" style="left:80%"></div><div class="label">mean ≈ 0.72 / target 0.80</div></div>
+    </div>
+    <div class="card">
+      <div class="name">Grandma — balance04 <span class="pill production">Production</span></div>
+      <div class="meta">
+        <div><span>Obs</span>121</div><div><span>Steps</span>2 M</div>
+        <div><span>Reward form</span>sum</div><div><span>Status</span>stalled</div>
+      </div>
+      <div class="bar" title="Episode return"><div class="fill" style="width:5%"></div><div class="target" style="left:80%"></div><div class="label">mean ≈ -0.98 / target 0.80</div></div>
+    </div>
+    <div class="card">
+      <div class="name">Grandpa — balance04 <span class="pill production">Production</span></div>
+      <div class="meta">
+        <div><span>Obs</span>121</div><div><span>Steps</span>2 M</div>
+        <div><span>Reward form</span>sum</div><div><span>Status</span>stalled</div>
+      </div>
+      <div class="bar" title="Episode return"><div class="fill" style="width:5%"></div><div class="target" style="left:80%"></div><div class="label">mean ≈ -0.98 / target 0.80</div></div>
+    </div>
+    <div class="card">
+      <div class="name">Locomotion01 <span class="pill staging">Staging</span></div>
+      <div class="meta">
+        <div><span>Obs</span>125 (cmd)</div><div><span>Steps</span>fresh</div>
+        <div><span>Reward form</span>product</div><div><span>Status</span>queued</div>
+      </div>
+      <div class="bar" title="Episode return"><div class="fill" style="width:0%"></div><div class="target" style="left:25%"></div><div class="label">no data yet</div></div>
+    </div>
+  </div>
+
+  <h3 class="tech">Pipeline at a glance (detailed)</h3>
+  <figure class="tech">
+    <img src="assets/lifecycle-detailed.svg" alt="ML-Agents lifecycle detailed" />
+    <figcaption>One FixedUpdate tick: CollectObservations → Sentis MLP → Rig.ApplyActions → PhysX → Reward → Terminal.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ ROSTER ============ -->
+<section id="roster">
+  <h2>Roster</h2>
+  <p class="lede">Every fighter prefab is paired with a brain. Brains can be a trained <code>.onnx</code> (Promoted in <code>Assets/Agents/</code>) or the code-driven heuristic bot (ankle + counter-hip PD). The contest setup menu reads this roster and fills its drop-downs.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="name">Capsule <span class="pill production">Production</span> <span class="pill bal">balance05</span></div>
+      <div class="path">Prefab: Assets/Prefabs/Fighters/Fighter_Capsule.prefab<br>Brain: Assets/Agents/Standard/Boxer.onnx</div>
+      <div class="meta">
+        <div><span>Joints</span>14</div><div><span>ONNX size</span>2.31 MB</div>
+        <div><span>Run ID</span>boxer_balance05</div><div><span>Steps</span>25 M</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">Grandma <span class="pill production">Production</span> <span class="pill bal">balance04</span></div>
+      <div class="path">Prefab: Assets/Prefabs/Fighters/Fighter_Grandma.prefab<br>Brain: Assets/Agents/Grandma/Boxer.onnx</div>
+      <div class="meta">
+        <div><span>Joints</span>14</div><div><span>ONNX size</span>2.31 MB</div>
+        <div><span>Run ID</span>grandma_balance04</div><div><span>Steps</span>2 M</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">Grandpa <span class="pill production">Production</span> <span class="pill bal">balance04</span></div>
+      <div class="path">Prefab: Assets/Prefabs/Fighters/Fighter_Grandpa.prefab<br>Brain: Assets/Agents/Grandpa/Boxer.onnx</div>
+      <div class="meta">
+        <div><span>Joints</span>14</div><div><span>ONNX size</span>2.31 MB</div>
+        <div><span>Run ID</span>grandpa_balance04</div><div><span>Steps</span>2 M</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">Locomotion (single brain) <span class="pill staging">Staging</span> <span class="pill loc">locomotion01</span></div>
+      <div class="path">YAML: Config/BoxerLocomotion01.yaml<br>Command observation 0 = stand, 1 = walk</div>
+      <div class="meta">
+        <div><span>Obs</span>125 (with cmd)</div><div><span>Reward</span>product</div>
+        <div><span>Run ID</span>boxer_locomotion01</div><div><span>Steps</span>15 M plan</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">Boxing Self-Play <span class="pill frozen">Frozen (skeleton)</span> <span class="pill self">selfplay01</span></div>
+      <div class="path">YAML: Config/BoxerSelfPlay01.yaml<br>Needs opponent obs re-enabled</div>
+      <div class="meta">
+        <div><span>Obs</span>138 (opponent)</div><div><span>Memory</span>LSTM 128×64</div>
+        <div><span>Run ID</span>boxer_selfplay01</div><div><span>Steps</span>50 M plan</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">Walk Stage 2 <span class="pill frozen">Frozen (skeleton)</span> <span class="pill walk">walk01</span></div>
+      <div class="path">YAML: Config/BoxerWalk01.yaml<br>Init path: results/boxer_balance05/Boxer</div>
+      <div class="meta">
+        <div><span>Obs</span>121</div><div><span>Reward</span>sum+bonus</div>
+        <div><span>Run ID</span>boxer_walk01</div><div><span>Steps</span>15 M plan</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LIFECYCLE ============ -->
+<section id="lifecycle">
+  <h2>Lifecycle &amp; execution loop</h2>
+  <p class="lede">ML-Agents ticks the agent before PhysX; actions written in <code>OnActionReceived</code> are buffered and consumed in <code>FixedUpdate</code>. This guarantees deterministic physics while letting inference run async.</p>
+  <figure>
+    <img src="assets/lifecycle-simple.svg" alt="ML-Agents lifecycle simple" />
+    <figcaption>Conceptual loop — observation → inference → physics → reward → terminal check.</figcaption>
+  </figure>
+  <figure class="tech">
+    <img src="assets/lifecycle-detailed.svg" alt="ML-Agents lifecycle detailed" />
+    <figcaption>Tensors, buffers, and execution — what runs on C#, Sentis, and PhysX each tick.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ TENSOR ============ -->
+<section id="tensor">
+  <h2>Tensor blueprint &amp; actuator map</h2>
+  <p class="lede">The MLP takes a flat 121-float observation vector and emits one float per active DOF (≈42). Each action float is mapped zero-centered into the joint's per-axis range, then written as a slerp-drive target rotation.</p>
+  <figure>
+    <img src="assets/tensor-simple.svg" alt="Tensor simple" />
+    <figcaption>Observations → MLP → action tensor → joint drives.</figcaption>
+  </figure>
+  <figure class="tech">
+    <img src="assets/tensor-detailed.svg" alt="Tensor detailed" />
+    <figcaption>Index-level observation layout, network depth, zero-centered mapping, drive parameters.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ SENSORS ============ -->
+<section id="sensors">
+  <h2>Sensors &amp; reward tree</h2>
+  <p class="lede">Ground-contact sensors distinguish "ground" as any static collider (no rigidbody). Fall sensors are added by the spawner to torso, head, shins and gloves so kneeling triggers the terminal. Rewards are per-step scaled by 1/MaxStep so the −1 fall penalty stays commensurate.</p>
+  <figure>
+    <img src="assets/sensor-reward-simple.svg" alt="Sensor reward simple" />
+    <figcaption>From physics sensors to reward credit assignment.</figcaption>
+  </figure>
+  <figure class="tech">
+    <img src="assets/sensor-reward-detailed.svg" alt="Sensor reward detailed" />
+    <figcaption>Per-component breakdown: weights, product-form vs sum, terminal evaluations.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ HYPER ============ -->
+<section id="hyper">
+  <h2>Hyperparameters &amp; trainer specification</h2>
+  <p class="lede">Every config in <code>Config/</code> uses PPO with the same 3×512 MLP and linear-decay learning rate. Differences are in curricula and reward shaping.</p>
+  <figure>
+    <img src="assets/hyperparam-simple.svg" alt="Hyperparameter simple" />
+    <figcaption>PPO trainer at a glance.</figcaption>
+  </figure>
+  <figure class="tech">
+    <img src="assets/hyperparam-detailed.svg" alt="Hyperparameter detailed" />
+    <figcaption>Complete hyperparameter matrix plus curricula.</figcaption>
+  </figure>
+
+  <h3 class="tech">Hyperparameter table</h3>
+  <table class="tech">
+    <thead><tr><th>Param</th><th>balance04</th><th>balance05</th><th>balance03</th><th>locomotion01</th><th>walk01</th><th>selfplay01</th></tr></thead>
+    <tbody>
+      <tr><td><code>trainer_type</code></td><td>PPO</td><td>PPO</td><td>PPO</td><td>PPO</td><td>PPO</td><td>PPO</td></tr>
+      <tr><td><code>batch_size</code></td><td>2048</td><td>2048</td><td>2048</td><td>2048</td><td>2048</td><td>2048</td></tr>
+      <tr><td><code>buffer_size</code></td><td>20480</td><td>20480</td><td>20480</td><td>20480</td><td>20480</td><td>20480</td></tr>
+      <tr><td><code>learning_rate</code></td><td>3e-4</td><td>3e-4</td><td>3e-4</td><td>3e-4</td><td>3e-4</td><td>3e-4</td></tr>
+      <tr><td><code>beta</code></td><td>0.005</td><td>0.005</td><td>0.005</td><td>0.005</td><td>0.005</td><td>0.005</td></tr>
+      <tr><td><code>epsilon</code></td><td>0.2</td><td>0.2</td><td>0.2</td><td>0.2</td><td>0.2</td><td>0.2</td></tr>
+      <tr><td><code>lambd</code></td><td>0.95</td><td>0.95</td><td>0.95</td><td>0.95</td><td>0.95</td><td>0.95</td></tr>
+      <tr><td><code>num_epoch</code></td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
+      <tr><td><code>lr_schedule</code></td><td>linear</td><td>linear</td><td>linear</td><td>linear</td><td>linear</td><td>constant</td></tr>
+      <tr><td><code>hidden_units</code></td><td>512</td><td>512</td><td>512</td><td>512</td><td>512</td><td>512</td></tr>
+      <tr><td><code>num_layers</code></td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
+      <tr><td><code>memory</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>LSTM 128×64</td></tr>
+      <tr><td><code>gamma</code></td><td>0.999</td><td>0.999</td><td>0.999</td><td>0.999</td><td>0.999</td><td>0.99</td></tr>
+      <tr><td><code>max_steps</code></td><td>25 M</td><td>15 M</td><td>15 M</td><td>15 M</td><td>15 M</td><td>50 M</td></tr>
+      <tr><td><code>time_horizon</code></td><td>256</td><td>256</td><td>256</td><td>256</td><td>256</td><td>256</td></tr>
+      <tr><td><code>init_path</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td>balance05</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  PoBox • Generated 2026-08-19 • Source: <code>DOCS/creatures_dashboard.html</code> • Diagrams rendered with mermaid-cli
+</footer>
+
+<script>
+  mermaid.initialize({startOnLoad:true, theme:'dark', securityLevel:'loose', flowchart:{curve:'basis', useMaxWidth:true}});
+
+  // Section switching
+  const navBtns = document.querySelectorAll('nav button[data-section]');
+  navBtns.forEach(b => b.addEventListener('click', () => {
+    navBtns.forEach(x => x.classList.toggle('active', x === b));
+    const id = b.dataset.section;
+    document.getElementById(id).scrollIntoView({behavior:'smooth', block:'start'});
+  }));
+
+  // Mode toggle
+  const btnExec = document.getElementById('btn-exec');
+  const btnTech = document.getElementById('btn-tech');
+  function setMode(m){
+    document.body.dataset.mode = m;
+    btnExec.classList.toggle('active', m === 'executive');
+    btnTech.classList.toggle('active', m === 'technical');
+    try { localStorage.setItem('pobox.mode', m); } catch(e){}
+  }
+  btnExec.addEventListener('click', () => setMode('executive'));
+  btnTech.addEventListener('click', () => setMode('technical'));
+  try {
+    const saved = localStorage.getItem('pobox.mode');
+    if (saved === 'technical' || saved === 'executive') setMode(saved);
+  } catch(e){}
+</script>
+
+</body>
+</html>

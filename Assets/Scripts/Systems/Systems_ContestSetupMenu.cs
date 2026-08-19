@@ -17,6 +17,9 @@ namespace PoBox
         private const string EMPTY_CHOICE = "Empty";
 
         [SerializeField] private Systems_ContestSpawner _spawner;
+        // Set when SCN_MENU launched this scene. Null or unset means the scene
+        // was opened directly, so this menu still runs as the opening menu.
+        [SerializeField] private Systems_MiniGameSelection _selection;
 
         private readonly List<DropdownField> _slotDropdowns = new();
         private VisualElement _menuRoot;
@@ -28,8 +31,26 @@ namespace PoBox
             _spawner = spawner;
         }
 
+        // Called by the editor scene tool when wiring the SCN_MENU hand-off.
+        public void EditorSetSelection(Systems_MiniGameSelection selection)
+        {
+            _selection = selection;
+        }
+
         private void Start()
         {
+            // Picks already made in SCN_MENU: skip straight to the ring rather
+            // than asking the same question twice. Consumed so a later direct
+            // run of this scene shows the menu again.
+            if (_selection != null && _selection.HasSelection)
+            {
+                int[] picks = _selection.Picks;
+                _selection.Clear();
+                _started = true;
+                _spawner.SpawnAndBegin(picks);
+                return;
+            }
+
             var root = GetComponent<UIDocument>().rootVisualElement;
             Systems_UiTheme.ApplyDefaultFont(root);
 

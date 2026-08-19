@@ -21,8 +21,12 @@ namespace PoBox
         private const int FOOT_OBSERVATIONS = 8;
         private const int FOOT_HEIGHT_OBSERVATIONS = 2;
         private const int OPPONENT_OBSERVATIONS = 19;
-        // Commanded speed (1) + goal direction in pelvis-local space (3).
-        private const int LOCOMOTION_OBSERVATIONS = 4;
+        // Commanded speed (1) + goal direction in pelvis-local space (3)
+        // + gait clock as sin/cos (2).
+        private const int LOCOMOTION_OBSERVATIONS = 6;
+        // Cycles per second of the gait clock handed to the policy. Matches the
+        // scripted bot's stride rate so both move at a plausible human cadence.
+        private const float GAIT_CLOCK_FREQUENCY = 1.4f;
         private const float FOOT_RAY_MAX_METERS = 1f;
 
         // Heuristic balance bot (project rule: every app has one code-driven
@@ -35,6 +39,21 @@ namespace PoBox
         private const byte DOF_ROLE_ANKLE_ROLL = 2;
         private const byte DOF_ROLE_HIP_PITCH = 3;
         private const byte DOF_ROLE_HIP_ROLL = 4;
+        private const byte DOF_ROLE_KNEE_PITCH = 5;
+        // Which leg a DOF belongs to. The balance bot never needed this, but a
+        // gait is defined by the two legs being in antiphase, so the bot has to
+        // tell them apart. Derived from pelvis-local X, not from bone names, so
+        // it also works on the imported rigs whose bones are not named L/R.
+        private const byte DOF_SIDE_CENTER = 0;
+        private const byte DOF_SIDE_LEFT = 1;
+        private const byte DOF_SIDE_RIGHT = 2;
+
+        // Scripted gait, tuned for the capsule rig at ~1 m/s.
+        private const float GAIT_STEP_FREQUENCY = 1.4f;   // strides per second
+        private const float GAIT_HIP_SWING = 0.55f;       // hip pitch amplitude, action units
+        private const float GAIT_KNEE_FLEX = 0.45f;       // knee bend during swing only
+        private const float GAIT_ANKLE_PUSH = 0.25f;      // ankle push-off at end of stance
+        private const float GAIT_LEAN_BIAS = 0.12f;       // forward lean that converts stepping into travel
 
         [SerializeField] private Systems_FighterRig _rig;
         [SerializeField] private Systems_Stamina _stamina;
@@ -65,11 +84,18 @@ namespace PoBox
         // bone axes differ — tune per-rig if his bot underperforms.
         [SerializeField] private float _heuristicKp = -4f;
         [SerializeField] private float _heuristicKd = -1.2f;
+        // Whether a positive hip-pitch action swings the leg forward. The rigs
+        // disagree on joint axis sign (see _heuristicKp above), and the gait is
+        // useless backwards, so this is exposed to be flipped per rig without a
+        // recompile rather than guessed in code.
+        [SerializeField] private float _gaitPitchSign = 1f;
 
         private float[] _pendingActions;
         private bool _hasPendingActions;
         private Sensor_GroundContact[] _contactSensors;
         private byte[] _dofRoles;
+        private byte[] _dofSides;
+        private float _gaitPhase;
         private float _lastActionDelta01;
 
         public Systems_FighterRig Rig => _rig;
@@ -145,7 +171,9 @@ namespace PoBox
         private void BuildDofRoles()
         {
             _dofRoles = new byte[_rig.DofCount];
+            _dofSides = new byte[_rig.DofCount];
             var joints = _rig.Joints;
+            Transform pelvisTransform = _rig.Pelvis.transform;
             int dofIndex = 0;
             for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++)
             {
@@ -153,19 +181,34 @@ namespace PoBox
                 string bodyName = entry.body.name;
                 bool isAnkle = bodyName.IndexOf("foot", System.StringComparison.OrdinalIgnoreCase) >= 0;
                 bool isHip = bodyName.IndexOf("thigh", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                bool isKnee = bodyName.IndexOf("shin", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+                // Rest pose is symmetric, so local X sign separates the legs.
+                // The dead zone keeps spine and arm chains out of the gait.
+                float localX = pelvisTransform.InverseTransformPoint(entry.body.transform.position).x;
+                byte side = Mathf.Abs(localX) < 0.02f
+                    ? DOF_SIDE_CENTER
+                    : localX < 0f ? DOF_SIDE_LEFT : DOF_SIDE_RIGHT;
+
                 if (entry.hasPitch)
                 {
-                    _dofRoles[dofIndex] = isAnkle ? DOF_ROLE_ANKLE_PITCH : isHip ? DOF_ROLE_HIP_PITCH : DOF_ROLE_NONE;
+                    _dofRoles[dofIndex] = isAnkle ? DOF_ROLE_ANKLE_PITCH
+                        : isHip ? DOF_ROLE_HIP_PITCH
+                        : isKnee ? DOF_ROLE_KNEE_PITCH
+                        : DOF_ROLE_NONE;
+                    _dofSides[dofIndex] = side;
                     dofIndex++;
                 }
                 if (entry.hasRoll)
                 {
                     _dofRoles[dofIndex] = isAnkle ? DOF_ROLE_ANKLE_ROLL : isHip ? DOF_ROLE_HIP_ROLL : DOF_ROLE_NONE;
+                    _dofSides[dofIndex] = side;
                     dofIndex++;
                 }
                 if (entry.hasYaw)
                 {
                     _dofRoles[dofIndex] = DOF_ROLE_NONE;
+                    _dofSides[dofIndex] = side;
                     dofIndex++;
                 }
             }
@@ -227,6 +270,18 @@ namespace PoBox
                 // makes the brain steerable instead of locked to one world axis.
                 sensor.AddObservation(CommandedSpeed);
                 sensor.AddObservation(pelvisTransform.InverseTransformDirection(CommandedDirection));
+
+                // Gait clock. The policy is feed-forward with no memory, so it
+                // has no way to invent a rhythm, and walking is periodic by
+                // definition. Handing it a phase gives left/right alternation
+                // something to key off. Measured 2026-08-19 without it: single
+                // support 0.005 and foot lift 0.09 mm at every reward weighting
+                // tried across three generations — an exploration problem, not
+                // an incentive one. Derived from StepCount so it is
+                // deterministic and restarts with each episode.
+                float phase = GAIT_CLOCK_FREQUENCY * 2f * Mathf.PI * StepCount * Time.fixedDeltaTime;
+                sensor.AddObservation(Mathf.Sin(phase));
+                sensor.AddObservation(Mathf.Cos(phase));
             }
 
             // Opponent-relative (19); omitted entirely in balance-phase rigs.
@@ -282,6 +337,61 @@ namespace PoBox
             float roll = Mathf.Clamp(-(_heuristicKp * localLean.x + _heuristicKd * localVelocity.x),
                 -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
 
+            // Standing (CommandedSpeed 0) leaves the balance controller exactly
+            // as it was; the gait only fades in once a speed is commanded.
+            float gaitBlend = Mathf.Clamp01(CommandedSpeed);
+            if (gaitBlend <= 0f)
+            {
+                ApplyBalanceActions(continuous, pitch, roll);
+                return;
+            }
+
+            // Leaning into the direction of travel is what turns stepping in
+            // place into actual travel: the balance controller then keeps
+            // catching a body that is already falling forwards.
+            pitch += _gaitPitchSign * GAIT_LEAN_BIAS * gaitBlend;
+
+            _gaitPhase += GAIT_STEP_FREQUENCY * 2f * Mathf.PI * Time.fixedDeltaTime;
+            if (_gaitPhase > 2f * Mathf.PI)
+            {
+                _gaitPhase -= 2f * Mathf.PI;
+            }
+            float leftPhase = Mathf.Sin(_gaitPhase);
+            float rightPhase = -leftPhase; // antiphase: one leg swings while the other bears load
+
+            for (int dofIndex = 0; dofIndex < _dofRoles.Length; dofIndex++)
+            {
+                byte side = _dofSides[dofIndex];
+                float legPhase = side == DOF_SIDE_LEFT ? leftPhase
+                    : side == DOF_SIDE_RIGHT ? rightPhase
+                    : 0f;
+                float swing = _gaitPitchSign * gaitBlend * legPhase;
+
+                switch (_dofRoles[dofIndex])
+                {
+                    case DOF_ROLE_HIP_PITCH:
+                        continuous[dofIndex] = Mathf.Clamp(-0.5f * pitch + GAIT_HIP_SWING * swing,
+                            -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
+                        break;
+                    case DOF_ROLE_KNEE_PITCH:
+                        // Bend only while the leg swings forward, so the foot
+                        // clears the ground instead of scuffing it, and stay
+                        // straight through stance to carry the body's weight.
+                        continuous[dofIndex] = Mathf.Clamp(GAIT_KNEE_FLEX * Mathf.Max(0f, swing),
+                            -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
+                        break;
+                    case DOF_ROLE_ANKLE_PITCH:
+                        continuous[dofIndex] = Mathf.Clamp(pitch - GAIT_ANKLE_PUSH * swing,
+                            -HEURISTIC_MAX_ACTION, HEURISTIC_MAX_ACTION);
+                        break;
+                    case DOF_ROLE_ANKLE_ROLL: continuous[dofIndex] = roll; break;
+                    case DOF_ROLE_HIP_ROLL: continuous[dofIndex] = -0.5f * roll; break;
+                }
+            }
+        }
+
+        private void ApplyBalanceActions(in ActionSegment<float> continuous, float pitch, float roll)
+        {
             for (int dofIndex = 0; dofIndex < _dofRoles.Length; dofIndex++)
             {
                 switch (_dofRoles[dofIndex])

@@ -1,0 +1,14 @@
+%% Lifecycle (Simple) — Conceptual overview of one ML-Agents tick.
+%% PoBox Unity ML-Agents pipeline (Active Ragdoll Boxing).
+flowchart LR
+    subgraph PerTick["Per FixedUpdate tick"]
+        O[Collect Observations<br/>~121 floats]
+        A[On Action Received<br/>buffer actions]
+        P[PhysX + ArticulationBody<br/>step at 0.02 s]
+        R[Reward compute<br/>balance / locomotion]
+        T{Terminal?}
+    end
+    O --> A --> P --> R --> T
+    T -- yes --> E[End Episode]
+    T -- no --> O
+    E -.reset.-> O

@@ -21,6 +21,8 @@ namespace PoBox
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float ROUND_RESTART_DELAY = 4f;
         private const float ROUND_TIME_LIMIT = 60f;
+        // Commanded pace for the race. 1 m/s is a normal human walk.
+        private const float RACE_SPEED = 1.0f;
 
         [SerializeField] private StyleSheet _styleSheet;
         // World direction from the start edge to the finish edge, and how far
@@ -36,6 +38,7 @@ namespace PoBox
         {
             public string displayName;
             public Systems_FighterRig rig;
+            public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             public float startHeadHeight;
             public float startProjection;
@@ -112,12 +115,14 @@ namespace PoBox
                 {
                     displayName = rig.gameObject.name.Replace("Contest_", ""),
                     rig = rig,
+                    agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y,
                     startProjection = Vector3.Dot(rig.Pelvis.position, _goalDirection),
                     label = plate
                 };
                 _racers.Add(racer);
+                CommandRace(racer);
             }
         }
 
@@ -222,6 +227,18 @@ namespace PoBox
             return candidate.travelled > incumbent.travelled;
         }
 
+        // Tells the fighter to walk. A trained brain reads this as an
+        // observation; the code-driven bot reads it to switch its scripted gait
+        // on. Without it both would just stand on the start line.
+        private void CommandRace(Racer racer)
+        {
+            if (racer.agent == null)
+            {
+                return;
+            }
+            racer.agent.SetLocomotionCommand(RACE_SPEED, _goalDirection);
+        }
+
         private bool HasFallen(Racer racer)
         {
             for (int sensorIndex = 0; sensorIndex < racer.fallSensors.Length; sensorIndex++)
@@ -248,6 +265,7 @@ namespace PoBox
                     sensor.ResetContacts();
                 }
                 racer.startProjection = Vector3.Dot(racer.rig.Pelvis.position, _goalDirection);
+                CommandRace(racer);
                 racer.travelled = 0f;
                 racer.finishTime = 0f;
                 racer.fallen = false;

@@ -1,0 +1,52 @@
+%% Sensor / Reward (Detailed) — full perception and reward tree.
+flowchart TB
+    classDef sen fill:#0c4a6e,stroke:#38bdf8,color:#fff
+    classDef rew fill:#7c2d12,stroke:#fb923c,color:#fff
+    classDef term fill:#581c87,stroke:#c084fc,color:#fff
+
+    subgraph SENSE["Sensor perception"]
+        S1["Sensor_GroundContact<br/>OnCollisionEnter with rigidbody == null<br/>IsGrounded + ContactNormal"]:::sen
+        S2["Foot raycast downward 1 m<br/>hit.distance / 1 m in 0..1"]:::sen
+        S3["Sensor_GroundContact x 4 fall sensors<br/>torso, head, L shin, R shin, L glove, R glove"]:::sen
+        S4["Rigidbody state<br/>pelvis linearVelocity + angularVelocity<br/>+ each joint angularVelocity"]:::sen
+    end
+
+    subgraph EXT["Extrinsic reward weights"]
+        direction TB
+        R1["uprightWeight 0.3<br/>torso up dot world up squared"]:::rew
+        R2["heightWeight 0.3<br/>exp -20 * (headY - startHeadY)^2"]:::rew
+        R3["comWeight 0.2<br/>COM over feet projection"]:::rew
+        R4["legUprightWeight 0.2<br/>thigh + shin vertical"]:::rew
+        R5["smoothnessWeight 0.05<br/>mean absolute action delta"]:::rew
+        R6["speedMatchWeight 0.4 locomotion only<br/>exp - speedError^2 / 0.36"]:::rew
+    end
+
+    subgraph FORM["Reward form"]
+        F1{"_productReward?"}:::term
+        S[Weighted sum classic]:::term
+        P["Geometric mean<br/>each factor floored at 0.05"]:::term
+    end
+
+    subgraph TERM["Terminal evaluations"]
+        direction TB
+        T1["Fall sensor touched static collider"]:::term
+        T2["head Y < 0.4 * startHeadY"]:::term
+        T3["FALL_PENALTY -1 added then EndEpisode"]:::term
+        T4["Locomotion: no penalty, just EndEpisode"]:::term
+    end
+
+    SENSE --> EXT --> FORM --> TERM
+    S1 --> S3
+    S2 --> S4
+    R1 --> F1
+    R2 --> F1
+    R3 --> F1
+    R4 --> F1
+    R5 --> F1
+    R6 --> F1
+    F1 -- false --> S
+    F1 -- true --> P
+    T1 --> T3
+    T2 --> T3
+    T1 --> T4
+    T2 --> T4

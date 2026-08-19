@@ -1,0 +1,11 @@
+%% Hyperparameters (Simple) — PPO trainer overview.
+flowchart LR
+    subgraph Trainer
+        PPO[PPO trainer]
+        BF["Behaviors Boxer"]
+    end
+    PPO --> BF
+    BF --> H[Hyperparameters]
+    BF --> N[Network 3 x 512]
+    BF --> R[Reward extrinsic gamma 0.999]
+    BF --> S[Schedule 15-25M steps]

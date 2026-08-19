@@ -23,9 +23,24 @@ namespace PoBox
     public sealed class Reward_Locomotion : MonoBehaviour
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
-        // Speed error at which the match term decays to ~e^-1. Wide enough
-        // that a first clumsy step still scores something.
-        private const float SPEED_KERNEL = 0.6f;
+        // Speed error at which the match term decays to ~e^-1. Was 0.6, which
+        // was far too forgiving: standing dead still while commanded 0.2 m/s
+        // still scored 0.98, so the agent learned to stand and eat the loss
+        // (measured 2026-08-19: 3 cm travelled in 19 s at reward 0.94).
+        private const float SPEED_KERNEL = 0.3f;
+        // Commanded speed at which the gait terms reach full weight. Below it
+        // they fade out, so the StandStill lesson still wants both feet down.
+        private const float GAIT_BLEND_SPEED = 0.3f;
+        // Swing-foot height that scores full clearance. Roughly one foot depth
+        // above the resting pose — enough to clear the floor, not a high march.
+        private const float TARGET_CLEARANCE = 0.09f;
+        // Floor of the commanded-speed draw, as a fraction of the lesson cap,
+        // once the cap is above walking-relevant speed. Gen 3 drew uniformly
+        // from [0, cap]: with cap 1.0 that made ~30% of episodes ask for under
+        // 0.3 m/s, where standing still is CORRECT and scores ~1. The agent
+        // banked those easy episodes and ignored the fast ones, which is how
+        // mean reward read 0.34 while it had never once lifted a foot.
+        private const float SPEED_COMMAND_MIN_FRACTION = 0.6f;
         // Never let a [0,1] criterion reach exactly 0: one zero would wipe the
         // whole product and erase every other criterion's gradient.
         private const float PRODUCT_FACTOR_FLOOR = 0.05f;
@@ -33,9 +48,23 @@ namespace PoBox
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
         [SerializeField] private Sensor_GroundContact[] _fallContacts;
-        [SerializeField] private float _uprightWeight = 0.3f;
-        [SerializeField] private float _heightWeight = 0.3f;
-        [SerializeField] private float _speedMatchWeight = 0.4f;
+        [SerializeField] private float _uprightWeight = 0.15f;
+        // Head height was 0.15 and is now 0: it is the one term that pays the
+        // agent for NOT moving, and gen 2 leaned on it to justify standing
+        // still. Uprightness plus the fall terminal already keep posture.
+        [SerializeField] private float _heightWeight;
+        [SerializeField] private float _speedMatchWeight = 0.5f;
+        // Pays for standing on exactly ONE foot while moving. This is the term
+        // that forces alternation: both feet planted scores nothing once a
+        // speed is commanded, so standing still stops being viable.
+        // Weight is an EXPONENT, so small values barely bite — at gen 2's 0.15
+        // a total failure cost only ~10%, and the agent simply paid it.
+        [SerializeField] private float _singleSupportWeight = 0.3f;
+        // Pays the swinging foot for leaving the floor, which rules out
+        // shuffling and sliding as ways to satisfy the speed term. Was 0.1,
+        // where failing completely cost 6.5% — measured outcome was 0.09 mm of
+        // foot lift. At 0.35 the same failure costs ~24%.
+        [SerializeField] private float _clearanceWeight = 0.35f;
         // Penalizes jerky tick-to-tick command changes so calm motion wins.
         [SerializeField] private float _smoothnessWeight = 0.05f;
         // Upper end of the commanded-speed range. Driven by the curriculum
@@ -45,11 +74,14 @@ namespace PoBox
 
         private float _stepScale;
         private float _startHeadHeight;
+        private float _restFootHeight;
         private float _commandedSpeed;
         private Vector3 _commandedDirection = Vector3.forward;
         private bool _terminated;
         private int _lastStepCount;
         private float _speedMatchSum;
+        private float _supportSum;
+        private float _clearanceSum;
         private int _speedMatchSamples;
 
         // Called by the editor scene builder.
@@ -66,6 +98,7 @@ namespace PoBox
             // Scaled so a full-length episode at perfect score returns ~1.
             _stepScale = 1f / Mathf.Max(1, _agent.MaxStep);
             _startHeadHeight = _rig.Head.position.y;
+            CaptureRestPose();
             RollCommand();
         }
 
@@ -77,6 +110,7 @@ namespace PoBox
                 // New episode began (fall reset or MaxStep rollover).
                 FlushEpisodeStats();
                 _startHeadHeight = _rig.Head.position.y;
+                CaptureRestPose();
                 RollCommand();
                 _terminated = false;
             }
@@ -112,10 +146,36 @@ namespace PoBox
             _speedMatchSum += speedMatchReward;
             _speedMatchSamples++;
 
+            // Gait terms fade in with the command: at 0 m/s the agent should
+            // be planted on both feet, so demanding one-foot support there
+            // would punish correct standing.
+            float gaitBlend = Mathf.Clamp01(_commandedSpeed / GAIT_BLEND_SPEED);
+
+            bool leftDown = _rig.FootLeftSensor.IsGrounded;
+            bool rightDown = _rig.FootRightSensor.IsGrounded;
+            // Exactly one foot down is the single-support phase every step
+            // passes through. Rewarding it is what makes the legs take turns:
+            // both feet planted pays nothing once a speed is commanded.
+            float singleSupport = leftDown ^ rightDown ? 1f : 0f;
+            float doubleSupport = leftDown && rightDown ? 1f : 0f;
+            float supportReward = Mathf.Lerp(doubleSupport, singleSupport, gaitBlend);
+
+            float swingHeight = Mathf.Max(_rig.FootLeftSensor.transform.position.y,
+                _rig.FootRightSensor.transform.position.y) - _restFootHeight;
+            float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
+            float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
+            // Log the RAW single-support fraction, not the blended term: the
+            // blended value mixes in the blend weight and cannot tell "both
+            // feet planted" from "perfect alternation" at mid-blend.
+            _supportSum += singleSupport;
+            _clearanceSum += clearance;
+
             float locomotionReward =
                 ProductFactor(uprightReward, _uprightWeight) *
                 ProductFactor(heightReward, _heightWeight) *
-                ProductFactor(speedMatchReward, _speedMatchWeight);
+                ProductFactor(speedMatchReward, _speedMatchWeight) *
+                ProductFactor(supportReward, _singleSupportWeight) *
+                ProductFactor(clearanceReward, _clearanceWeight);
 
             _agent.AddReward(_stepScale * (locomotionReward - _smoothnessWeight * _agent.LastActionDelta01));
         }
@@ -134,9 +194,23 @@ namespace PoBox
         {
             _speedCommandMax = Academy.Instance.EnvironmentParameters
                 .GetWithDefault("speed_command_max", _speedCommandMax);
-            _commandedSpeed = Random.Range(0f, _speedCommandMax);
+            // Below the gait-blend speed the lesson is genuinely about standing,
+            // so keep drawing from zero. Above it, hold the floor up so most
+            // episodes actually require travel.
+            float commandMin = _speedCommandMax > GAIT_BLEND_SPEED
+                ? _speedCommandMax * SPEED_COMMAND_MIN_FRACTION
+                : 0f;
+            _commandedSpeed = Random.Range(commandMin, _speedCommandMax);
             _commandedDirection = Vector3.forward;
             _agent.SetLocomotionCommand(_commandedSpeed, _commandedDirection);
+        }
+
+        // Feet rest slightly above y=0 (sole collider depth), so clearance is
+        // measured from the actual standing pose, not from the floor plane.
+        private void CaptureRestPose()
+        {
+            _restFootHeight = Mathf.Min(_rig.FootLeftSensor.transform.position.y,
+                _rig.FootRightSensor.transform.position.y);
         }
 
         private void FlushEpisodeStats()
@@ -145,8 +219,15 @@ namespace PoBox
             {
                 Academy.Instance.StatsRecorder.Add("Locomotion/SpeedMatchMean", _speedMatchSum / _speedMatchSamples);
                 Academy.Instance.StatsRecorder.Add("Locomotion/CommandedSpeed", _commandedSpeed);
+                // The two numbers that say whether it is walking or cheating:
+                // SingleSupportMean near 0 means both feet stayed planted,
+                // ClearanceMean near 0 means it shuffled without lifting.
+                Academy.Instance.StatsRecorder.Add("Locomotion/SingleSupportMean", _supportSum / _speedMatchSamples);
+                Academy.Instance.StatsRecorder.Add("Locomotion/ClearanceMean", _clearanceSum / _speedMatchSamples);
             }
             _speedMatchSum = 0f;
+            _supportSum = 0f;
+            _clearanceSum = 0f;
             _speedMatchSamples = 0;
         }
 

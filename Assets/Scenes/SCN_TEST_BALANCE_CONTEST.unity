@@ -11902,6 +11902,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_ContestSetupMenu
   _spawner: {fileID: 1905224104}
+  _selection: {fileID: 11400000, guid: 158572b8bd2c3994389f72168c90a61f, type: 2}
 --- !u!114 &1437279339
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12254,6 +12255,8 @@ MonoBehaviour:
   _systemsRoot: {fileID: 931611425}
   _dramaCamera: {fileID: 480357728}
   _menuOrbit: {fileID: 480357730}
+  _slotPositionsOverride: []
+  _spawnEuler: {x: 0, y: 0, z: 0}
 --- !u!4 &1905224105
 Transform:
   m_ObjectHideFlags: 0

@@ -11,17 +11,33 @@
 | **ML** | ML-Agents 4.1.0 (Unity package) + `mlagents` Python in `.venv/` |
 
 ### Scenes in Build
-0. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity` — balance contest; its built-in
-   setup menu is the opening menu (version stamp lives here). SCN_MENU was
-   removed 2026-08-18 — the menu is self-contained in the contest scene.
+0. `Assets/Scenes/SCN_MENU.unity` — opening scene (version stamp lives here).
+   Pick a mini-game, then a fighter per slot: 8 for balance, 4 for walk. Picks
+   travel to the loaded scene in `Assets/Config/SO_MiniGameSelection.asset`.
+1. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity` — balance contest. Its own
+   setup menu still runs when the scene is opened directly, and defers to
+   SCN_MENU whenever a selection has already been made.
+2. `Assets/Scenes/SCN_TEST_WALK_CONTEST.unity` — walk race across the ring.
+
+SCN_MENU was removed 2026-08-18 and reinstated 2026-08-19: with two mini-games
+to choose between, the menu is no longer contest-specific. Both contest scenes
+spawn their fighters at runtime from the menu picks — nothing is baked in.
 
 Training scenes (not in player build; env build passes them explicitly):
-`SCN_TRAIN_BALANCE`, `SCN_TRAIN_BALANCE_GRANDMA`, `SCN_TRAIN_BALANCE_GRANDPA` —
-each has 16 fighters. Headless env build: `Builds/BoxerBalanceEnv/`.
+- `SCN_TRAIN_LOCOMOTION` — current model line. 16 fighters, `Reward_Locomotion`,
+  one brain for standing AND walking driven by a commanded speed that is also an
+  observation (125 obs). Curriculum `speed_command_max` 0 → 1.0 m/s. Headless env
+  build: `Builds/BoxerLocomotionEnv/`.
+- `SCN_TRAIN_BALANCE`, `SCN_TRAIN_BALANCE_GRANDMA`, `SCN_TRAIN_BALANCE_GRANDPA`,
+  `SCN_TRAIN_WALK` — superseded older model line (121 obs, `Reward_Balance`).
+  Their `.onnx` files are NOT loadable by the locomotion scenes: the command
+  observations changed the input layout.
 
 ### Key docs
-- `Docs/TRAINING.md` — training commands, run-02 changes, curriculum
 - `CREDITS.md` — third-party asset attribution (crowd audio is CC-BY, must ship in credits)
+- `Docs/TRAINING.md` — MISSING as of 2026-08-19; deleted from the working tree by
+  something outside this project's tooling. Recover with
+  `git restore Docs/TRAINING.md` if the training commands are still wanted.
 
 ---
 

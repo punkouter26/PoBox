@@ -22,6 +22,8 @@ namespace PoBox.Editor
         private const float RING_SIZE = 6.1f;      // matches SCN_TRAIN_WALK
         private const float EDGE_INSET = 0.25f;
         private const float SPAWN_HEIGHT = 0.03f;
+        // Shared stand-and-walk brain; the walk race commands it to 1 m/s.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_v01/Boxer.onnx";
 
         // Mirrors the balance contest roster so the two mini-games field the
         // same line-up. forceHeuristic: the code-driven PD bot (project rule).
@@ -54,53 +56,95 @@ namespace PoBox.Editor
             BuildCamera(goalZ);
             BuildFinishLine(goalZ);
 
-            int placed = 0;
-            for (int rosterIndex = 0; rosterIndex < Roster.Length; rosterIndex++)
+            // The referee lives under an inactive root the spawner wakes, so
+            // it discovers the racers in its own Start AFTER they exist.
+            var systemsRoot = new GameObject("ContestSystems");
+            BuildReferee(systemsRoot, goalDistance);
+            systemsRoot.SetActive(false);
+
+            var slots = new Vector3[Roster.Length];
+            for (int slotIndex = 0; slotIndex < Roster.Length; slotIndex++)
             {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Roster[rosterIndex].prefabPath);
-                if (prefab == null)
-                {
-                    Debug.LogWarning($"RigTool: walk contest skips missing prefab {Roster[rosterIndex].prefabPath}");
-                    continue;
-                }
-                var position = new Vector3(laneOrigin + rosterIndex * laneSpacing, SPAWN_HEIGHT, startZ);
-                GameObject instance = RigTool_ContestScene.SpawnContestant(
-                    prefab, Roster[rosterIndex].display, position, Roster[rosterIndex].forceHeuristic);
-
-                // Every racer faces the finish line; the referee measures
-                // progress along this same world axis.
-                instance.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
-                ApplyWalkBrain(instance, Roster[rosterIndex].display, Roster[rosterIndex].forceHeuristic);
-                placed++;
+                slots[slotIndex] = new Vector3(laneOrigin + slotIndex * laneSpacing, SPAWN_HEIGHT, startZ);
             }
-
-            BuildReferee(goalDistance);
+            BuildSpawner(systemsRoot, slots);
 
             EditorSceneManager.SaveScene(scene, SCENE_PATH);
-            Debug.Log($"RigTool: walk contest scene saved to {SCENE_PATH} — {placed} racers, " +
-                $"{goalDistance:F2} m to the finish. Press Play (no trainer needed).");
+            Debug.Log($"RigTool: walk contest scene saved to {SCENE_PATH} — {slots.Length} start slots, " +
+                $"{goalDistance:F2} m to the finish. Launch from SCN_MENU, or press Play to race the default line-up.");
         }
 
-        // Prefers a walk brain, falls back to the balance brain the balance
-        // contest already uses. SpawnContestant has warned about a missing
-        // balance brain, so only the walk-specific downgrade is reported.
-        private static void ApplyWalkBrain(GameObject instance, string display, bool forceHeuristic)
+        // Builds the spawner's roster: walk brain first, balance brain as a
+        // fallback, heuristic bot when neither exists. Same order as the
+        // dropdown list in SCN_MENU, because the pick travels as a roster index.
+        private static void BuildSpawner(GameObject systemsRoot, Vector3[] slots)
         {
-            if (forceHeuristic)
+            var entries = new ContestRosterEntry[Roster.Length];
+            for (int rosterIndex = 0; rosterIndex < Roster.Length; rosterIndex++)
             {
-                return;
+                (string prefabPath, string display, bool forceHeuristic) = Roster[rosterIndex];
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"RigTool: walk contest roster is missing prefab {prefabPath}");
+                }
+                bool isLocomotion = false;
+                Unity.InferenceEngine.ModelAsset model = forceHeuristic
+                    ? null
+                    : ResolveBrain(display, out isLocomotion);
+                entries[rosterIndex] = new ContestRosterEntry
+                {
+                    displayName = display,
+                    prefab = prefab,
+                    model = model,
+                    forceHeuristic = forceHeuristic,
+                    locomotionBrain = model != null && isLocomotion,
+                    tint = forceHeuristic
+                        ? AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/M_BotRed.mat")
+                        : null
+                };
             }
-            var behavior = instance.GetComponent<Unity.MLAgents.Policies.BehaviorParameters>();
+
+            var spawnerObject = new GameObject("MiniGameLauncher");
+            var spawner = spawnerObject.AddComponent<Systems_ContestSpawner>();
+            spawner.EditorInitialize(entries, systemsRoot, null);
+            // Identity faces +Z, the direction of travel.
+            spawner.EditorSetSlots(slots, Vector3.zero);
+
+            var launcher = spawnerObject.AddComponent<Systems_MiniGameLauncher>();
+            launcher.EditorInitialize(spawner, RigTool_MenuScene.GetOrCreateSelectionAsset());
+        }
+
+        // Brain preference, best first:
+        //   1. a per-fighter walk brain
+        //   2. the shared locomotion brain — one model line drives both
+        //      mini-games, so this is the normal case once training lands
+        //   3. the old balance brain, which stands but will not race
+        // isLocomotion tells the spawner to switch the fighter to the
+        // 125-observation layout those brains require.
+        private static Unity.InferenceEngine.ModelAsset ResolveBrain(string display, out bool isLocomotion)
+        {
+            isLocomotion = true;
             var walkModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
                 $"Assets/Agents/{display}_Walk/Boxer.onnx");
             if (walkModel != null)
             {
-                behavior.Model = walkModel;
-                behavior.BehaviorType = Unity.MLAgents.Policies.BehaviorType.InferenceOnly;
-                return;
+                return walkModel;
             }
-            Debug.LogWarning($"RigTool: no walk brain at Assets/Agents/{display}_Walk/Boxer.onnx — " +
-                $"{display} races on its balance brain and will most likely just stand still.");
+            var locomotionModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
+                LOCOMOTION_BRAIN_PATH);
+            if (locomotionModel != null)
+            {
+                return locomotionModel;
+            }
+
+            isLocomotion = false;
+            var balanceModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
+                $"Assets/Agents/{display}/Boxer.onnx");
+            Debug.LogWarning(balanceModel == null
+                ? $"RigTool: no brain for {display} — it races on raw physics."
+                : $"RigTool: no walk or locomotion brain — {display} races on its balance brain and will just stand.");
+            return balanceModel;
         }
 
         private static void BuildGround()
@@ -147,9 +191,10 @@ namespace PoBox.Editor
             Object.DestroyImmediate(finishLine.GetComponent<BoxCollider>());
         }
 
-        private static void BuildReferee(float goalDistance)
+        private static void BuildReferee(GameObject systemsRoot, float goalDistance)
         {
             var refereeObject = new GameObject("WalkContestReferee");
+            refereeObject.transform.SetParent(systemsRoot.transform, false);
             var document = refereeObject.AddComponent<UIDocument>();
             document.panelSettings = RigTool_ContestScene.GetOrCreatePanelSettings();
             var referee = refereeObject.AddComponent<Systems_WalkContest>();

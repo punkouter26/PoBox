@@ -18,6 +18,12 @@ namespace PoBox
         public ModelAsset model;
         public bool forceHeuristic;
         public Material tint;
+        // True when `model` belongs to the locomotion model line, which adds
+        // the commanded-speed observations. Those brains will not load onto a
+        // fighter left in the older layout — the observation vector is a
+        // different size — so the spawner must switch the flag on before the
+        // agent initializes.
+        public bool locomotionBrain;
     }
 
     /// <summary>
@@ -46,9 +52,28 @@ namespace PoBox
         [SerializeField] private GameObject _systemsRoot;
         [SerializeField] private Systems_DramaCamera _dramaCamera;
         [SerializeField] private Systems_MenuOrbitCamera _menuOrbit;
+        // Overrides the two-row ring layout above. Left empty by the balance
+        // contest so scenes built before this field deserialize unchanged; the
+        // walk contest sets a 4-wide start line.
+        [SerializeField] private Vector3[] _slotPositionsOverride = System.Array.Empty<Vector3>();
+        // Facing for spawned fighters. Identity faces +Z, which is the walk
+        // race's direction of travel and the balance ring's camera side.
+        [SerializeField] private Vector3 _spawnEuler = Vector3.zero;
 
         public ContestRosterEntry[] Roster => _roster;
-        public int SlotCount => SlotPositions.Length;
+        public int SlotCount => ActiveSlots.Length;
+
+        private Vector3[] ActiveSlots =>
+            _slotPositionsOverride != null && _slotPositionsOverride.Length > 0
+                ? _slotPositionsOverride
+                : SlotPositions;
+
+        // Called by the editor scene tool.
+        public void EditorSetSlots(Vector3[] slotPositions, Vector3 spawnEuler)
+        {
+            _slotPositionsOverride = slotPositions;
+            _spawnEuler = spawnEuler;
+        }
 
         // Called by the editor scene tool.
         public void EditorInitialize(ContestRosterEntry[] roster, GameObject systemsRoot, Systems_DramaCamera dramaCamera)
@@ -62,8 +87,10 @@ namespace PoBox
         public void SpawnAndBegin(int[] slotRosterIndices)
         {
             int spawned = 0;
+            Vector3[] slots = ActiveSlots;
+            Quaternion spawnRotation = Quaternion.Euler(_spawnEuler);
             var nameCounts = new int[_roster.Length];
-            for (int slotIndex = 0; slotIndex < SlotPositions.Length && slotIndex < slotRosterIndices.Length; slotIndex++)
+            for (int slotIndex = 0; slotIndex < slots.Length && slotIndex < slotRosterIndices.Length; slotIndex++)
             {
                 int rosterIndex = slotRosterIndices[slotIndex];
                 if (rosterIndex < 0 || rosterIndex >= _roster.Length)
@@ -71,7 +98,7 @@ namespace PoBox
                     continue;
                 }
                 ContestRosterEntry entry = _roster[rosterIndex];
-                var instance = Instantiate(entry.prefab, SlotPositions[slotIndex], Quaternion.identity);
+                var instance = Instantiate(entry.prefab, slots[slotIndex], spawnRotation);
                 nameCounts[rosterIndex]++;
                 instance.name = nameCounts[rosterIndex] > 1
                     ? $"Contest_{entry.displayName}{nameCounts[rosterIndex]}"
@@ -82,7 +109,7 @@ namespace PoBox
             if (spawned == 0 && _roster.Length > 0)
             {
                 // Never start an empty ring — fall back to one default fighter.
-                var instance = Instantiate(_roster[0].prefab, SlotPositions[0], Quaternion.identity);
+                var instance = Instantiate(_roster[0].prefab, slots[0], spawnRotation);
                 instance.name = $"Contest_{_roster[0].displayName}";
                 Configure(instance, _roster[0]);
             }
@@ -120,6 +147,14 @@ namespace PoBox
             rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
 
             var behavior = instance.GetComponent<BehaviorParameters>();
+            if (entry.locomotionBrain)
+            {
+                // Must happen before the agent's Initialize reads the layout.
+                agent.SetObserveLocomotionCommand(true);
+                behavior.BrainParameters.VectorObservationSize =
+                    Agent_FighterBoxing.ComputeObservationCount(rig.JointCount,
+                        observeOpponent: false, observeFootHeight: true, observeLocomotionCommand: true);
+            }
             if (entry.forceHeuristic || entry.model == null)
             {
                 behavior.BehaviorType = BehaviorType.HeuristicOnly;
