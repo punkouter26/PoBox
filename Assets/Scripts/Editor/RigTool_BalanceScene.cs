@@ -166,6 +166,56 @@ namespace PoBox.Editor
             }
         }
 
+        // Generation-2 realism (2026-08-18): foot-height observations (121
+        // obs), muscle-lag action smoothing, human strength proportions, and
+        // cloth-friction body colliders. Per-instance only — the shared
+        // prefabs stay generation-1 so the contest scene keeps working with
+        // deployed brains until the new generation's brains land.
+        private static void ApplyGen2Settings(GameObject instance, Systems_FighterRig rig, Agent_FighterBoxing agent)
+        {
+            var agentSo = new SerializedObject(agent);
+            agentSo.FindProperty("_observeFootHeight").boolValue = true;
+            agentSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var behavior = instance.GetComponent<Unity.MLAgents.Policies.BehaviorParameters>();
+            behavior.BrainParameters.VectorObservationSize =
+                Agent_FighterBoxing.ComputeObservationCount(rig.JointCount, observeOpponent: false, observeFootHeight: true);
+
+            var rigSo = new SerializedObject(rig);
+            rigSo.FindProperty("_actionSmoothingSeconds").floatValue = 0.1f;
+            rigSo.FindProperty("_realismProfile").boolValue = true;
+            rigSo.ApplyModifiedPropertiesWithoutUndo();
+
+            PhysicsMaterial bodyCloth = GetOrCreateBodyClothMaterial();
+            var colliders = instance.GetComponentsInChildren<Collider>(true);
+            for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+            {
+                if (colliders[colliderIndex].sharedMaterial == null)
+                {
+                    colliders[colliderIndex].sharedMaterial = bodyCloth; // feet keep PM_FootSole
+                }
+            }
+        }
+
+        private static PhysicsMaterial GetOrCreateBodyClothMaterial()
+        {
+            const string path = "Assets/Config/PM_BodyCloth.physicMaterial";
+            var material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(path);
+            if (material != null)
+            {
+                return material;
+            }
+            material = new PhysicsMaterial("PM_BodyCloth")
+            {
+                staticFriction = 0.3f,
+                dynamicFriction = 0.25f,
+                frictionCombine = PhysicsMaterialCombine.Average
+            };
+            AssetDatabase.CreateAsset(material, path);
+            AssetDatabase.SaveAssets();
+            return material;
+        }
+
         private static float RandomScale(System.Random random, float range)
         {
             return 1f + ((float)random.NextDouble() * 2f - 1f) * range;
@@ -201,8 +251,23 @@ namespace PoBox.Editor
             var reward = instance.AddComponent<Reward_Balance>();
             reward.EditorInitialize(agent, rig, stamina, fallContacts.ToArray());
 
+            // Generation 3 (2026-08-19): product-form balance reward — the
+            // agent must satisfy every criterion at once and per-step reward
+            // stays positive, so "fell later" always beats "fell sooner".
+            var rewardSo = new SerializedObject(reward);
+            rewardSo.FindProperty("_productReward").boolValue = true;
+            rewardSo.ApplyModifiedPropertiesWithoutUndo();
+
             var shover = instance.AddComponent<Systems_Shover>();
             shover.EditorInitialize(rig.Torso, agent, index);
+
+            var strengthCurriculum = instance.AddComponent<Systems_StrengthCurriculum>();
+            strengthCurriculum.EditorInitialize(rig, agent);
+
+            var trainingCubes = instance.AddComponent<Systems_TrainingCubes>();
+            trainingCubes.EditorInitialize(rig, agent, index);
+
+            ApplyGen2Settings(instance, rig, agent);
 
             ApplyVariation(instance, rig, variation, index);
         }

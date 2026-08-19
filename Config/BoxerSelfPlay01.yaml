@@ -21,6 +21,9 @@ behaviors:
       normalize: true
       hidden_units: 512
       num_layers: 3
+      memory:                              # LSTM: remember the last ~1.3 s of
+        memory_size: 128                   # pressure/feints between decisions
+        sequence_length: 64
     reward_signals:
       extrinsic:
         gamma: 0.99                      # shorter horizon than balance: bouts end

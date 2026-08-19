@@ -1,4 +1,22 @@
-# Training Handbook (updated 2026-08-17)
+# Training Handbook (updated 2026-08-18)
+
+## Balance-training upgrades (2026-08-18, from WalkerAgent reference study)
+
+New knobs — all inert for existing scenes/brains until a rebuild opts in:
+
+| Knob | Where | Default | Effect |
+|------|-------|---------|--------|
+| `_legUprightWeight` | `Reward_Balance` | 0 in old scenes, 0.2 in newly built ones | Rewards vertical thighs/shins (calibrated per-rig from start pose) so legs act as a column |
+| `strength_scale` env param | `Systems_StrengthCurriculum` (auto-added by balance scene builder) | 1.0 | Curriculum-scalable joint spring + force cap; learn weak → strong, or assist a weak rig early |
+| `_observeFootHeight` | `Agent_FighterBoxing` | false | +2 foot-ground raycast obs. **Changes obs size — breaks all existing .onnx.** Only for new model lines; re-run Prepare for Training |
+
+Stuck-run rescue playbook (agent flatlines at ≈ −1, zero variance):
+1. Zero all penalties (energy weight, shove force) until reward > 0.
+2. Enable `_legUprightWeight` and rebuild scene + env.
+3. Add `strength_scale` curriculum: hold 0.5 until standing, anneal to 1.0.
+4. Verify drives can hold the start pose passively; if not, raise spring/force.
+5. Only then restore shoves and energy penalty.
+
 
 ## What changed in run 02
 

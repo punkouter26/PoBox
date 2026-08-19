@@ -3,6 +3,10 @@
     "rootNamespace": "PoBox",
     "references": [
         "Unity.ML-Agents",
+        "Unity.InferenceEngine",
+        "Unity.Cinemachine",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
         "Unity.InputSystem",
         "UniTask",
         "VContainer",

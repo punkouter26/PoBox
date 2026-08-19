@@ -11,8 +11,9 @@
 | **ML** | ML-Agents 4.1.0 (Unity package) + `mlagents` Python in `.venv/` |
 
 ### Scenes in Build
-0. `Assets/Scenes/SCN_MENU.unity` — opening menu (version stamp lives here)
-1. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity` — balance contest
+0. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity` — balance contest; its built-in
+   setup menu is the opening menu (version stamp lives here). SCN_MENU was
+   removed 2026-08-18 — the menu is self-contained in the contest scene.
 
 Training scenes (not in player build; env build passes them explicitly):
 `SCN_TRAIN_BALANCE`, `SCN_TRAIN_BALANCE_GRANDMA`, `SCN_TRAIN_BALANCE_GRANDPA` —

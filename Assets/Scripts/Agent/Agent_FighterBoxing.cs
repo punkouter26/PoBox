@@ -19,7 +19,9 @@ namespace PoBox
         private const int ROOT_OBSERVATIONS = 13;
         private const int PER_JOINT_OBSERVATIONS = 7;
         private const int FOOT_OBSERVATIONS = 8;
+        private const int FOOT_HEIGHT_OBSERVATIONS = 2;
         private const int OPPONENT_OBSERVATIONS = 19;
+        private const float FOOT_RAY_MAX_METERS = 1f;
 
         // Heuristic balance bot (project rule: every app has one code-driven
         // heuristic bot). Ankle strategy + counter hip strategy, PD on the
@@ -43,6 +45,11 @@ namespace PoBox
         // observations that are always zero without an opponent. Flip to true
         // (and re-run Prepare for Training) for the boxing phase.
         [SerializeField] private bool _observeOpponent = true;
+        // Adds 2 foot-to-ground raycast distances (WalkerAgent standing-phase
+        // trick). CHANGES THE OBSERVATION SIZE: enabling it invalidates every
+        // trained .onnx and requires re-running Prepare for Training plus a
+        // fresh run. Leave false unless starting a new model line.
+        [SerializeField] private bool _observeFootHeight;
         // Negative by calibration (2026-08-17 contest-scene A/B): with
         // _invertTargetRotation fixed, negative gains stabilize the capsule
         // and Grandma rigs; positive gains actively topple them. Grandpa's
@@ -54,12 +61,26 @@ namespace PoBox
         private bool _hasPendingActions;
         private Sensor_GroundContact[] _contactSensors;
         private byte[] _dofRoles;
+        private float _lastActionDelta01;
 
         public Systems_FighterRig Rig => _rig;
 
-        public static int ComputeObservationCount(int jointCount, bool observeOpponent)
+        /// <summary>Mean |Δaction| of the latest decision, 0..1. Read by Reward_Balance's smoothness penalty.</summary>
+        public float LastActionDelta01 => _lastActionDelta01;
+
+        /// <summary>Deploy-time switch used by the contest spawner when brains of the new observation layout land.</summary>
+        public void SetObserveFootHeight(bool observeFootHeight)
+        {
+            _observeFootHeight = observeFootHeight;
+        }
+
+        public static int ComputeObservationCount(int jointCount, bool observeOpponent, bool observeFootHeight)
         {
             int count = ROOT_OBSERVATIONS + PER_JOINT_OBSERVATIONS * jointCount + FOOT_OBSERVATIONS;
+            if (observeFootHeight)
+            {
+                count += FOOT_HEIGHT_OBSERVATIONS;
+            }
             return observeOpponent ? count + OPPONENT_OBSERVATIONS : count;
         }
 
@@ -150,38 +171,45 @@ namespace PoBox
                 sensor.AddObservation(entry.body.angularVelocity / ANGULAR_VELOCITY_SCALE);
             }
 
-            // Foot contact (8)
-            sensor.AddObservation(_footLeft != null && _footLeft.IsGrounded);
-            sensor.AddObservation(_footLeft != null ? _footLeft.ContactNormal : Vector3.zero);
-            sensor.AddObservation(_footRight != null && _footRight.IsGrounded);
-            sensor.AddObservation(_footRight != null ? _footRight.ContactNormal : Vector3.zero);
+            // Foot contact (8). The foot sensors are wired at rig-build time
+            // and are never absent — no per-frame null checks in the hot path.
+            sensor.AddObservation(_footLeft.IsGrounded);
+            sensor.AddObservation(_footLeft.ContactNormal);
+            sensor.AddObservation(_footRight.IsGrounded);
+            sensor.AddObservation(_footRight.ContactNormal);
 
-            // Opponent-relative (19); omitted entirely in balance-phase rigs
+            if (_observeFootHeight)
+            {
+                sensor.AddObservation(FootGroundDistance01(_footLeft));
+                sensor.AddObservation(FootGroundDistance01(_footRight));
+            }
+
+            // Opponent-relative (19); omitted entirely in balance-phase rigs.
+            // Boxing scenes must wire an opponent before enabling the flag —
+            // the old zero-padding fallback hid mis-wired scenes.
             if (!_observeOpponent)
             {
                 return;
             }
-            if (_opponentRig != null)
+            Rigidbody opponentPelvis = _opponentRig.Pelvis;
+            sensor.AddObservation(pelvisTransform.InverseTransformPoint(opponentPelvis.transform.position));
+            sensor.AddObservation(pelvisTransform.InverseTransformDirection(opponentPelvis.linearVelocity - pelvis.linearVelocity));
+            sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.Head.position));
+            sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.GloveLeft.position));
+            sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.GloveRight.position));
+            sensor.AddObservation(_opponentStamina != null ? _opponentStamina.Anaerobic01 : 1f);
+            sensor.AddObservation(pelvisTransform.InverseTransformPoint(_ringCenter.position));
+        }
+
+        private static float FootGroundDistance01(Sensor_GroundContact foot)
+        {
+            if (foot == null)
             {
-                Rigidbody opponentPelvis = _opponentRig.Pelvis;
-                sensor.AddObservation(pelvisTransform.InverseTransformPoint(opponentPelvis.transform.position));
-                sensor.AddObservation(pelvisTransform.InverseTransformDirection(opponentPelvis.linearVelocity - pelvis.linearVelocity));
-                sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.Head.position));
-                sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.GloveLeft.position));
-                sensor.AddObservation(pelvisTransform.InverseTransformPoint(_opponentRig.GloveRight.position));
-                sensor.AddObservation(_opponentStamina != null ? _opponentStamina.Anaerobic01 : 1f);
+                return 1f;
             }
-            else
-            {
-                for (int zeroIndex = 0; zeroIndex < 15; zeroIndex++)
-                {
-                    sensor.AddObservation(0f);
-                }
-                sensor.AddObservation(1f);
-            }
-            sensor.AddObservation(_ringCenter != null
-                ? pelvisTransform.InverseTransformPoint(_ringCenter.position)
-                : Vector3.zero);
+            return Physics.Raycast(foot.transform.position, Vector3.down, out RaycastHit hit, FOOT_RAY_MAX_METERS)
+                ? hit.distance / FOOT_RAY_MAX_METERS
+                : 1f;
         }
 
         public override void Heuristic(in ActionBuffers actionsOut)
@@ -224,10 +252,17 @@ namespace PoBox
         public override void OnActionReceived(ActionBuffers actions)
         {
             var continuous = actions.ContinuousActions;
+            float deltaSum = 0f;
             for (int actionIndex = 0; actionIndex < _pendingActions.Length; actionIndex++)
             {
-                _pendingActions[actionIndex] = continuous[actionIndex];
+                float incoming = continuous[actionIndex];
+                deltaSum += Mathf.Abs(incoming - _pendingActions[actionIndex]);
+                _pendingActions[actionIndex] = incoming;
             }
+            // Actions live in [-1, 1], so the largest per-DOF jump is 2.
+            _lastActionDelta01 = _pendingActions.Length > 0
+                ? Mathf.Clamp01(deltaSum / (_pendingActions.Length * 2f))
+                : 0f;
             _hasPendingActions = true;
         }
 

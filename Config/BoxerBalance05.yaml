@@ -1,0 +1,101 @@
+# Stage 1 — balance, generation 3 (2026-08-19). Same rig/curricula as gen 2
+# plus the PRODUCT-form balance reward (WalkerAgent reference project):
+# uprightness x head-height x COM x leg-column, all in [0,1], so every
+# criterion must hold at once and per-step reward is positive-definite.
+# Compare against boxer_balance04 (identical setup, summed reward) at equal
+# step counts to judge whether the product form wins.
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.999
+        strength: 1.0
+    max_steps: 15000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    checkpoint_interval: 500000
+
+environment_parameters:
+  strength_scale:
+    curriculum:
+      - name: WeakMotors
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.4
+        value: 0.6
+      - name: MediumMotors
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.55
+        value: 0.8
+      - name: FullMotors
+        value: 1.0
+  shove_force_max:
+    curriculum:
+      - name: CalmAir
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.5
+        value: 0.0
+      - name: GentleShoves
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.5
+        value: 60.0
+      - name: LightShoves
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.6
+        value: 120.0
+      - name: FullShoves
+        value: 300.0
+  cube_speed_max:
+    curriculum:
+      - name: NoCubes
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 150
+          threshold: 0.65
+        value: 0.0
+      - name: SoftCubes
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 150
+          threshold: 0.7
+        value: 6.0
+      - name: ContestCubes
+        value: 12.0

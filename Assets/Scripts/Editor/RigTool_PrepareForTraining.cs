@@ -57,7 +57,8 @@ namespace PoBox.Editor
             // phase flips _observeOpponent on the agent and re-runs this tool.
             var agentSo = new SerializedObject(agent);
             bool observeOpponent = agentSo.FindProperty("_observeOpponent").boolValue;
-            int observationCount = Agent_FighterBoxing.ComputeObservationCount(rig.JointCount, observeOpponent);
+            bool observeFootHeight = agentSo.FindProperty("_observeFootHeight").boolValue;
+            int observationCount = Agent_FighterBoxing.ComputeObservationCount(rig.JointCount, observeOpponent, observeFootHeight);
             int actionCount = rig.DofCount;
 
             var behavior = root.GetComponent<BehaviorParameters>();

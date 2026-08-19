@@ -24,6 +24,7 @@ namespace PoBox
 
         public event System.Action<string> RoundEnded;
         public event System.Action<int> RoundStarted;
+        public event System.Action<string> FighterFell;
 
         private sealed class Contestant
         {
@@ -40,6 +41,9 @@ namespace PoBox
         private Label _title;
         private int _round = 1;
         private float _restartTimer = -1f;
+
+        /// <summary>Set by the match director when the match is decided: the referee stops starting new rounds.</summary>
+        public bool HoldRestarts { get; set; }
 
         private void Start()
         {
@@ -101,6 +105,10 @@ namespace PoBox
         {
             if (_restartTimer >= 0f)
             {
+                if (HoldRestarts)
+                {
+                    return; // match decided — freeze on the final tableau
+                }
                 _restartTimer -= Time.fixedDeltaTime;
                 if (_restartTimer < 0f)
                 {
@@ -120,6 +128,7 @@ namespace PoBox
                 if (HasFallen(contestant))
                 {
                     contestant.fallen = true;
+                    FighterFell?.Invoke(contestant.displayName);
                     continue;
                 }
                 contestant.aliveTime += Time.fixedDeltaTime;

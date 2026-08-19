@@ -22,15 +22,31 @@ namespace PoBox
         [SerializeField] private Systems_FighterRig _rig;
         [SerializeField] private Systems_Stamina _stamina;
         [SerializeField] private Sensor_GroundContact[] _fallContacts;
-        [SerializeField] private float _uprightWeight = 0.4f;
-        [SerializeField] private float _heightWeight = 0.4f;
+        [SerializeField] private float _uprightWeight = 0.3f;
+        [SerializeField] private float _heightWeight = 0.3f;
         [SerializeField] private float _comWeight = 0.2f;
+        // Rewards vertical thighs/shins so the legs form a load-bearing column
+        // (standing-phase trick from the WalkerAgent reference project).
+        // Deserializes to 0 in scenes built before 2026-08-18 — no change to
+        // in-flight runs; newly built balance scenes get 0.2.
+        [SerializeField] private float _legUprightWeight = 0.2f;
+        // Penalizes jerky tick-to-tick command changes so calm motion wins.
+        // 0 in scenes built before 2026-08-18; new balance scenes get 0.05.
+        [SerializeField] private float _smoothnessWeight = 0.05f;
+        // Multiplies the [0,1] balance terms instead of summing them
+        // (WalkerAgent reference project): the agent must satisfy EVERY
+        // criterion at once, and the per-step reward stays positive-definite,
+        // so "fell slower" always scores better than "fell fast". Penalties
+        // still subtract. False keeps the original weighted sum.
+        [SerializeField] private bool _productReward;
         [SerializeField] private float _energyWeight; // 0 for Stage 1; enable once standing works
         [SerializeField] private float _energyPowerScale = 20000f;
 
         private float _startHeadHeight;
         private float _totalMass;
         private float _stepScale;
+        private Transform[] _legTransforms;
+        private Vector3[] _legLocalUpAxes;
         private bool _terminated;
         private int _lastStepCount;
         private float _uprightSum;
@@ -56,6 +72,43 @@ namespace PoBox
             {
                 _totalMass += joints[jointIndex].body.mass;
             }
+            CacheLegSegments();
+        }
+
+        // Bone local axes differ between rigs (capsule vs imported skeletons),
+        // so the "up" of each leg segment is calibrated from the start pose:
+        // whatever local direction pointed at world up scores 1 when restored.
+        private void CacheLegSegments()
+        {
+            var joints = _rig.Joints;
+            int legCount = 0;
+            for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++)
+            {
+                if (IsLegSegment(joints[jointIndex].body.name))
+                {
+                    legCount++;
+                }
+            }
+            _legTransforms = new Transform[legCount];
+            _legLocalUpAxes = new Vector3[legCount];
+            int legIndex = 0;
+            for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++)
+            {
+                if (!IsLegSegment(joints[jointIndex].body.name))
+                {
+                    continue;
+                }
+                Transform legTransform = joints[jointIndex].body.transform;
+                _legTransforms[legIndex] = legTransform;
+                _legLocalUpAxes[legIndex] = legTransform.InverseTransformDirection(Vector3.up);
+                legIndex++;
+            }
+        }
+
+        private static bool IsLegSegment(string bodyName)
+        {
+            return bodyName.IndexOf("thigh", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || bodyName.IndexOf("shin", System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void FixedUpdate()
@@ -93,16 +146,37 @@ namespace PoBox
             float heightReward = Mathf.Exp(-HEIGHT_KERNEL_SHARPNESS * headDelta * headDelta);
 
             float comReward = ComputeComReward();
+            float legUprightReward = ComputeLegUprightReward();
 
             float energyPenalty = _energyWeight > 0f && _stamina != null
                 ? Mathf.Clamp01(_stamina.LastPower / _energyPowerScale)
                 : 0f;
 
+            float balanceReward;
+            if (_productReward)
+            {
+                // Every factor is already in [0,1]. Weights become exponents:
+                // weight 0 drops a term out (pow -> 1), higher weight makes it
+                // matter more. A zero in any weighted factor zeroes the step.
+                balanceReward =
+                    Mathf.Pow(uprightReward, _uprightWeight) *
+                    Mathf.Pow(heightReward, _heightWeight) *
+                    Mathf.Pow(comReward, _comWeight) *
+                    Mathf.Pow(legUprightReward, _legUprightWeight);
+            }
+            else
+            {
+                balanceReward =
+                    _uprightWeight * uprightReward +
+                    _heightWeight * heightReward +
+                    _comWeight * comReward +
+                    _legUprightWeight * legUprightReward;
+            }
+
             _agent.AddReward(_stepScale * (
-                _uprightWeight * uprightReward +
-                _heightWeight * heightReward +
-                _comWeight * comReward -
-                _energyWeight * energyPenalty));
+                balanceReward -
+                _energyWeight * energyPenalty -
+                _smoothnessWeight * _agent.LastActionDelta01));
         }
 
         private void FlushEpisodeStats()
@@ -132,6 +206,22 @@ namespace PoBox
             }
             fallCause = -1;
             return false;
+        }
+
+        private float ComputeLegUprightReward()
+        {
+            if (_legUprightWeight <= 0f || _legTransforms.Length == 0)
+            {
+                return 0f;
+            }
+            float sum = 0f;
+            for (int legIndex = 0; legIndex < _legTransforms.Length; legIndex++)
+            {
+                Vector3 worldAxis = _legTransforms[legIndex].TransformDirection(_legLocalUpAxes[legIndex]);
+                sum += Mathf.Max(0f, worldAxis.y);
+            }
+            float mean = sum / _legTransforms.Length;
+            return mean * mean;
         }
 
         private float ComputeComReward()

@@ -21,6 +21,12 @@ namespace PoBox
         private const float SHAKE_NOISE_SPEED = 11f;
 
         [SerializeField] private float _followDistance = 4.5f;
+        // Closer shot used whenever a single standing fighter is framed
+        // (solo survivor or one stop of the multi-fighter tour).
+        [SerializeField] private float _closeFollowDistance = 2.8f;
+        // With 2+ fighters standing, the camera tours them, holding each
+        // for this many seconds.
+        [SerializeField] private float _tourSecondsPerFighter = 3f;
         [SerializeField] private float _cameraHeight = 1.7f;
         [SerializeField] private float _lateralFollowFraction = 0.6f;
         [SerializeField] private float _baseFov = 55f;
@@ -41,6 +47,8 @@ namespace PoBox
         private Vector3 _positionVelocity;
         private float _fovVelocity;
         private float _shakeRemaining;
+        private int _tourOrdinal;
+        private float _tourTimer;
 
         private void Awake()
         {
@@ -105,6 +113,7 @@ namespace PoBox
             float dt = Time.deltaTime;
             int bestIndex = -1;
             float bestWobble = -1f;
+            int standingCount = 0;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
                 Systems_FighterRig rig = _rigs[rigIndex];
@@ -121,37 +130,68 @@ namespace PoBox
                 }
                 _wasStanding[rigIndex] = standing;
 
-                if (standing && _smoothedWobble[rigIndex] > bestWobble)
+                if (standing)
                 {
-                    bestWobble = _smoothedWobble[rigIndex];
-                    bestIndex = rigIndex;
+                    standingCount++;
+                    if (_smoothedWobble[rigIndex] > bestWobble)
+                    {
+                        bestWobble = _smoothedWobble[rigIndex];
+                        bestIndex = rigIndex;
+                    }
                 }
             }
 
             Vector3 target;
             float drama;
+            bool closeShot;
             if (_winnerFocus != null)
             {
                 // Winner display: hold a close shot on the round's champion.
                 target = _winnerFocus.Pelvis.position;
                 drama = 0.85f;
+                closeShot = true;
+            }
+            else if (standingCount >= 2)
+            {
+                // Cinematic tour: hold each standing fighter for a few seconds.
+                _tourTimer -= dt;
+                if (_tourTimer <= 0f)
+                {
+                    _tourTimer = _tourSecondsPerFighter;
+                    _tourOrdinal++;
+                }
+                int focusIndex = FindStandingByOrdinal(_tourOrdinal % standingCount);
+                target = _rigs[focusIndex].Pelvis.position;
+                drama = Mathf.Max(0.6f, Mathf.Clamp01(_smoothedWobble[focusIndex]));
+                closeShot = true;
             }
             else if (bestIndex >= 0)
             {
                 target = _rigs[bestIndex].Pelvis.position;
                 drama = Mathf.Clamp01(bestWobble);
+                closeShot = true;
             }
             else
             {
                 // Everyone is down — pull back and frame the whole ring.
                 target = RingCenter();
                 drama = 0f;
+                closeShot = false;
             }
 
+            // Camera lives on the +Z side: fighters spawn facing +Z, so this
+            // side shows their faces.
+            // Portrait (9:16) has a narrow horizontal FOV: pull back and drop
+            // the eye line so full bodies fit instead of cropping at the hips
+            // under a half-frame of empty sky.
+            bool portrait = _camera.aspect < 1f;
+            float distanceScale = portrait ? 1.35f : 1f;
+            float height = portrait ? 1.45f : _cameraHeight;
+            float followDistance = (closeShot ? _closeFollowDistance : _followDistance) * distanceScale;
             Vector3 desiredPosition = new Vector3(
                 target.x * _lateralFollowFraction,
-                _cameraHeight,
-                target.z - _followDistance - (bestIndex >= 0 ? 0f : 1.5f));
+                height,
+                target.z + followDistance + (closeShot ? 0f : 1.5f));
             Vector3 position = Vector3.SmoothDamp(
                 transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime);
 
@@ -172,6 +212,26 @@ namespace PoBox
             float desiredFov = Mathf.Lerp(_baseFov, _dramaFov, drama);
             _camera.fieldOfView = Mathf.SmoothDamp(
                 _camera.fieldOfView, desiredFov, ref _fovVelocity, 0.5f);
+        }
+
+        // Maps "the n-th standing fighter" to a rig index; standing membership
+        // changes frame to frame, so the ordinal is resolved fresh each call.
+        private int FindStandingByOrdinal(int ordinal)
+        {
+            int seen = 0;
+            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            {
+                if (!_wasStanding[rigIndex])
+                {
+                    continue;
+                }
+                if (seen == ordinal)
+                {
+                    return rigIndex;
+                }
+                seen++;
+            }
+            return 0;
         }
 
         private Vector3 RingCenter()

@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SCN_MENU.unity
-    guid: bcfc6ff64d33b7d4086847cc7ae377a1
+    path: Assets/Scenes/SCN_TRAIN_BALANCE.unity
+    guid: d7cf5c42b14292c4f984344b9df8fa86
   - enabled: 1
     path: Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity
     guid: 593ca622f49622147892f89fc78bd90f

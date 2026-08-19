@@ -4,7 +4,9 @@
     "references": [
         "PoBox.Runtime",
         "Unity.ML-Agents",
-        "Unity.InferenceEngine"
+        "Unity.InferenceEngine",
+        "Unity.Cinemachine",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [
         "Editor"

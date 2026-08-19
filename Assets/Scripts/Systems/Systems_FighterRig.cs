@@ -51,11 +51,20 @@ namespace PoBox
         // Set true if the joint-range test (Systems_JointRangeTester in SCN_RIGSTAGE)
         // shows drives moving opposite to the commanded direction.
         [SerializeField] private bool _invertTargetRotation;
+        // Muscle-like command lag: joint targets drift toward the commanded
+        // pose over this many seconds instead of snapping (0 = off). Changes
+        // dynamics — only enable on rigs whose brain trained with it.
+        [SerializeField] private float _actionSmoothingSeconds;
+        // Human strength proportions: ankles/arms much weaker than hips, plus
+        // crisper foot contacts. Changes dynamics — same caveat as above.
+        [SerializeField] private bool _realismProfile;
 
         private Transform[] _poseTransforms;
         private Vector3[] _startLocalPositions;
         private Quaternion[] _startLocalRotations;
         private float _currentSpringScale = 1f;
+        private float _strengthScale = 1f;
+        private float[] _smoothedTargets; // 3 per joint (pitch, roll, yaw)
 
         public Rigidbody Pelvis => _pelvis;
         public Rigidbody Torso => _torso;
@@ -107,7 +116,69 @@ namespace PoBox
                     entry.body.maxAngularVelocity = MAX_ANGULAR_VELOCITY;
                 }
             }
+            _smoothedTargets = new float[_joints.Count * 3];
+            if (_realismProfile)
+            {
+                ApplyRealismProfile();
+            }
             DisableIntraRigCollisions();
+        }
+
+        // Human strength proportions by segment group, applied once to the
+        // captured base drive values, plus crisper foot contacts. Fatigue and
+        // curriculum scaling multiply on top unchanged.
+        private void ApplyRealismProfile()
+        {
+            for (int jointIndex = 0; jointIndex < _joints.Count; jointIndex++)
+            {
+                RigJointEntry entry = _joints[jointIndex];
+                float groupScale = StrengthGroupScale(entry.body.name);
+                entry.baseSpring *= groupScale;
+                entry.baseDamper *= groupScale;
+                entry.baseMaxForce *= groupScale;
+                JointDrive drive = entry.joint.slerpDrive;
+                drive.positionSpring = entry.baseSpring;
+                drive.positionDamper = entry.baseDamper;
+                drive.maximumForce = entry.baseMaxForce;
+                entry.joint.slerpDrive = drive;
+            }
+            TightenFootContacts(_footLeftSensor);
+            TightenFootContacts(_footRightSensor);
+        }
+
+        private static float StrengthGroupScale(string bodyName)
+        {
+            if (bodyName.IndexOf("foot", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return 0.5f;  // ankles: weakest joints in the chain
+            }
+            if (bodyName.IndexOf("shin", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return 0.8f;  // knees
+            }
+            if (bodyName.IndexOf("arm", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || bodyName.IndexOf("glove", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return 0.6f;  // arms: balance aids, not lift muscles
+            }
+            if (bodyName.IndexOf("head", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return 0.4f;  // neck
+            }
+            return 1f;        // hips/thighs/torso: the power column
+        }
+
+        private static void TightenFootContacts(Sensor_GroundContact footSensor)
+        {
+            if (footSensor == null)
+            {
+                return;
+            }
+            var colliders = footSensor.GetComponents<Collider>();
+            for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+            {
+                colliders[colliderIndex].contactOffset = 0.01f;
+            }
         }
 
         // The rest pose has intentional segment overlap (gloves near pelvis
@@ -138,9 +209,15 @@ namespace PoBox
         {
             int cursor = offset;
             float sign = _invertTargetRotation ? -1f : 1f;
+            // Muscle lag: exponential drift toward the commanded angles.
+            // alpha 1 (instant) when smoothing is 0.
+            float alpha = _actionSmoothingSeconds > 0f
+                ? 1f - Mathf.Exp(-Time.fixedDeltaTime / _actionSmoothingSeconds)
+                : 1f;
             for (int jointIndex = 0; jointIndex < _joints.Count; jointIndex++)
             {
                 RigJointEntry entry = _joints[jointIndex];
+                int smoothBase = jointIndex * 3;
                 float pitch = 0f;
                 float roll = 0f;
                 float yaw = 0f;
@@ -159,7 +236,13 @@ namespace PoBox
                     yaw = MapZeroCentered(actions[cursor], entry.yawLow, entry.yawHigh);
                     cursor++;
                 }
-                entry.joint.targetRotation = Quaternion.Euler(sign * pitch, sign * roll, sign * yaw);
+                _smoothedTargets[smoothBase] += (pitch - _smoothedTargets[smoothBase]) * alpha;
+                _smoothedTargets[smoothBase + 1] += (roll - _smoothedTargets[smoothBase + 1]) * alpha;
+                _smoothedTargets[smoothBase + 2] += (yaw - _smoothedTargets[smoothBase + 2]) * alpha;
+                entry.joint.targetRotation = Quaternion.Euler(
+                    sign * _smoothedTargets[smoothBase],
+                    sign * _smoothedTargets[smoothBase + 1],
+                    sign * _smoothedTargets[smoothBase + 2]);
             }
         }
 
@@ -172,13 +255,29 @@ namespace PoBox
         public void SetSpringScale(float scale01)
         {
             _currentSpringScale = scale01;
+            ApplyDriveScales();
+        }
+
+        /// <summary>
+        /// Global strength multiplier for the "strength_scale" curriculum:
+        /// scales both spring and force cap, composing with the stamina spring
+        /// scale. 1 = authored strength.
+        /// </summary>
+        public void SetStrengthScale(float scale)
+        {
+            _strengthScale = scale;
+            ApplyDriveScales();
+        }
+
+        private void ApplyDriveScales()
+        {
             for (int jointIndex = 0; jointIndex < _joints.Count; jointIndex++)
             {
                 RigJointEntry entry = _joints[jointIndex];
                 JointDrive drive = entry.joint.slerpDrive;
-                drive.positionSpring = entry.baseSpring * scale01;
+                drive.positionSpring = entry.baseSpring * _currentSpringScale * _strengthScale;
                 drive.positionDamper = entry.baseDamper;
-                drive.maximumForce = entry.baseMaxForce;
+                drive.maximumForce = entry.baseMaxForce * _strengthScale;
                 entry.joint.slerpDrive = drive;
             }
         }
@@ -186,6 +285,10 @@ namespace PoBox
         /// <summary>Restores the captured start pose and zeroes all velocities.</summary>
         public void ResetToStartPose()
         {
+            if (_smoothedTargets != null)
+            {
+                System.Array.Clear(_smoothedTargets, 0, _smoothedTargets.Length);
+            }
             for (int poseIndex = 0; poseIndex < _poseTransforms.Length; poseIndex++)
             {
                 _poseTransforms[poseIndex].SetLocalPositionAndRotation(_startLocalPositions[poseIndex], _startLocalRotations[poseIndex]);

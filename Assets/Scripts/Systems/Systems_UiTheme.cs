@@ -10,6 +10,13 @@ namespace PoBox
     /// </summary>
     internal static class Systems_UiTheme
     {
+        // Shared palette — every runtime screen pulls from here so the app
+        // stays visually consistent (menu, announcer, plates, banner).
+        public static readonly Color Gold = new(0.85f, 0.68f, 0.25f);
+        public static readonly Color GoldBright = new(1f, 0.9f, 0.4f);
+        public static readonly Color HazardOrange = new(1f, 0.55f, 0.25f);
+        public static readonly Color PanelDark = new(0.05f, 0.05f, 0.08f, 0.94f);
+
         private static FontDefinition _font;
         private static bool _loaded;
 
