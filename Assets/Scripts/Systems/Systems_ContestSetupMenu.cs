@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -153,6 +153,10 @@ namespace PoBox
             }
 
             var startButton = new Button(StartContest) { text = "FIGHT" };
+            // UITK defaults buttons to upper-left, which parked 321 px of text in the
+            // corner of an 867 x 180 button. The mini-game menu sets this on its own
+            // buttons; this one was missed.
+            startButton.style.unityTextAlign = TextAnchor.MiddleCenter;
             startButton.style.marginTop = 28f;
             startButton.style.height = 180f;
             startButton.style.width = Length.Percent(100f);

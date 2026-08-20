@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -59,10 +59,11 @@ namespace PoBox
         public bool HoldRestarts { get; set; }
 
         // Called by the walk contest scene builder.
-        public void EditorInitialize(Vector3 goalDirection, float goalDistance)
+        public void EditorInitialize(Vector3 goalDirection, float goalDistance, StyleSheet styleSheet)
         {
             _goalDirection = goalDirection.normalized;
             _goalDistance = goalDistance;
+            _styleSheet = styleSheet;
         }
 
         private void Start()
@@ -73,6 +74,17 @@ namespace PoBox
             if (_styleSheet != null)
             {
                 root.styleSheets.Add(_styleSheet);
+            }
+            else
+            {
+                // Every class this HUD uses lives in USS_Contest. Without it the
+                // scoreboard still builds and still updates, but at the 14 px black
+                // default — invisible against the arena, which is how it shipped in
+                // SCN_TEST_WALK_CONTEST until 2026-08-20. Fail loudly rather than
+                // render a HUD nobody can read.
+                Debug.LogError($"{name}: no StyleSheet assigned, so the walk scoreboard will " +
+                    "render unstyled and effectively invisible. Assign USS_Contest, or rebuild " +
+                    "the scene with the walk contest scene tool.");
             }
             Systems_UiTheme.ApplyDefaultFont(root);
 

@@ -273,6 +273,7 @@ GameObject:
   m_Component:
   - component: {fileID: 64976402}
   - component: {fileID: 64976401}
+  - component: {fileID: 64976403}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -360,6 +361,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &64976403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 64976400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &427033142
 GameObject:
   m_ObjectHideFlags: 0
@@ -578,7 +608,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cf52f0728648046a612c716f762598, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_WalkContest
-  _styleSheet: {fileID: 0}
+  _styleSheet: {fileID: 7433441132597879392, guid: b37d78d67ea539c42b9afb8431c5fc2e, type: 3}
   _goalDirection: {x: 0, y: 0, z: 1}
   _goalDistance: 5.6
 --- !u!114 &717561137
@@ -651,19 +681,19 @@ MonoBehaviour:
   _roster:
   - displayName: Standard
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
-    model: {fileID: 5022602860645237092, guid: 8aadf1d40b56d4747b979a5de07615fb, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
   - displayName: Grandma
     prefab: {fileID: 2918738356757314058, guid: 799c3a59bc803194f903674697ddefd9, type: 3}
-    model: {fileID: 5022602860645237092, guid: 8aadf1d40b56d4747b979a5de07615fb, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
   - displayName: Grandpa
     prefab: {fileID: 6230883007331473486, guid: 1670eb04631b00346bef2d22807447f6, type: 3}
-    model: {fileID: 5022602860645237092, guid: 8aadf1d40b56d4747b979a5de07615fb, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1

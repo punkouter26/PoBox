@@ -131,6 +131,16 @@ namespace PoBox
             _observeLocomotionCommand = observeLocomotionCommand;
         }
 
+        /// <summary>
+        /// The number of observations this agent will actually emit, derived from its
+        /// own flags and its own rig. Deploy-time code sizes the sensor from this
+        /// instead of restating the flags, which is how the contest spawner drifted
+        /// out of sync with the prefabs in the first place.
+        /// </summary>
+        public int ExpectedObservationCount =>
+            ComputeObservationCount(_rig.JointCount, _observeOpponent, _observeFootHeight,
+                _observeLocomotionCommand);
+
         public static int ComputeObservationCount(int jointCount, bool observeOpponent, bool observeFootHeight,
             bool observeLocomotionCommand = false)
         {

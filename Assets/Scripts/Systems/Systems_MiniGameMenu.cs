@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -20,6 +20,9 @@ namespace PoBox
     public sealed class Systems_MiniGameMenu : MonoBehaviour
     {
         private const string EMPTY_CHOICE = "Empty";
+        // Down-pointing small triangle. The contest scoreboard already renders
+        // stars and em dashes through the same font, so symbol coverage is fine.
+        private const string CARET_GLYPH = "▾";
         private const int BALANCE_SLOTS = 8;
         private const int WALK_SLOTS = 4;
 
@@ -240,6 +243,11 @@ namespace PoBox
             VisualElement input = dropdown.Q(className: "unity-base-popup-field__input");
             if (input != null)
             {
+                // The input laid its children out as a column, which stacked the arrow
+                // under the value text and left the text top-aligned in a box twice its
+                // height. Pin the direction and centre the row explicitly.
+                input.style.flexDirection = FlexDirection.Row;
+                input.style.alignItems = Align.Center;
                 input.style.height = 62f;
                 input.style.backgroundColor = new Color(0f, 0f, 0f, 0.35f);
                 input.style.paddingLeft = 18f;
@@ -255,12 +263,29 @@ namespace PoBox
                 text.style.fontSize = 36f;
                 text.style.color = Systems_UiTheme.GoldBright;
                 text.style.unityTextAlign = TextAnchor.MiddleLeft;
+                // Middle-align centres glyphs inside the element, not inside the input,
+                // so the element has to fill the input height for it to mean anything.
+                text.style.flexGrow = 1f;
+                text.style.height = Length.Percent(100f);
             }
 
+            // The runtime theme resolves no background image for the stock arrow, so
+            // tinting it drew nothing and the fields read as plain boxes with no hint
+            // that they open. Replace it with a glyph the font actually has.
             VisualElement arrow = dropdown.Q(className: "unity-base-popup-field__arrow");
             if (arrow != null)
             {
-                arrow.style.unityBackgroundImageTintColor = Systems_UiTheme.Gold;
+                arrow.style.display = DisplayStyle.None;
+            }
+            if (input != null)
+            {
+                var caret = new Label(CARET_GLYPH);
+                caret.style.fontSize = 30f;
+                caret.style.color = Systems_UiTheme.Gold;
+                caret.style.marginLeft = 8f;
+                caret.style.unityTextAlign = TextAnchor.MiddleCenter;
+                caret.pickingMode = PickingMode.Ignore;
+                input.Add(caret);
             }
         }
 

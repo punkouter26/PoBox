@@ -1,4 +1,4 @@
-using PoBox;
+﻿using PoBox;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -19,6 +19,7 @@ namespace PoBox.Editor
     internal static class RigTool_WalkContestScene
     {
         private const string SCENE_PATH = "Assets/Scenes/SCN_TEST_WALK_CONTEST.unity";
+        private const string CONTEST_STYLESHEET_PATH = "Assets/UI/USS_Contest.uss";
         private const float RING_SIZE = 6.1f;      // matches SCN_TRAIN_WALK
         private const float EDGE_INSET = 0.25f;
         private const float SPAWN_HEIGHT = 0.03f;
@@ -28,7 +29,11 @@ namespace PoBox.Editor
         // The path was left dangling, so ResolveBrain fell silently through to
         // the balance brain and every racer just stood there. Point this at
         // the CURRENT locomotion folder whenever a new model line lands.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_v03/Boxer.onnx";
+        // gen 7 as of 2026-08-20: 127 observations and the first brain here built
+        // against ground-relative height. Locomotion_v01/v02/v03 all predate that
+        // and v03 is really gen 5, so rebuilding against them silently downgrades
+        // the roster to a brain that cannot stand on the current rig.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen7/Boxer.onnx";
 
         // Mirrors the balance contest roster so the two mini-games field the
         // same line-up. forceHeuristic: the code-driven PD bot (project rule).
@@ -205,7 +210,17 @@ namespace PoBox.Editor
             var document = refereeObject.AddComponent<UIDocument>();
             document.panelSettings = RigTool_ContestScene.GetOrCreatePanelSettings();
             var referee = refereeObject.AddComponent<Systems_WalkContest>();
-            referee.EditorInitialize(Vector3.forward, goalDistance);
+            // Without the stylesheet every scoreboard class falls back to 14 px
+            // black — the HUD is built and updating but unreadable. The balance
+            // scene got this by hand; this tool has to do it or the walk scene
+            // ships blind, which it did until 2026-08-20.
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(CONTEST_STYLESHEET_PATH);
+            if (styleSheet == null)
+            {
+                Debug.LogError($"Walk contest scene tool: no StyleSheet at {CONTEST_STYLESHEET_PATH}; " +
+                    "the scoreboard will render unstyled.");
+            }
+            referee.EditorInitialize(Vector3.forward, goalDistance, styleSheet);
         }
     }
 }

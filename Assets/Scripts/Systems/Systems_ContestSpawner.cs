@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Unity.InferenceEngine;
 using Unity.MLAgents.Policies;
 using UnityEngine;
@@ -34,6 +35,9 @@ namespace PoBox
     /// </summary>
     public sealed class Systems_ContestSpawner : MonoBehaviour
     {
+        // ML-Agents names the single vector-observation input of an exported brain
+        // obs_0; the contest rigs have exactly one, so this is the tensor to measure.
+        private const string OBSERVATION_INPUT_NAME = "obs_0";
         private const int JOINT_INDEX_SHIN_L = 3;
         private const int JOINT_INDEX_SHIN_R = 9;
         /// <summary>
@@ -99,31 +103,53 @@ namespace PoBox
             Vector3[] slots = ActiveSlots;
             Quaternion spawnRotation = Quaternion.Euler(_spawnEuler);
             var nameCounts = new int[_roster.Length];
-            for (int slotIndex = 0; slotIndex < slots.Length && slotIndex < slotRosterIndices.Length; slotIndex++)
+            // Fighters are built under an INACTIVE holder so Awake and OnEnable are
+            // deferred until Configure has run. Instantiating straight into the scene
+            // runs the Agent's LazyInitialize on the spot, which snapshots
+            // BrainParameters and builds the VectorSensor from it — so the locomotion
+            // observation-size fix in Configure arrived one frame too late and every
+            // step logged "More observations (127) made than vector observation size
+            // (121). The observations will be truncated." Measured 2026-08-20: 44,429
+            // of them in one editor session, with the walking brain reading 6 junk
+            // inputs. A GameObject parented to an inactive object never fires Awake,
+            // so releasing it afterwards is what finally starts the agent.
+            var holder = new GameObject("ContestSpawnHolder");
+            holder.SetActive(false);
+            try
             {
-                int rosterIndex = slotRosterIndices[slotIndex];
-                if (rosterIndex < 0 || rosterIndex >= _roster.Length)
+                for (int slotIndex = 0; slotIndex < slots.Length && slotIndex < slotRosterIndices.Length; slotIndex++)
                 {
-                    continue;
+                    int rosterIndex = slotRosterIndices[slotIndex];
+                    if (rosterIndex < 0 || rosterIndex >= _roster.Length)
+                    {
+                        continue;
+                    }
+                    ContestRosterEntry entry = _roster[rosterIndex];
+                    nameCounts[rosterIndex]++;
+                    string instanceName = nameCounts[rosterIndex] > 1
+                        ? $"Contest_{entry.displayName}{nameCounts[rosterIndex]}"
+                        : $"Contest_{entry.displayName}";
+                    Spawn(entry, holder.transform, slots[slotIndex], spawnRotation, instanceName);
+                    spawned++;
                 }
-                ContestRosterEntry entry = _roster[rosterIndex];
-                var instance = Instantiate(entry.prefab, slots[slotIndex], spawnRotation);
-                nameCounts[rosterIndex]++;
-                instance.name = nameCounts[rosterIndex] > 1
-                    ? $"Contest_{entry.displayName}{nameCounts[rosterIndex]}"
-                    : $"Contest_{entry.displayName}";
-                Configure(instance, entry);
-                spawned++;
+                if (spawned == 0 && _roster.Length > 0)
+                {
+                    // Never start an empty ring — fall back to one default fighter.
+                    Spawn(_roster[0], holder.transform, slots[0], spawnRotation,
+                        $"Contest_{_roster[0].displayName}");
+                }
             }
-            if (spawned == 0 && _roster.Length > 0)
+            finally
             {
-                // Never start an empty ring — fall back to one default fighter.
-                var instance = Instantiate(_roster[0].prefab, slots[0], spawnRotation);
-                instance.name = $"Contest_{_roster[0].displayName}";
-                Configure(instance, _roster[0]);
+                // Without this a throw inside Configure strands the inactive holder
+                // — and the half-built fighter inside it — in the scene for good.
+                Destroy(holder);
             }
 
-            _systemsRoot.SetActive(true);
+            if (_systemsRoot != null)
+            {
+                _systemsRoot.SetActive(true);
+            }
             if (_menuOrbit != null)
             {
                 _menuOrbit.enabled = false;
@@ -138,6 +164,22 @@ namespace PoBox
         public void EditorSetMenuOrbit(Systems_MenuOrbitCamera menuOrbit)
         {
             _menuOrbit = menuOrbit;
+        }
+
+        /// <summary>
+        /// Instantiates one fighter under <paramref name="holder"/> — which the caller
+        /// keeps inactive — configures it, then reparents it to the scene root. That
+        /// last step is what activates it, so Awake and OnEnable run against the
+        /// finished BrainParameters rather than the prefab's.
+        /// </summary>
+        private static void Spawn(ContestRosterEntry entry, Transform holder,
+            Vector3 position, Quaternion rotation, string instanceName)
+        {
+            var instance = Instantiate(entry.prefab, holder);
+            instance.name = instanceName;
+            instance.transform.SetPositionAndRotation(position, rotation);
+            Configure(instance, entry);
+            instance.transform.SetParent(null, worldPositionStays: true);
         }
 
         private static void Configure(GameObject instance, ContestRosterEntry entry)
@@ -158,12 +200,16 @@ namespace PoBox
             var behavior = instance.GetComponent<BehaviorParameters>();
             if (entry.locomotionBrain)
             {
-                // Must happen before the agent's Initialize reads the layout.
                 agent.SetObserveLocomotionCommand(true);
-                behavior.BrainParameters.VectorObservationSize =
-                    Agent_FighterBoxing.ComputeObservationCount(rig.JointCount,
-                        observeOpponent: false, observeFootHeight: true, observeLocomotionCommand: true);
             }
+            // Size the sensor from what this agent will actually emit, on every
+            // fighter rather than only the locomotion ones. Restating the flags here
+            // is what let the walk contest ship a 121-wide sensor to a 127-observation
+            // agent; asking the agent removes the chance to disagree. Correct at this
+            // point only because Spawn keeps the instance inactive until Configure
+            // returns, so the sensor has not been built from this value yet.
+            behavior.BrainParameters.VectorObservationSize = agent.ExpectedObservationCount;
+
             if (entry.forceHeuristic || entry.model == null)
             {
                 behavior.BehaviorType = BehaviorType.HeuristicOnly;
@@ -172,6 +218,7 @@ namespace PoBox
             {
                 behavior.Model = entry.model;
                 behavior.BehaviorType = BehaviorType.InferenceOnly;
+                WarnOnObservationMismatch(entry, instance.name, behavior.BrainParameters.VectorObservationSize);
             }
 
             if (entry.tint != null)
@@ -182,6 +229,56 @@ namespace PoBox
                     renderers[rendererIndex].sharedMaterial = entry.tint;
                 }
             }
+        }
+
+        // Cached: a contest spawns up to eight fighters off the same two or three
+        // ModelAssets, and deserializing one is not free.
+        private static readonly Dictionary<ModelAsset, int> ModelObservationWidths = new();
+
+        /// <summary>
+        /// Logs when a roster brain was trained on a different observation width than
+        /// the fighter it is being loaded onto. ML-Agents runs this comparison only
+        /// from the BehaviorParameters inspector; its runtime path checks the model
+        /// version and nothing else, so a brain assigned from code — which is every
+        /// brain in a contest — mismatches in total silence. Measured 2026-08-20: the
+        /// balance roster ran 119-observation brains on 121-observation fighters
+        /// without producing a single console line.
+        /// </summary>
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private static void WarnOnObservationMismatch(ContestRosterEntry entry, string instanceName, int sensorSize)
+        {
+            int modelSize = ModelObservationWidth(entry.model);
+            if (modelSize < 0 || modelSize == sensorSize)
+            {
+                return;
+            }
+            Debug.LogError($"{instanceName}: brain '{entry.model.name}' expects {modelSize} observations but " +
+                $"this fighter emits {sensorSize}. The brain is reading the wrong vector — export one " +
+                "trained on this layout, or point the roster entry at a brain that matches.");
+        }
+
+        /// <summary>Width of the obs_0 input of <paramref name="modelAsset"/>, or -1 when unreadable.</summary>
+        private static int ModelObservationWidth(ModelAsset modelAsset)
+        {
+            if (ModelObservationWidths.TryGetValue(modelAsset, out int cached))
+            {
+                return cached;
+            }
+            int width = -1;
+            Model model = ModelLoader.Load(modelAsset);
+            for (int inputIndex = 0; inputIndex < model.inputs.Count; inputIndex++)
+            {
+                Model.Input input = model.inputs[inputIndex];
+                if (input.name != OBSERVATION_INPUT_NAME || input.shape.isRankDynamic || input.shape.rank != 2)
+                {
+                    continue;
+                }
+                width = input.shape.Get(1);
+                break;
+            }
+            ModelObservationWidths[modelAsset] = width;
+            return width;
         }
     }
 }
