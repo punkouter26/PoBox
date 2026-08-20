@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
-    <title>%UNITY_WEB_NAME%</title>
+    <title>PoBox</title>
     <style>
       /* Portrait 9:16, the shape the whole UI was laid out for (project rule).
          Unity's stock template hard-codes a 960x600 landscape canvas, which
@@ -71,7 +71,7 @@
     <div id="unity-container">
       <canvas id="unity-canvas" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
-        <div>%UNITY_PRODUCT_NAME%</div>
+        <div>PoBox</div>
         <div id="unity-progress-bar-empty"><div id="unity-progress-bar-full"></div></div>
       </div>
       <div id="unity-warning"></div>
@@ -103,15 +103,15 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/%UNITY_WEBGL_LOADER_FILENAME%";
+      var loaderUrl = buildUrl + "/WEB.loader.js";
       var config = {
-        dataUrl: buildUrl + "/%UNITY_WEBGL_DATA_FILENAME%",
-        frameworkUrl: buildUrl + "/%UNITY_WEBGL_FRAMEWORK_FILENAME%",
-        codeUrl: buildUrl + "/%UNITY_WEBGL_CODE_FILENAME%",
+        dataUrl: buildUrl + "/WEB.data.unityweb",
+        frameworkUrl: buildUrl + "/WEB.framework.js.unityweb",
+        codeUrl: buildUrl + "/WEB.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
-        companyName: "%UNITY_COMPANY_NAME%",
-        productName: "%UNITY_PRODUCT_NAME%",
-        productVersion: "%UNITY_PRODUCT_VERSION%",
+        companyName: "DefaultCompany",
+        productName: "PoBox",
+        productVersion: "0.1.0",
         showBanner: unityShowBanner,
       };
 
