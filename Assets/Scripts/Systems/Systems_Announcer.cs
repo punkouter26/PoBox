@@ -223,7 +223,15 @@ namespace PoBox
         /// </summary>
         private float FittedCalloutFontSize(string message)
         {
-            float available = _callout.resolvedStyle.width - CALLOUT_SIDE_MARGIN * 2f;
+            // Deliberately the PARENT width, not the label's own. The callout is
+            // display:none between announcements, so its layout is stale at zero
+            // every time Announce runs and reading it silently disabled this whole
+            // method. The parent spans the panel and is always laid out.
+            float panelWidth = _callout.parent != null ? _callout.parent.resolvedStyle.width : 0f;
+            float available = panelWidth - CALLOUT_SIDE_MARGIN * 2f;
+            // resolvedStyle.fontSize may lag a frame behind the last size set, but
+            // MeasureTextSize reads the same computed style, so the ratio of the two
+            // is width-per-point regardless of which size that happens to be.
             float measuredAtSize = _callout.resolvedStyle.fontSize;
             if (available <= 0f || measuredAtSize <= 0f)
             {
@@ -235,9 +243,13 @@ namespace PoBox
             {
                 return CALLOUT_MAX_FONT_SIZE;
             }
-            float widthPerFontPoint = measured.x / measuredAtSize;
-            return Mathf.Clamp(available / widthPerFontPoint,
-                CALLOUT_MIN_FONT_SIZE, CALLOUT_MAX_FONT_SIZE);
+            float fitted = available / (measured.x / measuredAtSize);
+            // Below the floor, shrinking further would be unreadable, so let it wrap
+            // instead — a two-line callout beats one that runs off the screen.
+            _callout.style.whiteSpace = fitted < CALLOUT_MIN_FONT_SIZE
+                ? WhiteSpace.Normal
+                : WhiteSpace.NoWrap;
+            return Mathf.Clamp(fitted, CALLOUT_MIN_FONT_SIZE, CALLOUT_MAX_FONT_SIZE);
         }
 
         private void RingBell()
