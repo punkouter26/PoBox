@@ -1,0 +1,106 @@
+name: Build WebGL
+
+# Builds the Unity WebGL player into WEB/ and uploads it as an artifact so
+# azure-static-web-apps.yml can ship it. Run this BEFORE you push committed
+# WEB/ changes — the deploy job consumes the artifact, not the working tree.
+#
+# Triggers:
+#   - push to main with source changes (not WEB/ — that would mean "I just
+#     regenerated, no need to rebuild"). Excluding WEB/ also keeps the runner
+#     from spinning up Unity for every docs tweak.
+#   - workflow_dispatch for manual rebuilds (e.g. verify the build works
+#     before committing WEB/).
+#
+# Caching: game-ci/unity-builder uses actions/cache keyed on
+# ProjectSettings hash so the Library/ survives between runs — first build
+# is ~10 min, subsequent builds ~3-4 min for a project this size.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+      - 'ProjectSettings/**'
+      - 'config/**'
+      - '.claude/rules/architecture.md'
+      - '.github/workflows/build-web.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Unity WebGL build → WEB/
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # game-ci/unity-builder pulls the project itself, but we still need
+          # checkout for the artifact path context. LFS for the .onnx brains
+          # used by BehaviorParameters — without it Unity falls back to
+          # random heuristics during import and breaks the agents.
+          lfs: true
+          submodules: recursive
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json') }}
+          restore-keys: |
+            Library-WebGL-
+
+      - name: Build WebGL
+        id: build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          # Pinned to the same version the developers use locally. Bumping
+          # this without checking all your packages is a great way to find
+          # new build failures at 3 a.m.
+          unityVersion: 6000.5.6f1
+          targetPlatform: WebGL
+          # Our Editor entry point. Reads -buildOutput WEB from env and
+          # exits non-zero on failure so the step fails cleanly.
+          buildMethod: PoBox.Editor.Build_WebGL.Build
+          customParameters: -buildOutput WEB -quit
+          # game-ci's default buildPath is build/<target>. We want WEB/ at
+          # the repo root, so build straight into it and the artifact step
+          # below can just zip the folder.
+          buildPath: WEB
+          versioning: None
+
+      - name: Verify build output
+        working-directory: WEB
+        run: |
+          set -e
+          echo "WebGL build artifacts:"
+          ls -la Build/ 2>&1 | head -20
+          for f in WEB.loader.js WEB.framework.js.unityweb WEB.data.unityweb WEB.wasm.unityweb; do
+            if [ ! -f "Build/$f" ]; then
+              echo "::error::Missing build artifact: Build/$f"
+              exit 1
+            fi
+          done
+          echo "All WebGL artifacts present."
+
+      - name: Upload WEB/ artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: WEB/
+          # The full Unity WebGL build is ~55 MB compressed. Web build of an
+          # Azure Static Web App does NOT need the artifact past deploy,
+          # but 7 days is the Azure limit and we want the artifact to
+          # outlive the deploy job if anything retries.
+          retention-days: 7
+          if-no-files-found: error

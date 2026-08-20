@@ -31,8 +31,8 @@ namespace PoBox
         // Commanded speed at which the gait terms reach full weight. Below it
         // they fade out, so the StandStill lesson still wants both feet down.
         private const float GAIT_BLEND_SPEED = 0.3f;
-        // Swing-foot height that scores full clearance. Roughly one foot depth
-        // above the resting pose — enough to clear the floor, not a high march.
+        // Gap between the two feet that scores full clearance. Roughly one
+        // foot depth — enough to clear the floor, not a high march.
         private const float TARGET_CLEARANCE = 0.09f;
         // Floor of the commanded-speed draw, as a fraction of the lesson cap,
         // once the cap is above walking-relevant speed. Gen 3 drew uniformly
@@ -43,7 +43,16 @@ namespace PoBox
         private const float SPEED_COMMAND_MIN_FRACTION = 0.6f;
         // Never let a [0,1] criterion reach exactly 0: one zero would wipe the
         // whole product and erase every other criterion's gradient.
-        private const float PRODUCT_FACTOR_FLOOR = 0.05f;
+        // Gen 4 used 0.05, which paid the statue far too well: failing speed,
+        // support and clearance outright still returned 0.05^0.5 * 0.05^0.3 *
+        // 0.05^0.35 = 0.031 per step, guaranteed and risk-free, for 3000
+        // steps. At 0.01 the same total failure returns 0.005 -- a 6x cut to
+        // the statue and no change at all to a real walker, widening the gap
+        // from 32x to 200x. The floor stays POSITIVE on purpose: a negative
+        // per-step reward plus a terminable episode makes falling over the
+        // fastest way to stop losing points, which is how the old -1 terminal
+        // failed.
+        private const float PRODUCT_FACTOR_FLOOR = 0.01f;
 
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
@@ -74,7 +83,6 @@ namespace PoBox
 
         private float _stepScale;
         private float _startHeadHeight;
-        private float _restFootHeight;
         private float _commandedSpeed;
         private Vector3 _commandedDirection = Vector3.forward;
         private bool _terminated;
@@ -98,7 +106,6 @@ namespace PoBox
             // Scaled so a full-length episode at perfect score returns ~1.
             _stepScale = 1f / Mathf.Max(1, _agent.MaxStep);
             _startHeadHeight = _rig.Head.position.y;
-            CaptureRestPose();
             RollCommand();
         }
 
@@ -110,7 +117,6 @@ namespace PoBox
                 // New episode began (fall reset or MaxStep rollover).
                 FlushEpisodeStats();
                 _startHeadHeight = _rig.Head.position.y;
-                CaptureRestPose();
                 RollCommand();
                 _terminated = false;
             }
@@ -160,8 +166,18 @@ namespace PoBox
             float doubleSupport = leftDown && rightDown ? 1f : 0f;
             float supportReward = Mathf.Lerp(doubleSupport, singleSupport, gaitBlend);
 
-            float swingHeight = Mathf.Max(_rig.FootLeftSensor.transform.position.y,
-                _rig.FootRightSensor.transform.position.y) - _restFootHeight;
+            // Swing-foot height is measured against the STANCE foot, not a
+            // snapshot of the reset pose. Gen 4 captured that snapshot on the
+            // reset tick, before the body had settled under gravity; once the
+            // agent learned to brace and sink, both feet sat below the
+            // snapshot for the rest of every episode and ClearanceMean read
+            // exactly 0.000 for five million steps -- the reward was blind,
+            // not merely stingy. Foot-to-foot is self-calibrating: crouching,
+            // sinking and the reset pose all cancel out, and the gap between
+            // the feet is literally what a step is.
+            float footLeftY = _rig.FootLeftSensor.transform.position.y;
+            float footRightY = _rig.FootRightSensor.transform.position.y;
+            float swingHeight = Mathf.Abs(footLeftY - footRightY);
             float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
             float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
             // Log the RAW single-support fraction, not the blended term: the
@@ -203,14 +219,6 @@ namespace PoBox
             _commandedSpeed = Random.Range(commandMin, _speedCommandMax);
             _commandedDirection = Vector3.forward;
             _agent.SetLocomotionCommand(_commandedSpeed, _commandedDirection);
-        }
-
-        // Feet rest slightly above y=0 (sole collider depth), so clearance is
-        // measured from the actual standing pose, not from the floor plane.
-        private void CaptureRestPose()
-        {
-            _restFootHeight = Mathf.Min(_rig.FootLeftSensor.transform.position.y,
-                _rig.FootRightSensor.transform.position.y);
         }
 
         private void FlushEpisodeStats()

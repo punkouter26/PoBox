@@ -1,0 +1,105 @@
+# Locomotion gen 5 (2026-08-19). Gens 1-4 all produced the same statue: a
+# fighter that stands perfectly and never lifts a foot. Gen 4's numbers at
+# 11.3 M steps were the clearest read yet:
+#
+#   Locomotion/ClearanceMean      0.000   (exactly zero, for 5 M steps)
+#   Locomotion/SingleSupportMean  0.000
+#   Locomotion/SpeedMatchMean     0.015   (commanded 0.8 m/s)
+#   Locomotion/StepsSurvived      2534    (of MaxStep 3000 - never falls)
+#
+# EXACTLY 0.000 for five million steps is not a policy that declines to step.
+# It is a broken measurement. Gen 4 measured swing height against
+# _restFootHeight, a snapshot taken on the episode-reset tick, before the body
+# had settled under gravity. Once the agent learned to brace and sink, both
+# feet spent every episode BELOW that snapshot, so clamp01 returned 0 forever
+# and the clearance reward could not see a step even if one happened. Gen 5
+# measures the gap between the two feet instead, which is self-calibrating.
+# That is the change most likely to matter; everything else here is support.
+#
+# Changes from BoxerLocomotion04.yaml:
+#
+#   gamma  0.999 -> 0.99
+#     Gen 4's effective horizon was ~1000 steps (20 s). With no fall penalty
+#     and 3000-step episodes, "still upright in 20 seconds" dominated the value
+#     function and near-term travel was rounding error. At 0.99 the horizon is
+#     ~100 steps (2 s), which is the timescale a single stride lives on.
+#
+#   beta   0.005 -> 0.01
+#     Gen 4's clearance hit exactly 0 at ~6 M steps and never moved again:
+#     the policy locked into the statue and entropy collapsed with it. More
+#     entropy pressure keeps the leg-swing region of action space alive long
+#     enough for the (now working) clearance reward to find it.
+#
+#   lesson thresholds lowered
+#     PRODUCT_FACTOR_FLOOR dropped 0.05 -> 0.01 in Reward_Locomotion, which
+#     cuts the total-failure score from 0.031 to 0.005 per step. That is a 6x
+#     cut to the statue and no change to a real walker, but it also lowers what
+#     a partly-succeeding agent scores, so the gates come down with it. Gen 4
+#     cleared every lesson by 7 M steps, so these were never the blocker.
+#
+# WATCH Locomotion/ClearanceMean. If it is still pinned at 0.000 after the
+# Shuffle lesson starts, the measurement is STILL wrong and no amount of
+# reward tuning will help - stop the run rather than burn two hours.
+# If it rises but SingleSupportMean stays near 0, it is bouncing on both feet:
+# lower _singleSupportWeight before touching anything else.
+#
+# 127 obs, unchanged from gen 4, so gen 4 checkpoints remain layout-compatible.
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 15000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.15
+        value: 0.0
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.12
+        value: 0.3
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 150
+          threshold: 0.14
+        value: 0.7
+      - name: Walk
+        value: 1.0

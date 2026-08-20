@@ -23,7 +23,12 @@ namespace PoBox.Editor
         private const float EDGE_INSET = 0.25f;
         private const float SPAWN_HEIGHT = 0.03f;
         // Shared stand-and-walk brain; the walk race commands it to 1 m/s.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_v01/Boxer.onnx";
+        // Was Locomotion_v01, which moved to Assets/Agents/_obsolete_125obs/
+        // when the gait-phase observations took the layout from 125 to 127.
+        // The path was left dangling, so ResolveBrain fell silently through to
+        // the balance brain and every racer just stood there. Point this at
+        // the CURRENT locomotion folder whenever a new model line lands.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_v03/Boxer.onnx";
 
         // Mirrors the balance contest roster so the two mini-games field the
         // same line-up. forceHeuristic: the code-driven PD bot (project rule).
@@ -121,7 +126,9 @@ namespace PoBox.Editor
         //      mini-games, so this is the normal case once training lands
         //   3. the old balance brain, which stands but will not race
         // isLocomotion tells the spawner to switch the fighter to the
-        // 125-observation layout those brains require.
+        // locomotion observation layout those brains require. The size is
+        // computed by Agent_FighterBoxing.ComputeObservationCount, so it
+        // tracks the layout automatically (127 as of the gen-4 gait phase).
         private static Unity.InferenceEngine.ModelAsset ResolveBrain(string display, out bool isLocomotion)
         {
             isLocomotion = true;
