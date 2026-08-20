@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,6 +39,11 @@ namespace PoBox
     public sealed class Systems_FighterRig : MonoBehaviour
     {
         private const float MAX_ANGULAR_VELOCITY = 20f;
+        private const float GROUND_PROBE_METERS = 10f;
+
+        // Reused by the one-shot ground probe in Awake. Static is safe: Awake is
+        // main-thread and the buffer is consumed before the next call.
+        private static readonly RaycastHit[] GroundProbeHits = new RaycastHit[8];
 
         [SerializeField] private Rigidbody _pelvis;
         [SerializeField] private Rigidbody _torso;
@@ -65,9 +70,18 @@ namespace PoBox
         private float _currentSpringScale = 1f;
         private float _strengthScale = 1f;
         private float[] _smoothedTargets; // 3 per joint (pitch, roll, yaw)
+        private float _groundY;
 
-        public Rigidbody Pelvis => _pelvis;
-        public Rigidbody Torso => _torso;
+
+        /// <summary>
+        /// World Y of the floor this fighter stands on, probed once in Awake.
+        /// Height observations and collapse checks are measured against it so a
+        /// rig behaves identically at any altitude: a ring canvas at y = 1 reads
+        /// exactly the same to the brain as a training ground at y = 0.
+        /// </summary>
+        public float GroundY => _groundY;
+
+        public Rigidbody Pelvis => _pelvis;        public Rigidbody Torso => _torso;
         public Transform Head => _head;
         public Transform GloveLeft => _gloveLeft;
         public Transform GloveRight => _gloveRight;
@@ -107,6 +121,7 @@ namespace PoBox
 
         private void Awake()
         {
+            ProbeGroundY();
             CaptureStartPose();
             for (int jointIndex = 0; jointIndex < _joints.Count; jointIndex++)
             {
@@ -122,6 +137,31 @@ namespace PoBox
                 ApplyRealismProfile();
             }
             DisableIntraRigCollisions();
+        }
+
+        // Probed once, never per step: the floor does not move, and a per-tick
+        // cast would cost one raycast per fighter per FixedUpdate across a
+        // 16-fighter training grid.
+        private void ProbeGroundY()
+        {
+            Vector3 origin = _pelvis != null ? _pelvis.position : transform.position;
+            int hitCount = Physics.RaycastNonAlloc(origin, Vector3.down, GroundProbeHits, GROUND_PROBE_METERS);
+            float highest = float.NegativeInfinity;
+            for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
+            {
+                // Skip this fighter's own colliders - the ray leaves the pelvis
+                // and passes straight down through its own legs and feet.
+                if (GroundProbeHits[hitIndex].transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+                float hitY = GroundProbeHits[hitIndex].point.y;
+                if (hitY > highest)
+                {
+                    highest = hitY;
+                }
+            }
+            _groundY = highest > float.NegativeInfinity ? highest : transform.position.y;
         }
 
         // Human strength proportions by segment group, applied once to the

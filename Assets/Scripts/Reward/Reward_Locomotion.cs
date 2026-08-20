@@ -1,4 +1,4 @@
-using Unity.MLAgents;
+﻿using Unity.MLAgents;
 using UnityEngine;
 
 namespace PoBox
@@ -30,7 +30,22 @@ namespace PoBox
         private const float SPEED_KERNEL = 0.3f;
         // Commanded speed at which the gait terms reach full weight. Below it
         // they fade out, so the StandStill lesson still wants both feet down.
-        private const float GAIT_BLEND_SPEED = 0.3f;
+        //
+        // Was 0.3, which quietly capped the curriculum at its third rung. The
+        // blend is commandedSpeed / this, clamped to 1, so at 0.3 the gait
+        // demand ran 0 -> 0.67 -> 1.0 -> 1.0 -> 1.0 -> 1.0 across gen 6's six
+        // speed rungs: a fighter that had never lifted a foot was handed the
+        // FULL step-and-alternate demand by rung 3, and rungs 4-6 then asked
+        // for nothing new. Gen 6 collapsed at exactly rung 3 (survival 15 s ->
+        // 3.3 s while clearance climbed 0.079 -> 0.258) and gen 5 collapsed the
+        // same way one rung earlier. Matching this to the top curriculum speed
+        // makes the blend track the ladder 1:1 - 0.2 speed means 0.2 gait
+        // demand - so every rung is a real, small increase in what is asked.
+        private const float GAIT_FULL_SPEED = 1f;
+        // Separate from the blend on purpose: below this the LESSON is about
+        // standing, so commands are still drawn from zero. Folding this into
+        // the blend constant is what made one number do two unrelated jobs.
+        private const float STAND_LESSON_SPEED = 0.3f;
         // Gap between the two feet that scores full clearance. Roughly one
         // foot depth — enough to clear the floor, not a high march.
         private const float TARGET_CLEARANCE = 0.09f;
@@ -155,7 +170,7 @@ namespace PoBox
             // Gait terms fade in with the command: at 0 m/s the agent should
             // be planted on both feet, so demanding one-foot support there
             // would punish correct standing.
-            float gaitBlend = Mathf.Clamp01(_commandedSpeed / GAIT_BLEND_SPEED);
+            float gaitBlend = Mathf.Clamp01(_commandedSpeed / GAIT_FULL_SPEED);
 
             bool leftDown = _rig.FootLeftSensor.IsGrounded;
             bool rightDown = _rig.FootRightSensor.IsGrounded;
@@ -213,7 +228,7 @@ namespace PoBox
             // Below the gait-blend speed the lesson is genuinely about standing,
             // so keep drawing from zero. Above it, hold the floor up so most
             // episodes actually require travel.
-            float commandMin = _speedCommandMax > GAIT_BLEND_SPEED
+            float commandMin = _speedCommandMax > STAND_LESSON_SPEED
                 ? _speedCommandMax * SPEED_COMMAND_MIN_FRACTION
                 : 0f;
             _commandedSpeed = Random.Range(commandMin, _speedCommandMax);
@@ -249,7 +264,14 @@ namespace PoBox
                     return true;
                 }
             }
-            if (_rig.Head.position.y < _startHeadHeight * HEAD_COLLAPSE_FRACTION)
+            // Measured above the floor on BOTH sides. Comparing raw world Y
+            // against a fraction of raw world Y silently rescales with altitude:
+            // on a 1 m ring canvas, 40% of a 2.6 m head height is 1.04 m, so a
+            // fighter would have to sink to 4 cm above the canvas to count as
+            // collapsed instead of the intended ~64 cm.
+            float headAboveGround = _rig.Head.position.y - _rig.GroundY;
+            float standingHeadAboveGround = _startHeadHeight - _rig.GroundY;
+            if (headAboveGround < standingHeadAboveGround * HEAD_COLLAPSE_FRACTION)
             {
                 fallCause = _fallContacts.Length;
                 return true;

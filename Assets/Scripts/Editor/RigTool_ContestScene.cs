@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.MLAgents.Policies;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -23,7 +23,7 @@ namespace PoBox.Editor
         private const string BOT_MATERIAL_PATH = "Assets/Art/M_BotRed.mat";
         private const string THEME_PATH = "Assets/UI/TSS_Contest.tss";
         private const float LINE_SPACING = 2f;
-        private const float SPAWN_HEIGHT = 0.03f;
+        private const float SPAWN_HEIGHT = Systems_ContestSpawner.RING_FLOOR_Y + 0.03f;
 
         private const int JOINT_INDEX_SHIN_L = 3;
         private const int JOINT_INDEX_SHIN_R = 9;
@@ -459,8 +459,12 @@ namespace PoBox.Editor
         {
             GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
             ground.name = "Ground";
-            ground.transform.localScale = new Vector3(40f, 1f, 40f);
-            ground.transform.position = new Vector3(0f, -0.5f, 0f);
+            // Sized to the 6.1 m canvas, not the old 40 m slab: at ring height a
+            // wide slab becomes an invisible floor hanging in mid-air around the
+            // ring, and it would hide the ring's own platform sides.
+            ground.transform.localScale = new Vector3(6.1f, 1f, 6.1f);
+            ground.transform.position = new Vector3(0f, Systems_ContestSpawner.RING_FLOOR_Y - 0.5f, 0f);
+            ground.GetComponent<MeshRenderer>().enabled = false; // the ring model is the visual floor
             var highFriction = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(RigTool_Config.HIGH_FRICTION_MATERIAL_PATH);
             if (highFriction != null)
             {
@@ -483,7 +487,7 @@ namespace PoBox.Editor
             cameraObject.tag = "MainCamera";
             var camera = cameraObject.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.Skybox;
-            cameraObject.transform.position = new Vector3(0f, 1.5f, -4.5f);
+            cameraObject.transform.position = new Vector3(0f, Systems_ContestSpawner.RING_FLOOR_Y + 1.5f, -4.5f);
             cameraObject.transform.rotation = Quaternion.Euler(5f, 0f, 0f);
         }
 

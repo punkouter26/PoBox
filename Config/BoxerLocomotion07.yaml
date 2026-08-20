@@ -1,0 +1,132 @@
+# Locomotion gen 7 (2026-08-20). Gen 6 proved the CURRICULUM fix worked and
+# exposed the next fault one layer down.
+#
+# What gen 6 settled (keep all of it):
+#   - Ascending thresholds killed the double-jump. Two clean single promotions.
+#   - The first promotion dipped and RECOVERED (0.171 -> 0.037 -> 0.108), the
+#     first healthy promotion in the project's history.
+#
+# What gen 6 exposed: the six-rung speed ladder was only three rungs deep in
+# the thing that actually matters. Reward_Locomotion blended the gait terms
+# with  gaitBlend = clamp01(commandedSpeed / GAIT_BLEND_SPEED)  and that
+# constant was 0.3, so across gen 6's rungs the gait demand ran:
+#
+#   speed   0.0    0.2    0.4    0.6    0.8    1.0
+#   gait    0.00   0.67   1.00   1.00   1.00   1.00
+#                         ^^^^ saturated here, rungs 4-6 asked nothing new
+#
+# A fighter that had never lifted a foot was handed the full step-and-alternate
+# demand at rung 3. Gen 6 died at exactly rung 3:
+#
+#   step        survived  footlift  1-foot
+#   10,000,000    10.92s     0.092   0.013
+#   11,000,000     6.50s     0.159   0.023
+#   13,000,000     3.34s     0.258   0.090   <- stepping more, dying faster
+#
+# and reward froze at 0.009 against a 0.17 gate. Gen 5 died the same way one
+# rung earlier. Both generations bought foot lift with balance because the
+# reward asked for a full stride before they could hold single support at all.
+#
+# THE FIX IS IN CODE, NOT IN THIS FILE. Reward_Locomotion now splits that
+# overloaded constant in two:
+#   GAIT_FULL_SPEED    1.0  - gait demand now tracks the ladder 1:1, so the
+#                             rungs below read 0.0 / 0.2 / 0.4 / 0.6 / 0.8 / 1.0
+#                             and every promotion is a real, small increase.
+#   STAND_LESSON_SPEED 0.3  - unchanged behaviour for the command-floor draw,
+#                             which is a separate question and was only sharing
+#                             the old constant by accident.
+#
+# The curriculum below is therefore UNCHANGED from gen 6 on purpose: it was
+# never the thing that was broken in gen 6, and changing two variables at once
+# would make gen 7 unreadable.
+#
+# ALSO NOTE: every brain before gen 7 is unloadable. The height observation
+# changed from absolute world Y to height above the floor (Systems_FighterRig
+# .GroundY) so the ring could sit on its real 1 m platform. Observation COUNT
+# is unchanged at 127, so a gen 6 checkpoint will load and behave like nonsense
+# rather than erroring - do not resume from one.
+#
+# WATCH the survival column, not the reward. A healthy gen 7 keeps
+# Locomotion/StepsSurvived above ~10 s while ClearanceMean climbs. If survival
+# falls under 5 s while clearance rises, the gait demand is STILL outrunning
+# balance and GAIT_FULL_SPEED needs to go above 1.0.
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.15
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.16
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.17
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.18
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.19
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

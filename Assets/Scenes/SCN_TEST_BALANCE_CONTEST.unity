@@ -267,7 +267,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8756285157119405551, guid: 9d2c3bd5bcb42534c9d2f024279ebb11, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8756285157119405551, guid: 9d2c3bd5bcb42534c9d2f024279ebb11, type: 3}
       propertyPath: m_LocalPosition.z
@@ -5599,7 +5599,7 @@ Transform:
   m_GameObject: {fileID: 480357725}
   serializedVersion: 2
   m_LocalRotation: {x: 0.043619387, y: 0, z: 0, w: 0.99904823}
-  m_LocalPosition: {x: 0, y: 1.5, z: -4.5}
+  m_LocalPosition: {x: 0, y: 2.5, z: -4.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -11660,8 +11660,8 @@ Transform:
   m_GameObject: {fileID: 1381017652}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.5, z: 0}
-  m_LocalScale: {x: 40, y: 1, z: 40}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
+  m_LocalScale: {x: 6.1, y: 1, z: 6.1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -12069,7 +12069,7 @@ Transform:
   m_GameObject: {fileID: 1526785650}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12237,21 +12237,25 @@ MonoBehaviour:
     model: {fileID: 5022602860645237092, guid: 5f751fb974c7ccc4e97d4d6cbfa61e75, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
+    locomotionBrain: 0
   - displayName: Grandma
     prefab: {fileID: 2918738356757314058, guid: 799c3a59bc803194f903674697ddefd9, type: 3}
     model: {fileID: 5022602860645237092, guid: 0d8218e7113b5a044bb85df10041e93e, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
+    locomotionBrain: 0
   - displayName: Grandpa
     prefab: {fileID: 6230883007331473486, guid: 1670eb04631b00346bef2d22807447f6, type: 3}
     model: {fileID: 5022602860645237092, guid: 3639a1e8ffc986746af44794f2495691, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
+    locomotionBrain: 0
   - displayName: Bot
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
     model: {fileID: 0}
     forceHeuristic: 1
     tint: {fileID: 2100000, guid: 9c628e8080a5f604fb499562d2fb7ab2, type: 2}
+    locomotionBrain: 0
   _systemsRoot: {fileID: 931611425}
   _dramaCamera: {fileID: 480357728}
   _menuOrbit: {fileID: 480357730}

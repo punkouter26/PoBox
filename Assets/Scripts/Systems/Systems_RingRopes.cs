@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace PoBox
 {
@@ -93,14 +93,19 @@ namespace PoBox
             }
         }
 
+        // _ropeHeights are heights ABOVE THE CANVAS, so the posts are offset by
+        // this component's own transform. They used to be raw world Y, which
+        // pinned the ropes to y = 0 no matter where the ring stood - raising the
+        // ring to its real 1 m platform left the ropes lying on the arena floor.
         private Vector3 Corner(int cornerIndex, float height)
         {
+            Vector3 origin = transform.position;
             switch (cornerIndex % SIDE_COUNT)
             {
-                case 0: return new Vector3(-_halfExtent, height, -_halfExtent);
-                case 1: return new Vector3(_halfExtent, height, -_halfExtent);
-                case 2: return new Vector3(_halfExtent, height, _halfExtent);
-                default: return new Vector3(-_halfExtent, height, _halfExtent);
+                case 0: return origin + new Vector3(-_halfExtent, height, -_halfExtent);
+                case 1: return origin + new Vector3(_halfExtent, height, -_halfExtent);
+                case 2: return origin + new Vector3(_halfExtent, height, _halfExtent);
+                default: return origin + new Vector3(-_halfExtent, height, _halfExtent);
             }
         }
 

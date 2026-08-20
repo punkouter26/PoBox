@@ -1,0 +1,129 @@
+# Locomotion gen 6 (2026-08-20). Gen 5 fixed the blind clearance sensor and
+# the brain finally learned: reward climbed steadily to 0.168 by 5.2 M steps
+# while shuffling at 0.3 m/s. Then it died. From the gen 5 console log:
+#
+#   Step 5200000  Mean Reward 0.152   <- Shuffle lesson, healthy
+#   [INFO] lesson 'Shuffle'  value=0.3
+#   Step 5250000  Mean Reward 0.168
+#   [INFO] lesson 'Step'     value=0.7   <- SECOND advance, 50 k steps later
+#   Step 5300000  Mean Reward 0.086
+#   Step 5450000  Mean Reward 0.001   <- collapsed
+#   ... flat 0.02 for the remaining 9.5 M steps, never recovered.
+#
+# Two faults, both in the curriculum block, neither in the reward code:
+#
+#   1. THRESHOLDS DESCENDED: 0.15 -> 0.12 -> 0.14. A single reward reading of
+#      0.168 satisfies all three at once, so the ladder collapsed into one
+#      rung. The agent was promoted from standing still (0.0 m/s) to 0.7 m/s
+#      inside one summary interval. Gen 6 thresholds ascend strictly, so one
+#      reading can only ever clear the gate it is standing on.
+#
+#   2. THE RUNGS WERE TOO FAR APART: 0.3 -> 0.7 m/s is a 2.3x speed demand on
+#      a policy whose only competence was a shuffle. Gen 6 steps
+#      0.0 / 0.2 / 0.4 / 0.6 / 0.8 / 1.0 - six rungs, never more than
+#      +0.2 m/s, so a promotion is an adjustment rather than a new problem.
+#
+# Also changed:
+#
+#   min_lesson_length  100/150 -> 250
+#     Gen 5's gates were satisfiable 50 k steps apart. A longer dwell forces
+#     the policy to hold a reward level rather than touch it once on an
+#     upswing and get promoted off the back of noise.
+#
+#   require_reset  false -> true on every gate
+#     The commanded speed is an observation. Changing it mid-episode hands
+#     the agent a step-discontinuity in its own input while it is balanced on
+#     one foot. Resetting on promotion means every episode sees a constant
+#     command.
+#
+#   max_steps  15 M -> 18 M
+#     Six rungs instead of four. Gen 5 reached its old rung 3 at 5.2 M; at
+#     that pace six rungs land near 11 M, leaving real budget to consolidate
+#     the top lesson instead of finishing the run mid-promotion.
+#
+# WATCH the promotion lines. A healthy run shows one lesson advance every
+# ~1.5-3 M steps and reward dipping then recovering after each. Two advances
+# inside one summary interval, or a dip that does not recover within 1 M
+# steps, means stop and lower the next rung.
+#
+# 127 obs, unchanged from gen 5, so gen 5 checkpoints stay layout-compatible.
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.15
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.16
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.17
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.18
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.19
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

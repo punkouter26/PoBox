@@ -1,4 +1,4 @@
-using Unity.MLAgents;
+﻿using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
@@ -235,7 +235,12 @@ namespace PoBox
             Transform pelvisTransform = pelvis.transform;
 
             // Root state (13)
-            sensor.AddObservation(pelvisTransform.position.y);
+            // Height ABOVE THE FLOOR, not absolute world Y. Absolute Y was an
+            // altitude lock: every brain trained on a y = 0 ground read "hips at
+            // 0.9 = standing", so raising the floor to a 1 m ring canvas made
+            // every fighter believe it was airborne. Ground-relative height is
+            // the same number at any altitude.
+            sensor.AddObservation(pelvisTransform.position.y - _rig.GroundY);
             sensor.AddObservation(pelvisTransform.InverseTransformDirection(pelvis.linearVelocity));
             sensor.AddObservation(pelvisTransform.InverseTransformDirection(pelvis.angularVelocity) / ANGULAR_VELOCITY_SCALE);
             sensor.AddObservation(pelvisTransform.up);

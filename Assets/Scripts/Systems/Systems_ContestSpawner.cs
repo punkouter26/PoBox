@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Unity.InferenceEngine;
 using Unity.MLAgents.Policies;
 using UnityEngine;
@@ -36,7 +36,16 @@ namespace PoBox
     {
         private const int JOINT_INDEX_SHIN_L = 3;
         private const int JOINT_INDEX_SHIN_R = 9;
-        private const float SPAWN_HEIGHT = 0.03f;
+        /// <summary>
+        /// World Y of the ring canvas the fighters stand on. Assets/Art/BoxingRing.glb
+        /// carries its canvas 1 m above the model origin, so a ring placed at y = 0
+        /// puts its floor here and reads as the raised ring a real bout is fought in.
+        /// Ground colliders, spawns and cameras all follow this number. Safe to change
+        /// only because height observations are ground-relative (Systems_FighterRig.GroundY).
+        /// </summary>
+        public const float RING_FLOOR_Y = 1f;
+
+        private const float SPAWN_HEIGHT = RING_FLOOR_Y + 0.03f;
 
         // 8 slots: two rows of four inside the 6.1 m canvas. Front row is on
         // the camera side (+Z) so single spawns stay filmable.

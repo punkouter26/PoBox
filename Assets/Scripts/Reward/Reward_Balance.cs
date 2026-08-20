@@ -1,4 +1,4 @@
-using Unity.MLAgents;
+﻿using Unity.MLAgents;
 using UnityEngine;
 
 namespace PoBox
@@ -205,7 +205,14 @@ namespace PoBox
                     return true;
                 }
             }
-            if (_rig.Head.position.y < _startHeadHeight * HEAD_COLLAPSE_FRACTION)
+            // Measured above the floor on BOTH sides. Comparing raw world Y
+            // against a fraction of raw world Y silently rescales with altitude:
+            // on a 1 m ring canvas, 40% of a 2.6 m head height is 1.04 m, so a
+            // fighter would have to sink to 4 cm above the canvas to count as
+            // collapsed instead of the intended ~64 cm.
+            float headAboveGround = _rig.Head.position.y - _rig.GroundY;
+            float standingHeadAboveGround = _startHeadHeight - _rig.GroundY;
+            if (headAboveGround < standingHeadAboveGround * HEAD_COLLAPSE_FRACTION)
             {
                 fallCause = _fallContacts.Length; // collapse without registered contact
                 return true;
