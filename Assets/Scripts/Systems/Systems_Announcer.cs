@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
@@ -29,7 +29,7 @@ namespace PoBox
         [SerializeField] private AudioClip _bellClip;
         [SerializeField] private float _bellVolume = 0.7f;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_HazardDirector _hazards;
         private Systems_MatchDirector _match;
         private AudioSource _audioSource;
@@ -94,7 +94,7 @@ namespace PoBox
                 _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
             }
 
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundStarted += OnRoundStarted;

@@ -21,7 +21,7 @@ namespace PoBox
 
         [SerializeField] private Volume _volume;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_FallImpactFx _fallFx;
         private Vignette _vignette;
         private float _baseVignette;
@@ -40,7 +40,7 @@ namespace PoBox
             {
                 _baseVignette = _vignette.intensity.value;
             }
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundEnded += OnRoundEnded;

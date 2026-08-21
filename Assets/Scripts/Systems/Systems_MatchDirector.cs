@@ -20,7 +20,7 @@ namespace PoBox
 
         public event System.Action<string> ChampionCrowned;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private readonly System.Collections.Generic.Dictionary<string, int> _wins = new();
         private Label _scoreboard;
         private float _celebrationRemaining;
@@ -28,7 +28,7 @@ namespace PoBox
 
         private void Start()
         {
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest == null)
             {
                 return;

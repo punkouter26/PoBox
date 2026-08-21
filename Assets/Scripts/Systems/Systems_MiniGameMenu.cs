@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -20,9 +20,6 @@ namespace PoBox
     public sealed class Systems_MiniGameMenu : MonoBehaviour
     {
         private const string EMPTY_CHOICE = "Empty";
-        // Down-pointing small triangle. The contest scoreboard already renders
-        // stars and em dashes through the same font, so symbol coverage is fine.
-        private const string CARET_GLYPH = "▾";
         private const int BALANCE_SLOTS = 8;
         private const int WALK_SLOTS = 4;
 
@@ -60,14 +57,7 @@ namespace PoBox
 
             // Version stamp: opening-scene rule — top-left, inset, non-pickable,
             // outside any ScrollView.
-            var stamp = new Label(Application.version);
-            stamp.pickingMode = PickingMode.Ignore;
-            stamp.style.position = Position.Absolute;
-            stamp.style.left = 34f;
-            stamp.style.top = 28f;
-            stamp.style.fontSize = 26f;
-            stamp.style.color = Dim;
-            root.Add(stamp);
+            Systems_UiTheme.AddVersionStamp(root);
 
             var page = new VisualElement();
             page.style.flexGrow = 1f;
@@ -115,7 +105,7 @@ namespace PoBox
 
             _slotsPanel = new VisualElement();
             _slotsPanel.style.backgroundColor = CardFill;
-            SetRadius(_slotsPanel, 22f);
+            Systems_UiTheme.SetRadius(_slotsPanel, 22f);
             _slotsPanel.style.paddingTop = 16f;
             _slotsPanel.style.paddingBottom = 8f;
             _slotsPanel.style.paddingLeft = 16f;
@@ -139,7 +129,7 @@ namespace PoBox
             startButton.style.color = Ink;
             startButton.style.marginLeft = 0f;
             startButton.style.marginRight = 0f;
-            SetRadius(startButton, 22f);
+            Systems_UiTheme.SetRadius(startButton, 22f);
             page.Add(startButton);
 
             SelectGame(MiniGameKind.Balance);
@@ -157,7 +147,7 @@ namespace PoBox
             button.style.letterSpacing = 4f;
             button.style.marginTop = 0f;
             button.style.marginBottom = 0f;
-            SetRadius(button, 20f);
+            Systems_UiTheme.SetRadius(button, 20f);
             return button;
         }
 
@@ -181,8 +171,8 @@ namespace PoBox
             Color gold = Systems_UiTheme.Gold;
             button.style.backgroundColor = selected ? gold : new Color(1f, 1f, 1f, 0.05f);
             button.style.color = selected ? Ink : gold;
-            SetBorderColor(button, selected ? gold : new Color(gold.r, gold.g, gold.b, 0.35f));
-            SetBorderWidth(button, selected ? 0f : 2f);
+            Systems_UiTheme.SetBorderColor(button, selected ? gold : new Color(gold.r, gold.g, gold.b, 0.35f));
+            Systems_UiTheme.SetBorderWidth(button, selected ? 0f : 2f);
         }
 
         // Rebuilt on every game change: the two mini-games field different
@@ -210,7 +200,7 @@ namespace PoBox
                 row.style.paddingRight = 14f;
                 row.style.marginBottom = 8f;
                 row.style.backgroundColor = RowFill;
-                SetRadius(row, 14f);
+                Systems_UiTheme.SetRadius(row, 14f);
 
                 var badge = new Label((slotIndex + 1).ToString());
                 badge.style.width = 54f;
@@ -227,90 +217,12 @@ namespace PoBox
                 dropdown.style.flexGrow = 1f;
                 dropdown.style.marginLeft = 0f;
                 dropdown.style.marginRight = 0f;
-                StyleDropdown(dropdown);
+                Systems_UiTheme.StyleDropdown(dropdown, rowHeight: 62f, fontSize: 36f, centreValue: false);
                 row.Add(dropdown);
 
                 _slotsPanel.Add(row);
                 _slotDropdowns.Add(dropdown);
             }
-        }
-
-        // The stock DropdownField renders as low-contrast grey-on-grey at this
-        // scale, which is what made the first pass unreadable. Style the inner
-        // parts, not just the field.
-        private static void StyleDropdown(DropdownField dropdown)
-        {
-            VisualElement input = dropdown.Q(className: "unity-base-popup-field__input");
-            if (input != null)
-            {
-                // The input laid its children out as a column, which stacked the arrow
-                // under the value text and left the text top-aligned in a box twice its
-                // height. Pin the direction and centre the row explicitly.
-                input.style.flexDirection = FlexDirection.Row;
-                input.style.alignItems = Align.Center;
-                input.style.height = 62f;
-                input.style.backgroundColor = new Color(0f, 0f, 0f, 0.35f);
-                input.style.paddingLeft = 18f;
-                input.style.paddingRight = 12f;
-                SetRadius(input, 12f);
-                SetBorderColor(input, new Color(1f, 1f, 1f, 0.12f));
-                SetBorderWidth(input, 1f);
-            }
-
-            var text = dropdown.Q<TextElement>(className: "unity-base-popup-field__text");
-            if (text != null)
-            {
-                text.style.fontSize = 36f;
-                text.style.color = Systems_UiTheme.GoldBright;
-                text.style.unityTextAlign = TextAnchor.MiddleLeft;
-                // Middle-align centres glyphs inside the element, not inside the input,
-                // so the element has to fill the input height for it to mean anything.
-                text.style.flexGrow = 1f;
-                text.style.height = Length.Percent(100f);
-            }
-
-            // The runtime theme resolves no background image for the stock arrow, so
-            // tinting it drew nothing and the fields read as plain boxes with no hint
-            // that they open. Replace it with a glyph the font actually has.
-            VisualElement arrow = dropdown.Q(className: "unity-base-popup-field__arrow");
-            if (arrow != null)
-            {
-                arrow.style.display = DisplayStyle.None;
-            }
-            if (input != null)
-            {
-                var caret = new Label(CARET_GLYPH);
-                caret.style.fontSize = 30f;
-                caret.style.color = Systems_UiTheme.Gold;
-                caret.style.marginLeft = 8f;
-                caret.style.unityTextAlign = TextAnchor.MiddleCenter;
-                caret.pickingMode = PickingMode.Ignore;
-                input.Add(caret);
-            }
-        }
-
-        private static void SetRadius(VisualElement element, float radius)
-        {
-            element.style.borderTopLeftRadius = radius;
-            element.style.borderTopRightRadius = radius;
-            element.style.borderBottomLeftRadius = radius;
-            element.style.borderBottomRightRadius = radius;
-        }
-
-        private static void SetBorderWidth(VisualElement element, float width)
-        {
-            element.style.borderTopWidth = width;
-            element.style.borderBottomWidth = width;
-            element.style.borderLeftWidth = width;
-            element.style.borderRightWidth = width;
-        }
-
-        private static void SetBorderColor(VisualElement element, Color color)
-        {
-            element.style.borderTopColor = color;
-            element.style.borderBottomColor = color;
-            element.style.borderLeftColor = color;
-            element.style.borderRightColor = color;
         }
 
         private void StartGame()

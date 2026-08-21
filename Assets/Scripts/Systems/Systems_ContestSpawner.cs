@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Unity.InferenceEngine;
 using Unity.MLAgents.Policies;
@@ -210,15 +210,25 @@ namespace PoBox
             // returns, so the sensor has not been built from this value yet.
             behavior.BrainParameters.VectorObservationSize = agent.ExpectedObservationCount;
 
+            int sensorSize = behavior.BrainParameters.VectorObservationSize;
             if (entry.forceHeuristic || entry.model == null)
             {
                 behavior.BehaviorType = BehaviorType.HeuristicOnly;
             }
-            else
+            else if (AcceptBrain(entry, instance.name, sensorSize))
             {
                 behavior.Model = entry.model;
                 behavior.BehaviorType = BehaviorType.InferenceOnly;
-                WarnOnObservationMismatch(entry, instance.name, behavior.BrainParameters.VectorObservationSize);
+            }
+            else
+            {
+                // Refused, not merely reported. A brain whose obs_0 is a
+                // different width than this fighter emits reads a vector that
+                // is shifted from the first differing observation onward, so
+                // every number after it means something else than it did in
+                // training. The heuristic PD bot is a worse fighter but an
+                // honest one, and it is the project's mandated fallback.
+                behavior.BehaviorType = BehaviorType.HeuristicOnly;
             }
 
             if (entry.tint != null)
@@ -236,26 +246,34 @@ namespace PoBox
         private static readonly Dictionary<ModelAsset, int> ModelObservationWidths = new();
 
         /// <summary>
-        /// Logs when a roster brain was trained on a different observation width than
-        /// the fighter it is being loaded onto. ML-Agents runs this comparison only
-        /// from the BehaviorParameters inspector; its runtime path checks the model
-        /// version and nothing else, so a brain assigned from code — which is every
-        /// brain in a contest — mismatches in total silence. Measured 2026-08-20: the
-        /// balance roster ran 119-observation brains on 121-observation fighters
-        /// without producing a single console line.
+        /// True when <paramref name="entry"/>'s brain was trained on the same
+        /// observation width the fighter emits, or when the width cannot be read.
+        /// Logs and returns false otherwise.
+        ///
+        /// ML-Agents runs this comparison only from the BehaviorParameters
+        /// inspector; its runtime path checks the model version and nothing else,
+        /// so a brain assigned from code — which is every brain in a contest —
+        /// mismatches in total silence. Measured 2026-08-20: the balance roster ran
+        /// 119-observation brains on 121-observation fighters without producing a
+        /// single console line.
+        ///
+        /// Deliberately NOT [Conditional]: this decides whether the brain runs at
+        /// all, so a player build has to make the same call an editor run does.
+        /// The width is cached per ModelAsset, so a full ring costs one deserialize
+        /// per distinct brain.
         /// </summary>
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
-        private static void WarnOnObservationMismatch(ContestRosterEntry entry, string instanceName, int sensorSize)
+        private static bool AcceptBrain(ContestRosterEntry entry, string instanceName, int sensorSize)
         {
             int modelSize = ModelObservationWidth(entry.model);
             if (modelSize < 0 || modelSize == sensorSize)
             {
-                return;
+                return true;
             }
             Debug.LogError($"{instanceName}: brain '{entry.model.name}' expects {modelSize} observations but " +
-                $"this fighter emits {sensorSize}. The brain is reading the wrong vector — export one " +
-                "trained on this layout, or point the roster entry at a brain that matches.");
+                $"this fighter emits {sensorSize}, so it would read a shifted vector. Falling back to the " +
+                "heuristic bot — export a brain trained on this layout, or point the roster entry at one " +
+                "that matches.");
+            return false;
         }
 
         /// <summary>Width of the obs_0 input of <paramref name="modelAsset"/>, or -1 when unreadable.</summary>

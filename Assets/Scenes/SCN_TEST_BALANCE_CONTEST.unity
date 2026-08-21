@@ -5617,8 +5617,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c36519fd5ce200549b7996f9851d1cce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_DramaCamera
-  _followDistance: 5.4
-  _closeFollowDistance: 2.8
+  _closeFrameWidth: 2.4
+  _closeFrameHeight: 2.8
+  _wideFrameWidth: 7
+  _wideFrameHeight: 4
+  _minFollowDistance: 2.2
   _tourSecondsPerFighter: 3
   _cameraHeight: 1.9
   _lateralFollowFraction: 0.6
@@ -12234,22 +12237,22 @@ MonoBehaviour:
   _roster:
   - displayName: Standard
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
-    model: {fileID: 5022602860645237092, guid: 5f751fb974c7ccc4e97d4d6cbfa61e75, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
-    locomotionBrain: 0
+    locomotionBrain: 1
   - displayName: Grandma
     prefab: {fileID: 2918738356757314058, guid: 799c3a59bc803194f903674697ddefd9, type: 3}
-    model: {fileID: 5022602860645237092, guid: 0d8218e7113b5a044bb85df10041e93e, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
-    locomotionBrain: 0
+    locomotionBrain: 1
   - displayName: Grandpa
     prefab: {fileID: 6230883007331473486, guid: 1670eb04631b00346bef2d22807447f6, type: 3}
-    model: {fileID: 5022602860645237092, guid: 3639a1e8ffc986746af44794f2495691, type: 3}
+    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
-    locomotionBrain: 0
+    locomotionBrain: 1
   - displayName: Bot
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
     model: {fileID: 0}

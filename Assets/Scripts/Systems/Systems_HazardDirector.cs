@@ -30,7 +30,7 @@ namespace PoBox
 
         public event System.Action<string> HazardChosen;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_FighterRig[] _rigs;
         private System.Random _random;
         private Vector3 _baseGravity;
@@ -49,7 +49,7 @@ namespace PoBox
             _random = new System.Random(4241);
             _baseGravity = Physics.gravity;
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundStarted += OnRoundStarted;

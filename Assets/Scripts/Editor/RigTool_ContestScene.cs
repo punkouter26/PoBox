@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Unity.MLAgents.Policies;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -22,6 +22,11 @@ namespace PoBox.Editor
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";
         private const string BOT_MATERIAL_PATH = "Assets/Art/M_BotRed.mat";
         private const string THEME_PATH = "Assets/UI/TSS_Contest.tss";
+        // Shared stand-and-walk brain. The balance contest is the 0 m/s end of
+        // the command this model line was trained against, so the same file
+        // serves both mini-games. Keep in step with
+        // RigTool_WalkContestScene.LOCOMOTION_BRAIN_PATH.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen7/Boxer.onnx";
         private const float LINE_SPACING = 2f;
         private const float SPAWN_HEIGHT = Systems_ContestSpawner.RING_FLOOR_Y + 0.03f;
 
@@ -216,6 +221,61 @@ namespace PoBox.Editor
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
             Debug.Log("RigTool: contest scene converted to setup-menu flow (8 slots, random defaults, cube thrower) and saved.");
+        }
+
+        /// <summary>
+        /// Points every brain-driven roster entry at the shared locomotion brain
+        /// and flags it as such.
+        ///
+        /// The balance scene is built INCREMENTALLY by 7 / 7b..7g, so it cannot
+        /// be regenerated wholesale without losing everything the later passes
+        /// added — hence a targeted, idempotent pass over the spawner's roster.
+        ///
+        /// Why it is needed: Assets/Agents/{Standard,Grandma,Grandpa}/Boxer.onnx
+        /// are all 119-observation brains from before _observeFootHeight, while
+        /// the current prefabs emit 121. Every ML fighter in the ring was reading
+        /// a shifted vector — six console errors per spawn, measured 2026-08-20.
+        /// Locomotion_gen7 is the only brain in the project trained against the
+        /// rig as it stands today (127 observations, ground-relative height), and
+        /// `locomotionBrain` is what tells the spawner to switch the fighter into
+        /// that layout before its sensor is built.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/7h. Retarget Balance Roster To Locomotion Brain")]
+        public static void RetargetRosterToLocomotionBrain()
+        {
+            var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("RigTool: no ContestSpawner in the open scene — open SCN_TEST_BALANCE_CONTEST first.");
+                return;
+            }
+            var brain = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(LOCOMOTION_BRAIN_PATH);
+            if (brain == null)
+            {
+                Debug.LogError($"RigTool: no brain at {LOCOMOTION_BRAIN_PATH} — roster left untouched.");
+                return;
+            }
+
+            var serialized = new SerializedObject(spawner);
+            SerializedProperty roster = serialized.FindProperty("_roster");
+            int retargeted = 0;
+            for (int entryIndex = 0; entryIndex < roster.arraySize; entryIndex++)
+            {
+                SerializedProperty entry = roster.GetArrayElementAtIndex(entryIndex);
+                // The heuristic bot never loads a brain (project rule) — leave it.
+                if (entry.FindPropertyRelative("forceHeuristic").boolValue)
+                {
+                    continue;
+                }
+                entry.FindPropertyRelative("model").objectReferenceValue = brain;
+                entry.FindPropertyRelative("locomotionBrain").boolValue = true;
+                retargeted++;
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log($"RigTool: {retargeted} roster entries retargeted to {LOCOMOTION_BRAIN_PATH} and scene saved.");
         }
 
         /// <summary>

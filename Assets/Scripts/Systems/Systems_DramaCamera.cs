@@ -20,10 +20,21 @@ namespace PoBox
         private const float SHAKE_DECAY_SECONDS = 0.45f;
         private const float SHAKE_NOISE_SPEED = 11f;
 
-        [SerializeField] private float _followDistance = 4.5f;
-        // Closer shot used whenever a single standing fighter is framed
-        // (solo survivor or one stop of the multi-fighter tour).
-        [SerializeField] private float _closeFollowDistance = 2.8f;
+        // Framing is specified as the world width and height the shot must
+        // CONTAIN, not as a camera distance, because the distance that achieves
+        // it depends on the aspect ratio and this game is portrait 9:16. A 60
+        // degree vertical FOV is only 36 degrees horizontal at 9:16, and the old
+        // fixed distances (2.8 m close, scaled by a hand-tuned 1.35 for
+        // portrait) framed 1.8 m of width - narrower than a fallen fighter is
+        // long, which is why close-ups rendered as an unreadable wall of limbs.
+        // 2.4 m is a fallen fighter plus margin; 7 m is the whole eight-fighter
+        // ring.
+        [SerializeField] private float _closeFrameWidth = 2.4f;
+        [SerializeField] private float _closeFrameHeight = 2.8f;
+        [SerializeField] private float _wideFrameWidth = 7f;
+        [SerializeField] private float _wideFrameHeight = 4f;
+        // Never let a solved distance put the near plane inside the subject.
+        [SerializeField] private float _minFollowDistance = 2.2f;
         // With 2+ fighters standing, the camera tours them, holding each
         // for this many seconds.
         [SerializeField] private float _tourSecondsPerFighter = 3f;
@@ -36,7 +47,7 @@ namespace PoBox
         [SerializeField] private float _fallShakeMeters = 0.2f;
 
         private Camera _camera;
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_FighterRig _winnerFocus;
         private Systems_FighterRig[] _rigs;
         private float[] _smoothedWobble;
@@ -68,7 +79,7 @@ namespace PoBox
             }
             _lookPoint = RingCenter() + Vector3.up;
 
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundEnded += OnRoundEnded;
@@ -179,19 +190,19 @@ namespace PoBox
                 closeShot = false;
             }
 
+            // Solve the distance from the FOV this shot is heading to, so the
+            // framing holds at whatever aspect the window ends up with.
+            float desiredFov = Mathf.Lerp(_baseFov, _dramaFov, drama);
+            float followDistance = closeShot
+                ? DistanceToFrame(_closeFrameWidth, _closeFrameHeight, desiredFov)
+                : DistanceToFrame(_wideFrameWidth, _wideFrameHeight, desiredFov);
+
             // Camera lives on the +Z side: fighters spawn facing +Z, so this
             // side shows their faces.
-            // Portrait (9:16) has a narrow horizontal FOV: pull back and drop
-            // the eye line so full bodies fit instead of cropping at the hips
-            // under a half-frame of empty sky.
-            bool portrait = _camera.aspect < 1f;
-            float distanceScale = portrait ? 1.35f : 1f;
-            float height = portrait ? 1.45f : _cameraHeight;
-            float followDistance = (closeShot ? _closeFollowDistance : _followDistance) * distanceScale;
             Vector3 desiredPosition = new Vector3(
                 target.x * _lateralFollowFraction,
-                height,
-                target.z + followDistance + (closeShot ? 0f : 1.5f));
+                _cameraHeight,
+                target.z + followDistance);
             Vector3 position = Vector3.SmoothDamp(
                 transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime);
 
@@ -209,9 +220,25 @@ namespace PoBox
                 _lookPoint, target + Vector3.up * 0.8f, ref _lookVelocity, _lookSmoothTime);
             transform.rotation = Quaternion.LookRotation(_lookPoint - position, Vector3.up);
 
-            float desiredFov = Mathf.Lerp(_baseFov, _dramaFov, drama);
             _camera.fieldOfView = Mathf.SmoothDamp(
                 _camera.fieldOfView, desiredFov, ref _fovVelocity, 0.5f);
+        }
+
+        /// <summary>
+        /// Distance at which a <paramref name="widthMeters"/> x
+        /// <paramref name="heightMeters"/> slab exactly fits the frustum, taking
+        /// whichever of the two axes binds. Horizontal FOV is the vertical one
+        /// scaled by the aspect, so on a portrait window the width is almost
+        /// always what binds - the opposite of the landscape intuition the old
+        /// hard-coded distances were tuned with.
+        /// </summary>
+        private float DistanceToFrame(float widthMeters, float heightMeters, float fovDegrees)
+        {
+            float halfVertical = Mathf.Tan(fovDegrees * 0.5f * Mathf.Deg2Rad);
+            float halfHorizontal = halfVertical * Mathf.Max(0.01f, _camera.aspect);
+            float forWidth = widthMeters * 0.5f / Mathf.Max(0.01f, halfHorizontal);
+            float forHeight = heightMeters * 0.5f / Mathf.Max(0.01f, halfVertical);
+            return Mathf.Max(_minFollowDistance, Mathf.Max(forWidth, forHeight));
         }
 
         // Maps "the n-th standing fighter" to a rig index; standing membership

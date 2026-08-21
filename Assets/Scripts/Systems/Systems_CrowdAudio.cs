@@ -11,7 +11,7 @@ namespace PoBox
     [RequireComponent(typeof(AudioSource))]
     public sealed class Systems_CrowdAudio : MonoBehaviour
     {
-        [SerializeField] private Systems_BalanceContest _contest;
+        [SerializeField] private Systems_ContestReferee _contest;
         [SerializeField] private Systems_FallImpactFx _fallFx;
         [SerializeField] private AudioClip _ambienceLoop;
         [SerializeField] private AudioClip _cheer;

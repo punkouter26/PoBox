@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -39,6 +39,16 @@ namespace PoBox
 
         private void Start()
         {
+            var root = GetComponent<UIDocument>().rootVisualElement;
+            Systems_UiTheme.ApplyDefaultFont(root);
+
+            // Before the bail-out below, not after. This document outlives the
+            // menu — the FPS counter rides it for the whole match — and building
+            // the stamp after the early return meant the version only ever showed
+            // when this scene was played directly, never on the real
+            // SCN_MENU -> contest path the player actually takes.
+            Systems_UiTheme.AddVersionStamp(root);
+
             // Picks already made in SCN_MENU: skip straight to the ring rather
             // than asking the same question twice. Consumed so a later direct
             // run of this scene shows the menu again.
@@ -51,21 +61,8 @@ namespace PoBox
                 return;
             }
 
-            var root = GetComponent<UIDocument>().rootVisualElement;
-            Systems_UiTheme.ApplyDefaultFont(root);
-
             // Sizes are in reference units: PS_Contest scales 1080×1920 by width.
             Color gold = Systems_UiTheme.Gold;
-
-            // Version stamp: opening-scene rule — top-left, inset, non-pickable.
-            var stamp = new Label(Application.version);
-            stamp.style.position = Position.Absolute;
-            stamp.style.top = 18f;
-            stamp.style.left = 18f;
-            stamp.style.fontSize = 52f;
-            stamp.style.color = new Color(1f, 1f, 1f, 0.55f);
-            stamp.pickingMode = PickingMode.Ignore;
-            root.Add(stamp);
 
             _menuRoot = new VisualElement();
             _menuRoot.style.flexGrow = 1f;
@@ -135,19 +132,13 @@ namespace PoBox
                 var dropdown = new DropdownField(choices, defaultChoice);
                 dropdown.style.width = Length.Percent(48.5f);
                 dropdown.style.height = 130f;
-                dropdown.style.fontSize = 68f;
                 dropdown.style.marginBottom = 18f;
                 dropdown.style.backgroundColor = new Color(0.13f, 0.13f, 0.18f, 1f);
-                dropdown.style.borderTopLeftRadius = 14f;
-                dropdown.style.borderTopRightRadius = 14f;
-                dropdown.style.borderBottomLeftRadius = 14f;
-                dropdown.style.borderBottomRightRadius = 14f;
-                var valueText = dropdown.Q<TextElement>(className: "unity-base-popup-field__text");
-                if (valueText != null)
-                {
-                    valueText.style.color = Color.white;
-                    valueText.style.unityTextAlign = TextAnchor.MiddleCenter;
-                }
+                Systems_UiTheme.SetRadius(dropdown, 14f);
+                // Shared with SCN_MENU's picker: styling only the value text left
+                // the stock arrow drawing nothing while still claiming 420 px of
+                // the row, so these slots read as flat labels nobody would tap.
+                Systems_UiTheme.StyleDropdown(dropdown, rowHeight: 118f, fontSize: 68f, centreValue: true);
                 grid.Add(dropdown);
                 _slotDropdowns.Add(dropdown);
             }

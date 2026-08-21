@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -11,12 +11,17 @@ namespace PoBox
     /// score, so a round always resolves even when nobody finishes. Mirrors
     /// <see cref="Systems_BalanceContest"/> — self-discovers contestants at
     /// Start, drives the same USS_Contest scoreboard, and raises the same
-    /// RoundEnded/RoundStarted events so the existing banner, crowd and FX
-    /// systems work unchanged.
+    /// RoundEnded/RoundStarted events through the shared
+    /// <see cref="Systems_ContestReferee"/> base, so the banner, crowd, match
+    /// director and FX systems bind to it exactly as they do to the balance
+    /// referee. They could not before: each of them named
+    /// Systems_BalanceContest outright, so this scene ran with no announcer,
+    /// no winner banner and - lacking a match director to set HoldRestarts -
+    /// no end at all.
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    public sealed class Systems_WalkContest : MonoBehaviour
+    public sealed class Systems_WalkContest : Systems_ContestReferee
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float ROUND_RESTART_DELAY = 4f;
@@ -29,10 +34,6 @@ namespace PoBox
         // that is. Written by the walk contest scene builder.
         [SerializeField] private Vector3 _goalDirection = Vector3.forward;
         [SerializeField] private float _goalDistance = 5.6f;
-
-        public event System.Action<string> RoundEnded;
-        public event System.Action<int> RoundStarted;
-        public event System.Action<string> FighterFell;
 
         private sealed class Racer
         {
@@ -54,9 +55,6 @@ namespace PoBox
         private int _round = 1;
         private float _restartTimer = -1f;
         private float _roundTime;
-
-        /// <summary>Set by the match director when the match is decided: the referee stops starting new rounds.</summary>
-        public bool HoldRestarts { get; set; }
 
         // Called by the walk contest scene builder.
         public void EditorInitialize(Vector3 goalDirection, float goalDistance, StyleSheet styleSheet)
@@ -92,6 +90,8 @@ namespace PoBox
             hudRoot.AddToClassList("hud-root");
             hudRoot.pickingMode = PickingMode.Ignore;
             root.Add(hudRoot);
+
+            AddMenuButton(root);
 
             var topBar = new VisualElement();
             topBar.AddToClassList("top-bar");
@@ -169,7 +169,7 @@ namespace PoBox
                 if (HasFallen(racer))
                 {
                     racer.fallen = true;
-                    FighterFell?.Invoke(racer.displayName);
+                    RaiseFighterFell(racer.displayName);
                     continue;
                 }
 
@@ -188,7 +188,7 @@ namespace PoBox
             if ((racingCount == 0 || timeUp) && _racers.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
-                RoundEnded?.Invoke(FindLeader()?.displayName ?? "");
+                RaiseRoundEnded(FindLeader()?.displayName ?? "");
             }
         }
 
@@ -283,7 +283,7 @@ namespace PoBox
                 racer.fallen = false;
                 racer.finished = false;
             }
-            RoundStarted?.Invoke(_round);
+            RaiseRoundStarted(_round);
         }
     }
 }

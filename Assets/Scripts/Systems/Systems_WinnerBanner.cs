@@ -11,7 +11,6 @@ namespace PoBox
     /// Test-scene harness only — never use time dips in training scenes.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    [RequireComponent(typeof(Systems_BalanceContest))]
     public sealed class Systems_WinnerBanner : MonoBehaviour
     {
         private const float POP_SECONDS = 0.45f;
@@ -23,7 +22,7 @@ namespace PoBox
         [SerializeField] private AudioClip _jingle;
         [SerializeField] private AudioClip _bell;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private VisualElement _banner;
         private Label _bannerText;
         private float _popTimer = -1f;
@@ -31,7 +30,14 @@ namespace PoBox
 
         private void Start()
         {
-            _contest = GetComponent<Systems_BalanceContest>();
+            // Guarded rather than [RequireComponent]: the referee type is now
+            // abstract, and Unity's RequireComponent would try to AddComponent it.
+            _contest = GetComponent<Systems_ContestReferee>();
+            if (_contest == null)
+            {
+                Debug.LogError($"{name}: no contest referee on this object - the winner banner will never show.");
+                return;
+            }
             _contest.RoundEnded += OnRoundEnded;
             _contest.RoundStarted += OnRoundStarted;
 

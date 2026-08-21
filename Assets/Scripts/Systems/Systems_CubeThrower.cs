@@ -33,7 +33,7 @@ namespace PoBox
         // Asset material: runtime Shader.Find gets stripped from device builds.
         [SerializeField] private Material _sparkMaterial;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_FighterRig[] _rigs;
         private float[] _startHeadHeights;
         private Rigidbody[] _cubes;
@@ -51,7 +51,7 @@ namespace PoBox
             {
                 _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
             }
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundStarted += OnRoundStarted;

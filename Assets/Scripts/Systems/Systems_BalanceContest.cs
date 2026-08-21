@@ -11,25 +11,23 @@ namespace PoBox
     /// (styled by USS_Contest.uss: title chip up top, name plates at the
     /// bottom so the ring stays unobstructed), announces the winner, then
     /// resets everyone for the next round. Raises RoundEnded/RoundStarted for
-    /// presentation systems (banner, crowd, FX).
+    /// presentation systems (banner, crowd, FX) through
+    /// <see cref="Systems_ContestReferee"/>, which is what they bind to.
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    public sealed class Systems_BalanceContest : MonoBehaviour
+    public sealed class Systems_BalanceContest : Systems_ContestReferee
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float ROUND_RESTART_DELAY = 4f;
 
         [SerializeField] private StyleSheet _styleSheet;
 
-        public event System.Action<string> RoundEnded;
-        public event System.Action<int> RoundStarted;
-        public event System.Action<string> FighterFell;
-
         private sealed class Contestant
         {
             public string displayName;
             public Systems_FighterRig rig;
+            public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             public float startHeadHeight;
             public float aliveTime;
@@ -41,9 +39,6 @@ namespace PoBox
         private Label _title;
         private int _round = 1;
         private float _restartTimer = -1f;
-
-        /// <summary>Set by the match director when the match is decided: the referee stops starting new rounds.</summary>
-        public bool HoldRestarts { get; set; }
 
         private void Start()
         {
@@ -58,6 +53,8 @@ namespace PoBox
             hudRoot.AddToClassList("hud-root");
             hudRoot.pickingMode = PickingMode.Ignore;
             root.Add(hudRoot);
+
+            AddMenuButton(root);
 
             var topBar = new VisualElement();
             topBar.AddToClassList("top-bar");
@@ -93,11 +90,13 @@ namespace PoBox
                 {
                     displayName = rig.gameObject.name.Replace("Contest_", ""),
                     rig = rig,
+                    agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y,
                     label = plate
                 };
                 _contestants.Add(contestant);
+                CommandStand(contestant);
             }
         }
 
@@ -128,7 +127,7 @@ namespace PoBox
                 if (HasFallen(contestant))
                 {
                     contestant.fallen = true;
-                    FighterFell?.Invoke(contestant.displayName);
+                    RaiseFighterFell(contestant.displayName);
                     continue;
                 }
                 contestant.aliveTime += Time.fixedDeltaTime;
@@ -138,7 +137,7 @@ namespace PoBox
             if (aliveCount == 0 && _contestants.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
-                RoundEnded?.Invoke(FindLeader()?.displayName ?? "");
+                RaiseRoundEnded(FindLeader()?.displayName ?? "");
             }
         }
 
@@ -172,6 +171,22 @@ namespace PoBox
             return leader;
         }
 
+        /// <summary>
+        /// Tells the fighter to hold station. The balance contest is the
+        /// 0 m/s end of the locomotion command the shared brain was trained
+        /// against (Reward_Locomotion: 0 = stand, 1 = walk), so saying so
+        /// explicitly is what makes one brain serve both mini-games — and it
+        /// re-asserts the command after every round reset. Harmless for a
+        /// fighter whose brain does not observe the command.
+        /// </summary>
+        private static void CommandStand(Contestant contestant)
+        {
+            if (contestant.agent != null)
+            {
+                contestant.agent.SetLocomotionCommand(0f, Vector3.forward);
+            }
+        }
+
         private bool HasFallen(Contestant contestant)
         {
             for (int sensorIndex = 0; sensorIndex < contestant.fallSensors.Length; sensorIndex++)
@@ -196,10 +211,11 @@ namespace PoBox
                 {
                     sensor.ResetContacts();
                 }
+                CommandStand(contestant);
                 contestant.aliveTime = 0f;
                 contestant.fallen = false;
             }
-            RoundStarted?.Invoke(_round);
+            RaiseRoundStarted(_round);
         }
     }
 }

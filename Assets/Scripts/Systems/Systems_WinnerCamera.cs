@@ -19,7 +19,7 @@ namespace PoBox
         [SerializeField] private CinemachineCamera _virtualCamera;
         [SerializeField] private Systems_DramaCamera _dramaCamera;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Systems_FighterRig[] _rigs;
         private Transform _focus;
         private float _angleDegrees;
@@ -35,7 +35,7 @@ namespace PoBox
         private void Start()
         {
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            _contest = FindFirstObjectByType<Systems_BalanceContest>();
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundEnded += OnRoundEnded;

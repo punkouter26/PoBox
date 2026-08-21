@@ -11,20 +11,26 @@ namespace PoBox
     /// Test-scene harness only — never freeze time in training scenes.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    [RequireComponent(typeof(Systems_BalanceContest))]
     public sealed class Systems_RoundCountdown : MonoBehaviour
     {
         private const float SECONDS_PER_TICK = 0.8f;
         private const float GO_LINGER_SECONDS = 0.5f;
 
-        private Systems_BalanceContest _contest;
+        private Systems_ContestReferee _contest;
         private Label _label;
         private float _timer = -1f;
         private int _lastShown;
 
         private void Start()
         {
-            _contest = GetComponent<Systems_BalanceContest>();
+            // Guarded rather than [RequireComponent]: the referee type is now
+            // abstract, and Unity's RequireComponent would try to AddComponent it.
+            _contest = GetComponent<Systems_ContestReferee>();
+            if (_contest == null)
+            {
+                Debug.LogError($"{name}: no contest referee on this object - rounds will start with no countdown.");
+                return;
+            }
             _contest.RoundStarted += OnRoundStarted;
 
             var root = GetComponent<UIDocument>().rootVisualElement;
