@@ -64,10 +64,19 @@ namespace PoBox
         // the value that collapsed, and at rung 3 a planted fighter keeps only
         // 0.64 instead of 0.80 - a 36% haircut rather than 20%.
         //
-        // WATCH SingleSupportMean, not reward. Working: it climbs off ~0.01
-        // toward 0.15+ while StepsSurvived holds above ~400. Still too steep:
-        // survival falls under ~250 while ClearanceMean climbs - and then gen 9
-        // goes to 0.8, not back to 1.0.
+        // GEN 9 (2026-08-21): 0.6 has now been measured too, and this constant
+        // is NOT the lever. Gen 8 ran 9.55M steps: SingleSupportMean crept
+        // 0.009 -> 0.022 and stopped, reward peaked at 0.115 and never reached
+        // the 0.17 Shuffle gate. The cause is the SHAPE of the support term,
+        // not this value -- see the support block in FixedUpdate. The
+        // pre-registered fallback of 0.8 would have made things WORSE, not
+        // better: it puts rung 3 at blend 0.40, where planting scores 0.60
+        // against stepping's 0.40, so planting wins outright again. The old
+        // term stopped discriminating at blend 0.5 and inverted below it, and
+        // no choice of this constant fixes that.
+        //
+        // It stays at 0.6 so gen 9 moves one mechanism. The ladder still reads
+        // 0 / .33 / .67 / 1 / 1 / 1.
         private const float GAIT_FULL_SPEED = 0.6f;
         // Separate from the blend on purpose: below this the LESSON is about
         // standing, so commands are still drawn from zero. Folding this into
@@ -106,8 +115,9 @@ namespace PoBox
         [SerializeField] private float _heightWeight;
         [SerializeField] private float _speedMatchWeight = 0.5f;
         // Pays for standing on exactly ONE foot while moving. This is the term
-        // that forces alternation: both feet planted scores nothing once a
-        // speed is commanded, so standing still stops being viable.
+        // that forces alternation: single support always scores full marks,
+        // while the credit for both feet planted fades to nothing as the
+        // commanded speed rises, so standing still stops being viable.
         // Weight is an EXPONENT, so small values barely bite — at gen 2's 0.15
         // a total failure cost only ~10%, and the agent simply paid it.
         [SerializeField] private float _singleSupportWeight = 0.3f;
@@ -202,11 +212,34 @@ namespace PoBox
             bool leftDown = _rig.FootLeftSensor.IsGrounded;
             bool rightDown = _rig.FootRightSensor.IsGrounded;
             // Exactly one foot down is the single-support phase every step
-            // passes through. Rewarding it is what makes the legs take turns:
-            // both feet planted pays nothing once a speed is commanded.
+            // passes through. Rewarding it is what makes the legs take turns.
             float singleSupport = leftDown ^ rightDown ? 1f : 0f;
             float doubleSupport = leftDown && rightDown ? 1f : 0f;
-            float supportReward = Mathf.Lerp(doubleSupport, singleSupport, gaitBlend);
+            // GEN 9: was Lerp(doubleSupport, singleSupport, gaitBlend), which
+            // scores planting (1 - blend) against stepping's blend. Those two
+            // curves cross at blend 0.5 -- so the term stopped discriminating
+            // exactly where the curriculum spends its time, and PAID PLANTING
+            // MORE below it. At rung 3 (blend 0.53) stepping was worth 0.533
+            // against 0.467: a 4.1% gain once the 0.3 exponent is applied. Gen
+            // 8 measured what that buys -- support crept 0.009 -> 0.022 over
+            // 9.55M steps and went no further, because 4% cannot pay for a
+            // behaviour that risks the episode. Return is per-step score times
+            // survived/MaxStep, and gen 8's own fall from 880 surviving steps
+            // to 250 cost 72% of it.
+            //
+            // This form holds single support at FULL value whatever the blend
+            // and fades only the credit for standing planted:
+            //
+            //   blend 0.00 (StandStill)  planted 1.00   stepping 1.00
+            //   blend 0.53 (Shuffle)     planted 0.47   stepping 1.00
+            //   blend 1.00 (Walk)        planted 0.00   stepping 1.00
+            //
+            // Standing is still paid in full at blend 0, so the StandStill
+            // lesson is unchanged; at rung 3 stepping is now worth 25.7% over
+            // planting rather than 4.1%; and planting can never outscore
+            // stepping at any blend, which the Lerp did for every blend
+            // below 0.5.
+            float supportReward = Mathf.Min(1f, singleSupport + (1f - gaitBlend) * doubleSupport);
 
             // Swing-foot height is measured against the STANCE foot, not a
             // snapshot of the reset pose. Gen 4 captured that snapshot on the
@@ -221,6 +254,17 @@ namespace PoBox
             float footRightY = _rig.FootRightSensor.transform.position.y;
             float swingHeight = Mathf.Abs(footLeftY - footRightY);
             float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
+            // GEN 9 bug fix: with BOTH feet off the floor there is no stance
+            // foot, so the gap between them is not clearance -- it is a topple.
+            // singleSupport already scores 0 in that state (XOR), but clearance
+            // did not, so falling over paid up to 31% on this term. Gen 8's
+            // last 1.4M steps are that exploit running: ClearanceMean 0.156 ->
+            // 0.248 while StepsSurvived fell 856 -> 250 and support stayed
+            // flat. Clearance now has to be earned with a foot on the ground.
+            if (!leftDown && !rightDown)
+            {
+                clearance = 0f;
+            }
             float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
             // Log the RAW single-support fraction, not the blended term: the
             // blended value mixes in the blend weight and cannot tell "both
