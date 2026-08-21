@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -20,6 +20,16 @@ namespace PoBox
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float ROUND_RESTART_DELAY = 4f;
+        /// <summary>
+        /// Hard cap on a round, mirroring <see cref="Systems_WalkContest"/>.
+        /// Without one the round ended only when the last fighter fell, and the
+        /// code-driven PD bot does not fall: measured 2026-08-21, every trained
+        /// fighter in an eight-slot ring was down inside 3.0 s while the bot was
+        /// still standing at 109 s, so a ring containing a bot never advanced.
+        /// 30 s is long enough to settle a balance round on merit and short
+        /// enough that a lone unfallable survivor cannot stall the match.
+        /// </summary>
+        private const float ROUND_TIME_LIMIT = 30f;
 
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -39,6 +49,7 @@ namespace PoBox
         private Label _title;
         private int _round = 1;
         private float _restartTimer = -1f;
+        private float _roundTime;
 
         private void Start()
         {
@@ -116,6 +127,8 @@ namespace PoBox
                 return;
             }
 
+            _roundTime += Time.fixedDeltaTime;
+
             int aliveCount = 0;
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
@@ -134,7 +147,8 @@ namespace PoBox
                 aliveCount++;
             }
 
-            if (aliveCount == 0 && _contestants.Count > 0)
+            bool timeUp = _roundTime >= ROUND_TIME_LIMIT;
+            if ((aliveCount == 0 || timeUp) && _contestants.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
                 RaiseRoundEnded(FindLeader()?.displayName ?? "");
@@ -154,7 +168,7 @@ namespace PoBox
             }
             _title.text = roundOver
                 ? $"Round {_round} over — next in {Mathf.Max(0f, _restartTimer):F0}s"
-                : $"Balance Contest — Round {_round}";
+                : $"Balance Contest — Round {_round}  {Mathf.Max(0f, ROUND_TIME_LIMIT - _roundTime):F0}s";
         }
 
         private Contestant FindLeader()
@@ -203,6 +217,7 @@ namespace PoBox
         {
             _round++;
             _restartTimer = -1f;
+            _roundTime = 0f;
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
                 Contestant contestant = _contestants[contestantIndex];

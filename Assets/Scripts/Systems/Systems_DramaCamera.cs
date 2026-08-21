@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace PoBox
 {
@@ -38,7 +38,25 @@ namespace PoBox
         // With 2+ fighters standing, the camera tours them, holding each
         // for this many seconds.
         [SerializeField] private float _tourSecondsPerFighter = 3f;
-        [SerializeField] private float _cameraHeight = 1.7f;
+        // Eye height ABOVE THE FLOOR THE FIGHTERS STAND ON, not above world
+        // zero. The distinction only started to matter when the ring moved onto
+        // its 1 m platform (Systems_ContestSpawner.RING_FLOOR_Y): read as a
+        // world Y, the tuned 1.9 put the lens at 1.9 m while the three rope
+        // lines spanned y 1.05-2.05, 1.45-2.45 and 1.85-2.85, so the camera sat
+        // inside the top rope and every shot came back with the ropes as hard
+        // horizontal bars across the frame and the void under the ring filling
+        // the bottom third. Resolved against the rigs' own ground probe below,
+        // which keeps this correct for the walk lane at y 0 as well.
+        //
+        // 2.6 m is set by geometry, not taste. Clearing the top rope is not
+        // enough on its own: for the near rope to sit BELOW the subject in
+        // frame rather than across it, the lens has to out-climb the rope by
+        // more than the ratio of their distances. Solved for the worst case in
+        // this ring — a front-row fighter, whose close-up puts the camera ~5 m
+        // back and the near rope ~3 m ahead of it — that needs an eye 2.24 m
+        // above the canvas; the ring's own top rope tops out at 1.85. This
+        // leaves a third of a metre in hand and looks down about 22 degrees.
+        [SerializeField] private float _cameraHeight = 2.6f;
         [SerializeField] private float _lateralFollowFraction = 0.6f;
         [SerializeField] private float _baseFov = 55f;
         [SerializeField] private float _dramaFov = 42f;
@@ -57,6 +75,7 @@ namespace PoBox
         private Vector3 _lookVelocity;
         private Vector3 _positionVelocity;
         private float _fovVelocity;
+        private float _groundY;
         private float _shakeRemaining;
         private int _tourOrdinal;
         private float _tourTimer;
@@ -77,6 +96,9 @@ namespace PoBox
                 _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
                 _wasStanding[rigIndex] = true;
             }
+            // Every fighter probes the floor it spawned on; they all share one,
+            // so the first is the ring floor (or the walk lane).
+            _groundY = _rigs.Length > 0 ? _rigs[0].GroundY : 0f;
             _lookPoint = RingCenter() + Vector3.up;
 
             _contest = FindFirstObjectByType<Systems_ContestReferee>();
@@ -201,7 +223,7 @@ namespace PoBox
             // side shows their faces.
             Vector3 desiredPosition = new Vector3(
                 target.x * _lateralFollowFraction,
-                _cameraHeight,
+                _groundY + _cameraHeight,
                 target.z + followDistance);
             Vector3 position = Vector3.SmoothDamp(
                 transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime);

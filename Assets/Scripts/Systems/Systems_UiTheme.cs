@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
@@ -147,6 +147,75 @@ namespace PoBox
             element.style.borderBottomColor = color;
             element.style.borderLeftColor = color;
             element.style.borderRightColor = color;
+        }
+
+        // --- Contest HUD top stack -------------------------------------------
+        //
+        // The corners of a contest HUD are spoken for: the version stamp
+        // (y 18-83) and the FPS readout (y 84-149) own the top-left, the
+        // "MENU" button (y 16-100) the top-right, and the referee's centred
+        // title chip the strip above them. Everything else that wants to sit
+        // near the top - the match star tally, the hazard chip - used to place
+        // itself absolutely and guess at the free space, which is how the
+        // full-width centred tally came to be drawn straight through the FPS
+        // counter as soon as it listed more than two names, and how a long
+        // hazard name reached back into the round title.
+        //
+        // These two live in one column instead, inset clear of both corners, so
+        // they stack rather than collide and a wrapped line pushes what is
+        // below it down instead of overlapping it.
+
+        private const string HUD_STACK_NAME = "hud-top-stack";
+        private const string HUD_SCORE_SLOT_NAME = "hud-score-slot";
+        private const string HUD_HAZARD_SLOT_NAME = "hud-hazard-slot";
+
+        // Clears the widest thing either corner puts at this height: "000 FPS"
+        // at 52 px on the left, the MENU button on the right.
+        private const float HUD_CORNER_GUTTER = 250f;
+        // Below the FPS readout, which ends at y 149.
+        private const float HUD_STACK_TOP = 158f;
+
+        /// <summary>Row the match scoreboard belongs in — first in the stack.</summary>
+        public static VisualElement HudScoreSlot(VisualElement root)
+        {
+            return EnsureHudStack(root).Q<VisualElement>(HUD_SCORE_SLOT_NAME);
+        }
+
+        /// <summary>Row the hazard chip belongs in — below the scoreboard.</summary>
+        public static VisualElement HudHazardSlot(VisualElement root)
+        {
+            return EnsureHudStack(root).Q<VisualElement>(HUD_HAZARD_SLOT_NAME);
+        }
+
+        // Both slots are created together, in display order, the first time
+        // either is asked for: the scoreboard and the hazard chip are owned by
+        // different components and neither Start is guaranteed to run first.
+        private static VisualElement EnsureHudStack(VisualElement root)
+        {
+            VisualElement stack = root.Q<VisualElement>(HUD_STACK_NAME);
+            if (stack != null)
+            {
+                return stack;
+            }
+            stack = new VisualElement { name = HUD_STACK_NAME };
+            stack.style.position = Position.Absolute;
+            stack.style.top = HUD_STACK_TOP;
+            stack.style.left = HUD_CORNER_GUTTER;
+            stack.style.right = HUD_CORNER_GUTTER;
+            stack.style.alignItems = Align.Center;
+            stack.pickingMode = PickingMode.Ignore;
+            stack.Add(NewSlot(HUD_SCORE_SLOT_NAME));
+            stack.Add(NewSlot(HUD_HAZARD_SLOT_NAME));
+            root.Add(stack);
+            return stack;
+        }
+
+        private static VisualElement NewSlot(string name)
+        {
+            var slot = new VisualElement { name = name };
+            slot.style.alignItems = Align.Center;
+            slot.pickingMode = PickingMode.Ignore;
+            return slot;
         }
     }
 }

@@ -36,6 +36,11 @@ namespace PoBox
     /// rig tool. Applies normalized [-1,1] actions as joint target rotations
     /// and scales joint springs for the stamina system.
     /// </summary>
+    // Ahead of the agent (-100) and the rewards (-99): the agent reaches into
+    // this rig from its very first callback, so the rig has to be the first
+    // thing on a fighter to wake. See EnsureInitialized for what went wrong
+    // while this was left at the default 0.
+    [DefaultExecutionOrder(-200)]
     public sealed class Systems_FighterRig : MonoBehaviour
     {
         private const float MAX_ANGULAR_VELOCITY = 20f;
@@ -71,6 +76,7 @@ namespace PoBox
         private float _strengthScale = 1f;
         private float[] _smoothedTargets; // 3 per joint (pitch, roll, yaw)
         private float _groundY;
+        private bool _initialized;
 
 
         /// <summary>
@@ -79,7 +85,14 @@ namespace PoBox
         /// rig behaves identically at any altitude: a ring canvas at y = 1 reads
         /// exactly the same to the brain as a training ground at y = 0.
         /// </summary>
-        public float GroundY => _groundY;
+        public float GroundY
+        {
+            get
+            {
+                EnsureInitialized();
+                return _groundY;
+            }
+        }
 
         public Rigidbody Pelvis => _pelvis;        public Rigidbody Torso => _torso;
         public Transform Head => _head;
@@ -121,6 +134,32 @@ namespace PoBox
 
         private void Awake()
         {
+            EnsureInitialized();
+        }
+
+        /// <summary>
+        /// One-time runtime setup. Safe to call before Awake, and safe to call
+        /// again afterwards.
+        ///
+        /// The execution-order attribute above is the intended guarantee; this
+        /// guard is the one that holds when something reaches the rig outside
+        /// the ordinary Awake sequence. On the contest spawn path a fighter is
+        /// activated by being reparented out of the inactive holder, and
+        /// ML-Agents runs Agent.OnEnable -> LazyInitialize -> OnEpisodeBegin
+        /// inline from that reparent — which lands in ResetToStartPose before
+        /// there is a start pose to restore. Measured 2026-08-21: four
+        /// NullReferenceExceptions, one per fighter, on the *second* contest of
+        /// a session (menu -> balance -> MENU -> menu -> walk) and none on the
+        /// first, which is why it went unnoticed. Every public entry point that
+        /// needs this state calls here first rather than trusting the order.
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            if (_initialized)
+            {
+                return;
+            }
+            _initialized = true;
             ProbeGroundY();
             CaptureStartPose();
             for (int jointIndex = 0; jointIndex < _joints.Count; jointIndex++)
@@ -247,6 +286,7 @@ namespace PoBox
         /// </summary>
         public void ApplyActions(float[] actions, int offset)
         {
+            EnsureInitialized();
             int cursor = offset;
             float sign = _invertTargetRotation ? -1f : 1f;
             // Muscle lag: exponential drift toward the commanded angles.
@@ -294,6 +334,7 @@ namespace PoBox
         /// <summary>Scales every joint's slerp-drive spring. Used by stamina attenuation.</summary>
         public void SetSpringScale(float scale01)
         {
+            EnsureInitialized();
             _currentSpringScale = scale01;
             ApplyDriveScales();
         }
@@ -305,6 +346,7 @@ namespace PoBox
         /// </summary>
         public void SetStrengthScale(float scale)
         {
+            EnsureInitialized();
             _strengthScale = scale;
             ApplyDriveScales();
         }
@@ -325,6 +367,7 @@ namespace PoBox
         /// <summary>Restores the captured start pose and zeroes all velocities.</summary>
         public void ResetToStartPose()
         {
+            EnsureInitialized();
             if (_smoothedTargets != null)
             {
                 System.Array.Clear(_smoothedTargets, 0, _smoothedTargets.Length);

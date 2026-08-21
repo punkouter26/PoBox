@@ -10,21 +10,33 @@
     right: 0;
 }
 
+/* Inset past the corner furniture rather than spanning the full width: a chip
+   centred across all 1080 px ran straight under the "MENU" button once the
+   round countdown was added to the balance title. The insets are uneven
+   because the corners are: at this height the left holds only the version
+   stamp (x 18-134), while the right holds the button (x 851-1064). */
 .top-bar {
     position: absolute;
     top: 12px;
-    left: 0;
-    right: 0;
+    left: 150px;
+    right: 240px;
     align-items: center;
 }
 
+/* max-width is what actually binds the chip — align-items: center alone lets
+   an over-wide child spill out of the bar on both sides, which is how the
+   title still reached the button after the insets went in. 32 px keeps the
+   longest title, "Balance Contest — Round 1  30s", on one line within the
+   690 px band; anything longer wraps instead of clipping. */
 .title-chip {
     background-color: rgba(13, 13, 20, 0.94);
     color: rgb(255, 255, 255);
     padding: 6px 14px;
     border-radius: 14px;
-    font-size: 40px;
+    font-size: 32px;
+    max-width: 100%;
     -unity-font-style: bold;
+    -unity-text-align: middle-center;
 }
 
 /* Wraps because eight plates do not fit across 1080 px at this font size, and

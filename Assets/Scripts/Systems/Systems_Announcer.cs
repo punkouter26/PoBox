@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
@@ -51,9 +51,23 @@ namespace PoBox
             var root = GetComponent<UIDocument>().rootVisualElement;
             Systems_UiTheme.ApplyDefaultFont(root);
 
+            // Resolved before any UI is built: the hazard chip has to go into
+            // the REFEREE's document, not this one. The announcer owns its own
+            // UIDocument, so a shared HUD stack built against this root is a
+            // second stack in a second panel — and the match tally, which lives
+            // on the referee, then lands at exactly the same coordinates one
+            // panel away. Measured 2026-08-21: "Standard ★1" and
+            // "HAZARD: BALL RAIN" both at y 158-217.
+            _contest = FindFirstObjectByType<Systems_ContestReferee>();
+            VisualElement hudRoot = _contest != null
+                ? _contest.GetComponent<UIDocument>().rootVisualElement
+                : root;
+
             _callout = new Label();
             _callout.style.position = Position.Absolute;
-            _callout.style.top = Length.Percent(15f); // below title+scoreboard, above winner banner (32%) and countdown (42%)
+            // Below the HUD top stack at its two-line worst case, and still
+            // above the winner banner (32%) and countdown (42%).
+            _callout.style.top = Length.Percent(20f);
             _callout.style.left = 0f;
             _callout.style.right = 0f;
             _callout.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -72,18 +86,19 @@ namespace PoBox
             root.Add(_callout);
 
             _hazardChip = new Label();
-            _hazardChip.style.position = Position.Absolute;
-            // Below the referee top bar (title chip y 12-69) and its winner tally
-            // (y 110-179), both of which run to the middle of the screen. At y 16 the
-            // chip overlapped the round title whenever the hazard name was long
-            // enough to reach back past x 837 — "HAZARD: BALL RAIN" is 562 px wide.
-            _hazardChip.style.top = 200f;
-            _hazardChip.style.right = 16f;
-            _hazardChip.style.fontSize = 52f;
+            // Sits under the winner tally in the shared HUD stack. Pinning it to
+            // an absolute y only ever worked for the tally height of the day: at
+            // y 16 a long name ("HAZARD: BALL RAIN" is 562 px wide) reached back
+            // under the round title, and at y 200 it collided with the tally as
+            // soon as that wrapped to a second line. Stacked, it simply follows
+            // whatever the tally ends up occupying.
+            // 44 px matches the tally above it and keeps the longest name,
+            // "HAZARD: GRAVITY LEAN", on one line inside the stack's band.
+            _hazardChip.style.fontSize = 44f;
             _hazardChip.style.unityFontStyleAndWeight = FontStyle.Bold;
             _hazardChip.style.color = Systems_UiTheme.HazardOrange;
             _hazardChip.pickingMode = PickingMode.Ignore;
-            root.Add(_hazardChip);
+            Systems_UiTheme.HudHazardSlot(hudRoot).Add(_hazardChip);
 
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
             _startHeadHeights = new float[_rigs.Length];
@@ -94,7 +109,6 @@ namespace PoBox
                 _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
             }
 
-            _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundStarted += OnRoundStarted;

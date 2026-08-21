@@ -5623,7 +5623,7 @@ MonoBehaviour:
   _wideFrameHeight: 4
   _minFollowDistance: 2.2
   _tourSecondsPerFighter: 3
-  _cameraHeight: 1.9
+  _cameraHeight: 2.6
   _lateralFollowFraction: 0.6
   _baseFov: 60
   _dramaFov: 46

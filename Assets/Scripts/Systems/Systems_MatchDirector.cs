@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
@@ -37,15 +37,15 @@ namespace PoBox
             var root = _contest.GetComponent<UIDocument>().rootVisualElement;
 
             _scoreboard = new Label();
-            _scoreboard.style.position = Position.Absolute;
-            _scoreboard.style.top = 110f;
-            _scoreboard.style.left = 0f;
-            _scoreboard.style.right = 0f;
+            // Placed by the shared HUD stack rather than by an absolute rect of
+            // its own: a full-width centred tally reached into the top-left
+            // corner and drew over the FPS readout the moment it listed more
+            // than a couple of names.
             _scoreboard.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _scoreboard.style.fontSize = 52f;
+            _scoreboard.style.fontSize = 44f;
             _scoreboard.style.color = Systems_UiTheme.Gold;
             _scoreboard.pickingMode = PickingMode.Ignore;
-            root.Add(_scoreboard);
+            Systems_UiTheme.HudScoreSlot(root).Add(_scoreboard);
 
             _contest.RoundEnded += OnRoundEnded;
         }

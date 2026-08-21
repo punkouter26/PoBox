@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Unity.InferenceEngine;
 using Unity.MLAgents.Policies;
@@ -38,6 +38,7 @@ namespace PoBox
         // ML-Agents names the single vector-observation input of an exported brain
         // obs_0; the contest rigs have exactly one, so this is the tensor to measure.
         private const string OBSERVATION_INPUT_NAME = "obs_0";
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private const int JOINT_INDEX_SHIN_L = 3;
         private const int JOINT_INDEX_SHIN_R = 9;
         /// <summary>
@@ -129,14 +130,15 @@ namespace PoBox
                     string instanceName = nameCounts[rosterIndex] > 1
                         ? $"Contest_{entry.displayName}{nameCounts[rosterIndex]}"
                         : $"Contest_{entry.displayName}";
-                    Spawn(entry, holder.transform, slots[slotIndex], spawnRotation, instanceName);
+                    Spawn(entry, holder.transform, slots[slotIndex], spawnRotation, instanceName,
+                        nameCounts[rosterIndex] - 1);
                     spawned++;
                 }
                 if (spawned == 0 && _roster.Length > 0)
                 {
                     // Never start an empty ring — fall back to one default fighter.
                     Spawn(_roster[0], holder.transform, slots[0], spawnRotation,
-                        $"Contest_{_roster[0].displayName}");
+                        $"Contest_{_roster[0].displayName}", 0);
                 }
             }
             finally
@@ -173,16 +175,16 @@ namespace PoBox
         /// finished BrainParameters rather than the prefab's.
         /// </summary>
         private static void Spawn(ContestRosterEntry entry, Transform holder,
-            Vector3 position, Quaternion rotation, string instanceName)
+            Vector3 position, Quaternion rotation, string instanceName, int copyIndex)
         {
             var instance = Instantiate(entry.prefab, holder);
             instance.name = instanceName;
             instance.transform.SetPositionAndRotation(position, rotation);
-            Configure(instance, entry);
+            Configure(instance, entry, copyIndex);
             instance.transform.SetParent(null, worldPositionStays: true);
         }
 
-        private static void Configure(GameObject instance, ContestRosterEntry entry)
+        private static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex)
         {
             var rig = instance.GetComponent<Systems_FighterRig>();
             var agent = instance.GetComponent<Agent_FighterBoxing>();
@@ -238,6 +240,51 @@ namespace PoBox
                 {
                     renderers[rendererIndex].sharedMaterial = entry.tint;
                 }
+            }
+            TintCopy(instance, copyIndex);
+        }
+
+        // An eight-slot ring is filled from a four-entry roster, so it normally
+        // holds two of each kind wearing exactly the same material — the
+        // scoreboard called them Grandma and Grandma2 while the ring showed no
+        // way to tell which was which. The first of each kind is left exactly as
+        // authored and only the copies are washed, through a
+        // MaterialPropertyBlock: URP's _BaseColor multiplies the albedo, so a
+        // pale wash still reads over Grandma's and Grandpa's textures, and no
+        // material is instantiated and no shader looked up at runtime — a
+        // Shader.Find material here would strip out of the Android build.
+        private static readonly Color[] CopyWashes =
+        {
+            new(0.62f, 0.78f, 1f),   // copy 2: cool
+            new(1f, 0.80f, 0.55f),   // copy 3: warm
+            new(0.70f, 1f, 0.72f)    // copy 4: green
+        };
+
+        private static void TintCopy(GameObject instance, int copyIndex)
+        {
+            if (copyIndex <= 0)
+            {
+                return;
+            }
+            Color wash = CopyWashes[(copyIndex - 1) % CopyWashes.Length];
+            var block = new MaterialPropertyBlock();
+            var renderers = instance.GetComponentsInChildren<Renderer>(true);
+            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+            {
+                Renderer renderer = renderers[rendererIndex];
+                Material material = renderer.sharedMaterial;
+                if (material == null)
+                {
+                    continue;
+                }
+                // Multiply rather than replace, so a material that already
+                // carries a colour keeps it.
+                Color baseColor = material.HasProperty(BaseColorId)
+                    ? material.GetColor(BaseColorId)
+                    : Color.white;
+                renderer.GetPropertyBlock(block);
+                block.SetColor(BaseColorId, baseColor * wash);
+                renderer.SetPropertyBlock(block);
             }
         }
 
