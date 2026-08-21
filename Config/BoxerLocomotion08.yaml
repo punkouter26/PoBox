@@ -1,0 +1,143 @@
+# Locomotion gen 8 (2026-08-21). Gen 7's fix worked as designed and was still
+# wrong, in the opposite direction from gen 6.
+#
+# WHAT GEN 7 MEASURED (results/_rescued/boxer_locomotion07, 12.2M steps):
+#
+#   step   lesson  reward  survived  support  clearance
+#   5.0M      0     0.087     296     0.017     0.097
+#   5.5M      1     0.123     457     0.010     0.083
+#   6.0M      2     0.101     695     0.009     0.098
+#   9.0M      2     0.074     474     0.005     0.136
+#  12.0M      2     0.054     304     0.010     0.176
+#
+# Read the SUPPORT column. Locomotion/SingleSupportMean never left 0.005-0.034
+# — not in any lesson, not once in 12.2 million steps. The fighter never stood
+# on one foot. It was not stalling near a gait; it never began one. The reward
+# stall at the 0.17 Shuffle gate is a symptom of that, not the disease, so
+# moving the gate would have fixed nothing.
+#
+# WHY. The support term is Lerp(doubleSupport, singleSupport, gaitBlend) and
+# gen 7 set GAIT_FULL_SPEED = 1.0, so at the Shuffle rung — commands averaging
+# 0.32 m/s — the blend is only 0.32 and BOTH FEET PLANTED still scores 0.68.
+# Never stepping costs support^0.3 * clearance^0.35 ≈ a 20% haircut. Trying to
+# step and falling costs ~60% of the episode, because reward is dominated by
+# survival (episode length swung 695 -> 304 over the same span). Standing still
+# was the correct play and the fighter found it. This is the gen 2 "pay the
+# penalty and ignore it" failure, arriving through the blend rather than the
+# weights that were already raised to stop it.
+#
+# THE FIX IS IN CODE AGAIN, NOT IN THIS FILE. GAIT_FULL_SPEED 1.0 -> 0.6. The
+# value is now bracketed by two measured failures rather than guessed:
+#
+#   0.3  gen 6  blend 0 / .67 / 1 / 1 / 1 / 1   stepped and fell (3.3 s)
+#   0.6  gen 8  blend 0 / .33 / .67 / 1 / 1 / 1
+#   1.0  gen 7  blend 0 / .2 / .4 / .6 / .8 / 1  never stepped
+#
+# 0.6 saturates one rung LATER than the value that collapsed, and at rung 3 a
+# planted fighter keeps 0.64 rather than 0.80 — a 36% haircut, not 20%.
+#
+# THE CURRICULUM BELOW IS UNCHANGED from gen 7, again on purpose. One variable
+# moves per generation or the result is unreadable. In particular the 0.17
+# Shuffle gate stays: if the fix works, reward clears it on the way past; if
+# reward stalls there again while support is STILL flat, the blend is not the
+# remaining problem and gen 9 looks at the survival/gait tradeoff instead.
+#
+# WATCH Locomotion/SingleSupportMean, NOT reward.
+#   Working:     it climbs off ~0.01 toward 0.15+ while StepsSurvived holds
+#                above ~400.
+#   Too steep:   StepsSurvived falls under ~250 while ClearanceMean climbs —
+#                gen 6's failure returning. Then gen 9 goes to 0.8, not 1.0.
+#   Still flat:  support pinned near 0.01 past ~8M steps. The blend is not the
+#                lever; stop the run, do not spend the remaining 10M steps.
+#
+# Brains from gen 7 and earlier are NOT resumable: the height observation
+# changed to ground-relative at gen 7 and the reward shape changes here. The
+# observation COUNT is still 127, so an old checkpoint loads and behaves like
+# nonsense rather than erroring.
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    # 200000 steps is ~2.6 min at this scene's measured 1,267 steps/s. Tightened
+    # from 500000 on 2026-08-21 because the run is being interrupted for
+    # in-scene tests: the trainer has to be stopped for each one (a contest
+    # scene would otherwise connect to port 5004 and hand the trainer an env
+    # with no trainable behaviours), and --resume rewinds to the last
+    # checkpoint. This caps what each test costs.
+    checkpoint_interval: 200000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.15
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.16
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.17
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.18
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.19
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

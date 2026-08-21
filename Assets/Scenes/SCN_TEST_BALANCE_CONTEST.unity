@@ -12237,19 +12237,19 @@ MonoBehaviour:
   _roster:
   - displayName: Standard
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
-    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
+    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
   - displayName: Grandma
     prefab: {fileID: 2918738356757314058, guid: 799c3a59bc803194f903674697ddefd9, type: 3}
-    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
+    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
   - displayName: Grandpa
     prefab: {fileID: 6230883007331473486, guid: 1670eb04631b00346bef2d22807447f6, type: 3}
-    model: {fileID: 5022602860645237092, guid: 7c5ed6428df71fb47ae14c9198cefc81, type: 3}
+    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1

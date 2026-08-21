@@ -41,7 +41,34 @@ namespace PoBox
         // same way one rung earlier. Matching this to the top curriculum speed
         // makes the blend track the ladder 1:1 - 0.2 speed means 0.2 gait
         // demand - so every rung is a real, small increase in what is asked.
-        private const float GAIT_FULL_SPEED = 1f;
+        //
+        // GEN 8 (2026-08-21): 1.0 was too far the other way, and the value is
+        // now bracketed by two measured failures.
+        //
+        //   0.3 (gen 6): blend 0 / .67 / 1 / 1 / 1 / 1 - saturated at rung 3.
+        //                The fighter stepped and fell (clearance 0.258,
+        //                survival 3.3 s).
+        //   1.0 (gen 7): blend 0 / .2 / .4 / .6 / .8 / 1 - never bit. At rung 3
+        //                the command averages 0.32 m/s, so the blend is 0.32 and
+        //                BOTH FEET PLANTED still scores 0.68 on the support
+        //                term. Standing costs support^.3 * clearance^.35, a 20%
+        //                haircut; attempting a step and falling costs ~60% of
+        //                the episode. The fighter correctly paid the 20%:
+        //                SingleSupportMean measured 0.005-0.034 across all
+        //                12.2M steps and every lesson. It never once stood on
+        //                one foot. That is the same "pay the penalty and ignore
+        //                it" failure the WEIGHTS were raised to fix in gen 2,
+        //                arriving through the blend instead of the weight.
+        //
+        // 0.6 gives 0 / .33 / .67 / 1 / 1 / 1: it saturates one rung LATER than
+        // the value that collapsed, and at rung 3 a planted fighter keeps only
+        // 0.64 instead of 0.80 - a 36% haircut rather than 20%.
+        //
+        // WATCH SingleSupportMean, not reward. Working: it climbs off ~0.01
+        // toward 0.15+ while StepsSurvived holds above ~400. Still too steep:
+        // survival falls under ~250 while ClearanceMean climbs - and then gen 9
+        // goes to 0.8, not back to 1.0.
+        private const float GAIT_FULL_SPEED = 0.6f;
         // Separate from the blend on purpose: below this the LESSON is about
         // standing, so commands are still drawn from zero. Folding this into
         // the blend constant is what made one number do two unrelated jobs.
