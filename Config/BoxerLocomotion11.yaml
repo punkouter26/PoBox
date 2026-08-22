@@ -1,0 +1,156 @@
+# Locomotion gen 11 (2026-08-22). Gen 10's ramp worked and led the policy
+# straight into an exploit that had been latent in the clearance metric since
+# gen 5.
+#
+# WHAT GEN 10 MEASURED (results/boxer_locomotion10, stopped at 10.8M of 18M):
+#
+#   step   lesson  reward  survived  support  clearance
+#   6.55M     2     0.234      751    0.012     0.102   <- cleared the 0.17 gate
+#   8.00M     2     0.033      213    0.019     0.212
+#   9.00M     2     0.032      173    0.021     0.317
+#  10.00M     2     0.034      175    0.021     0.362
+#  10.80M     2     0.035      165    0.027     0.435
+#
+# Two firsts, and they point in opposite directions. Reward hit 0.234 and
+# cleared the 0.17 Shuffle gate that killed gens 5-9 -- no previous generation
+# ever passed it. And ClearanceMean climbed 0.102 -> 0.435 monotonically over
+# 4.2M steps, the first time that number has ever gone anywhere.
+#
+# SingleSupportMean stayed at 0.012-0.030 through all of it, and survival
+# collapsed to 165 steps (3.3 s).
+#
+# That combination is geometrically impossible if clearance means what its name
+# says. Clearance measured the GAP BETWEEN FOOT CENTRES, and the sensor
+# transform sits at the foot's centre while the ankle has 65 degrees of pitch
+# range. Rolling onto the toe raises the centre without breaking contact.
+# Sampled live from the running scene at 10.8M steps:
+#
+#   rig  centre  lowest  grounded
+#    5   0.156   0.003   true      <- foot near vertical, toe still on the floor
+#    2   0.108   0.002   true
+#
+# Rig 5 was collecting FULL clearance credit with both feet planted. Four of the
+# sixteen fighters were doing it. Gens 5-9 never found this because the binary
+# support cliff made clearance alone nearly worthless; gen 10 made the ramp
+# worth climbing and the cheapest way up was to rotate, not to lift.
+#
+# THE FIX IS IN CODE. Clearance is now the lowest point of the swing foot above
+# the floor, taken from the collider's world AABB, which tracks the lowest
+# corner whatever the foot's orientation. A pivoted foot reads ~0. It is also
+# ground-relative instead of foot-to-foot, so a gap cannot be manufactured by
+# sinking the stance foot either.
+#
+# TARGET_CLEARANCE moves 0.09 -> 0.05 as a CONSEQUENCE of that, not as a
+# separate experiment: 9 cm of centre separation is reachable by ankle rotation
+# alone, while 9 cm of true clearance is a high march. 5 cm is a real step. The
+# threshold is re-scaled to hold the difficulty comparable, not the digits.
+#
+# Everything else is unchanged: gen 10's continuous support ramp, gen 9's
+# support shape, GAIT_FULL_SPEED 0.6, and the curriculum below -- now for the
+# fifth generation running, 0.17 Shuffle gate included.
+#
+# WATCH ClearanceMean AND SingleSupportMean TOGETHER.
+#   Working:     clearance climbs off ~0 while support follows it up and
+#                StepsSurvived holds above ~400. With the pivot closed, these
+#                two can no longer diverge for long -- a foot 5 cm clear of the
+#                floor IS single support.
+#   Reset:       clearance drops back to ~0 and stays there while survival
+#                recovers. Then the fighter has simply stopped paying for the
+#                exploit and gone back to standing, and gen 12 attacks the cost
+#                of a fall -- a stumble that does not end the episode -- so a
+#                failed step stops costing 72% of the return.
+#   New exploit: reward climbs while survival stays under ~250 and support
+#                stays flat. Sample the live scene again before theorising;
+#                that is what found this one.
+#
+# NOT RESUMABLE from gen 10 or earlier. Observation count is still 127, so an
+# old checkpoint loads and behaves like nonsense rather than erroring.
+#
+# Gen 9's balance brain is banked at Assets/Agents/Locomotion_gen9/ (25.8 s).
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    # 200000 steps is ~2.6 min at this scene's measured 1,267 steps/s. Tightened
+    # from 500000 on 2026-08-21 because the run is being interrupted for
+    # in-scene tests: the trainer has to be stopped for each one (a contest
+    # scene would otherwise connect to port 5004 and hand the trainer an env
+    # with no trainable behaviours), and --resume rewinds to the last
+    # checkpoint. This caps what each test costs.
+    checkpoint_interval: 200000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.15
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.16
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.17
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.18
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.19
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

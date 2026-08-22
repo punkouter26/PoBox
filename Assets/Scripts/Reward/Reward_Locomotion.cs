@@ -82,9 +82,16 @@ namespace PoBox
         // standing, so commands are still drawn from zero. Folding this into
         // the blend constant is what made one number do two unrelated jobs.
         private const float STAND_LESSON_SPEED = 0.3f;
-        // Gap between the two feet that scores full clearance. Roughly one
-        // foot depth — enough to clear the floor, not a high march.
-        private const float TARGET_CLEARANCE = 0.09f;
+        // True ground clearance of the swing foot that scores full credit.
+        //
+        // GEN 11 (2026-08-22): 0.09 measured a GAP BETWEEN FOOT CENTRES, which
+        // gen 10 proved is not the same quantity at all. It now measures the
+        // lowest point of the swing foot above the floor, so the number had to
+        // be re-scaled with the metric: 9 cm of centre separation is reachable
+        // by ankle rotation alone, while 9 cm of true clearance is a high
+        // march. 5 cm is a real step for a fighter that has never taken one,
+        // and keeps the DIFFICULTY comparable rather than the digits.
+        private const float TARGET_CLEARANCE = 0.05f;
         // Floor of the commanded-speed draw, as a fraction of the lesson cap,
         // once the cap is above walking-relevant speed. Gen 3 drew uniformly
         // from [0, cap]: with cap 1.0 that made ~30% of episodes ask for under
@@ -133,6 +140,8 @@ namespace PoBox
         // pace in the last one.
         [SerializeField] private float _speedCommandMax;
 
+        private Collider _footLeftCollider;
+        private Collider _footRightCollider;
         private float _stepScale;
         private float _startHeadHeight;
         private float _commandedSpeed;
@@ -157,6 +166,9 @@ namespace PoBox
         {
             // Scaled so a full-length episode at perfect score returns ~1.
             _stepScale = 1f / Mathf.Max(1, _agent.MaxStep);
+            // Cached: bounds is queried twice per fixed step per fighter.
+            _footLeftCollider = _rig.FootLeftSensor.GetComponent<Collider>();
+            _footRightCollider = _rig.FootRightSensor.GetComponent<Collider>();
             _startHeadHeight = _rig.Head.position.y;
             RollCommand();
         }
@@ -211,6 +223,52 @@ namespace PoBox
 
             bool leftDown = _rig.FootLeftSensor.IsGrounded;
             bool rightDown = _rig.FootRightSensor.IsGrounded;
+            // GEN 10: clearance is computed BEFORE support, because support now
+            // uses it as a continuous stand-in for "one foot is unloading".
+            //
+            // Gen 4 measured swing height against a snapshot of the reset pose,
+            // captured before the body had settled under gravity; once the
+            // agent learned to brace and sink, both feet sat below the snapshot
+            // for the rest of every episode and ClearanceMean read exactly
+            // 0.000 for five million steps. Gen 5 replaced it with a
+            // foot-to-foot gap, which was self-calibrating against crouching.
+            //
+            // GEN 11: measured from the LOWEST POINT of each foot, not the foot
+            // transform. Gen 10 farmed the old measure outright. The sensor
+            // transform sits at the foot's centre, and the ankle has 65 degrees
+            // of pitch range, so rolling onto the toe raises the centre without
+            // breaking contact. Measured live at 10.8M steps, mid-run:
+            //
+            //   rig  centre  lowest  grounded
+            //    5   0.156   0.003   true      <- foot vertical, toe still down
+            //    2   0.108   0.002   true
+            //
+            // Rig 5 scored FULL clearance credit with both feet planted. Four of
+            // sixteen fighters were doing this. Gens 5-9 never found it because
+            // the binary support cliff made clearance alone nearly worthless;
+            // gen 10's ramp made the climb worth it and the cheapest route up
+            // was rotation, not elevation.
+            //
+            // The collider's world AABB minimum is the lowest corner whatever
+            // the foot's orientation, so a pivoted foot reads ~0 and only real
+            // elevation scores. It is also ground-relative rather than
+            // foot-to-foot, so a fighter cannot manufacture a gap by sinking
+            // the stance foot either.
+            float footLeftLift = Mathf.Max(0f, _footLeftCollider.bounds.min.y - _rig.GroundY);
+            float footRightLift = Mathf.Max(0f, _footRightCollider.bounds.min.y - _rig.GroundY);
+            float swingHeight = Mathf.Max(footLeftLift, footRightLift);
+            float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
+            // GEN 9 bug fix: with BOTH feet off the floor there is no stance
+            // foot, so the gap between them is not clearance -- it is a topple.
+            // singleSupport already scores 0 in that state (XOR), but clearance
+            // did not, so falling over paid up to 31% on this term. Gen 8's
+            // last 1.4M steps are that exploit running: ClearanceMean 0.156 ->
+            // 0.248 while StepsSurvived fell 856 -> 250 and support stayed
+            // flat. Clearance now has to be earned with a foot on the ground.
+            if (!leftDown && !rightDown)
+            {
+                clearance = 0f;
+            }
             // Exactly one foot down is the single-support phase every step
             // passes through. Rewarding it is what makes the legs take turns.
             float singleSupport = leftDown ^ rightDown ? 1f : 0f;
@@ -239,32 +297,39 @@ namespace PoBox
             // planting rather than 4.1%; and planting can never outscore
             // stepping at any blend, which the Lerp did for every blend
             // below 0.5.
-            float supportReward = Mathf.Min(1f, singleSupport + (1f - gaitBlend) * doubleSupport);
+            //
+            // GEN 10 (2026-08-21): the term above was still a CLIFF. singleSupport
+            // is a binary XOR of two contact flags, so it pays exactly 0 until the
+            // trailing foot fully breaks contact and 1 the instant it does. There
+            // is no gradient across the last and hardest increment of a step.
+            //
+            // Gen 9's own brain, run in inference at 0.32 m/s, measured:
+            //
+            //   SingleSupportMean        0.0001   over 10,587 steps
+            //   lateral weight shift     mean 0.333, max 0.798 (1 = over one foot)
+            //   foot-to-foot gap         ~1.4 cm against a 9 cm target
+            //
+            // It is NOT a statue and it is NOT missing the precursor skill: it
+            // rocks up to 80% of its weight onto one foot and raises the other
+            // by over a centimetre. It simply never collects a single point for
+            // any of that, because the flag never flips. Four generations of
+            // tuning the SIZE of the single-support prize could not matter while
+            // the prize remained unreachable in one discontinuous jump.
+            //
+            // So partial unloading now earns partial credit. `clearance` is the
+            // continuous stand-in for "a foot is coming off": the credit for
+            // standing planted decays as it rises, and the swing-foot lift
+            // itself substitutes for the binary flag until the flag flips.
+            //
+            //   blend 0.53, planted, no lift      0.47   (unchanged from gen 9)
+            //   blend 0.53, planted, half lift    0.74
+            //   blend 0.53, true single support   1.00   (unchanged from gen 9)
+            //
+            // Both endpoints are exactly gen 9's, so this adds a ramp between
+            // them rather than moving the target.
+            float planted = doubleSupport * (1f - clearance);
+            float supportReward = Mathf.Min(1f, Mathf.Max(singleSupport, clearance) + (1f - gaitBlend) * planted);
 
-            // Swing-foot height is measured against the STANCE foot, not a
-            // snapshot of the reset pose. Gen 4 captured that snapshot on the
-            // reset tick, before the body had settled under gravity; once the
-            // agent learned to brace and sink, both feet sat below the
-            // snapshot for the rest of every episode and ClearanceMean read
-            // exactly 0.000 for five million steps -- the reward was blind,
-            // not merely stingy. Foot-to-foot is self-calibrating: crouching,
-            // sinking and the reset pose all cancel out, and the gap between
-            // the feet is literally what a step is.
-            float footLeftY = _rig.FootLeftSensor.transform.position.y;
-            float footRightY = _rig.FootRightSensor.transform.position.y;
-            float swingHeight = Mathf.Abs(footLeftY - footRightY);
-            float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
-            // GEN 9 bug fix: with BOTH feet off the floor there is no stance
-            // foot, so the gap between them is not clearance -- it is a topple.
-            // singleSupport already scores 0 in that state (XOR), but clearance
-            // did not, so falling over paid up to 31% on this term. Gen 8's
-            // last 1.4M steps are that exploit running: ClearanceMean 0.156 ->
-            // 0.248 while StepsSurvived fell 856 -> 250 and support stayed
-            // flat. Clearance now has to be earned with a foot on the ground.
-            if (!leftDown && !rightDown)
-            {
-                clearance = 0f;
-            }
             float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
             // Log the RAW single-support fraction, not the blended term: the
             // blended value mixes in the blend weight and cannot tell "both
