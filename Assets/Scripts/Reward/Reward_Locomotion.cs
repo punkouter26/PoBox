@@ -180,12 +180,32 @@ namespace PoBox
         // did. Once gen 12 made stepping affordable, the cheapest way to
         // collect was to lift one leg and never put it back down.
         //
-        // Alternation is now required explicitly. _stanceBias is an exponential
-        // moving average of which foot is bearing: -1 is permanently left, +1
-        // permanently right, 0 is even. A ~0.6 s time constant (30 steps) spans
-        // a stride at this rig's 1.4 Hz cadence while still registering a
-        // one-legged stance inside a second.
-        private const float STANCE_BIAS_RATE = 1f / 30f;
+        // GEN 15 (2026-08-22): alternation is measured as a RATE OF STANCE
+        // CHANGES, not as a load balance.
+        //
+        // Gen 14 scored symmetry as 1 - |stanceBias| over an EMA of which foot
+        // was bearing, and only updated that average during single support. A
+        // fighter standing on BOTH feet therefore never moved its bias off the
+        // zero it was initialised to and collected FULL symmetry credit for
+        // never stepping at all. It removed the reward for hopping and handed
+        // out free credit for standing in the same edit, and the policy took
+        // the free credit: support fell from gen 13's 0.951 to 0.087 while
+        // symmetry read 0.720, and the run stalled at the Step gate for its
+        // last 5M steps.
+        //
+        // Counting stance CHANGES closes both doors with one term. Standing on
+        // two feet scores zero because nothing ever changes; standing on one leg
+        // scores zero for the same reason; only a fighter actually swapping
+        // which foot carries it scores at all.
+        //
+        // The rig's scripted cadence is 1.4 Hz, so a stride swaps stance about
+        // every 0.7 s -- one change per ~35 fixed steps at 50 Hz. Full credit is
+        // given at that rate.
+        private const float TARGET_SWITCHES_PER_STEP = 1f / 35f;
+        // ~2 s of smoothing over what is otherwise a sparse impulse train, long
+        // enough to span two strides so a single missed step does not read as a
+        // stop.
+        private const float ALTERNATION_SMOOTH_RATE = 1f / 100f;
 
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
@@ -204,7 +224,7 @@ namespace PoBox
         // This term does NOT by itself force alternation, whatever this comment
         // claimed from gen 2 to gen 13. It is an XOR and has no opinion about
         // which foot. Gen 13 exploited exactly that. Alternation comes from the
-        // symmetry factor -- see STANCE_BIAS_RATE.
+        // stance-change rate -- see TARGET_SWITCHES_PER_STEP.
         // Weight is an EXPONENT, so small values barely bite — at gen 2's 0.15
         // a total failure cost only ~10%, and the agent simply paid it.
         [SerializeField] private float _singleSupportWeight = 0.3f;
@@ -227,8 +247,11 @@ namespace PoBox
         // next physics step, and _fallContacts alone is not enough: it omits the
         // feet, which are precisely the sensors the gait terms read.
         private Sensor_GroundContact[] _allContacts;
-        private float _stanceBias;
-        private float _symmetrySum;
+        // -1 left, +1 right, 0 = not in single support. Only single-support
+        // frames update it, so double support neither builds nor clears it.
+        private int _lastStance;
+        private float _switchRate;
+        private float _alternationSum;
         private int _stumbles;
         private int _recoveryStepsLeft;
         private int _stepsToFirstFall;
@@ -275,7 +298,8 @@ namespace PoBox
                 _stumbles = 0;
                 _recoveryStepsLeft = 0;
                 _stepsToFirstFall = -1;
-                _stanceBias = 0f;
+                _lastStance = 0;
+                _switchRate = 0f;
             }
             _lastStepCount = stepCount;
             if (IsFallen(out int fallCause))
@@ -435,26 +459,32 @@ namespace PoBox
             //
             // Both endpoints are exactly gen 9's, so this adds a ramp between
             // them rather than moving the target.
-            // GEN 14: which foot is bearing, smoothed. Only single support
-            // moves it -- double support and airborne are neutral, so standing
-            // on both feet neither builds nor clears a bias.
-            if (leftDown ^ rightDown)
+            // GEN 15: count stance CHANGES. A change is single support on one
+            // foot after single support on the other; double support in between
+            // is fine and does not reset anything, because a real stride passes
+            // through it.
+            int stance = leftDown && !rightDown ? -1 : (rightDown && !leftDown ? 1 : 0);
+            float switched = 0f;
+            if (stance != 0)
             {
-                _stanceBias = Mathf.Lerp(_stanceBias, leftDown ? -1f : 1f, STANCE_BIAS_RATE);
+                if (_lastStance != 0 && stance != _lastStance)
+                {
+                    switched = 1f;
+                }
+                _lastStance = stance;
             }
-            // 1 when the two feet share the load over time, 0 when one leg has
-            // done all of it. Gen 13's permanent left stance settles at |bias|
-            // near 1 and collects nothing here.
-            float symmetry = 1f - Mathf.Abs(_stanceBias);
-            _symmetrySum += symmetry;
+            // Smoothed switches-per-step against the cadence a stride implies.
+            _switchRate = Mathf.Lerp(_switchRate, switched, ALTERNATION_SMOOTH_RATE);
+            float alternation = Mathf.Clamp01(_switchRate / TARGET_SWITCHES_PER_STEP);
+            _alternationSum += alternation;
 
             float planted = doubleSupport * (1f - clearance);
             float supportReward = Mathf.Min(1f, Mathf.Max(singleSupport, clearance) + (1f - gaitBlend) * planted);
-            // Symmetry gates the gait credit rather than standing credit: at
-            // blend 0 the fighter is supposed to be planted on both feet, and
-            // its bias is legitimately whatever it last was, so scaling the
-            // StandStill lesson by it would punish correct standing.
-            supportReward = Mathf.Lerp(supportReward, supportReward * symmetry, gaitBlend);
+            // Gates the gait credit rather than standing credit: at blend 0 the
+            // fighter is supposed to be planted on both feet and swaps nothing,
+            // so scaling the StandStill lesson by this would punish correct
+            // standing.
+            supportReward = Mathf.Lerp(supportReward, supportReward * alternation, gaitBlend);
 
             float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
             // Log the RAW single-support fraction, not the blended term: the
@@ -515,14 +545,15 @@ namespace PoBox
                 Academy.Instance.StatsRecorder.Add("Locomotion/StepsSurvived",
                     _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall);
                 Academy.Instance.StatsRecorder.Add("Locomotion/Stumbles", _stumbles);
-                // 1.0 = the legs share the work, 0.0 = one leg does all of it.
-                // This is the number that says whether it is walking or hopping.
-                Academy.Instance.StatsRecorder.Add("Locomotion/GaitSymmetry", _symmetrySum / _speedMatchSamples);
+                // 1.0 = swapping stance at a stride cadence, 0.0 = not swapping
+                // at all, whether that is from standing on two feet or hopping on
+                // one. This is the number that says whether it is walking.
+                Academy.Instance.StatsRecorder.Add("Locomotion/Alternation", _alternationSum / _speedMatchSamples);
             }
             _speedMatchSum = 0f;
             _supportSum = 0f;
             _clearanceSum = 0f;
-            _symmetrySum = 0f;
+            _alternationSum = 0f;
             _speedMatchSamples = 0;
         }
 
