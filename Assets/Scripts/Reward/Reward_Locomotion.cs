@@ -164,6 +164,28 @@ namespace PoBox
         // makes falling the fastest way to stop losing points, which is exactly
         // how the original -1 terminal failed.
         private const int STUMBLE_RECOVERY_STEPS = 25;
+        // GEN 14 (2026-08-22): how fast the stance-bias tracker forgets.
+        //
+        // Gen 13 learned to stand on its LEFT leg and hold the right one in the
+        // air, lurching forward at 0.8 m/s. Measured from the trained brain in
+        // inference: right foot 18-27 cm up on 15 of 16 fighters, mean lift
+        // 0.183 m, and right-foot-only support observed 0 times in 48 fighter
+        // samples. It scored SingleSupportMean 0.951, ClearanceMean 0.946 and
+        // SpeedMatchMean 0.900 while doing it.
+        //
+        // Every term was satisfied because none of them cares WHICH foot.
+        // singleSupport is an XOR, clearance takes the higher foot, and the
+        // speed term is happy with a lurch. The comment on _singleSupportWeight
+        // has claimed since gen 2 that this term "forces alternation". It never
+        // did. Once gen 12 made stepping affordable, the cheapest way to
+        // collect was to lift one leg and never put it back down.
+        //
+        // Alternation is now required explicitly. _stanceBias is an exponential
+        // moving average of which foot is bearing: -1 is permanently left, +1
+        // permanently right, 0 is even. A ~0.6 s time constant (30 steps) spans
+        // a stride at this rig's 1.4 Hz cadence while still registering a
+        // one-legged stance inside a second.
+        private const float STANCE_BIAS_RATE = 1f / 30f;
 
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
@@ -174,10 +196,15 @@ namespace PoBox
         // still. Uprightness plus the fall terminal already keep posture.
         [SerializeField] private float _heightWeight;
         [SerializeField] private float _speedMatchWeight = 0.5f;
-        // Pays for standing on exactly ONE foot while moving. This is the term
-        // that forces alternation: single support always scores full marks,
-        // while the credit for both feet planted fades to nothing as the
-        // commanded speed rises, so standing still stops being viable.
+        // Pays for standing on exactly ONE foot while moving: single support
+        // always scores full marks, while the credit for both feet planted
+        // fades to nothing as the commanded speed rises, so standing still
+        // stops being viable.
+        //
+        // This term does NOT by itself force alternation, whatever this comment
+        // claimed from gen 2 to gen 13. It is an XOR and has no opinion about
+        // which foot. Gen 13 exploited exactly that. Alternation comes from the
+        // symmetry factor -- see STANCE_BIAS_RATE.
         // Weight is an EXPONENT, so small values barely bite — at gen 2's 0.15
         // a total failure cost only ~10%, and the agent simply paid it.
         [SerializeField] private float _singleSupportWeight = 0.3f;
@@ -200,6 +227,8 @@ namespace PoBox
         // next physics step, and _fallContacts alone is not enough: it omits the
         // feet, which are precisely the sensors the gait terms read.
         private Sensor_GroundContact[] _allContacts;
+        private float _stanceBias;
+        private float _symmetrySum;
         private int _stumbles;
         private int _recoveryStepsLeft;
         private int _stepsToFirstFall;
@@ -246,6 +275,7 @@ namespace PoBox
                 _stumbles = 0;
                 _recoveryStepsLeft = 0;
                 _stepsToFirstFall = -1;
+                _stanceBias = 0f;
             }
             _lastStepCount = stepCount;
             if (IsFallen(out int fallCause))
@@ -405,8 +435,26 @@ namespace PoBox
             //
             // Both endpoints are exactly gen 9's, so this adds a ramp between
             // them rather than moving the target.
+            // GEN 14: which foot is bearing, smoothed. Only single support
+            // moves it -- double support and airborne are neutral, so standing
+            // on both feet neither builds nor clears a bias.
+            if (leftDown ^ rightDown)
+            {
+                _stanceBias = Mathf.Lerp(_stanceBias, leftDown ? -1f : 1f, STANCE_BIAS_RATE);
+            }
+            // 1 when the two feet share the load over time, 0 when one leg has
+            // done all of it. Gen 13's permanent left stance settles at |bias|
+            // near 1 and collects nothing here.
+            float symmetry = 1f - Mathf.Abs(_stanceBias);
+            _symmetrySum += symmetry;
+
             float planted = doubleSupport * (1f - clearance);
             float supportReward = Mathf.Min(1f, Mathf.Max(singleSupport, clearance) + (1f - gaitBlend) * planted);
+            // Symmetry gates the gait credit rather than standing credit: at
+            // blend 0 the fighter is supposed to be planted on both feet, and
+            // its bias is legitimately whatever it last was, so scaling the
+            // StandStill lesson by it would punish correct standing.
+            supportReward = Mathf.Lerp(supportReward, supportReward * symmetry, gaitBlend);
 
             float clearanceReward = Mathf.Lerp(1f, clearance, gaitBlend);
             // Log the RAW single-support fraction, not the blended term: the
@@ -467,10 +515,14 @@ namespace PoBox
                 Academy.Instance.StatsRecorder.Add("Locomotion/StepsSurvived",
                     _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall);
                 Academy.Instance.StatsRecorder.Add("Locomotion/Stumbles", _stumbles);
+                // 1.0 = the legs share the work, 0.0 = one leg does all of it.
+                // This is the number that says whether it is walking or hopping.
+                Academy.Instance.StatsRecorder.Add("Locomotion/GaitSymmetry", _symmetrySum / _speedMatchSamples);
             }
             _speedMatchSum = 0f;
             _supportSum = 0f;
             _clearanceSum = 0f;
+            _symmetrySum = 0f;
             _speedMatchSamples = 0;
         }
 
