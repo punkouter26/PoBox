@@ -97,6 +97,27 @@ namespace PoBox
             _dramaCamera = dramaCamera;
         }
 
+        /// <summary>
+        /// Contest scenes must never open a trainer connection.
+        ///
+        /// The Academy initialises lazily the first time an Agent wakes, and it
+        /// tries port 5004 when it does, logging "Couldn't connect to trainer on
+        /// port 5004 ... Will perform inference instead" in every contest.
+        /// Harmless-looking, and it is not: a contest scene played while
+        /// mlagents-learn is listening CONNECTS to it and hands the trainer an
+        /// environment with no trainable behaviours, which is why training has
+        /// had to be stopped by hand for every in-scene test. In a shipped build
+        /// it is a pointless socket attempt on startup.
+        ///
+        /// Awake is early enough because no fighter exists yet -- SpawnAndBegin
+        /// is what creates them, so the Academy has had nothing to initialise
+        /// for.
+        /// </summary>
+        private void Awake()
+        {
+            Unity.MLAgents.CommunicatorFactory.Enabled = false;
+        }
+
         /// <summary>Spawns one fighter per slot (roster index, -1 = empty slot), then starts the contest.</summary>
         public void SpawnAndBegin(int[] slotRosterIndices)
         {

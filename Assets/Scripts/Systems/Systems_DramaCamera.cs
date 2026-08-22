@@ -15,6 +15,21 @@ namespace PoBox
         // Head-height fraction of the start pose below which a fighter counts as
         // down (matches Systems_BalanceContest's fall rule).
         private const float STANDING_HEAD_FRACTION = 0.45f;
+        // Above this many fighters still upright, show the GROUP rather than
+        // touring individuals.
+        //
+        // Measured 2026-08-22 on a live 8-fighter balance contest: only 2 of 8
+        // fighters were inside the frustum and the camera was aimed 28.9 deg off
+        // their centroid, because the tour branch below forced a close shot
+        // whenever two or more were standing. Consecutive captures showed the
+        // crowd stands and an empty corner of the canvas with no fighter in
+        // either. The wide frame existed the whole time and nothing ever
+        // selected it while anyone was upright.
+        //
+        // A balance contest is a COMPARISON -- who is still up -- so a full ring
+        // has to be readable as a group. The close tour is right once the field
+        // has thinned and each fall matters individually.
+        private const int GROUP_SHOT_MIN_STANDING = 4;
         private const float ANGULAR_VELOCITY_DRAMA_SCALE = 0.15f;
         private const float WOBBLE_SMOOTH_RATE = 3f;
         private const float SHAKE_DECAY_SECONDS = 0.45f;
@@ -31,8 +46,13 @@ namespace PoBox
         // ring.
         [SerializeField] private float _closeFrameWidth = 2.4f;
         [SerializeField] private float _closeFrameHeight = 2.8f;
+        // The ring canvas is 6.1 m square, so 7 m of width covers it corner to
+        // corner with a little margin. Height was 4 m, which on a 9:16 window is
+        // never the binding axis (see DistanceToFrame) -- raised to 5 m so the
+        // group shot keeps some headroom above the fighters instead of cropping
+        // at the shoulders when the camera is close to its minimum distance.
         [SerializeField] private float _wideFrameWidth = 7f;
-        [SerializeField] private float _wideFrameHeight = 4f;
+        [SerializeField] private float _wideFrameHeight = 5f;
         // Never let a solved distance put the near plane inside the subject.
         [SerializeField] private float _minFollowDistance = 2.2f;
         // With 2+ fighters standing, the camera tours them, holding each
@@ -57,6 +77,21 @@ namespace PoBox
         // above the canvas; the ring's own top rope tops out at 1.85. This
         // leaves a third of a metre in hand and looks down about 22 degrees.
         [SerializeField] private float _cameraHeight = 2.6f;
+        // Group shots need their own height and FOV, both forced by the 9:16
+        // window rather than by taste.
+        //
+        // Horizontal FOV is the vertical one scaled by the aspect, and the
+        // aspect here is 0.466, so at the 55-60 degree base FOV covering the
+        // 7 m ring needs about 13 m of distance. Measured 2026-08-22: the first
+        // group shot put the camera at z = 14.2 and the ring came back a few
+        // dark pixels across.
+        //
+        // Widening to 80 degrees brings that to ~9 m. At 9 m the ring ropes cut
+        // the line to the ring centre at 2.6 m and 4 m of height and are clear
+        // at 5.5 m -- raycast from the candidate positions to the ring centre,
+        // same day -- so the group camera sits high and looks down over them.
+        [SerializeField] private float _groupCameraHeight = 5.5f;
+        [SerializeField] private float _groupFov = 80f;
         [SerializeField] private float _lateralFollowFraction = 0.6f;
         [SerializeField] private float _baseFov = 55f;
         [SerializeField] private float _dramaFov = 42f;
@@ -184,6 +219,15 @@ namespace PoBox
                 drama = 0.85f;
                 closeShot = true;
             }
+            else if (standingCount >= GROUP_SHOT_MIN_STANDING)
+            {
+                // Group shot: frame everyone still upright. Drama stays at 0 so
+                // the FOV opens to _baseFov and the wide frame is used, which is
+                // what makes all of them fit.
+                target = StandingCentroid();
+                drama = 0f;
+                closeShot = false;
+            }
             else if (standingCount >= 2)
             {
                 // Cinematic tour: hold each standing fighter for a few seconds.
@@ -214,7 +258,7 @@ namespace PoBox
 
             // Solve the distance from the FOV this shot is heading to, so the
             // framing holds at whatever aspect the window ends up with.
-            float desiredFov = Mathf.Lerp(_baseFov, _dramaFov, drama);
+            float desiredFov = closeShot ? Mathf.Lerp(_baseFov, _dramaFov, drama) : _groupFov;
             float followDistance = closeShot
                 ? DistanceToFrame(_closeFrameWidth, _closeFrameHeight, desiredFov)
                 : DistanceToFrame(_wideFrameWidth, _wideFrameHeight, desiredFov);
@@ -223,7 +267,7 @@ namespace PoBox
             // side shows their faces.
             Vector3 desiredPosition = new Vector3(
                 target.x * _lateralFollowFraction,
-                _groundY + _cameraHeight,
+                _groundY + (closeShot ? _cameraHeight : _groupCameraHeight),
                 target.z + followDistance);
             Vector3 position = Vector3.SmoothDamp(
                 transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime);
@@ -281,6 +325,26 @@ namespace PoBox
                 seen++;
             }
             return 0;
+        }
+
+        // Centre of the fighters still upright, which is what the group shot
+        // frames. Deliberately not RingCenter: once half the field is down, the
+        // survivors are usually clustered away from the middle and framing the
+        // geometric centre of the ring puts them at the edge.
+        private Vector3 StandingCentroid()
+        {
+            Vector3 sum = Vector3.zero;
+            int count = 0;
+            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            {
+                if (!_wasStanding[rigIndex])
+                {
+                    continue;
+                }
+                sum += _rigs[rigIndex].Pelvis.position;
+                count++;
+            }
+            return count == 0 ? RingCenter() : sum / count;
         }
 
         private Vector3 RingCenter()

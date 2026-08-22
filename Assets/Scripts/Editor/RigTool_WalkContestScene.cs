@@ -1,4 +1,4 @@
-using PoBox;
+﻿using PoBox;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -64,7 +64,18 @@ namespace PoBox.Editor
         // against ground-relative height. Locomotion_v01/v02/v03 all predate that
         // and v03 is really gen 5, so rebuilding against them silently downgrades
         // the roster to a brain that cannot stand on the current rig.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen7/Boxer.onnx";
+        // Gen 13 is the only brain in the project that MOVES: SpeedMatchMean
+        // 0.900 at 0.82 m/s commanded, verified in inference. Gen 7 -- which
+        // this scene shipped for five generations -- travels nowhere, so the
+        // race was unwinnable by construction: measured 2026-08-22, all four
+        // racers still on the start line at z = -2.80 against a 5.6 m goal.
+        //
+        // Gen 13 hops on its LEFT leg with the right held in the air and falls
+        // about every 1.7 s, so it will not finish either. It covers ground,
+        // which is strictly more than zero, and the gen 14+ line is fixing the
+        // gait. Per-character brains at Assets/Agents/{name}_Walk/Boxer.onnx
+        // still take precedence -- see ResolveBrain.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen13/Locomotion_gen13.onnx";
 
         // Mirrors the balance contest roster so the two mini-games field the
         // same line-up. forceHeuristic: the code-driven PD bot (project rule).

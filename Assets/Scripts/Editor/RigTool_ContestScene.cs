@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.MLAgents.Policies;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -26,7 +26,16 @@ namespace PoBox.Editor
         // the command this model line was trained against, so the same file
         // serves both mini-games. Keep in step with
         // RigTool_WalkContestScene.LOCOMOTION_BRAIN_PATH.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen7/Boxer.onnx";
+        // Gen 9, not gen 7: 25.8 s mean upright against gen 7's 17.2 s, a 46%
+        // improvement, on the same 127-observation ground-relative contract.
+        // Checked 2026-08-22 by running the balance contest and reading the
+        // assigned asset back off the spawned fighters -- the scene had been
+        // shipping gen 7 for five generations.
+        //
+        // This is deliberately NOT the newest brain. Gen 13 travels but hops on
+        // one leg and topples every 1.7 s, which loses a contest scored on
+        // staying upright. Newest and best are different questions per scene.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen9/Locomotion_gen9.onnx";
         private const float LINE_SPACING = 2f;
         private const float SPAWN_HEIGHT = Systems_ContestSpawner.RING_FLOOR_Y + 0.03f;
 

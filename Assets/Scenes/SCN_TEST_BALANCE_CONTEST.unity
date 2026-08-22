@@ -20,7 +20,7 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.16, g: 0.16, b: 0.2, a: 1}
+  m_AmbientSkyColor: {r: 0.28, g: 0.29, b: 0.35, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
@@ -5419,7 +5419,7 @@ Light:
   serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 0.93, b: 0.82, a: 1}
-  m_Intensity: 0.45
+  m_Intensity: 0.75
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -5620,10 +5620,12 @@ MonoBehaviour:
   _closeFrameWidth: 2.4
   _closeFrameHeight: 2.8
   _wideFrameWidth: 7
-  _wideFrameHeight: 4
+  _wideFrameHeight: 5
   _minFollowDistance: 2.2
   _tourSecondsPerFighter: 3
   _cameraHeight: 2.6
+  _groupCameraHeight: 5.5
+  _groupFov: 80
   _lateralFollowFraction: 0.6
   _baseFov: 60
   _dramaFov: 46
@@ -12237,19 +12239,19 @@ MonoBehaviour:
   _roster:
   - displayName: Standard
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
-    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
+    model: {fileID: 5022602860645237092, guid: 32ca0c8ac22cc5e42911cb6c7559763e, type: 3}
     forceHeuristic: 0
-    tint: {fileID: 0}
+    tint: {fileID: 2100000, guid: 90828405f026a1a4cb00f48a34a6763f, type: 2}
     locomotionBrain: 1
   - displayName: Grandma
     prefab: {fileID: 2918738356757314058, guid: 799c3a59bc803194f903674697ddefd9, type: 3}
-    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
+    model: {fileID: 5022602860645237092, guid: 32ca0c8ac22cc5e42911cb6c7559763e, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
   - displayName: Grandpa
     prefab: {fileID: 6230883007331473486, guid: 1670eb04631b00346bef2d22807447f6, type: 3}
-    model: {fileID: 5022602860645237092, guid: db2a380125d9ae942a1cb374ade5fbfc, type: 3}
+    model: {fileID: 5022602860645237092, guid: 32ca0c8ac22cc5e42911cb6c7559763e, type: 3}
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
