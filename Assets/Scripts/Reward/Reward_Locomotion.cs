@@ -13,11 +13,17 @@ namespace PoBox
     /// for at runtime.
     ///
     /// Reward shape, deliberately different from <see cref="Reward_Balance"/>:
-    /// there is NO terminal fall penalty. Per-step reward is positive-definite
-    /// and ending early already forfeits every remaining step, which is
-    /// punishment enough. The old -1 terminal was ~40x anything a 1.5 s
-    /// episode could earn and drowned the signal (observed 2026-08-19:
-    /// mean reward pinned at -0.98, episodes stuck at 76 steps).
+    /// there is NO terminal fall penalty and per-step reward is
+    /// positive-definite. The old -1 terminal was ~40x anything a 1.5 s episode
+    /// could earn and drowned the signal (observed 2026-08-19: mean reward
+    /// pinned at -0.98, episodes stuck at 76 steps).
+    ///
+    /// Since gen 12 a fall does not end the episode either: it restores the
+    /// start pose, forfeits a short recovery window, and continues. Gen 12
+    /// capped how many times, and gen 13 removed the cap, because the cap bound
+    /// exactly when the fighter began stepping. Only MaxStep ends an episode
+    /// now. Forfeiting the whole remainder turned out to be its own kind of
+    /// drowning -- see STUMBLE_RECOVERY_STEPS for the measurements.
     /// </summary>
     [DefaultExecutionOrder(-99)] // after the agent (-100), before the Academy stepper
     public sealed class Reward_Locomotion : MonoBehaviour
@@ -111,6 +117,53 @@ namespace PoBox
         // fastest way to stop losing points, which is how the old -1 terminal
         // failed.
         private const float PRODUCT_FACTOR_FLOOR = 0.01f;
+        // GEN 12 (2026-08-22): falls no longer end the episode outright.
+        //
+        // Return is per-step score times steps-survived over MaxStep, so a fall
+        // at step t forfeits (MaxStep - t) / MaxStep of everything still to
+        // come. Measured on gen 8: collapsing from 880 surviving steps to 250
+        // cost 72% of the return, while perfect gait was worth at most ~26% on
+        // the support term and ~31% on clearance. A first attempt at a step
+        // could never pay for itself, and gens 5-11 each confirmed it from a
+        // different angle -- gen 9 rocked 80% of its weight onto one foot and
+        // stopped there, gen 10 found a way to look like stepping without the
+        // risk, gen 11 went back to standing once that route was closed.
+        //
+        // So a fall now costs a bounded number of steps instead of the rest of
+        // the episode. The fighter is restored to its start pose, forfeits the
+        // recovery window, and carries on; only exhausting the budget ends the
+        // episode.
+        //
+        // GEN 13 (2026-08-22): THERE IS NO BUDGET. Falls never end an episode;
+        // only MaxStep does.
+        //
+        // Gen 12 proved the mechanism and then proved the budget is the wrong
+        // shape for it. A calibration pilot first ran with a budget of 6 and
+        // measured Stumbles pinned at exactly 6.00 in every episode. Raised to
+        // 30, it held around 24-25 while the fighter was merely standing, then
+        // pinned at 30.00 from 10.25M steps onward -- the moment it started
+        // actually stepping and its time-to-first-fall dropped to ~88 steps.
+        // Episode length collapsed back to (budget + 1) x first-fall, and the
+        // return went back to being proportional to survival.
+        //
+        // That is structural, not a bad value. Falls become frequent precisely
+        // WHEN the fighter starts stepping, so any fixed budget binds exactly
+        // when it is needed most, and each new value only moves the step count
+        // at which it fails. A budget that binds is a shorter episode wearing a
+        // disguise.
+        //
+        // With no budget, the episode always runs its full length and one fall
+        // costs exactly one recovery window. Balance keeps a real gradient
+        // anyway: at gen 12's ~88 steps between falls, the 25-step recoveries
+        // consume 22% of the fighter's earning time, so staying upright is
+        // still worth about a quarter more reward. The difference is that the
+        // cost is now bounded and local instead of forfeiting the remainder.
+        //
+        // The cost stays POSITIVE-DEFINITE, a forfeited window rather than a
+        // negative reward: a negative per-step term plus a terminable episode
+        // makes falling the fastest way to stop losing points, which is exactly
+        // how the original -1 terminal failed.
+        private const int STUMBLE_RECOVERY_STEPS = 25;
 
         [SerializeField] private Agent_FighterBoxing _agent;
         [SerializeField] private Systems_FighterRig _rig;
@@ -142,11 +195,18 @@ namespace PoBox
 
         private Collider _footLeftCollider;
         private Collider _footRightCollider;
+        // Every contact sensor on the rig, feet included. A teleport-reset
+        // leaves stale contacts behind because OnCollisionExit only fires on the
+        // next physics step, and _fallContacts alone is not enough: it omits the
+        // feet, which are precisely the sensors the gait terms read.
+        private Sensor_GroundContact[] _allContacts;
+        private int _stumbles;
+        private int _recoveryStepsLeft;
+        private int _stepsToFirstFall;
         private float _stepScale;
         private float _startHeadHeight;
         private float _commandedSpeed;
         private Vector3 _commandedDirection = Vector3.forward;
-        private bool _terminated;
         private int _lastStepCount;
         private float _speedMatchSum;
         private float _supportSum;
@@ -169,6 +229,7 @@ namespace PoBox
             // Cached: bounds is queried twice per fixed step per fighter.
             _footLeftCollider = _rig.FootLeftSensor.GetComponent<Collider>();
             _footRightCollider = _rig.FootRightSensor.GetComponent<Collider>();
+            _allContacts = _rig.GetComponentsInChildren<Sensor_GroundContact>(true);
             _startHeadHeight = _rig.Head.position.y;
             RollCommand();
         }
@@ -182,22 +243,39 @@ namespace PoBox
                 FlushEpisodeStats();
                 _startHeadHeight = _rig.Head.position.y;
                 RollCommand();
-                _terminated = false;
+                _stumbles = 0;
+                _recoveryStepsLeft = 0;
+                _stepsToFirstFall = -1;
             }
             _lastStepCount = stepCount;
-            if (_terminated)
-            {
-                return;
-            }
-
             if (IsFallen(out int fallCause))
             {
-                // No penalty added: forfeiting the rest of the episode is the
-                // punishment. See the class summary.
                 Academy.Instance.StatsRecorder.Add("Locomotion/FallCause", fallCause, StatAggregationMethod.Histogram);
-                Academy.Instance.StatsRecorder.Add("Locomotion/StepsSurvived", stepCount);
-                _terminated = true;
-                _agent.EndEpisode();
+                // Recorded at the FIRST fall of the episode so this stays the
+                // same quantity gens 5-11 reported and the histories remain
+                // comparable. Later stumbles do not overwrite it.
+                if (_stepsToFirstFall < 0)
+                {
+                    _stepsToFirstFall = stepCount;
+                }
+                // Always recoverable. The episode ends when the agent hits
+                // MaxStep and ML-Agents ends it, never because of a fall.
+                _stumbles++;
+                _recoveryStepsLeft = STUMBLE_RECOVERY_STEPS;
+                _rig.ResetToStartPose();
+                for (int contactIndex = 0; contactIndex < _allContacts.Length; contactIndex++)
+                {
+                    _allContacts[contactIndex].ResetContacts();
+                }
+                // Earns nothing this step; the recovery window is the price.
+                return;
+            }
+            if (_recoveryStepsLeft > 0)
+            {
+                // Settling back onto its feet after a stumble. Paying for these
+                // steps would refund the very cost that makes a failed attempt
+                // meaningful.
+                _recoveryStepsLeft--;
                 return;
             }
 
@@ -383,6 +461,12 @@ namespace PoBox
                 // ClearanceMean near 0 means it shuffled without lifting.
                 Academy.Instance.StatsRecorder.Add("Locomotion/SingleSupportMean", _supportSum / _speedMatchSamples);
                 Academy.Instance.StatsRecorder.Add("Locomotion/ClearanceMean", _clearanceSum / _speedMatchSamples);
+                // Steps upright before the FIRST fall. Under gen 12 an episode
+                // outlives its falls, so this is no longer the episode length --
+                // it is still the balance number to compare against gens 5-11.
+                Academy.Instance.StatsRecorder.Add("Locomotion/StepsSurvived",
+                    _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall);
+                Academy.Instance.StatsRecorder.Add("Locomotion/Stumbles", _stumbles);
             }
             _speedMatchSum = 0f;
             _supportSum = 0f;

@@ -1,0 +1,183 @@
+# Locomotion gen 12 (2026-08-22). The reward was never the thing that stopped
+# gens 5-11. The price of trying was.
+#
+# WHAT GEN 11 MEASURED (results/boxer_locomotion11, the FIRST run in this
+# project to spend its entire 18M-step budget rather than being stopped):
+#
+#   step   lesson  reward  survived  support  clearance
+#   5.45M     2     0.089      813    0.013     0.020
+#   8.45M     2     0.124     1038    0.008     0.021   <- peak 1,184 (23.7 s)
+#  12.05M     2     0.090      735    0.017     0.032
+#  15.05M     2     0.061      459    0.026     0.044
+#  18.00M     2     0.071      498    0.024     0.044
+#
+#   lesson 2 span 5.35M-18.0M:  support 0.004-0.031   clearance 0.013-0.051
+#
+# Gen 11 closed the toe-pivot exploit and the policy simply went back to
+# standing. Both gait numbers stayed flat for 12.65M steps in Shuffle. That is
+# the cleanest negative result the project has produced, because by then every
+# other candidate had been eliminated by direct measurement rather than by
+# argument:
+#
+#   sensors           contact counts read 0 or 1, no stuck flags, no airborne
+#                     foot ever reporting grounded
+#   drive authority   hip 8,043 N.m, knee 5,515 N.m against a 71 kg / 698 N
+#                     body -- two orders of magnitude of headroom
+#   action range      hip pitch -110..20 deg, knee 0..130 deg
+#   scripted PD gait  SingleSupportMean 0.0000, falls in ~1.5 s at 0.87 m/s
+#   reward shape      gen 9 (cliff -> slope endpoints)
+#   reward gradient   gen 10 (continuous ramp between them)
+#   reward metric     gen 11 (true ground clearance, exploit closed)
+#
+# WHAT IS LEFT IS THE ECONOMICS, and it was measured back at gen 8: return is
+# per-step score times steps-survived over MaxStep, so collapsing from 880
+# surviving steps to 250 cost 72% of the return, while perfect gait was worth
+# at most ~26% on support and ~31% on clearance. A first attempt at a step
+# could never pay for itself. Every generation since has been a differently
+# shaped bribe to take a bet whose downside was always ~3x the upside.
+#
+# THE FIX IS IN CODE. A fall no longer ends the episode: the fighter is
+# restored to its start pose, forfeits a 25-step recovery window, and carries
+# on. Only exhausting a 30-stumble budget terminates.
+#
+# THE BUDGET SIZE IS ITSELF A MEASURED VALUE, not a guess. A calibration pilot
+# (1.5M steps, speed_command_max pinned at 0) first ran this with a budget of 6
+# and measured Stumbles at exactly 6.00 in every episode -- the budget bound, so
+# episode length was just (budget + 1) x steps-to-first-fall, the return stayed
+# proportional to survival, and the forfeited fraction was unchanged. A budget
+# that binds is a shorter episode wearing a disguise, and it would have wasted
+# the whole run. At the pilot's ~123 steps per life, filling 3,000 steps needs
+# ~24 lives, so 30 leaves headroom while balance is still poor.
+#
+# THE GATES BELOW CHANGE, AND HAD TO. With episodes outliving their falls, mean
+# reward stops measuring survival and starts measuring per-step QUALITY, so the
+# old 0.15-0.19 gates would have been cleared on the first summary. The new ones
+# are computed from what each rung actually pays. For a fighter that stands
+# still and never steps, per-step quality is
+#
+#   speedMatch^0.5 * support^0.3 * clearance^0.35
+#
+# evaluated at that rung's mean commanded speed, against 1.0 for one that walks
+# it properly:
+#
+#   lesson       cmd   statue   walker   gate
+#   StandStill  0.00    1.000    1.000   0.55
+#   Sway        0.10    0.840    1.000   0.60
+#   Shuffle     0.32    0.345    1.000   0.45
+#   Step        0.48    0.098    1.000   0.40
+#   Stride      0.64    0.005    1.000   0.38
+#
+# The gates are NOT monotonic, on purpose. The statue's score collapses as the
+# commanded speed rises, so the achievable reward falls with it; a gate that
+# kept climbing would be asking for more while paying less. What every gate does
+# guarantee is that it sits above what a non-stepping fighter can reach at that
+# rung (times the ~0.95 completion a good balancer gets) and below what a real
+# walker earns. From Shuffle on, standing still CANNOT clear the gate. That has
+# never been true before.
+#
+# WATCH Locomotion/Stumbles FIRST, before reward or support.
+#   Working:     Stumbles sits below 30, so the budget is not binding and the
+#                episode really is decoupled from the first fall. Then support
+#                and clearance climb together -- with the pivot closed, a foot
+#                5 cm off the floor IS single support.
+#   Budget binds: Stumbles pinned at 30.00. The decoupling has failed exactly as
+#                it did at 6 in the pilot, and gen 13 raises the budget or
+#                shortens MaxStep rather than touching the reward at all.
+#   Gates wrong: a lesson clears within ~500k steps of being entered while
+#                support stays flat. The gate is under the statue's score for
+#                that rung; recompute it, do not lower the next one.
+#
+# NOT RESUMABLE from gen 11 or earlier: episode structure and reward scale both
+# change. The observation count is still 127, so an old checkpoint loads and
+# behaves like nonsense rather than erroring.
+#
+# Runs headless now: --env=EnvBuild/PoBoxTrain.exe --num-envs=2 --no-graphics,
+# 1,810 steps/s against the Editor's 1,430. The trainer is the bottleneck, not
+# Unity -- one CPU-only torch process sits at ~390% while the env processes idle
+# at 16-27% -- so a third env buys only 6.6% more and costs RAM there isn't.
+#
+# Gen 9's balance brain is banked at Assets/Agents/Locomotion_gen9/ (25.8 s).
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    # Raised from 200000 now the run is headless: the trainer no longer has to
+    # be stopped for in-scene tests, so checkpoints exist for rollback rather
+    # than to cap the cost of an interruption.
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.60
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.40
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.38
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

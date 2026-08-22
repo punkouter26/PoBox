@@ -1,0 +1,27 @@
+boxer_locomotion12, final model (step 18,000,102). Full 18M-step run.
+
+THE FIRST BRAIN IN THIS PROJECT THAT ACTUALLY STEPS, and the first to get past
+the Shuffle rung. It is NOT contest-usable: it falls roughly every 84 steps
+(1.7 s). Kept for provenance and as the starting point of the walking line.
+
+  SingleSupportMean  0.261 at the end, still climbing
+  ClearanceMean      0.379 (true ground clearance, ~1.9 cm)
+  1st fall           84 steps at the end; peak 1,571 steps (31.4 s) at 7.05M
+  final lesson       Step (0.6 m/s) -- no earlier generation reached it
+
+For scale, gens 5-11 never exceeded SingleSupportMean 0.031 anywhere, in any
+lesson. Gen 11 sat at 0.024 after 12.65M steps in Shuffle alone.
+
+What made the difference was not the reward. Gens 9, 10 and 11 had already
+eliminated the reward's shape, gradient and metric by direct measurement. Gen
+12 changed the ECONOMICS: a fall stopped ending the episode, so a failed step
+cost a 25-step recovery window instead of the whole remainder. Exploring a step
+became affordable for the first time.
+
+Gen 12's own limit was the stumble budget, which pinned at 30.00 from 10.25M
+onward -- the moment stepping made falls frequent -- putting the survival cliff
+back. Gen 13 removes the budget entirely.
+
+127 observations, ground-relative heights. Same contract as Locomotion_gen9.
+
+Full run kept at results/boxer_locomotion12/.
