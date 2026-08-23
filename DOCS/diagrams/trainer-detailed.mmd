@@ -1,0 +1,66 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 16px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 38
+    rankSpacing: 50
+    padding: 12
+---
+flowchart TB
+    subgraph ENV["ENVIRONMENT — SCN_TRAIN_LOCOMOTION"]
+      direction LR
+      E1["<b>16 × Fighter_00..15</b><br/>shared ground box, no cameras,<br/>no HUD, no audio (project rule)"]
+      E2["<b>Per fighter</b><br/>Agent_FighterBoxing + DecisionRequester<br/>Reward_Locomotion + Systems_Shover<br/>Systems_StrengthCurriculum + TrainingCubes"]
+      E3["<b>Headless option</b><br/>EnvBuild/PoBoxTrain.exe --num-envs 2<br/>1,810 steps/s vs Editor 1,430<br/><i>trainer is the bottleneck at ~390% CPU,<br/>not PhysX — a 3rd env buys 6.6%</i>"]
+    end
+
+    subgraph TRAINER["PPO TRAINER — mlagents 1.1.0, torch 2.2.2 CPU"]
+      direction TB
+      H1["<b>Rollout</b> time_horizon 256<br/>buffer_size 20480 (≈80 horizons)<br/>batch_size 2048"]
+      H2["<b>Objective</b> clipped surrogate ε 0.2<br/>GAE λ 0.95 · γ 0.99<br/>entropy β 0.01 (exploration)"]
+      H3["<b>Optimiser</b> Adam lr 3e-4<br/>schedule: linear → 0<br/>num_epoch 3 per buffer"]
+      H4["<b>Network</b> 3 × 512 fully connected<br/>normalize: true<br/>606,525 params · extrinsic strength 1.0"]
+      H5["<b>Checkpoints</b> every 500k steps<br/>keep_checkpoints 25<br/>summary_freq 50k"]
+    end
+
+    subgraph CURR["CURRICULUM — environment_parameters.speed_command_max"]
+      direction TB
+      C0["<b>StandStill</b> 0.0 m/s — gate 0.55"]
+      C1["<b>Sway</b> 0.2 — gate 0.60"]
+      C2["<b>Shuffle</b> 0.4 — gate 0.45"]
+      C3["<b>Step</b> 0.6 — gate 0.40"]
+      C4["<b>Stride</b> 0.8 — gate 0.38"]
+      C5["<b>Walk</b> 1.0 — terminal rung"]
+      CN["<b>Gates fall, not rise — on purpose</b><br/>a non-stepping fighter scores 1.000 at StandStill<br/>but only 0.345 at Shuffle, so a rising gate<br/>would ask more while paying less.<br/>From Shuffle on, standing cannot pass."]
+    end
+
+    subgraph SIG["REWARD SIGNAL & SCHEDULES"]
+      direction TB
+      S1["<b>extrinsic</b> γ 0.99 · strength 1.0<br/><i>no curiosity, no GAIL, no BC</i>"]
+      S2["<b>min_lesson_length</b> 250 · signal_smoothing on<br/>require_reset true"]
+    end
+
+    E1 --> E2 --> H1
+    E3 -.-> H1
+    H1 --> H2 --> H3 --> H4
+    H4 -- "policy weights → Sentis" --> E1
+    H3 --> H5
+    S1 --> H2
+    C0 --> C1 --> C2 --> C3 --> C4 --> C5
+    S2 --> C0
+    CN -.-> C2
+    C5 -- "speed_command_max → Academy" --> E2
+
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef quiet fill:#F5F6F8,stroke:#B9C0C8,color:#39424D
+    class H2,H3,H4 brain
+    class CN accent
+    class E3 quiet

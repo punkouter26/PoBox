@@ -1,0 +1,67 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 16px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 38
+    rankSpacing: 54
+    padding: 12
+---
+flowchart TB
+    subgraph OBS["OBSERVATION TENSOR — obs_0 : float32[batch, 127]"]
+      direction LR
+      R["<b>ROOT — 13</b><br/>idx 0..12<br/>pelvis height above GroundY<br/>up-vector, forward-vector<br/>linear vel, angular vel ÷20"]
+      J["<b>PER JOINT — 7 × 14 = 98</b><br/>idx 13..110<br/>target vs actual angle per axis,<br/>angular velocity, drive load"]
+      F["<b>FOOT — 8</b><br/>idx 111..118<br/>grounded flags, contact normals,<br/>downward ray ≤ 1 m"]
+      FH["<b>FOOT HEIGHT — 2</b><br/>idx 119..120<br/>collider AABB min above GroundY"]
+      LC["<b>LOCOMOTION CMD — 6</b><br/>idx 121..126<br/>commanded speed, goal dir (3),<br/>gait clock sin/cos @ 1.4 Hz"]
+    end
+
+    subgraph NET["POLICY NETWORK — pytorch → ONNX opset 9"]
+      direction TB
+      NRM["<b>Normalizer</b> Sub → Div → Clip<br/>running mean/variance, normalize: true"]
+      H1["<b>Dense 127 → 512</b> Gemm + Sigmoid"]
+      H2["<b>Dense 512 → 512</b> Gemm + Sigmoid"]
+      H3["<b>Dense 512 → 512</b> Gemm + Sigmoid"]
+      HEAD["<b>Gaussian head</b> Gemm → μ[30], log σ[30]<br/>RandomNormalLike → μ + σ·ε<br/>Clip to [−1, 1]"]
+    end
+
+    subgraph ACT["ACTION TENSOR — continuous_actions : float32[batch, 30]"]
+      direction LR
+      MAP["<b>Normalised → angle</b><br/>a ∈ [−1,1] → Lerp(low, high)<br/>per enabled axis"]
+      SM["<b>Low-pass</b><br/>_actionSmoothingSeconds 0.10 s"]
+      TQ["<b>ConfigurableJoint.targetRotation</b><br/>Quaternion, Slerp drive mode"]
+    end
+
+    subgraph DRV["ACTUATOR MAP — 14 joints, 30 DOF, 75.0 kg total"]
+      direction TB
+      D1["<b>Torso</b> 24.26 kg · P −30..30 R −20..20 Y −35..35<br/>Kp 3500 Kd 250 Fmax 5000"]
+      D2["<b>Head</b> 5.15 kg · P −40..40 R −30..30 Y −45..45<br/>Kp 1200 Kd 90 Fmax 2000"]
+      D3["<b>Thigh L/R</b> 8.46 kg · P −110..20 R ±(20/45) Y −30..30<br/>Kp 4500 Kd 350 Fmax 7000"]
+      D4["<b>Shin L/R</b> 3.68 kg · P 0..130 (1 DOF)<br/>Kp 4000 Kd 300 Fmax 6000"]
+      D5["<b>Foot L/R</b> 1.10 kg · P −40..25 R −20..20<br/>Kp 2500 Kd 180 Fmax 3500"]
+      D6["<b>UpperArm L/R</b> 2.21 kg · P −60..120 R ±90 Y −60..60<br/>Kp 2000 Kd 150 Fmax 3000"]
+      D7["<b>Forearm L/R</b> 1.47 kg · P 0..140 (1 DOF)<br/>Kp 1800 Kd 120 Fmax 2500"]
+      D8["<b>Glove L/R</b> 0.74 kg · P −60..60 Y −25..25<br/>Kp 1000 Kd 80 Fmax 1500"]
+    end
+
+    R --> NRM
+    J --> NRM
+    F --> NRM
+    FH --> NRM
+    LC --> NRM
+    NRM --> H1 --> H2 --> H3 --> HEAD --> MAP --> SM --> TQ
+    TQ --> D1
+    TQ --> D3
+    TQ --> D6
+
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    class H1,H2,H3,HEAD,NRM brain
+    class LC,FH accent

@@ -1,0 +1,67 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 16px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+    tertiaryColor: "#F5F6F8"
+  flowchart:
+    nodeSpacing: 40
+    rankSpacing: 52
+    padding: 12
+---
+flowchart TB
+    subgraph UNITY["UNITY MAIN THREAD — Time.fixedDeltaTime = 0.02 s (50 Hz, locked)"]
+      direction TB
+      EX["<b>Execution order is explicit</b><br/>Agent_FighterBoxing −100<br/>Reward_Locomotion −99<br/>Academy stepper: default"]
+      DR["<b>DecisionRequester</b><br/>requests a decision on the tick"]
+      CO["<b>CollectObservations(VectorSensor)</b><br/>13 root + 7×14 joints + 8 foot<br/>+2 foot height + 6 locomotion cmd<br/><i>= 127 floats, ground-relative</i>"]
+      OA["<b>OnActionReceived(ActionBuffers)</b><br/>copies 30 continuous actions<br/>into _pendingActions — <i>applies nothing</i>"]
+      FU["<b>FixedUpdate</b><br/>_rig.ApplyActions(actions, 0)<br/>normalised [−1,1] → per-axis target angle<br/>_actionSmoothingSeconds = 0.10 s low-pass"]
+    end
+
+    subgraph SENTIS["SENTIS INFERENCE ENGINE (Unity.InferenceEngine)"]
+      direction TB
+      T1["<b>obs_0</b> float32[batch,127]"]
+      NN["<b>MLP</b> 3 × 512, opset 9<br/>Gemm ×4 → Sigmoid ×3<br/>606,525 parameters<br/><i>normalize: true — running mean/var</i>"]
+      T2["<b>continuous_actions</b> float32[batch,30]<br/>+ deterministic_continuous_actions<br/>+ version_number, memory_size"]
+    end
+
+    subgraph PHYSX["PHYSX SOLVER"]
+      direction TB
+      CJ["<b>14 ConfigurableJoint</b><br/>rotationDriveMode = <b>Slerp</b><br/>slerpDrive: spring / damper / maxForce<br/>targetRotation = Quaternion of targets"]
+      SIM["<b>Simulate 0.02 s</b><br/>16 solver iterations<br/>15 rigidbodies, 75.0 kg"]
+      SENS["<b>Sensor_GroundContact</b> ×8<br/>OnCollisionEnter/Exit counts<br/>contacts with static colliders"]
+    end
+
+    subgraph REWARD["REWARD & TERMINAL — Reward_Locomotion"]
+      direction TB
+      RW["<b>Weighted geometric mean</b><br/>upright^0.15 · speedMatch^0.50<br/>· support^0.30 · clearance^0.35<br/>× 1/MaxStep, floor 0.01"]
+      FALL{"<b>IsFallen?</b><br/>torso/head/shin/glove contact<br/>OR head &lt; 40% standing height"}
+      STU["<b>Stumble — no budget since gen 13</b><br/>ResetToStartPose()<br/>ResetContacts() on all 8 sensors<br/>forfeit 25 steps of reward"]
+      TRUNC{"<b>StepCount ≥ MaxStep</b><br/>3000 (60 s)"}
+    end
+
+    subgraph BUF["TRAINER — mlagents-learn, gRPC :5004"]
+      direction TB
+      TRJ["<b>Trajectory buffer</b><br/>time_horizon 256<br/>buffer_size 20480<br/>batch_size 2048"]
+      PPO["<b>PPO update</b><br/>num_epoch 3, ε 0.2<br/>λ 0.95, γ 0.99, β 0.01<br/>lr 3e-4 linear decay"]
+    end
+
+    EX --> DR --> CO --> T1 --> NN --> T2 --> OA --> FU --> CJ --> SIM --> SENS --> RW --> FALL
+    FALL -- "no" --> TRUNC
+    FALL -- "yes" --> STU --> TRUNC
+    TRUNC -- "no — continue" --> DR
+    TRUNC -- "yes" --> TRJ --> PPO
+    PPO -- "updated policy weights" --> NN
+
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    classDef quiet fill:#F5F6F8,stroke:#B9C0C8,color:#39424D
+    class RW,FALL accent
+    class NN,T1,T2 brain
+    class EX quiet

@@ -1,0 +1,79 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 16px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 38
+    rankSpacing: 50
+    padding: 12
+---
+flowchart TB
+    subgraph PERCEPT["PERCEPTION — Sensor_GroundContact ×8 + rig state"]
+      direction LR
+      P1["<b>Foot contacts</b><br/>_contactCount &gt; 0<br/>static colliders only<br/>ResetContacts() after teleport"]
+      P2["<b>Foot elevation</b><br/>collider.bounds.min.y − GroundY<br/><i>gen 11: AABB min, not transform —<br/>the transform is the foot CENTRE and<br/>an ankle roll raises it 15 cm</i>"]
+      P3["<b>Torso / pelvis</b><br/>transform.up · Vector3.up<br/>pelvis.linearVelocity"]
+      P4["<b>Stance tracker</b><br/>left-only = −1, right-only = +1<br/>double support = neutral"]
+    end
+
+    subgraph TERMS["EXTRINSIC TERM TREE — weights are EXPONENTS, not addends"]
+      direction TB
+      T1["<b>uprightReward</b> = max(0, up·Y)²<br/><b>w = 0.15</b>"]
+      T2["<b>speedMatchReward</b> = exp(−err² / 0.3²)<br/>signed along goal dir<br/><b>w = 0.50</b>"]
+      T3["<b>supportReward</b><br/>min(1, max(single, clearance)<br/>+ (1−blend)·double·(1−clearance))<br/><b>w = 0.30</b>"]
+      T4["<b>clearanceReward</b> = Lerp(1, clearance, blend)<br/>clearance = swingLift / 0.05 m<br/>zeroed when BOTH feet airborne<br/><b>w = 0.35</b>"]
+      T5["<b>heightReward</b><br/><b>w = 0.00 — disabled</b><br/><i>it paid the agent for not moving</i>"]
+    end
+
+    subgraph GATE["GAIT GATE — gen 15"]
+      direction TB
+      G1["<b>alternation</b> = clamp01(switchRate / (1/35))<br/>EMA of stance CHANGES, τ ≈ 2 s<br/>full credit at a 0.7 s swap = 1.4 Hz"]
+      G2["<b>supportReward ×= alternation</b><br/>faded in by gaitBlend so StandStill<br/>is never punished for planting"]
+      G3["standing = 0 · hopping = 0<br/>only swapping scores"]
+    end
+
+    subgraph PROD["AGGREGATION"]
+      direction TB
+      PR["<b>Π</b> max(0.01, term)^w<br/>weighted geometric mean<br/>× 1 / MaxStep(3000)<br/>− 0.05 · LastActionDelta01"]
+      NOTE["<b>positive-definite by design</b><br/>a negative per-step term plus a<br/>terminable episode makes falling<br/>the fastest way to stop losing points"]
+    end
+
+    subgraph TERM["TERMINAL / TRUNCATION"]
+      direction TB
+      X1{"fallContacts[0..5] grounded?<br/>torso, head, shin L/R, glove L/R"}
+      X2{"head &lt; 0.40 × standing height"}
+      X3["<b>STUMBLE</b> — not terminal<br/>ResetToStartPose + ResetContacts<br/>forfeit 25 steps · unlimited count"]
+      X4["<b>TRUNCATION</b> — StepCount ≥ 3000<br/>the only way an episode ends"]
+    end
+
+    P1 --> T3
+    P2 --> T4
+    P3 --> T1
+    P3 --> T2
+    P4 --> G1
+    T1 --> PR
+    T2 --> PR
+    T3 --> G2
+    G1 --> G2 --> G3 --> PR
+    T4 --> PR
+    T5 -.-> PR
+    PR --> NOTE
+    P1 --> X1
+    P3 --> X2
+    X1 -- "yes" --> X3
+    X2 -- "yes" --> X3
+    X3 --> X4
+    X1 -- "no" --> X4
+
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef good fill:#1B7F5A,stroke:#125C41,color:#FFFFFF
+    classDef off fill:#F5F6F8,stroke:#B9C0C8,color:#7A828C
+    class G1,G2,G3,X3 accent
+    class PR good
+    class T5 off

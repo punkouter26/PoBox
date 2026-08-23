@@ -1,0 +1,637 @@
+<title>PoBox Fight Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ink:#0E1419; --ink-2:#39424D; --ink-3:#5C6773;
+  --paper:#ECEEF1; --surface:#F7F8FA; --raised:#FFFFFF;
+  --hair:#C7CDD4; --hair-soft:#DDE1E6;
+  --red:#C8102E; --blue:#1B4FA0;
+  --s1:#1B4FA0; --s2:#B26A00; --s3:#7B3FA8; --s4:#1B7F5A;
+  --good:#1B7F5A; --warn:#B26A00; --crit:#C8102E;
+  --grid:#D5DAE0; --chart-surface:#FCFCFB;
+  --step:4px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E8EBEF; --ink-2:#B4BCC5; --ink-3:#8A939D;
+    --paper:#0F1418; --surface:#161C22; --raised:#1B222A;
+    --hair:#333C46; --hair-soft:#262E36;
+    --red:#F16A7F; --blue:#6FA0E8;
+    --s1:#4581D4; --s2:#C4862A; --s3:#9566C0; --s4:#2A9A70;
+    --good:#2A9A70; --warn:#C4862A; --crit:#F16A7F;
+    --grid:#2A333C; --chart-surface:#1a1a19;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E8EBEF; --ink-2:#B4BCC5; --ink-3:#8A939D;
+  --paper:#0F1418; --surface:#161C22; --raised:#1B222A;
+  --hair:#333C46; --hair-soft:#262E36;
+  --red:#F16A7F; --blue:#6FA0E8;
+  --s1:#4581D4; --s2:#C4862A; --s3:#9566C0; --s4:#2A9A70;
+  --good:#2A9A70; --warn:#C4862A; --crit:#F16A7F;
+  --grid:#2A333C; --chart-surface:#1a1a19;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,Segoe UI,sans-serif;
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Barlow Condensed",Impact,sans-serif; text-wrap:balance; margin:0; line-height:1.05; letter-spacing:.01em}
+h1{font-size:clamp(44px,7vw,84px); font-weight:800; text-transform:uppercase}
+h2{font-size:clamp(28px,4vw,44px); font-weight:700; text-transform:uppercase}
+h3{font-size:24px; font-weight:700}
+h4{font-size:19px; font-weight:600}
+code,.mono,td.num,th.num{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+
+.wrap{display:grid; grid-template-columns:232px minmax(0,1fr); gap:0; max-width:1560px; margin:0 auto}
+@media(max-width:900px){ .wrap{grid-template-columns:1fr} .rail{position:static !important; height:auto !important; border-right:0 !important; border-bottom:1px solid var(--hair)} }
+
+.rail{
+  position:sticky; top:0; height:100vh; padding:28px 20px;
+  border-right:1px solid var(--hair); background:var(--surface);
+  display:flex; flex-direction:column; gap:28px; overflow-y:auto;
+}
+.brand{font-family:"Barlow Condensed",sans-serif; font-weight:800; text-transform:uppercase; font-size:26px; line-height:.95}
+.brand span{display:block; font-size:11px; letter-spacing:.18em; color:var(--ink-3); font-family:"IBM Plex Mono",monospace; font-weight:500; margin-top:6px}
+.ctl{display:flex; flex-direction:column; gap:8px}
+.ctl-label{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3)}
+.seg{display:flex; flex-direction:column; border:1px solid var(--hair); border-radius:4px; overflow:hidden}
+.seg button{
+  appearance:none; border:0; background:var(--raised); color:var(--ink-2);
+  font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:500;
+  padding:9px 11px; text-align:left; cursor:pointer; border-bottom:1px solid var(--hair-soft);
+}
+.seg button:last-child{border-bottom:0}
+.seg button:hover{background:var(--surface); color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--paper); font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--red); outline-offset:-2px}
+.seg small{display:block; font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:.1em; opacity:.72; text-transform:uppercase; margin-top:1px}
+.toc{display:flex; flex-direction:column; gap:2px; font-size:13.5px}
+.toc a{color:var(--ink-2); text-decoration:none; padding:3px 0; border-bottom:1px solid transparent}
+.toc a:hover{color:var(--red); border-bottom-color:var(--red)}
+
+main{padding:44px clamp(20px,3.5vw,56px) 100px; min-width:0}
+section{padding:36px 0; border-top:1px solid var(--hair-soft)}
+section:first-of-type{border-top:0; padding-top:8px}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin-bottom:10px}
+.lede{font-size:19px; color:var(--ink-2); max-width:66ch}
+p{max-width:70ch}
+
+.hero{border-bottom:3px solid var(--ink); padding-bottom:24px; margin-bottom:8px}
+.hero .sub{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-top:14px}
+
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:16px; margin:24px 0}
+.tile{background:var(--raised); border:1px solid var(--hair); border-radius:4px; padding:18px 18px 16px; position:relative}
+.tile .k{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+.tile .v{font-family:"Barlow Condensed",sans-serif; font-weight:800; font-size:46px; line-height:1; margin:8px 0 2px; font-variant-numeric:tabular-nums}
+.tile .n{font-size:13px; color:var(--ink-3); line-height:1.45}
+.tile.crit{border-left:3px solid var(--crit)} .tile.good{border-left:3px solid var(--good)} .tile.warn{border-left:3px solid var(--warn)}
+
+.pill{display:inline-flex; align-items:center; gap:6px; font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; padding:3px 9px; border-radius:999px; border:1px solid currentColor; white-space:nowrap}
+.pill.prod{color:var(--good)} .pill.stage{color:var(--warn)} .pill.arch{color:var(--ink-3)} .pill.fail{color:var(--crit)}
+.pill::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor}
+
+figure{margin:26px 0; background:var(--raised); border:1px solid var(--hair); border-radius:4px; overflow:hidden}
+figure .frame{overflow-x:auto; padding:22px; background:var(--chart-surface)}
+figure img{display:block; min-width:520px; max-width:100%; height:auto; margin:0 auto}
+figcaption{border-top:1px solid var(--hair-soft); padding:12px 18px; font-size:13.5px; color:var(--ink-2); background:var(--surface)}
+figcaption b{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink); display:block; margin-bottom:3px}
+
+.tblwrap{overflow-x:auto; border:1px solid var(--hair); border-radius:4px; background:var(--raised); margin:22px 0}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:560px}
+th,td{padding:9px 13px; text-align:left; border-bottom:1px solid var(--hair-soft); white-space:nowrap}
+th{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); background:var(--surface); position:sticky; top:0}
+td.num,th.num{text-align:right}
+tbody tr:hover{background:var(--surface)}
+tbody tr:last-child td{border-bottom:0}
+caption{caption-side:top; text-align:left; padding:13px; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); border-bottom:1px solid var(--hair)}
+
+.bars{display:flex; flex-direction:column; gap:13px; margin:22px 0}
+.bar{display:grid; grid-template-columns:132px minmax(0,1fr) 88px; align-items:center; gap:14px; font-size:13.5px}
+.bar .lbl{font-weight:500}
+.bar .track{position:relative; height:22px; background:var(--surface); border:1px solid var(--hair-soft); border-radius:4px; overflow:hidden}
+.bar .fill{position:absolute; inset:0 auto 0 0; border-radius:0 4px 4px 0}
+.bar .gate{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink)}
+.bar .val{font-family:"IBM Plex Mono",monospace; text-align:right; font-variant-numeric:tabular-nums}
+
+.chartcard{background:var(--raised); border:1px solid var(--hair); border-radius:4px; margin:24px 0}
+.chartcard .head{padding:16px 18px 0}
+.chartcard .head h4{margin-bottom:3px}
+.chartcard .head p{font-size:13.5px; color:var(--ink-3); margin:0}
+.legend{display:flex; flex-wrap:wrap; gap:16px; padding:12px 18px 0; font-size:12.5px}
+.legend span{display:inline-flex; align-items:center; gap:7px; color:var(--ink-2)}
+.legend i{width:14px; height:3px; border-radius:2px; display:inline-block}
+.chartbox{overflow-x:auto; padding:8px 18px 18px}
+svg.chart{display:block; min-width:640px}
+.tt{position:fixed; pointer-events:none; opacity:0; transition:opacity .12s; background:var(--ink); color:var(--paper); font-family:"IBM Plex Mono",monospace; font-size:11.5px; padding:8px 10px; border-radius:4px; z-index:50; line-height:1.55; white-space:pre}
+
+.callout{border-left:3px solid var(--red); background:var(--surface); padding:15px 18px; margin:22px 0; border-radius:0 4px 4px 0}
+.callout b{font-family:"Barlow Condensed",sans-serif; text-transform:uppercase; font-size:17px; letter-spacing:.02em; display:block; margin-bottom:4px}
+.callout p{margin:0; font-size:14.5px; color:var(--ink-2)}
+
+.note{font-size:13px; color:var(--ink-3); font-style:italic; max-width:70ch}
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px}
+[hidden]{display:none !important}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+</style>
+
+<div class="wrap">
+<nav class="rail">
+  <div class="brand">PoBox<span>Fight Lab</span></div>
+
+  <div class="ctl">
+    <div class="ctl-label">Depth</div>
+    <div class="seg" id="tierseg">
+      <button data-tier="1" aria-pressed="true">Glance<small>Tier 1 · 30 sec</small></button>
+      <button data-tier="2" aria-pressed="false">Overview<small>Tier 2 · flows</small></button>
+      <button data-tier="3" aria-pressed="false">Complete<small>Tier 3 · specs</small></button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <div class="ctl-label">Mode</div>
+    <div class="seg" id="modeseg">
+      <button data-mode="exec" aria-pressed="true">Executive<small>behaviour &amp; status</small></button>
+      <button data-mode="tech" aria-pressed="false">Technical<small>tensors &amp; physics</small></button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <div class="ctl-label">Theme</div>
+    <div class="seg" id="themeseg">
+      <button data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button data-theme-set="light" aria-pressed="false">Light</button>
+      <button data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <div class="ctl-label">Sections</div>
+    <div class="toc">
+      <a href="#verdict">Verdict</a>
+      <a href="#evolution">Behaviour evolution</a>
+      <a href="#lifecycle">Execution loop</a>
+      <a href="#tensor">Tensor &amp; actuators</a>
+      <a href="#reward">Reward tree</a>
+      <a href="#trainer">Trainer spec</a>
+      <a href="#models">Model inventory</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Unity 6000.5.6f1 · ML-Agents 4.1.0 · Sentis inference</div>
+  <h1>Teaching a<br>ragdoll to walk</h1>
+  <p class="lede">Sixteen active-ragdoll boxers, 127 numbers in and 30 out, scored fifty times a second. Twenty generations of reward design — and the thing that finally worked wasn't the reward at all.</p>
+  <div class="sub">Telemetry current to gen 20 · 4,496,768 steps · read from <code>results/</code> and the live Editor</div>
+</header>
+
+<!-- ============ VERDICT ============ -->
+<section id="verdict">
+  <div class="eyebrow">Tier 1 — Executive summary</div>
+  <h2>Where it stands</h2>
+
+  <div class="tiles">
+    <div class="tile good">
+      <div class="k">Gait</div>
+      <div class="v">0.736</div>
+      <div class="n">Alternation at gen 15 — the legs genuinely take turns, a stance change every 0.95 s.</div>
+    </div>
+    <div class="tile good">
+      <div class="k">Pace</div>
+      <div class="v">0.885</div>
+      <div class="n">Speed match at 0.46 m/s commanded. It moves at the pace it is told.</div>
+    </div>
+    <div class="tile crit">
+      <div class="k">Stability</div>
+      <div class="v">1.7<span style="font-size:22px">s</span></div>
+      <div class="n">Time between falls. This is the one number blocking the walk race.</div>
+    </div>
+    <div class="tile warn">
+      <div class="k">Race progress</div>
+      <div class="v">1.0<span style="font-size:22px">m</span></div>
+      <div class="n">Of a 5.6 m course before toppling. Roughly two steps.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>The finding that mattered</b>
+    <p>Gens 9–11 eliminated the reward's shape, gradient and metric by direct measurement, and the fighter still would not step. The blocker was economics: a fall forfeited ~72% of episode return while perfect gait bought ~26%, so a first attempt at a step could never pay for itself. Gen 12 stopped falls ending the episode — single support went from a seven-generation ceiling of 0.031 to 0.951.</p>
+  </div>
+
+  <div data-tier="2 3">
+    <h3>Two brains, two jobs</h3>
+    <p>The project ships different policies to different mini-games, because the two skills are in tension. A brain that stands superbly cannot walk; a brain that walks cannot stand still.</p>
+    <div class="tblwrap">
+      <table>
+        <caption>Production assignments</caption>
+        <thead><tr><th>Mini-game</th><th>Brain</th><th class="num">Key metric</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>SCN_TEST_BALANCE_CONTEST</td><td class="mono">Locomotion_gen20</td><td class="num">113 steps between falls</td><td><span class="pill prod">Production</span></td></tr>
+          <tr><td>SCN_TEST_WALK_CONTEST</td><td class="mono">Locomotion_gen18_34M</td><td class="num">Alternation 0.766</td><td><span class="pill prod">Production</span></td></tr>
+          <tr><td>Heuristic fallback (all scenes)</td><td class="mono">— code-driven PD bot</td><td class="num">SingleSupport 0.000</td><td><span class="pill arch">Mandated</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EVOLUTION ============ -->
+<section id="evolution" data-tier="1 2 3">
+  <div class="eyebrow">Behaviour evolution</div>
+  <h2>Twenty generations</h2>
+  <p class="lede">Each generation moved exactly one mechanism, so the result would be readable. Three of them were exploits that looked like success on the curves.</p>
+
+  <div class="chartcard">
+    <div class="head">
+      <h4>Gait quality by generation</h4>
+      <p>Single support is how often exactly one foot bears load. Alternation is how often the bearing foot <em>changes</em> — the metric that separates walking from hopping.</p>
+    </div>
+    <div class="legend" id="lgd-gen"></div>
+    <div class="chartbox"><svg class="chart" id="chart-gen" role="img" aria-label="Line chart of gait metrics across generations 8 to 20"></svg></div>
+    <figcaption><b>Reading it</b>Gen 13 spikes single support to 0.951 with alternation at zero — that is the one-legged hop. Gen 15 trades peak support for real alternation. Gen 20 is a balance-only run and deliberately sheds gait.</figcaption>
+  </div>
+
+  <div data-mode="exec">
+    <h3>Reward against its gate</h3>
+    <p>Each curriculum rung unlocks only when smoothed reward clears a gate. The gates fall as commanded speed rises — deliberately, because a non-stepping fighter scores 1.000 at StandStill but only 0.345 at Shuffle.</p>
+    <div class="bars" id="gatebars"></div>
+    <p class="note">Black tick marks the gate. Bars show the final mean reward of the generation that last occupied each rung.</p>
+  </div>
+
+  <div class="tblwrap" data-tier="3">
+    <table>
+      <caption>Generation telemetry — final summary values, read from TensorBoard event files</caption>
+      <thead><tr><th>Run</th><th class="num">Steps</th><th class="num">Reward</th><th class="num">Lesson</th><th class="num">1st fall</th><th class="num">Support</th><th class="num">Altern.</th><th class="num">Speed</th><th>Outcome</th></tr></thead>
+      <tbody id="genrows"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ LIFECYCLE ============ -->
+<section id="lifecycle" data-tier="1 2 3">
+  <div class="eyebrow">Architecture</div>
+  <h2>Execution loop</h2>
+  <p class="lede">One fixed tick at 50 Hz: sense, think, actuate, simulate, score, decide whether the round continues.</p>
+
+  <figure data-mode="exec">
+    <div class="frame"><img src="assets/lifecycle-simple.svg" alt="Conceptual loop: Academy step, collect observations, policy, actions, FixedUpdate, PhysX, reward, fall check"></div>
+    <figcaption><b>Conceptual — Tier 1/2</b>Actions are never applied where they arrive. <code>OnActionReceived</code> only stores them; <code>FixedUpdate</code> applies them. That separation is a project rule and keeps physics deterministic.</figcaption>
+  </figure>
+
+  <figure data-mode="tech">
+    <div class="frame"><img src="assets/lifecycle-detailed.svg" alt="Detailed pipeline across Unity main thread, Sentis engine, PhysX solver, reward and terminal checks, and the PPO trainer"></div>
+    <figcaption><b>Complete — Tier 3</b>Execution order is explicit: agent −100, reward −99, then the Academy stepper. The trainer loop closes over gRPC on port 5004; contest scenes disable the communicator so a running trainer is never hijacked.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ TENSOR ============ -->
+<section id="tensor" data-tier="2 3">
+  <div class="eyebrow">Model</div>
+  <h2>Tensor blueprint &amp; actuator map</h2>
+
+  <figure data-mode="exec">
+    <div class="frame"><img src="assets/tensor-simple.svg" alt="Conceptual view: what the fighter senses, the brain, and what it does"></div>
+    <figcaption><b>Conceptual — Tier 2</b>The fighter is never moved directly. Every output is a target angle, and springs pull the body toward it.</figcaption>
+  </figure>
+
+  <figure data-mode="tech">
+    <div class="frame"><img src="assets/tensor-detailed.svg" alt="Detailed tensor graph: observation tensor layout, policy network layers, action tensor, and the 14-joint actuator map"></div>
+    <figcaption><b>Complete — Tier 3</b>Index ranges are exact. The observation width is computed by <code>ComputeObservationCount</code> and never hand-typed — three serialized bool flags change it, and each change invalidates every previously trained ONNX.</figcaption>
+  </figure>
+
+  <div data-mode="tech" data-tier="3">
+    <h3>Observation vector — 127 floats</h3>
+    <div class="chartcard">
+      <div class="head"><h4>Composition</h4><p>Where the width comes from, and which flags add which block.</p></div>
+      <div class="chartbox"><svg class="chart" id="chart-obs" role="img" aria-label="Stacked bar of observation vector composition"></svg></div>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <caption>Observation blocks — Agent_FighterBoxing constants</caption>
+        <thead><tr><th>Block</th><th class="num">Width</th><th class="num">Index</th><th>Condition</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td>Root</td><td class="num">13</td><td class="num mono">0–12</td><td>always</td><td>pelvis height above <code>GroundY</code>, up &amp; forward vectors, linear + angular velocity ÷20</td></tr>
+          <tr><td>Per joint × 14</td><td class="num">98</td><td class="num mono">13–110</td><td>always</td><td>7 per joint: target vs actual per axis, angular velocity, drive load</td></tr>
+          <tr><td>Foot</td><td class="num">8</td><td class="num mono">111–118</td><td>always</td><td>grounded flags, contact normals, downward ray ≤ 1 m</td></tr>
+          <tr><td>Foot height</td><td class="num">2</td><td class="num mono">119–120</td><td class="mono">_observeFootHeight</td><td>collider AABB min above ground</td></tr>
+          <tr><td>Locomotion command</td><td class="num">6</td><td class="num mono">121–126</td><td class="mono">_observeLocomotionCommand</td><td>commanded speed, goal direction (3), gait clock sin/cos @ 1.4 Hz</td></tr>
+          <tr><td>Opponent</td><td class="num">19</td><td class="num mono">—</td><td class="mono">_observeOpponent</td><td>boxing phase only — false in balance and walk</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">13 + 98 + 8 = 119 (balance brains) · +2 = 121 (heuristic bots) · +6 = 127 (locomotion brains). Those three widths are exactly what the ONNX inventory reports.</p>
+
+    <h3>Actuator map — 14 joints, 30 DOF, 75.0 kg</h3>
+    <div class="tblwrap">
+      <table>
+        <caption>ConfigurableJoint drives — base values from Fighter_Capsule.prefab, Slerp rotation drive</caption>
+        <thead><tr><th>Joint</th><th class="num">Mass kg</th><th class="num">Pitch°</th><th class="num">Roll°</th><th class="num">Yaw°</th><th class="num">DOF</th><th class="num">Kp</th><th class="num">Kd</th><th class="num">F max</th></tr></thead>
+        <tbody id="jointrows"></tbody>
+      </table>
+    </div>
+    <p class="note">Drive authority is not the constraint: hip 7,000 N·m and knee 6,000 N·m against a 75 kg / 736 N body is roughly two orders of magnitude of headroom. That was measured and ruled out at gen 11.</p>
+  </div>
+</section>
+
+<!-- ============ REWARD ============ -->
+<section id="reward" data-tier="1 2 3">
+  <div class="eyebrow">Motivation</div>
+  <h2>What the fighter wants</h2>
+
+  <figure data-mode="exec">
+    <div class="frame"><img src="assets/reward-simple.svg" alt="Conceptual reward tree: upright, on pace, one foot, foot clear, multiplied, gated on swapping feet"></div>
+    <figcaption><b>Conceptual — Tier 1/2</b>The terms multiply rather than add, so failing any one of them drags the whole score down. Falling costs half a second of pay, not the round.</figcaption>
+  </figure>
+
+  <figure data-mode="tech">
+    <div class="frame"><img src="assets/reward-detailed.svg" alt="Detailed reward tree: perception sources, extrinsic term weights as exponents, gait gate, aggregation, terminal and truncation checks"></div>
+    <figcaption><b>Complete — Tier 3</b>Weights are <em>exponents</em> in a weighted geometric mean, not addends. A term at zero would erase every other gradient, so each is floored at 0.01.</figcaption>
+  </figure>
+
+  <div data-tier="3" data-mode="tech">
+    <div class="tblwrap">
+      <table>
+        <caption>Reward terms — Reward_Locomotion</caption>
+        <thead><tr><th>Term</th><th class="num">Weight</th><th>Form</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>Upright</td><td class="num">0.15</td><td class="mono">max(0, up·Y)²</td><td>posture floor</td></tr>
+          <tr><td>Speed match</td><td class="num">0.50</td><td class="mono">exp(−err²/0.3²)</td><td>signed along goal — travelling backwards scores worse than standing</td></tr>
+          <tr><td>Single support</td><td class="num">0.30</td><td class="mono">min(1, max(single, clr) + (1−b)·dbl·(1−clr))</td><td>gen 10 made it a ramp; a binary flag gave no gradient</td></tr>
+          <tr><td>Clearance</td><td class="num">0.35</td><td class="mono">swingLift / 0.05 m</td><td>gen 11 switched to collider AABB min — the transform is the foot centre</td></tr>
+          <tr><td>Height</td><td class="num">0.00</td><td class="mono">disabled</td><td>it paid the agent for not moving</td></tr>
+          <tr><td>Smoothness</td><td class="num">−0.05</td><td class="mono">LastActionDelta01</td><td>subtracted, not exponent — penalises twitch</td></tr>
+          <tr><td>Alternation gate</td><td class="num">×</td><td class="mono">clamp01(switchRate / (1/35))</td><td>gen 15 — multiplies support; standing = 0, hopping = 0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <b>Three exploits, all found by looking rather than reading curves</b>
+      <p><b>Gen 4</b> read a stale reset snapshot, so clearance was blind and read 0.000 for five million steps. <b>Gen 10</b> rotated the foot instead of lifting it — a 65° ankle raises the foot <em>centre</em> 15 cm while the toe stays down, scoring full clearance with both feet planted. <b>Gen 13</b> held one leg in the air permanently, scoring 0.951 single support because the XOR never cared <em>which</em> foot. Every one had curves that looked like success.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRAINER ============ -->
+<section id="trainer" data-tier="2 3">
+  <div class="eyebrow">Training</div>
+  <h2>Trainer specification</h2>
+
+  <figure data-mode="exec">
+    <div class="frame"><img src="assets/trainer-simple.svg" alt="Conceptual trainer loop: sixteen fighters, experience, PPO, new brain, curriculum"></div>
+    <figcaption><b>Conceptual — Tier 2</b>Sixteen fighters practise simultaneously in one scene. PPO nudges the brain toward what scored better, never too far in one step.</figcaption>
+  </figure>
+
+  <figure data-mode="tech">
+    <div class="frame"><img src="assets/trainer-detailed.svg" alt="Detailed trainer specification: environment, PPO hyperparameters, curriculum rungs and gates, reward signal"></div>
+    <figcaption><b>Complete — Tier 3</b>Every locomotion generation shares one hyperparameter block. Only the reward code and the curriculum values move, so a generation's result is attributable.</figcaption>
+  </figure>
+
+  <div data-tier="3" data-mode="tech">
+    <div class="grid2">
+      <div class="tblwrap">
+        <table>
+          <caption>PPO configuration — invariant across gens 5–20</caption>
+          <thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead>
+          <tbody>
+            <tr><td>trainer_type</td><td class="num mono">ppo</td></tr>
+            <tr><td>batch_size</td><td class="num mono">2048</td></tr>
+            <tr><td>buffer_size</td><td class="num mono">20480</td></tr>
+            <tr><td>learning_rate</td><td class="num mono">3.0e-4</td></tr>
+            <tr><td>lr schedule</td><td class="num mono">linear</td></tr>
+            <tr><td>beta (entropy)</td><td class="num mono">0.01</td></tr>
+            <tr><td>epsilon (clip)</td><td class="num mono">0.2</td></tr>
+            <tr><td>lambd (GAE)</td><td class="num mono">0.95</td></tr>
+            <tr><td>num_epoch</td><td class="num mono">3</td></tr>
+            <tr><td>time_horizon</td><td class="num mono">256</td></tr>
+            <tr><td>gamma</td><td class="num mono">0.99</td></tr>
+            <tr><td>extrinsic strength</td><td class="num mono">1.0</td></tr>
+            <tr><td>hidden_units × layers</td><td class="num mono">512 × 3</td></tr>
+            <tr><td>normalize</td><td class="num mono">true</td></tr>
+            <tr><td>checkpoint_interval</td><td class="num mono">500,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tblwrap">
+        <table>
+          <caption>Curriculum — speed_command_max</caption>
+          <thead><tr><th>Lesson</th><th class="num">m/s</th><th class="num">Gate</th><th class="num">Statue score</th></tr></thead>
+          <tbody>
+            <tr><td>StandStill</td><td class="num">0.0</td><td class="num">0.55</td><td class="num">1.000</td></tr>
+            <tr><td>Sway</td><td class="num">0.2</td><td class="num">0.60</td><td class="num">0.840</td></tr>
+            <tr><td>Shuffle</td><td class="num">0.4</td><td class="num">0.45</td><td class="num">0.345</td></tr>
+            <tr><td>Step</td><td class="num">0.6</td><td class="num">0.40</td><td class="num">0.098</td></tr>
+            <tr><td>Stride</td><td class="num">0.8</td><td class="num">0.38</td><td class="num">0.005</td></tr>
+            <tr><td>Walk</td><td class="num">1.0</td><td class="num">—</td><td class="num">0.001</td></tr>
+          </tbody>
+        </table>
+        <p class="note" style="padding:0 13px 13px">"Statue score" is what a fighter that never steps can earn at that rung. From Shuffle on, the gate sits above it — standing still cannot pass.</p>
+      </div>
+    </div>
+
+    <h3>Throughput</h3>
+    <div class="tblwrap">
+      <table>
+        <caption>Measured on i7-10750H, 6 cores — the trainer is the bottleneck, not PhysX</caption>
+        <thead><tr><th>Configuration</th><th class="num">Steps/s</th><th class="num">18M steps</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Editor, 16 fighters</td><td class="num">1,430</td><td class="num">3.5 h</td><td>occupies the Editor</td></tr>
+          <tr><td>Headless, 2 envs</td><td class="num">1,810</td><td class="num">2.8 h</td><td><span class="pill prod">chosen</span></td></tr>
+          <tr><td>Headless, 3 envs</td><td class="num">1,930</td><td class="num">2.6 h</td><td>+6.6% for ~700 MB RAM</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Python/torch sits at ~390% CPU while the env processes idle at 16–27%. Adding envs adds agents, which adds trainer load — so this scales far worse than linearly.</p>
+  </div>
+</section>
+
+<!-- ============ MODELS ============ -->
+<section id="models" data-tier="2 3">
+  <div class="eyebrow">Inventory</div>
+  <h2>Shipped models</h2>
+  <p class="lede">Seventeen ONNX policies on disk. Width is the contract: a brain assigned from code mismatches in total silence, so the spawner refuses any brain whose <code>obs_0</code> disagrees with what the fighter emits.</p>
+
+  <div class="tblwrap">
+    <table>
+      <caption>Matrix A — model inventory (full detail in onnx_summary.md)</caption>
+      <thead><tr><th>Folder</th><th class="num">KB</th><th class="num">obs_0</th><th class="num">actions</th><th class="num">Params</th><th>Status</th></tr></thead>
+      <tbody id="modelrows"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer style="border-top:3px solid var(--ink); padding-top:20px; margin-top:40px; font-size:13px; color:var(--ink-3)">
+  <p style="max-width:none">Generated from the repository: ONNX graphs parsed with <code>onnx</code>, telemetry read from TensorBoard event files in <code>results/</code>, physics and scene data read from the live Unity Editor. Diagrams authored as Mermaid in <code>DOCS/diagrams/</code> and compiled to SVG.</p>
+</footer>
+
+</main>
+</div>
+
+<div class="tt" id="tt" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- data (from the repository, not illustrative) ---------- */
+const GENS=[
+ {g:8, r:0.053, sup:0.021, alt:null, spd:0.507, fall:418, lesson:2, note:"GAIT_FULL_SPEED probe"},
+ {g:9, r:0.086, sup:0.020, alt:null, spd:0.435, fall:699, lesson:2, note:"balance record 25.8 s"},
+ {g:10,r:0.034, sup:0.030, alt:null, spd:0.794, fall:159, lesson:2, note:"toe-pivot exploit"},
+ {g:11,r:0.071, sup:0.024, alt:null, spd:0.547, fall:498, lesson:2, note:"exploit closed, back to standing"},
+ {g:12,r:0.356, sup:0.261, alt:null, spd:0.900, fall:84,  lesson:3, note:"Shuffle cleared — economics fix"},
+ {g:13,r:0.613, sup:0.951, alt:0.000,spd:0.900, fall:82,  lesson:5, note:"reached Walk — one-legged hop"},
+ {g:14,r:0.329, sup:0.087, alt:null, spd:0.888, fall:92,  lesson:3, note:"symmetry bug — paid for standing"},
+ {g:15,r:0.350, sup:0.278, alt:0.724,spd:0.882, fall:85,  lesson:3, note:"first real alternating gait"},
+ {g:16,r:0.187, sup:0.015, alt:0.050,spd:0.271, fall:91,  lesson:0, note:"stalled at StandStill"},
+ {g:17,r:0.574, sup:0.244, alt:0.173,spd:0.823, fall:135, lesson:1, note:"balance up, gait down"},
+ {g:18,r:0.337, sup:0.704, alt:0.683,spd:0.841, fall:89,  lesson:4, note:"42M steps — gait peak at 34M"},
+ {g:20,r:0.643, sup:0.564, alt:0.201,spd:0.790, fall:134, lesson:0, note:"balance-only, ships"}
+];
+const JOINTS=[
+ ["Torso",24.26,"−30..30","−20..20","−35..35",3,3500,250,5000],
+ ["Head",5.15,"−40..40","−30..30","−45..45",3,1200,90,2000],
+ ["ThighL",8.46,"−110..20","−20..45","−30..30",3,4500,350,7000],
+ ["ShinL",3.68,"0..130","—","—",1,4000,300,6000],
+ ["FootL",1.10,"−40..25","−20..20","—",2,2500,180,3500],
+ ["UpperArmL",2.21,"−60..120","−30..90","−60..60",3,2000,150,3000],
+ ["ForearmL",1.47,"0..140","—","—",1,1800,120,2500],
+ ["GloveL",0.74,"−60..60","—","−25..25",2,1000,80,1500],
+ ["ThighR",8.46,"−110..20","−45..20","−30..30",3,4500,350,7000],
+ ["ShinR",3.68,"0..130","—","—",1,4000,300,6000],
+ ["FootR",1.10,"−40..25","−20..20","—",2,2500,180,3500],
+ ["UpperArmR",2.21,"−60..120","−90..30","−60..60",3,2000,150,3000],
+ ["ForearmR",1.47,"0..140","—","—",1,1800,120,2500],
+ ["GloveR",0.74,"−60..60","—","−25..25",2,1000,80,1500]
+];
+const MODELS=[
+ ["Locomotion_gen20",2375,127,30,606525,"prod","Production — balance ring"],
+ ["Locomotion_gen18_34M",2375,127,30,606525,"prod","Production — walk race"],
+ ["Locomotion_gen18",2375,127,30,606525,"stage","Staging — 42M final"],
+ ["Locomotion_gen17",2375,127,30,606525,"stage","Staging"],
+ ["Locomotion_gen16",2375,127,30,606525,"stage","Staging"],
+ ["Locomotion_gen15",2375,127,30,606525,"stage","First alternating gait"],
+ ["Locomotion_gen13",2375,127,30,606525,"arch","Archive — one-legged hop"],
+ ["Locomotion_gen12",2375,127,30,606525,"arch","Archive — first stepper"],
+ ["Locomotion_gen9",2375,127,30,606525,"arch","Archive — former balance brain"],
+ ["Locomotion_gen8",2375,127,30,606525,"arch","Archive"],
+ ["Locomotion_gen7",2375,127,30,606525,"arch","Archive"],
+ ["Locomotion_v03",2375,127,30,606525,"arch","Archive — actually gen 5"],
+ ["Locomotion_v02",2375,127,30,606525,"arch","Archive"],
+ ["Standard",2359,119,30,602413,"arch","Balance-era, 119 obs"],
+ ["Grandma",2359,119,30,602413,"arch","Balance-era, 119 obs"],
+ ["Grandpa",2359,119,30,602413,"arch","Balance-era, 119 obs"],
+ ["_obsolete_125obs/Locomotion_v01",2371,125,30,605497,"fail","Obsolete — 125 obs contract"]
+];
+const GATES=[["StandStill",0.55,0.643],["Sway",0.60,0.574],["Shuffle",0.45,0.451],["Step",0.40,0.350],["Stride",0.38,0.337],["Walk",null,0.613]];
+
+/* ---------- controls ---------- */
+const root=document.documentElement;
+function applyFilters(){
+  const tier=document.querySelector('#tierseg [aria-pressed="true"]').dataset.tier;
+  const mode=document.querySelector('#modeseg [aria-pressed="true"]').dataset.mode;
+  document.querySelectorAll('[data-tier]').forEach(el=>{
+    if(el.closest('.seg')) return;
+    el.hidden = !el.dataset.tier.split(' ').includes(tier);
+  });
+  document.querySelectorAll('[data-mode]').forEach(el=>{
+    if(el.closest('.seg')) return;
+    el.hidden = el.dataset.mode!==mode;
+  });
+}
+function wireSeg(id,cb){
+  document.getElementById(id).addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b);
+  });
+}
+wireSeg('tierseg',applyFilters);
+wireSeg('modeseg',applyFilters);
+wireSeg('themeseg',b=>{
+  const v=b.dataset.themeSet;
+  if(v==='auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme',v);
+  drawAll();
+});
+
+/* ---------- tables ---------- */
+document.getElementById('genrows').innerHTML=GENS.map(d=>{
+  const f=v=>v==null?'—':v.toFixed(3);
+  return `<tr><td class="mono">gen ${d.g}</td><td class="num mono">${d.lesson===0&&d.g===20?'4.5M':'18M'}</td><td class="num mono">${d.r.toFixed(3)}</td><td class="num mono">${d.lesson}</td><td class="num mono">${d.fall}</td><td class="num mono">${f(d.sup)}</td><td class="num mono">${f(d.alt)}</td><td class="num mono">${f(d.spd)}</td><td>${d.note}</td></tr>`;
+}).join('');
+document.getElementById('jointrows').innerHTML=JOINTS.map(j=>
+  `<tr><td class="mono">${j[0]}</td><td class="num mono">${j[1].toFixed(2)}</td><td class="num mono">${j[2]}</td><td class="num mono">${j[3]}</td><td class="num mono">${j[4]}</td><td class="num mono">${j[5]}</td><td class="num mono">${j[6]}</td><td class="num mono">${j[7]}</td><td class="num mono">${j[8]}</td></tr>`).join('');
+document.getElementById('modelrows').innerHTML=MODELS.map(m=>
+  `<tr><td class="mono">${m[0]}</td><td class="num mono">${m[1]}</td><td class="num mono">${m[2]}</td><td class="num mono">${m[3]}</td><td class="num mono">${m[4].toLocaleString()}</td><td><span class="pill ${m[5]}">${m[6]}</span></td></tr>`).join('');
+document.getElementById('gatebars').innerHTML=GATES.map(([n,gate,val])=>{
+  const pct=Math.min(100,val*100), gp=gate?Math.min(100,gate*100):null;
+  const col=gate&&val>=gate?'var(--good)':'var(--warn)';
+  return `<div class="bar"><div class="lbl">${n}</div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div>${gp!==null?`<div class="gate" style="left:${gp}%"></div>`:''}</div><div class="val">${val.toFixed(3)}${gate?` / ${gate}`:''}</div></div>`;
+}).join('');
+
+/* ---------- charts ---------- */
+const tt=document.getElementById('tt');
+function showTip(html,x,y){tt.textContent=html;tt.style.opacity=1;tt.style.left=(x+14)+'px';tt.style.top=(y+14)+'px';}
+function hideTip(){tt.style.opacity=0;}
+const cssv=n=>getComputedStyle(root).getPropertyValue(n).trim();
+
+function drawGenChart(){
+  const svg=document.getElementById('chart-gen');
+  const W=880,H=380,m={t:16,r:120,b:44,l:52};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const xs=GENS.map(d=>d.g), xmin=Math.min(...xs), xmax=Math.max(...xs);
+  const X=g=>m.l+(g-xmin)/(xmax-xmin)*iw, Y=v=>m.t+ih-v*ih;
+  const series=[
+    {k:'sup', name:'Single support', c:cssv('--s1')},
+    {k:'alt', name:'Alternation',    c:cssv('--s3')},
+    {k:'spd', name:'Speed match',    c:cssv('--s4')},
+    {k:'r',   name:'Mean reward',    c:cssv('--s2')}
+  ];
+  let s=`<rect x="0" y="0" width="${W}" height="${H}" fill="none"/>`;
+  for(let v=0;v<=1.0001;v+=0.25){
+    s+=`<line x1="${m.l}" y1="${Y(v)}" x2="${m.l+iw}" y2="${Y(v)}" stroke="${cssv('--grid')}" stroke-width="1"/>`;
+    s+=`<text x="${m.l-10}" y="${Y(v)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono" fill="${cssv('--ink-3')}">${v.toFixed(2)}</text>`;
+  }
+  GENS.forEach(d=>{ s+=`<text x="${X(d.g)}" y="${m.t+ih+20}" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="${cssv('--ink-3')}">${d.g}</text>`; });
+  s+=`<text x="${m.l+iw/2}" y="${H-6}" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="${cssv('--ink-3')}">GENERATION</text>`;
+  series.forEach(se=>{
+    const pts=GENS.filter(d=>d[se.k]!=null);
+    s+=`<path d="${pts.map((d,i)=>(i?'L':'M')+X(d.g)+' '+Y(d[se.k])).join(' ')}" fill="none" stroke="${se.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach(d=>{ s+=`<circle cx="${X(d.g)}" cy="${Y(d[se.k])}" r="4.5" fill="${se.c}" stroke="${cssv('--chart-surface')}" stroke-width="2"><title>gen ${d.g} · ${se.name} ${d[se.k].toFixed(3)}</title></circle>`; });
+    const last=pts[pts.length-1];
+    s+=`<text x="${X(last.g)+12}" y="${Y(last[se.k])+4}" font-size="12" font-family="IBM Plex Sans" fill="${cssv('--ink-2')}">${se.name}</text>`;
+  });
+  const g13=GENS.find(d=>d.g===13);
+  s+=`<line x1="${X(13)}" y1="${m.t}" x2="${X(13)}" y2="${m.t+ih}" stroke="${cssv('--crit')}" stroke-width="1" stroke-dasharray="3 3"/>`;
+  s+=`<text x="${X(13)+5}" y="${m.t+13}" font-size="11" font-family="IBM Plex Mono" fill="${cssv('--crit')}">gen 13 hop</text>`;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H); svg.innerHTML=s;
+  document.getElementById('lgd-gen').innerHTML=series.map(x=>`<span><i style="background:${x.c}"></i>${x.name}</span>`).join('');
+}
+
+function drawObsChart(){
+  const svg=document.getElementById('chart-obs');
+  const W=880,H=150,m={t:28,r:16,b:44,l:16};
+  const blocks=[["Root",13,cssv('--s1')],["Per joint × 14",98,cssv('--s2')],["Foot",8,cssv('--s4')],["Foot height",2,cssv('--s3')],["Locomotion cmd",6,cssv('--crit')]];
+  const total=blocks.reduce((a,b)=>a+b[1],0), iw=W-m.l-m.r;
+  let x=m.l,s='';
+  blocks.forEach(([n,v,c])=>{
+    const w=v/total*iw-2;
+    s+=`<rect x="${x}" y="${m.t}" width="${Math.max(w,2)}" height="42" fill="${c}" rx="2"><title>${n}: ${v} floats</title></rect>`;
+    if(w>62) s+=`<text x="${x+w/2}" y="${m.t+26}" text-anchor="middle" font-size="12" font-family="IBM Plex Mono" fill="#fff">${v}</text>`;
+    s+=`<text x="${x}" y="${m.t+62}" font-size="11.5" font-family="IBM Plex Sans" fill="${cssv('--ink-2')}">${n}</text>`;
+    s+=`<text x="${x}" y="${m.t+78}" font-size="10.5" font-family="IBM Plex Mono" fill="${cssv('--ink-3')}">${v}</text>`;
+    x+=w+2;
+  });
+  s+=`<text x="${m.l}" y="18" font-size="11" font-family="IBM Plex Mono" fill="${cssv('--ink-3')}">127 FLOATS TOTAL</text>`;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H); svg.innerHTML=s;
+}
+
+function drawAll(){ drawGenChart(); drawObsChart(); }
+applyFilters(); drawAll();
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',drawAll);
+</script>

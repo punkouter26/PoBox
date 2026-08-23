@@ -1,0 +1,30 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 17px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 44
+    rankSpacing: 56
+    padding: 14
+---
+flowchart LR
+    A["<b>16 fighters</b><br/>practise at once<br/>in one gym"] --> B["<b>Experience</b><br/>what I saw, what I did,<br/>what it scored"]
+    B --> C["<b>PPO</b><br/>nudge the brain toward<br/>what scored better<br/>— but never too far at once"]
+    C --> D["<b>New brain</b><br/>handed back to<br/>all 16 fighters"]
+    D --> A
+
+    C --> E["<b>Curriculum</b><br/>stand still → sway →<br/>shuffle → step → stride → walk<br/><i>each rung unlocks only when<br/>the score clears its gate</i>"]
+    E --> A
+
+    F["<b>~2,000 steps a second</b><br/>18 million steps ≈ 2.5 hours"] -.-> A
+
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    class C brain
+    class E accent

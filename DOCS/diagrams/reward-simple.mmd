@@ -1,0 +1,39 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 17px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 44
+    rankSpacing: 56
+    padding: 14
+---
+flowchart TD
+    Q["<b>Every 1/50th of a second,<br/>the fighter is scored</b>"]
+
+    Q --> A["<b>Are you upright?</b><br/>weight 0.15"]
+    Q --> B["<b>Are you moving at<br/>the speed you were told?</b><br/>weight 0.50 — the big one"]
+    Q --> C["<b>Is your weight on<br/>exactly one foot?</b><br/>weight 0.30"]
+    Q --> D["<b>Is the other foot<br/>off the floor?</b><br/>weight 0.35"]
+
+    A --> M["<b>Multiply, don't add</b><br/>failing any one of them<br/>drags the whole score down"]
+    B --> M
+    C --> M
+    D --> M
+
+    M --> S["<b>Are you swapping feet?</b><br/>if not, the gait score is cancelled —<br/>this is what stops it hopping<br/>on one leg forever"]
+
+    S --> F{"<b>Did you fall?</b>"}
+    F -- "no" --> Q
+    F -- "yes" --> R["<b>Get back up.</b><br/>You lose half a second of pay.<br/>The round does not end."]
+    R --> Q
+
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef good fill:#1B7F5A,stroke:#125C41,color:#FFFFFF
+    class S,R accent
+    class M good

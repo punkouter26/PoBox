@@ -1,0 +1,41 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 17px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 46
+    rankSpacing: 58
+    padding: 14
+---
+flowchart LR
+    subgraph IN["WHAT IT SENSES — 127 numbers"]
+      direction TB
+      I1["Where its hips are<br/>and how fast — 13"]
+      I2["Every joint's angle<br/>and speed — 98"]
+      I3["Feet: on the floor?<br/>how high? — 10"]
+      I4["The order it was given<br/>walk this fast — 6"]
+    end
+
+    BRAIN["<b>THE BRAIN</b><br/>3 layers of 512<br/>606,525 numbers<br/>learned by trial"]
+
+    subgraph OUT["WHAT IT DOES — 30 numbers"]
+      direction TB
+      O1["A target angle for<br/>every joint axis"]
+      O2["Springs pull the body<br/>toward those angles"]
+      O3["It is never moved<br/>directly — only pulled"]
+    end
+
+    I1 --> BRAIN
+    I2 --> BRAIN
+    I3 --> BRAIN
+    I4 --> BRAIN
+    BRAIN --> O1 --> O2 --> O3
+
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    class BRAIN brain

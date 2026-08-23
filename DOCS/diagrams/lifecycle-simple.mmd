@@ -1,0 +1,34 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 17px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+    tertiaryColor: "#F5F6F8"
+  flowchart:
+    nodeSpacing: 44
+    rankSpacing: 56
+    padding: 14
+---
+flowchart TD
+    A["<b>Academy step</b><br/>50 Hz fixed tick"] --> B["<b>CollectObservations</b><br/>fighter reads its own body<br/>127 floats"]
+    B --> C["<b>Policy</b><br/>Sentis runs the ONNX brain<br/>127 in, 30 out"]
+    C --> D["<b>OnActionReceived</b><br/>30 numbers are stored,<br/>not applied yet"]
+    D --> E["<b>FixedUpdate</b><br/>numbers become joint targets<br/>project rule: apply here only"]
+    E --> F["<b>PhysX</b><br/>muscles pull, ragdoll moves"]
+    F --> G["<b>Reward</b><br/>score this instant:<br/>upright? on pace? stepping?"]
+    G --> H{"<b>Fell over?</b>"}
+    H -- "no" --> A
+    H -- "yes" --> I["<b>Stumble</b><br/>stand it back up,<br/>skip 25 steps of pay"]
+    I --> A
+    H -- "3000 steps reached" --> J["<b>Episode ends</b><br/>send experience to the trainer"]
+    J --> A
+
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    class G,H accent
+    class C brain
