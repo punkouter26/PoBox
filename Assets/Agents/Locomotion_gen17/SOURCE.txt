@@ -1,0 +1,48 @@
+boxer_locomotion17, final model (step 18,004,096). Full 18M-step run, clean exit.
+
+THE FIRST BRAIN IN THIS PROJECT TRAINED ON MORE THAN ONE BODY, and the first to
+clear a curriculum lesson while driving three of them. The scene held 6
+Fighter_Capsule, 5 Fighter_Grandma and 5 Fighter_Grandpa. Reward recipe, gates
+and hyperparameters are gen 15's, untouched.
+
+  final reward        0.574        (gen 15: 0.349, gen 16: 0.192 at 5M)
+  StandStill cleared  9.0M steps   (gen 15: 5.7M -- with only one body)
+  final lesson        Sway (0.2 m/s). Raw reward touched the 0.60 gate at 17M
+                      (0.601) but the SMOOTHED gate never opened, so Sway was
+                      substantially learned and not passed.
+  StepsSurvived       135-155      (gen 15 final: 85)
+  Stumbles            21.8         (gen 15 final: 36.3)
+  SingleSupportMean   0.244        (gen 15 final: 0.278)
+  Alternation         0.173        -- see the caveat below
+  SpeedMatchMean      0.823 at a commanded 0.10 m/s
+
+READ ALTERNATION CAREFULLY BEFORE COMPARING IT TO GEN 15. Gen 15's 0.736 was
+measured on the Step lesson at a commanded 0.47 m/s. This run ended on Sway at
+0.10 m/s, where the fighters are barely asked to travel and so have little
+stepping to alternate. The two numbers are not comparable and 0.173 is NOT
+evidence that this brain hops or stands. It is evidence that it never got asked
+to walk properly, because the run spent 9M of its 18M budget on StandStill.
+
+WHAT THIS RUN PROVED. Gen 16 ran the same three-body scene and plateaued at
+0.18, which read as "one policy cannot drive three bodies". That was a bug, not
+a result: Reward_Locomotion resolved the foot collider with
+GetComponent<Collider>(), which is null for Grandma and Grandpa (their sensor
+sits on the foot BONE, the collider on a child "_Sole" object), and the
+clearance term dereferenced it every FixedUpdate. It threw AFTER the stats were
+recorded and BEFORE AddReward, so ten of sixteen agents posted normal-looking
+statistics while earning exactly zero. Fixed in
+Reward_Locomotion.ResolveFootCollider.
+
+With that fixed the three bodies CONVERGED: the capsule-to-Grandma reward ratio
+closed from 4.4x at 1M to 1.41x at 6M, and steps-to-first-fall ended comparable
+across all three. The cost of generality is a SLOWER CLIMB, not a lower ceiling
+(9.0M vs 5.7M for the same gate).
+
+STATUS: NOT WIRED INTO ANY CONTEST SCENE. It has not been compared head to head
+against what ships today -- Locomotion_gen9 in the balance contest (stands
+25.8 s) and Locomotion_gen15 in the walk contest (the first real alternating
+gait). Do not retarget either roster until this brain is shown to be better ON
+EACH BODY AND IN EACH MINI-GAME; it would be easy to improve Grandma and quietly
+make the capsule worse.
+
+Observation count 127.

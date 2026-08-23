@@ -1,0 +1,55 @@
+boxer_locomotion18, final model (step 42,004,096). Full 42M-step run, clean exit,
+~7.9 hours. Started from gen 17's weights (--initialize-from=boxer_locomotion17).
+
+THE BEST LOCOMOTION BRAIN THIS PROJECT HAS PRODUCED, and the first trained on
+three bodies (6 Fighter_Capsule, 5 Fighter_Grandma, 5 Fighter_Grandpa).
+
+FOUR CURRICULUM LESSONS CLEARED -- one more than any previous generation:
+
+  lesson      gen 15 (1 body)   gen 17 (3 bodies)   gen 18 (3 bodies)
+  StandStill        5.7M              9.0M               0.75M
+  Sway              9.15M             never              7.9M
+  Shuffle          15.4M              --                19.35M
+  Step         reached, ended        --                29.75M
+  Stride            never             --          reached, ended at 42M
+
+FINAL GAIT, against gen 15's final -- note the commanded speed is 32% HIGHER,
+so these are not like-for-like in gen 18's favour:
+
+                     gen 15 final    gen 18 final
+  commanded speed      0.47 m/s        0.62 m/s
+  SingleSupportMean      0.278           0.705    2.5x
+  Alternation            0.736           0.684
+  ClearanceMean          0.346           0.467    1.35x
+  SpeedMatchMean         0.882           0.857
+  StepsSurvived           85.2            87.4
+  Stumbles                36.3            36.0
+
+Peak values earlier on Stride were better still (alternation 0.766, clearance
+0.428, support 0.691 at 34M); the last few million pushed commanded speed toward
+0.8 m/s and traded some of it back. IF EXPORTING FOR THE GAME, COMPARE THE 34M
+CHECKPOINT (Boxer-33999872.onnx) AGAINST THIS ONE -- the final model is not
+automatically the best one for a 1 m/s walk race.
+
+WHAT MADE THE DIFFERENCE. Not a reward change -- every term, weight and gate is
+gen 15's, untouched for the sixth generation. It was budget plus transfer. Gen 17
+spent NINE of its eighteen million steps on StandStill; initialize-from cleared
+that same gate in 750k (a 12x reduction, and essentially the floor imposed by
+min_lesson_length), handing 41M steps to the walking lessons that had never had
+any.
+
+TWICE I HAD A DIAGNOSIS READY AND WAS WRONG TO ACT ON IT. At 5M, ClearanceMean
+read 0.033 and was clearly the binding product term -- "it won't step". At 9M,
+high single support with low alternation matched the documented gen 13 hop. Both
+resolved themselves once the commanded speed rose: clearance ended at 0.467,
+alternation peaked at 0.766. Pre-committed decision points (15M for the
+alternation call) are what stopped a plausible story from overriding a run that
+was working.
+
+STATUS: NOT WIRED INTO ANY CONTEST SCENE. Ships today: Locomotion_gen9 in the
+balance contest (stands 25.8 s), Locomotion_gen15 in the walk contest. This brain
+has NOT been compared head to head against either, per body, in the actual
+mini-games. Do that before retargeting RigTool_ContestScene.LOCOMOTION_BRAIN_PATH
+or RigTool_WalkContestScene.LOCOMOTION_BRAIN_PATH.
+
+Observation count 127.

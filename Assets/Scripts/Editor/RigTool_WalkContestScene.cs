@@ -80,7 +80,27 @@ namespace PoBox.Editor
         //
         // Per-character brains at Assets/Agents/{name}_Walk/Boxer.onnx still
         // take precedence -- see ResolveBrain.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen15/Locomotion_gen15.onnx";
+        // Gen 18's 34M checkpoint, chosen by measurement rather than by being
+        // newest. Benchmarked 2026-08-23 in SCN_TRAIN_LOCOMOTION at a commanded
+        // 1 m/s -- the race's own speed -- reading forward travel per BODY,
+        // because a brain that helps one fighter can quietly ruin another:
+        //
+        //   mean forward travel   gen 15    gen 18 final   gen 18 @34M
+        //   Capsule                0.11        0.24           0.30
+        //   Grandma                0.33        0.18           0.37
+        //   Grandpa               -0.13        0.14           0.10
+        //
+        // Gen 18's FINAL model is not the one to ship: it regressed Grandma
+        // (0.33 -> 0.18) because its last 8M steps chased a 0.8 m/s Stride
+        // command and traded gait quality for speed. The 34M checkpoint beats
+        // gen 15 on all three bodies and regresses none, which is the bar.
+        //
+        // NOTE the balance contest deliberately does NOT use this brain --
+        // RigTool_ContestScene stays on Locomotion_gen9. Same measurement, at a
+        // commanded 0 m/s, gave gen 9 a capsule that stands 13.45 s against gen
+        // 18's 2.36 s. Gen 18 is a walking brain and wants to step; the balance
+        // mini-game scores standing still. Different games, different brains.
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen18_34M/Locomotion_gen18_34M.onnx";
 
         // Mirrors the balance contest roster so the two mini-games field the
         // same line-up. forceHeuristic: the code-driven PD bot (project rule).

@@ -1,0 +1,21 @@
+boxer_locomotion18, checkpoint Boxer-33999872.onnx (step 33,999,872 of 42M).
+
+A MID-RUN CHECKPOINT KEPT ON PURPOSE, not a stale leftover. Gen 18's gait peaked
+here and the last 8M steps traded some of it away chasing a higher commanded
+speed on the Stride lesson:
+
+                     this (34M)   gen 18 final (42M)
+  commanded speed      0.66 m/s        0.62 m/s
+  Alternation            0.766           0.684
+  ClearanceMean          0.428           0.467
+  SingleSupportMean      0.691           0.705
+  SpeedMatchMean         0.844           0.857
+  StepsSurvived           88.6            87.4
+
+Alternation is the metric that says "this is walking rather than hopping or
+shuffling", and it is 12% higher here. For the WALK CONTEST, which commands
+1 m/s and is judged on distance travelled, this checkpoint is the more promising
+of the two and must be measured against the final model rather than assumed
+worse for being earlier.
+
+Observation count 127. Same three-body training as gen 18.

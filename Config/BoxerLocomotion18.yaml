@@ -1,73 +1,54 @@
-# RENUMBERED FROM GEN 17 TO GEN 18 ON 2026-08-22, AND DEMOTED. The reasoning
-# below is still sound but it answers a question that was never actually being
-# asked. It was written to explain why gen 16 plateaued, and gen 16 plateaued
-# because ten of its sixteen agents were throwing MissingComponentException in
-# the reward function every physics step and earning literally zero -- not
-# because of gradient conflict between bodies. Nothing about "the policy cannot
-# tell which body it is in" had been demonstrated at all; the run had never
-# tested it, because two thirds of the field was never learning anything.
+# Locomotion gen 18 (2026-08-23). GEN 17 WITH THE BUDGET IT NEEDED. One change:
+# max_steps 18M -> 42M, started from gen 17's weights via
+# --initialize-from=boxer_locomotion17. Every reward term, weight and gate is
+# gen 15's, untouched for the fifth generation running.
 #
-# Gen 17 is now the corrected three-body run: gen 15's recipe, three bodies, and
-# a reward function that all three can actually earn from. Only if THAT plateaus
-# does the argument below become the live hypothesis, and by then it will be
-# supported by a run that actually measured it.
+# WHY THIS AND NOT A NEW IDEA. Gen 17 is not a run that plateaued; it is a run
+# that was interrupted by its own step budget:
 #
-# Original text follows, unchanged.
+#   16M  0.572     17M  0.601 (touched the 0.60 Sway gate)
+#   17.9M 0.589    17.95M 0.598    18M 0.574  -> exported and stopped
 #
-# Locomotion gen 17 (2026-08-22). PREPARED, NOT YET RUN -- staged while gen 16
-# was still training so that if gen 16 misses its decision point no time is
-# lost. Run it only if gen 16 actually fails; if gen 16 succeeds, this file is
-# the next step anyway, for the reason below.
+# It cleared StandStill at 9.0M and ended on Sway having nearly cleared that
+# too. Nine of its eighteen million steps went on standing still, because a
+# three-body population climbs to a single-body-calibrated threshold more slowly
+# (gen 15 cleared the same gate at 5.7M with one body). That left barely half
+# the budget for every locomotion lesson — Sway, Shuffle, Step, Stride, Walk.
 #
-# THE DIAGNOSIS GEN 16 WAS MISSING. Gen 16 trains one policy across three rigs
-# whose mass distributions differ by an order of magnitude (capsule torso
-# segment 1.1 kg, Grandpa's 24.3 kg). It began drifting DOWNWARD in reward at
-# around 500k steps, which is not what "harder domain" looks like -- harder
-# looks like slower, not worse.
+# Adding a clever new term on top of a run that never got to walk would be
+# guessing. The measured bottleneck is steps, so the change is steps.
 #
-# Reading Agent_FighterBoxing.CollectObservations explains it. The vector is
-# pelvis height, velocities and orientation; per-joint local rotation and
-# angular velocity; foot contacts and heights; the locomotion command; the gait
-# phase. There is NOTHING IN IT THAT DESCRIBES THE BODY. No masses, no segment
-# lengths, no identifier. So the policy cannot know which of the three rigs it
-# is currently driving, and it is being asked to produce one torque mapping that
-# is simultaneously correct for all three.
+# INITIALIZE-FROM IS THE OTHER HALF, and it is not a second variable so much as
+# the same one: it refuses to pay the 9M StandStill tax twice. The transferred
+# policy already satisfies that gate (gen 17 finished at 0.574 against a 0.55
+# threshold), so the curriculum — which DOES restart at lesson 0 under
+# initialize-from — should clear it in a small fraction of 9M and hand the rest
+# of the budget to the walking lessons that have never had any.
 #
-# That is not merely a harder problem, it is a PARTIALLY OBSERVABLE one, and no
-# feed-forward policy can solve it. The best such a network can do is the
-# average of three incompatible answers, which is what a reward curve that
-# climbs and then sags looks like from the outside. Dropping to two bodies --
-# which is what the previous version of this plan proposed -- would have made
-# the symptom smaller without touching the cause, and would have left the third
-# fighter exactly where it started.
+# WHAT WOULD COUNT AS SUCCESS, in the order these actually matter:
+#   1. Reaching Shuffle (0.4 m/s) and Step (0.6 m/s) at all. Gen 17 never did.
+#   2. Locomotion/Alternation rising ONCE A REAL SPEED IS COMMANDED. Gen 17
+#      ended at 0.173, but on Sway at 0.10 m/s, where there is almost nothing to
+#      alternate — that number is not evidence of hopping and must not be read
+#      against gen 15's 0.736, which was measured at 0.47 m/s on Step.
+#   3. StepsSurvived holding at or above gen 17's 135-155. That is BALANCE, it
+#      is already the best in the project's history (gen 15: 85), and a
+#      locomotion gain that costs it is not a gain.
 #
-# THE FIX: give the policy a memory, so it can identify the body it is in from a
-# short history of how that body answered its own torques. This is the standard
-# answer to domain randomisation over unobservable dynamics, and here it costs
-# ONE CONFIG BLOCK: no code change, no new observations, and -- the reason that
-# matters in this project specifically -- no change to the observation count, so
-# the 127-wide contract that has broken this repo repeatedly stays exactly where
-# it is.
+# FAILURE MODES, AND WHAT EACH MEANS:
+#   Stuck on StandStill past ~4M   initialize-from did not take. Check the run
+#                                  actually loaded gen 17's weights rather than
+#                                  starting cold.
+#   Clears Sway, stalls on Shuffle Genuinely the hard rung — it is where gens
+#                                  7-9 all died. THEN the reward shape is worth
+#                                  revisiting, with evidence.
+#   Any body earning ~0            Another rig difference dereferenced
+#                                  somewhere. CHECK THE EDITOR CONSOLE, not the
+#                                  trainer log. Exactly zero is never a training
+#                                  outcome; ProductFactor floors at 0.01. This
+#                                  is what cost gen 16 its entire run.
 #
-# THE ALTERNATIVE, deliberately not taken first: add morphology observations
-# (per-limb mass ratios, segment lengths) so the body is directly visible. It
-# would probably also work and would train faster than an LSTM. It is second
-# because it widens the observation vector, which invalidates every .onnx in
-# Assets/Agents and needs an edit to ComputeObservationCount plus every tool
-# that sizes a sensor. Try the free fix before the expensive one.
-#
-# COSTS, so they are not a surprise: a recurrent policy trains slower per step
-# than a feed-forward one, and gen 16's ~1,200 steps/s should be expected to
-# drop. This is NOT resumable from gen 16 -- the network has a different shape.
-#
-# WATCH: the same stats, with one specific question. If memory is the answer,
-# Locomotion/Alternation and SingleSupportMean should climb TOGETHER and keep
-# climbing past the 500k mark where gen 16 turned over. If this run also sags,
-# memory was not the missing piece and the morphology observations above are
-# next -- not more steps.
-#
-# EVERYTHING ELSE IS GEN 15's RECIPE, UNCHANGED, for the fourth generation
-# running. Same reward terms, same gates, same three-body scene as gen 16.
+# Watch the PER-BODY split, not the 16-agent mean. Observation count 127.
 
 behaviors:
   Boxer:
@@ -85,20 +66,19 @@ behaviors:
       normalize: true
       hidden_units: 512
       num_layers: 3
-      # The whole of gen 17, in four lines.
-      #
-      # sequence_length 64 is 1.28 s at 50 Hz -- comfortably long enough to feel
-      # how a body answers its own torques, which is the inference being asked
-      # for. time_horizon (256) must be at least this, and batch_size (2048) is
-      # a multiple of it; both already hold, so nothing else moves.
-      memory:
-        sequence_length: 64
-        memory_size: 128
     reward_signals:
       extrinsic:
         gamma: 0.99
         strength: 1.0
-    max_steps: 18000000
+    # 42M, up from 18M. This is THE change in gen 18.
+    #
+    # Gen 17 did not plateau — it ran out. It was still climbing at 18M (0.590,
+    # 0.598 in its last two summaries) and had touched the Sway gate at 17M. It
+    # spent NINE MILLION of its eighteen on StandStill, because a three-body
+    # population climbs to a single-body threshold more slowly, leaving only 9M
+    # for every locomotion lesson after it. 42M is roughly 8 hours at the
+    # ~1,485 steps/s this scene sustains.
+    max_steps: 42000000
     time_horizon: 256
     summary_freq: 50000
     keep_checkpoints: 25
