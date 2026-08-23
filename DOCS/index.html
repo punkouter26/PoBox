@@ -1,0 +1,88 @@
+<title>PoBox Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ink:#0E1419;--ink-2:#39424D;--ink-3:#5C6773;
+  --paper:#ECEEF1;--surface:#F7F8FA;--raised:#FFFFFF;
+  --hair:#C7CDD4;--hair-soft:#DDE1E6;--red:#C8102E;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E8EBEF;--ink-2:#B4BCC5;--ink-3:#8A939D;
+  --paper:#0F1418;--surface:#161C22;--raised:#1B222A;
+  --hair:#333C46;--hair-soft:#262E36;--red:#F16A7F;}}
+:root[data-theme="dark"]{
+  --ink:#E8EBEF;--ink-2:#B4BCC5;--ink-3:#8A939D;
+  --paper:#0F1418;--surface:#161C22;--raised:#1B222A;
+  --hair:#333C46;--hair-soft:#262E36;--red:#F16A7F;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",Segoe UI,sans-serif;font-size:16px;line-height:1.6}
+main{max-width:1000px;margin:0 auto;padding:64px 24px 112px}
+h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(44px,7vw,80px);line-height:1;margin:0}
+h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;text-transform:uppercase;font-size:26px;margin:0 0 4px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:14px}
+.lede{font-size:19px;color:var(--ink-2);max-width:64ch}
+header{border-bottom:3px solid var(--ink);padding-bottom:26px;margin-bottom:36px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+a.card{display:block;background:var(--raised);border:1px solid var(--hair);border-radius:4px;padding:22px;text-decoration:none;color:inherit}
+a.card:hover{border-color:var(--red)}
+a.card:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+a.card p{margin:6px 0 0;font-size:14px;color:var(--ink-3);max-width:none}
+a.card .f{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);margin-top:12px;display:block}
+.tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--hair);border-radius:3px;padding:2px 7px;color:var(--ink-3);margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:14px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--hair-soft)}
+th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.tblwrap{overflow-x:auto;border:1px solid var(--hair);border-radius:4px;background:var(--raised);margin-top:36px}
+code{font-family:"IBM Plex Mono",monospace}
+</style>
+<main>
+<header>
+  <div class="kicker">Unity 6000.5.6f1 · ML-Agents 4.1.0 · generated 2026-08-23</div>
+  <h1>PoBox<br>documentation</h1>
+  <p class="lede">An active-ragdoll boxing project whose fighters are ML-Agents policies. Every figure below is generated from the repository — ONNX graphs, TensorBoard telemetry, and the live Unity Editor.</p>
+</header>
+
+<div class="cards">
+  <a class="card" href="creatures_dashboard.html">
+    <h2>Fight Lab dashboard</h2>
+    <p>The interactive one. Executive and Technical modes, three depth tiers, generational telemetry, tensor graphs, joint physics and hyperparameters.</p>
+    <span class="tag">Executive + Technical · 3 tiers</span>
+    <span class="f">creatures_dashboard.html</span>
+  </a>
+  <a class="card" href="training_motivation.html">
+    <h2>What the fighter wants</h2>
+    <p>The same story drawn around motive rather than architecture, in the <code>diagram-design</code> editorial house style. Hand-authored SVG, single accent, density held low.</p>
+    <span class="tag">Editorial · 3 tiers</span>
+    <span class="f">training_motivation.html</span>
+  </a>
+  <a class="card" href="scenes.html">
+    <h2>Scene anatomy</h2>
+    <p>Four scenes, every root object, what it does, and the exact order a contest starts in — including why fighters are built under an inactive holder.</p>
+    <span class="tag">Reference · 3 tiers</span>
+    <span class="f">scenes.html</span>
+  </a>
+  <a class="card" href="onnx_summary.md">
+    <h2>ONNX &amp; rig inventory</h2>
+    <p>Matrix A: seventeen models with I/O shapes, parameter counts, run IDs and promotion status. Matrix B: fourteen joints with drive modes, DOF and purpose.</p>
+    <span class="tag">Markdown · 3 tiers</span>
+    <span class="f">onnx_summary.md</span>
+  </a>
+</div>
+
+<div class="tblwrap">
+  <table>
+    <thead><tr><th>Diagram</th><th>Simple</th><th>Detailed</th></tr></thead>
+    <tbody>
+      <tr><td>Lifecycle &amp; execution loop</td><td><a href="assets/lifecycle-simple.svg">SVG</a></td><td><a href="assets/lifecycle-detailed.svg">SVG</a></td></tr>
+      <tr><td>Tensor blueprint &amp; actuator map</td><td><a href="assets/tensor-simple.svg">SVG</a></td><td><a href="assets/tensor-detailed.svg">SVG</a></td></tr>
+      <tr><td>Perception &amp; reward tree</td><td><a href="assets/reward-simple.svg">SVG</a></td><td><a href="assets/reward-detailed.svg">SVG</a></td></tr>
+      <tr><td>Hyperparameter &amp; trainer spec</td><td><a href="assets/trainer-simple.svg">SVG</a></td><td><a href="assets/trainer-detailed.svg">SVG</a></td></tr>
+      <tr><td>Scene flow</td><td colspan="2"><a href="assets/scene-flow.svg">SVG</a></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p style="margin-top:28px;font-size:13px;color:var(--ink-3);max-width:none">Mermaid sources in <code>DOCS/diagrams/*.mmd</code>, compiled with <code>@mermaid-js/mermaid-cli</code> to <code>DOCS/assets/*.svg</code>. Chart palettes validated against the CVD/contrast checks before use.</p>
+</main>

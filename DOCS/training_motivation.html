@@ -1,0 +1,268 @@
+<title>What the Fighter Wants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+
+<style>
+/* diagram-design house style: jet ink, atomic tangerine accent, white smoke paper,
+   blue-slate muted, silver hairlines. 1px hairlines, no shadows, radius <= 10px,
+   every coordinate and gap divisible by 4. */
+:root{
+  --jet:#101010;
+  --tangerine:#E2662C;
+  --smoke:#F5F5F3;
+  --slate:#6E7F94;
+  --silver:#CFCFCB;
+  --paper:#FFFFFF;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --jet:#F2F2F0; --tangerine:#F0844C; --smoke:#141414;
+    --slate:#93A3B6; --silver:#333331; --paper:#0C0C0C;
+  }
+}
+:root[data-theme="dark"]{
+  --jet:#F2F2F0; --tangerine:#F0844C; --smoke:#141414;
+  --slate:#93A3B6; --silver:#333331; --paper:#0C0C0C;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--smoke);color:var(--jet);font-family:Geist,-apple-system,Segoe UI,sans-serif;font-size:16px;line-height:1.6}
+main{max-width:1096px;margin:0 auto;padding:64px 24px 128px}
+h1,h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;margin:0;line-height:1.06;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(48px,7vw,84px)}
+h2{font-size:clamp(30px,4vw,44px)}
+h3{font-family:Geist,sans-serif;font-weight:600;font-size:17px;margin:0 0 4px;letter-spacing:.01em}
+em.call{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:22px;color:var(--slate);display:block;margin:16px 0 0;max-width:60ch}
+.mono{font-family:"Geist Mono",ui-monospace,monospace}
+p{max-width:68ch;color:var(--jet)}
+.sub{color:var(--slate);font-size:19px;max-width:64ch}
+header{padding-bottom:32px;border-bottom:1px solid var(--silver);margin-bottom:8px}
+.kicker{font-family:"Geist Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tangerine);margin-bottom:16px}
+section{padding:56px 0;border-bottom:1px solid var(--silver)}
+section:last-of-type{border-bottom:0}
+.tiers{display:flex;gap:8px;margin:24px 0 0;flex-wrap:wrap}
+.tiers button{appearance:none;background:var(--paper);color:var(--slate);border:1px solid var(--silver);border-radius:8px;padding:8px 16px;font-family:Geist,sans-serif;font-size:13px;cursor:pointer}
+.tiers button[aria-pressed="true"]{background:var(--jet);color:var(--smoke);border-color:var(--jet)}
+.tiers button:focus-visible{outline:2px solid var(--tangerine);outline-offset:2px}
+figure{margin:32px 0;background:var(--paper);border:1px solid var(--silver);border-radius:10px;overflow:hidden}
+figure .frame{overflow-x:auto;padding:24px}
+figure svg{display:block;margin:0 auto}
+figcaption{border-top:1px solid var(--silver);padding:16px 24px;color:var(--slate);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:24px;margin:32px 0}
+.card{background:var(--paper);border:1px solid var(--silver);border-radius:10px;padding:20px 20px 16px}
+.card .v{font-family:"Instrument Serif",Georgia,serif;font-size:44px;line-height:1;margin:8px 0 4px}
+.card .k{font-family:"Geist Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+.card .d{font-size:14px;color:var(--slate);line-height:1.5}
+.card.focus .v{color:var(--tangerine)}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<main>
+<header>
+  <div class="kicker">PoBox · agent motivation · a second reading</div>
+  <h1>What the fighter wants</h1>
+  <p class="sub">The same twenty generations, drawn around motive rather than architecture: what the agent is paid for, what it costs to try, and why eleven generations of better payment changed nothing.</p>
+  <div class="tiers" role="group" aria-label="Detail level">
+    <button data-tier="1" aria-pressed="true">Tier 1 · The one idea</button>
+    <button data-tier="2" aria-pressed="false">Tier 2 · The three forces</button>
+    <button data-tier="3" aria-pressed="false">Tier 3 · The full ledger</button>
+  </div>
+</header>
+
+<!-- TIER 1 -->
+<section data-tier="1 2 3">
+  <div class="kicker">Tier 1</div>
+  <h2>It was never underpaid. It was overcharged.</h2>
+  <p>A fighter that tries to step and fails loses the rest of its round. A fighter that succeeds gains a fraction more score per step. For eleven generations the reward was made larger, clearer and better-measured — and none of that touched the ratio that actually decided the behaviour.</p>
+
+  <figure>
+    <div class="frame">
+      <svg width="1024" height="384" viewBox="0 0 1024 384" role="img" aria-labelledby="ec-t ec-d">
+        <title id="ec-t">The economics of attempting a step</title>
+        <desc id="ec-d">A failed step forfeited about 72 percent of the episode return, while perfect gait was worth at most about 26 percent. The downside was roughly three times the upside.</desc>
+
+        <text x="0" y="24" font-family="Geist Mono" font-size="11" letter-spacing="1.6" fill="var(--slate)">RETURN AT STAKE, PER ATTEMPT</text>
+
+        <!-- cost bar -->
+        <text x="0" y="80" font-family="Geist" font-size="15" font-weight="500" fill="var(--jet)">Cost of one failed step</text>
+        <rect x="0" y="96" width="736" height="40" rx="4" fill="var(--tangerine)"/>
+        <text x="752" y="122" font-family="Instrument Serif" font-size="32" fill="var(--tangerine)">72%</text>
+        <text x="0" y="160" font-family="Geist" font-size="13" fill="var(--slate)">measured gen 8 — survival fell 880 steps to 250, and the round ends when you fall</text>
+
+        <!-- gain bar -->
+        <text x="0" y="216" font-family="Geist" font-size="15" font-weight="500" fill="var(--jet)">Gain from perfect gait</text>
+        <rect x="0" y="232" width="264" height="40" rx="4" fill="var(--slate)"/>
+        <text x="280" y="258" font-family="Instrument Serif" font-size="32" fill="var(--slate)">26%</text>
+        <text x="0" y="296" font-family="Geist" font-size="13" fill="var(--slate)">the most the support term could ever add, at its most generous setting</text>
+
+        <line x1="0" y1="328" x2="1024" y2="328" stroke="var(--silver)" stroke-width="1"/>
+        <text x="0" y="360" font-family="Instrument Serif" font-style="italic" font-size="20" fill="var(--jet)">Standing still was the correct play. The fighter found it every time.</text>
+      </svg>
+    </div>
+    <figcaption>Gens 5–11 each raised, reshaped or re-measured the 26%. Gen 12 removed the 72%, and single support went from a seven-generation ceiling of 0.031 to 0.951 in one change.</figcaption>
+  </figure>
+</section>
+
+<!-- TIER 2 -->
+<section data-tier="2 3">
+  <div class="kicker">Tier 2</div>
+  <h2>Three forces on every tick</h2>
+  <p>Fifty times a second the fighter is scored on four things at once, multiplied rather than added. Two more forces sit outside that product: the cost of falling, and a gate that cancels the gait score entirely if the legs never swap.</p>
+
+  <figure>
+    <div class="frame">
+      <svg width="1024" height="448" viewBox="0 0 1024 448" role="img" aria-labelledby="mo-t mo-d">
+        <title id="mo-t">What the fighter is paid for, by weight</title>
+        <desc id="mo-d">Speed match carries weight 0.50, clearance 0.35, single support 0.30, upright 0.15, and head height 0.00 because it was disabled for paying the agent to stand still.</desc>
+
+        <text x="0" y="24" font-family="Geist Mono" font-size="11" letter-spacing="1.6" fill="var(--slate)">REWARD WEIGHTS — EXPONENTS IN A GEOMETRIC MEAN</text>
+
+        <!-- rows: 4-divisible -->
+        <g font-family="Geist" font-size="14">
+          <text x="0" y="80" fill="var(--jet)">Move at the commanded pace</text>
+          <rect x="288" y="64" width="560" height="24" rx="4" fill="var(--tangerine)"/>
+          <text x="864" y="82" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.50</text>
+
+          <text x="0" y="136" fill="var(--jet)">Lift the swing foot clear</text>
+          <rect x="288" y="120" width="392" height="24" rx="4" fill="var(--slate)"/>
+          <text x="864" y="138" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.35</text>
+
+          <text x="0" y="192" fill="var(--jet)">Bear weight on one foot</text>
+          <rect x="288" y="176" width="336" height="24" rx="4" fill="var(--slate)"/>
+          <text x="864" y="194" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.30</text>
+
+          <text x="0" y="248" fill="var(--jet)">Stay upright</text>
+          <rect x="288" y="232" width="168" height="24" rx="4" fill="var(--slate)"/>
+          <text x="864" y="250" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.15</text>
+
+          <text x="0" y="304" fill="var(--slate)">Keep your head high</text>
+          <rect x="288" y="288" width="4" height="24" rx="2" fill="var(--silver)"/>
+          <text x="864" y="306" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.00</text>
+          <text x="300" y="306" font-family="Geist" font-size="12" fill="var(--slate)">disabled — it paid for not moving</text>
+        </g>
+
+        <line x1="0" y1="344" x2="1024" y2="344" stroke="var(--silver)" stroke-width="1"/>
+        <text x="0" y="376" font-family="Geist" font-size="14" font-weight="600" fill="var(--jet)">And one gate, outside the product</text>
+        <text x="0" y="400" font-family="Geist" font-size="14" fill="var(--slate)">If the bearing foot never changes, the gait score is multiplied by zero.</text>
+        <text x="0" y="424" font-family="Geist Mono" font-size="12" fill="var(--tangerine)">standing = 0 · hopping = 0 · only swapping scores</text>
+      </svg>
+    </div>
+    <figcaption>Weights are exponents, so the terms multiply. Failing any one of them drags the whole score down — which is why a single blind term could stall five generations.</figcaption>
+  </figure>
+
+  <div class="grid">
+    <div class="card"><div class="k">Attempt</div><div class="v">25</div><div class="d">Steps of reward forfeited when it falls now. Before gen 12 it forfeited every remaining step of the round.</div></div>
+    <div class="card focus"><div class="k">Cadence wanted</div><div class="v">0.7<span style="font-size:24px">s</span></div><div class="d">A stance change every 0.7 s earns full alternation credit — the rig's scripted 1.4 Hz stride.</div></div>
+    <div class="card"><div class="k">Cadence achieved</div><div class="v">0.95<span style="font-size:24px">s</span></div><div class="d">Gen 15, verified in inference over 31,901 earning steps.</div></div>
+  </div>
+</section>
+
+<!-- TIER 3 -->
+<section data-tier="3">
+  <div class="kicker">Tier 3</div>
+  <h2>One round, as the fighter experiences it</h2>
+  <p>Three thousand steps, sixty seconds. The fighter falls roughly every eighty-five steps and is stood back up each time, losing a twenty-five-step recovery window. It never runs out of chances — that limit was removed at gen 13 because any fixed budget binds exactly when the fighter starts stepping.</p>
+
+  <figure>
+    <div class="frame">
+      <svg width="1024" height="352" viewBox="0 0 1024 352" role="img" aria-labelledby="ep-t ep-d">
+        <title id="ep-t">Anatomy of a 3000-step episode</title>
+        <desc id="ep-d">An episode runs 3000 fixed steps. Roughly 35 falls occur, each costing a 25-step recovery window in which no reward is earned. Only reaching MaxStep ends the episode.</desc>
+
+        <text x="0" y="24" font-family="Geist Mono" font-size="11" letter-spacing="1.6" fill="var(--slate)">ONE EPISODE — 3,000 STEPS AT 50 HZ</text>
+
+        <!-- the track -->
+        <rect x="0" y="56" width="1024" height="48" rx="4" fill="var(--smoke)" stroke="var(--silver)" stroke-width="1"/>
+        <!-- recovery windows: 35 falls over 3000 steps -> every ~85 steps; draw 12 for legibility (density 4/10) -->
+        <g fill="var(--tangerine)" opacity="0.9">
+          <rect x="80"  y="56" width="8" height="48"/><rect x="164" y="56" width="8" height="48"/>
+          <rect x="248" y="56" width="8" height="48"/><rect x="332" y="56" width="8" height="48"/>
+          <rect x="416" y="56" width="8" height="48"/><rect x="500" y="56" width="8" height="48"/>
+          <rect x="584" y="56" width="8" height="48"/><rect x="668" y="56" width="8" height="48"/>
+          <rect x="752" y="56" width="8" height="48"/><rect x="836" y="56" width="8" height="48"/>
+          <rect x="920" y="56" width="8" height="48"/><rect x="1004" y="56" width="8" height="48"/>
+        </g>
+        <text x="0" y="132" font-family="Geist" font-size="13" fill="var(--slate)">each mark is a fall — the pose is restored and 25 steps of reward are forfeited</text>
+
+        <!-- earning vs forfeited -->
+        <text x="0" y="188" font-family="Geist" font-size="15" font-weight="500" fill="var(--jet)">Steps that earn</text>
+        <rect x="0" y="204" width="768" height="32" rx="4" fill="var(--slate)"/>
+        <text x="784" y="226" font-family="Geist Mono" font-size="13" fill="var(--jet)">~2,150</text>
+
+        <text x="0" y="272" font-family="Geist" font-size="15" font-weight="500" fill="var(--jet)">Steps lost to recovery</text>
+        <rect x="0" y="288" width="296" height="32" rx="4" fill="var(--tangerine)"/>
+        <text x="312" y="310" font-family="Geist Mono" font-size="13" fill="var(--jet)">~850</text>
+
+        <text x="0" y="344" font-family="Instrument Serif" font-style="italic" font-size="19" fill="var(--jet)">Falling is no longer fatal — only expensive. That is the whole of gen 12.</text>
+      </svg>
+    </div>
+    <figcaption>Balance still pays: a fighter that falls less spends fewer recovery windows and earns in more of them. The difference is that the cost is now bounded and local instead of forfeiting the remainder.</figcaption>
+  </figure>
+
+  <h2 style="margin-top:64px">The ladder it climbs</h2>
+  <p>Commanded speed rises in six rungs. Each unlocks only when smoothed reward clears a gate — and the gates fall as the task gets harder, because a fighter that never steps earns less at every rung.</p>
+
+  <figure>
+    <div class="frame">
+      <svg width="1024" height="336" viewBox="0 0 1024 336" role="img" aria-labelledby="cu-t cu-d">
+        <title id="cu-t">Curriculum rungs and their gates</title>
+        <desc id="cu-d">Six lessons from StandStill at 0 metres per second to Walk at 1.0. The gate falls from 0.55 to 0.38 while the score a non-stepping fighter can earn falls from 1.000 to 0.001, so from Shuffle onward standing still cannot pass.</desc>
+
+        <text x="0" y="24" font-family="Geist Mono" font-size="11" letter-spacing="1.6" fill="var(--slate)">GATE VS WHAT A NON-STEPPING FIGHTER CAN EARN</text>
+
+        <g font-family="Geist Mono" font-size="12">
+          <text x="0" y="64" fill="var(--slate)">LESSON</text>
+          <text x="176" y="64" fill="var(--slate)">M/S</text>
+          <text x="264" y="64" fill="var(--slate)">GATE</text>
+          <text x="352" y="64" fill="var(--slate)">STATUE SCORE</text>
+        </g>
+        <line x1="0" y1="76" x2="1024" y2="76" stroke="var(--silver)" stroke-width="1"/>
+
+        <g font-family="Geist" font-size="14">
+          <text x="0" y="108" fill="var(--jet)">StandStill</text><text x="176" y="108" class="mono" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.0</text><text x="264" y="108" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.55</text>
+          <rect x="352" y="96" width="480" height="16" rx="4" fill="var(--slate)"/><text x="848" y="108" font-family="Geist Mono" font-size="13" fill="var(--slate)">1.000</text>
+
+          <text x="0" y="148" fill="var(--jet)">Sway</text><text x="176" y="148" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.2</text><text x="264" y="148" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.60</text>
+          <rect x="352" y="136" width="404" height="16" rx="4" fill="var(--slate)"/><text x="848" y="148" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.840</text>
+
+          <text x="0" y="188" fill="var(--jet)">Shuffle</text><text x="176" y="188" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.4</text><text x="264" y="188" font-family="Geist Mono" font-size="13" fill="var(--tangerine)">0.45</text>
+          <rect x="352" y="176" width="164" height="16" rx="4" fill="var(--tangerine)"/><text x="848" y="188" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.345</text>
+
+          <text x="0" y="228" fill="var(--jet)">Step</text><text x="176" y="228" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.6</text><text x="264" y="228" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.40</text>
+          <rect x="352" y="216" width="48" height="16" rx="4" fill="var(--slate)"/><text x="848" y="228" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.098</text>
+
+          <text x="0" y="268" fill="var(--jet)">Stride</text><text x="176" y="268" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.8</text><text x="264" y="268" font-family="Geist Mono" font-size="13" fill="var(--jet)">0.38</text>
+          <rect x="352" y="256" width="4" height="16" rx="2" fill="var(--slate)"/><text x="848" y="268" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.005</text>
+
+          <text x="0" y="308" fill="var(--jet)">Walk</text><text x="176" y="308" font-family="Geist Mono" font-size="13" fill="var(--slate)">1.0</text><text x="264" y="308" font-family="Geist Mono" font-size="13" fill="var(--slate)">—</text>
+          <rect x="352" y="296" width="4" height="16" rx="2" fill="var(--slate)"/><text x="848" y="308" font-family="Geist Mono" font-size="13" fill="var(--slate)">0.001</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>At Shuffle the gate crosses above the statue score for the first time. Every generation before gen 12 died on this rung — not because the gate was too high, but because clearing it honestly cost more than standing still paid.</figcaption>
+  </figure>
+
+  <em class="call">Three of the twenty generations produced curves that looked like success and behaviour that was not: a blind sensor, a rotated ankle, and a leg held permanently in the air. Each was found by watching the fighter, never by reading the chart.</em>
+</section>
+
+<footer style="padding-top:32px;color:var(--slate);font-size:13px">
+  <p style="max-width:none">Drawn in the <span class="mono">diagram-design</span> house style — Instrument Serif titles, Geist labels, Geist Mono for technical values, single tangerine accent reserved for the focal element, 1px hairlines, no shadows, every coordinate divisible by four. Figures are hand-authored SVG, not Mermaid.</p>
+</footer>
+</main>
+
+<script>
+function apply(){
+  const t=document.querySelector('.tiers [aria-pressed="true"]').dataset.tier;
+  document.querySelectorAll('[data-tier]').forEach(el=>{
+    if(el.closest('.tiers')) return;
+    el.hidden=!el.dataset.tier.split(' ').includes(t);
+  });
+}
+document.querySelector('.tiers').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('.tiers button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  apply();
+});
+apply();
+</script>
