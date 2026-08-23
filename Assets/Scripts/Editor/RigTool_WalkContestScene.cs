@@ -304,13 +304,48 @@ namespace PoBox.Editor
                 "not the lane, so the racers stay the same size wherever they get to.");
         }
 
+        /// <summary>
+        /// Finish line, plus a start line to give the racers a visible datum.
+        ///
+        /// THE MATERIAL AND WIDTH ARE PART OF THE TOOL, not something to fix in
+        /// the scene afterwards. A 12 cm cube in the built-in `Lit` material is
+        /// a pale grey strip on a pale grey floor -- invisible, which is how the
+        /// walk race shipped with no discernible goal. That was corrected in the
+        /// scene on 2026-08-22 and this generator promptly overwrote it, because
+        /// re-running a scene tool rebuilds the scene wholesale. RigTool_SceneAudit
+        /// caught the regression on 2026-08-23; the fix belongs here so it
+        /// survives the next regeneration.
+        ///
+        /// Serialized .mat assets rather than Shader.Find: a runtime-found shader
+        /// strips out of the Android build and the line goes invisible again, in
+        /// the one configuration hardest to notice it.
+        /// </summary>
         private static void BuildFinishLine(float goalZ)
         {
-            GameObject finishLine = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            finishLine.name = "FinishLine";
-            finishLine.transform.localScale = new Vector3(RING_SIZE, 0.02f, 0.12f);
-            finishLine.transform.position = new Vector3(0f, 0.01f, goalZ);
-            Object.DestroyImmediate(finishLine.GetComponent<BoxCollider>());
+            BuildCourseLine("FinishLine", goalZ, "Assets/Art/M_RopeRed.mat");
+            // The start line is the reference that makes "they barely moved"
+            // legible at a glance -- without it a racer 1 m along looks the same
+            // as one that never left.
+            BuildCourseLine("StartLine", -goalZ, "Assets/Art/M_RopeWhite.mat");
+        }
+
+        private static void BuildCourseLine(string name, float z, string materialPath)
+        {
+            GameObject line = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            line.name = name;
+            // 40 cm, not 12: at the camera's distance a 12 cm strip is under two
+            // pixels tall on the portrait target.
+            line.transform.localScale = new Vector3(RING_SIZE, 0.02f, 0.40f);
+            line.transform.position = new Vector3(0f, 0.01f, z);
+            Object.DestroyImmediate(line.GetComponent<BoxCollider>());
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            if (material == null)
+            {
+                Debug.LogWarning($"RigTool: {materialPath} missing — {name} keeps the default material and will be invisible.");
+                return;
+            }
+            line.GetComponent<Renderer>().sharedMaterial = material;
         }
 
         private static void BuildReferee(GameObject systemsRoot, float goalDistance)

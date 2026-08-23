@@ -1,0 +1,35 @@
+boxer_locomotion20, checkpoint Boxer-4496768.onnx (step 4,496,768 of a 20M
+budget). The run was stopped early, on request, while still improving.
+
+A DEDICATED BALANCE BRAIN. Trained with speed_command_max pinned at 0.0 the
+whole way, resumed from boxer_locomotion18. Its gait is deliberately sacrificed
+-- catastrophic forgetting at speed 0 was expected and accepted, because the
+walk race keeps Locomotion_gen18_34M. Two mini-games, two brains.
+
+SHIPS IN SCN_TEST_BALANCE_CONTEST, replacing gen 9. Measured against gen 9 on
+2026-08-23 under two independent protocols, both favouring gen 20:
+
+  SCN_TRAIN_LOCOMOTION, 16 capsules, commanded speed 0, no hazards
+    steps between falls    gen 9   68 (1.4 s)
+                           gen 20 113 (2.3 s)      +66%
+
+  SCN_TEST_BALANCE_CONTEST, 8 fighters, hazards active, sampled mid-round
+    mean aliveTime         gen 9   2.30 s
+                           gen 20  ~3.5 s          +52%
+
+CAVEAT ON THE NUMBERS: these are NOT the same metric as the 672/118/61/56 table
+in BoxerLocomotion20.yaml's header, which measured steps-to-first-fall in a
+fresh episode. _stepsToFirstFall reads 0 for every fighter in the training
+scene, because the reset pose topples on the tick it is applied before the
+policy catches it, so that metric was unusable here. Steps-between-falls and
+contest aliveTime are like-for-like between the two brains, which is what the
+shipping decision needed; they are not comparable to the header table.
+
+Gen 20 did NOT reach its config's stated success bar (capsule at or above gen
+9's 672 by that other metric) because it was stopped at 4.5M of 20M. It is
+shipped anyway on the strength of beating the brain it replaces, measured two
+ways, in the configuration it ships in.
+
+127 observations, ground-relative heights.
+
+Full run kept at results/boxer_locomotion20/.

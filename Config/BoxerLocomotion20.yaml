@@ -1,0 +1,86 @@
+# Locomotion gen 20 (2026-08-23). A BALANCE run, not a locomotion one. Commanded
+# speed pinned at 0.0 for the whole budget, started from gen 18's weights.
+#
+# WHY BALANCE AND NOT MORE WALKING — this is the measurement that decided it.
+# Played the retargeted walk contest through SCN_MENU for 13 rounds: ONE was won,
+# ELEVEN were no contest, because nobody cleared the 0.75 m minimum. The obvious
+# reading is "the brains are too slow". That reading is wrong.
+#
+#   SpeedMatchMean   0.84 - 0.88     they hit the commanded pace fine
+#   StepsSurvived    ~70-100 steps   they fall after 1.4 - 2.0 s
+#   distance         ~0.3 m          which is 1.5 s of walking, and then a fall
+#
+# They are not slow. They travel 0.3 m because that is how far you get in the
+# 1.5 seconds before you fall over. THE LIMITING FACTOR IN THE WALK RACE IS
+# STABILITY, NOT SPEED — so a run that makes them stay upright longer improves
+# the walk race AND the balance ring, whereas another locomotion generation
+# would keep optimising the thing that already works.
+#
+# THE BALANCE RING NEEDS IT INDEPENDENTLY. Benchmarked at commanded 0:
+#
+#   body      gen 9 (ships)   gen 18
+#   Capsule    672 steps        118
+#   Grandma     61 steps         75
+#   Grandpa     56 steps         96
+#
+# Gen 9 stands the capsule for 13.45 s and the character rigs for 1.2 s. Rounds
+# are 30 s long. For half the roster the balance contest is over before it
+# starts, and it has been since the characters were added.
+#
+# WHAT THIS RUN IS FOR, precisely: a dedicated BALANCE brain for
+# SCN_TEST_BALANCE_CONTEST, replacing gen 9 only if it beats gen 9 ON THE
+# CAPSULE TOO. The walk race keeps Locomotion_gen18_34M. Two games, two brains
+# is already this project's architecture and it is the right one — gen 9 stands
+# superbly and cannot walk; gen 18 walks and cannot stand still.
+#
+# CATASTROPHIC FORGETTING IS EXPECTED AND ACCEPTABLE HERE. Training only at
+# speed 0 will degrade this policy's gait. That is fine because it is not the
+# gait brain; if it were meant to be one, the pinned parameter would be wrong.
+#
+# SUCCESS: Grandma and Grandpa well past gen 18's 75 and 96 steps, and the
+# capsule at or above gen 9's 672. Anything that improves the characters by
+# wrecking the capsule is not shippable — that is exactly the trade that kept
+# gen 18 out of the balance ring.
+#
+# FAILURE THAT WOULD MEAN SOMETHING: the characters plateau early while the
+# capsule climbs. Grandpa's torso segment is 24.3 kg against the capsule's
+# 1.1 kg, and nothing has yet tested whether that rig is PHYSICALLY capable of
+# a long stand. If this run says no, the answer is rig authoring, not steps.
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 20000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    # Raised from 200000 now the run is headless: the trainer no longer has to
+    # be stopped for in-scene tests, so checkpoints exist for rollback rather
+    # than to cap the cost of an interruption.
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # PINNED AT ZERO FOR THE WHOLE RUN. No lessons, no gates, no advancement.
+  #
+  # Every previous generation drove this parameter up a six-rung curriculum, so
+  # standing still was only ever a WARM-UP the run was trying to leave. This one
+  # never leaves it: the entire budget is spent on the one skill both mini-games
+  # actually bottleneck on.
+  speed_command_max: 0.0

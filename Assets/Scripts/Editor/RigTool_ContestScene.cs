@@ -35,7 +35,7 @@ namespace PoBox.Editor
         // This is deliberately NOT the newest brain. Gen 13 travels but hops on
         // one leg and topples every 1.7 s, which loses a contest scored on
         // staying upright. Newest and best are different questions per scene.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen9/Locomotion_gen9.onnx";
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen20/Locomotion_gen20.onnx";
         private const float LINE_SPACING = 2f;
         private const float SPAWN_HEIGHT = Systems_ContestSpawner.RING_FLOOR_Y + 0.03f;
 
