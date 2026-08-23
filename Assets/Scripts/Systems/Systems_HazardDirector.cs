@@ -46,7 +46,16 @@ namespace PoBox
 
         private void Start()
         {
-            _random = new System.Random(4241);
+            // Seeded from the clock, not from a constant.
+            //
+            // It was new System.Random(4241), which makes the entire hazard
+            // sequence of the entire game byte-identical on every launch, for
+            // every player, forever: measured 2026-08-22, a fresh session rolled
+            // BALL RAIN for round 1 and every round after it. A fixed seed is the
+            // right call in a training scene, where a run has to be reproducible.
+            // This is the shipping contest, where the whole value of a hazard is
+            // that you do not know which one is coming.
+            _random = new System.Random(System.Environment.TickCount);
             _baseGravity = Physics.gravity;
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
             _contest = FindFirstObjectByType<Systems_ContestReferee>();
@@ -88,9 +97,27 @@ namespace PoBox
             _gustRemaining = 0f;
         }
 
+        /// <summary>
+        /// Rolls the next hazard, never the one just played.
+        ///
+        /// With three hazards and an independent roll each round, a third of all
+        /// round transitions repeat — and a repeat reads as the game being stuck
+        /// rather than as chance, because the announcer chip says the same words
+        /// twice in a row. Drawing from the other two costs one line and makes
+        /// every round visibly change something.
+        /// </summary>
         private void PickHazard()
         {
-            _activeHazard = _random.Next(HAZARD_COUNT);
+            if (_activeHazard < 0)
+            {
+                _activeHazard = _random.Next(HAZARD_COUNT);
+            }
+            else
+            {
+                // Offset by 1..HAZARD_COUNT-1 so the result can be anything
+                // except where it started.
+                _activeHazard = (_activeHazard + 1 + _random.Next(HAZARD_COUNT - 1)) % HAZARD_COUNT;
+            }
             _hazardClock = 0f;
             _windTimer = WIND_MIN_INTERVAL;
             _ballTimer = BALL_MIN_INTERVAL;

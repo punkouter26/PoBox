@@ -46,13 +46,25 @@ namespace PoBox
         // ring.
         [SerializeField] private float _closeFrameWidth = 2.4f;
         [SerializeField] private float _closeFrameHeight = 2.8f;
-        // The ring canvas is 6.1 m square, so 7 m of width covers it corner to
-        // corner with a little margin. Height was 4 m, which on a 9:16 window is
-        // never the binding axis (see DistanceToFrame) -- raised to 5 m so the
-        // group shot keeps some headroom above the fighters instead of cropping
-        // at the shoulders when the camera is close to its minimum distance.
-        [SerializeField] private float _wideFrameWidth = 7f;
-        [SerializeField] private float _wideFrameHeight = 5f;
+        // What the group shot has to hold is the FIGHTERS, not the ring: two
+        // abreast at 1.5 m, plus arm span and room to stagger.
+        //
+        // This is the number that decides how big a fighter is on a phone, and
+        // it is the one that was wrong. It was 7 m — the ring canvas corner to
+        // corner — because the eight fighters used to stand four abreast and a
+        // shot has to hold the whole field. At 9:16 the frame's HEIGHT is then
+        // that width over 0.5625, so 7 m of field meant a 12 m tall picture with
+        // a 1.7 m fighter in it: measured 2026-08-22, the ring came back a
+        // quarter of the frame under a third of a screen of unlit ceiling. No
+        // FOV or distance could have rescued it.
+        //
+        // The fix was to turn the field through 90 degrees rather than to keep
+        // tuning the camera — see Systems_ContestSpawner.SlotPositions. Four
+        // ranks of two are 1.5 m wide instead of 4.2 m, so the frame this asks
+        // for is barely wider than one fighter and the depth spreads the ranks
+        // up the picture instead of costing width.
+        [SerializeField] private float _wideFrameWidth = 3.4f;
+        [SerializeField] private float _wideFrameHeight = 4f;
         // Never let a solved distance put the near plane inside the subject.
         [SerializeField] private float _minFollowDistance = 2.2f;
         // With 2+ fighters standing, the camera tours them, holding each
@@ -80,18 +92,51 @@ namespace PoBox
         // Group shots need their own height and FOV, both forced by the 9:16
         // window rather than by taste.
         //
-        // Horizontal FOV is the vertical one scaled by the aspect, and the
-        // aspect here is 0.466, so at the 55-60 degree base FOV covering the
-        // 7 m ring needs about 13 m of distance. Measured 2026-08-22: the first
-        // group shot put the camera at z = 14.2 and the ring came back a few
-        // dark pixels across.
+        // Horizontal FOV is the vertical one scaled by the aspect, so at the
+        // 55-60 degree base FOV a wide frame needs a lot of distance; widening
+        // to 70 degrees buys it back. 80 was the previous value and bought too
+        // much: the extra 10 degrees are all VERTICAL, and at 9:16 vertical is
+        // the axis with frame to spare, so they were spent entirely on sky and
+        // floor either side of the ring.
         //
-        // Widening to 80 degrees brings that to ~9 m. At 9 m the ring ropes cut
-        // the line to the ring centre at 2.6 m and 4 m of height and are clear
-        // at 5.5 m -- raycast from the candidate positions to the ring centre,
-        // same day -- so the group camera sits high and looks down over them.
-        [SerializeField] private float _groupCameraHeight = 5.5f;
-        [SerializeField] private float _groupFov = 80f;
+        // Height is set by the ropes, which is why it cannot simply be lowered
+        // to taste. The three rope lines top out 1.85 m above the canvas, and
+        // for the near rope to sit BELOW the fighters in frame rather than
+        // barred across them the lens has to out-climb it by more than the
+        // ratio of their distances. The tightened frame solves to about 4.3 m
+        // out, which puts the near rope 1.3 m ahead of the camera and needs an
+        // eye 2.6 m above the canvas; 2.8 leaves a little in hand. That is most
+        // of three metres lower than the old 5.5, and looking down about 32
+        // degrees over a field that now has DEPTH is what spreads the four ranks
+        // up the frame instead of flattening them into one line.
+        [SerializeField] private float _groupCameraHeight = 2.8f;
+        [SerializeField] private float _groupFov = 70f;
+        // How far above the pelvis each kind of shot aims.
+        //
+        // A close shot centres its subject. A group shot deliberately aims
+        // LOWER, which pitches the camera down and slides the whole ring up the
+        // frame: the waste at 9:16 is not symmetric, because the bottom of the
+        // shot is ring apron and arena floor while the top is unlit ceiling
+        // void. Trading a little more of the former for a lot less of the
+        // latter is the whole of it.
+        [SerializeField] private float _closeLookLift = 0.8f;
+        [SerializeField] private float _groupLookLift = -0.35f;
+        /// <summary>
+        /// The aftermath shot — everybody down — gets its own, wider and higher
+        /// framing than the group shot it used to share.
+        ///
+        /// Rope clearance depends on how HIGH the camera is looking, and a mat
+        /// full of prone fighters is a much lower subject than a ring full of
+        /// standing ones: the pelvis of a fallen fighter sits about 0.7 m below
+        /// where it was. On the group shot's numbers that drops the line of sight
+        /// far enough that the near ropes cut across the bodies — which is the
+        /// tableau the winner banner and the crowd cheer play over, so it is the
+        /// worst shot in the round to get wrong. Higher and wider looks down INTO
+        /// the ring over the ropes, and holds a field that has scattered on the
+        /// way down.
+        /// </summary>
+        [SerializeField] private float _aftermathFrameWidth = 4.4f;
+        [SerializeField] private float _aftermathCameraHeight = 3.9f;
         [SerializeField] private float _lateralFollowFraction = 0.6f;
         [SerializeField] private float _baseFov = 55f;
         [SerializeField] private float _dramaFov = 42f;
@@ -153,12 +198,20 @@ namespace PoBox
             }
         }
 
+        /// <summary>
+        /// Holds the round winner. Matched on the identity the spawner recorded
+        /// rather than on GameObject.name.Contains(winnerName), which is what
+        /// this used to do: "Standard" is a substring of "Contest_Standard2", so
+        /// a ring holding two of a kind pointed the winner shot at whichever of
+        /// them came first in the array — the loser, half the time.
+        /// </summary>
         private void OnRoundEnded(string winnerName)
         {
             _winnerFocus = null;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                if (_rigs[rigIndex].gameObject.name.Contains(winnerName))
+                Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
+                if (displayName == winnerName)
                 {
                     _winnerFocus = _rigs[rigIndex];
                     return;
@@ -178,7 +231,18 @@ namespace PoBox
                 return;
             }
 
-            float dt = Time.deltaTime;
+            // Unscaled throughout, and every SmoothDamp below is handed this dt
+            // explicitly rather than letting it read Time.deltaTime for itself.
+            //
+            // A spectator camera has to keep moving while the game does not. The
+            // round countdown parks Time.timeScale at 0 for 2.9 s before every
+            // round and the knockout FX dips it to 0.35, so on scaled time the
+            // camera froze mid-transition and held whatever half-finished pose it
+            // had — measured 2026-08-22, the whole of a 3-2-1 countdown played
+            // over a shot looking through the ropes at the mat, because the reset
+            // had just moved the fighters and the camera could not follow them
+            // until GO.
+            float dt = Time.unscaledDeltaTime;
             int bestIndex = -1;
             float bestWobble = -1f;
             int standingCount = 0;
@@ -212,6 +276,7 @@ namespace PoBox
             Vector3 target;
             float drama;
             bool closeShot;
+            bool aftermath = false;
             if (_winnerFocus != null)
             {
                 // Winner display: hold a close shot on the round's champion.
@@ -254,57 +319,53 @@ namespace PoBox
                 target = RingCenter();
                 drama = 0f;
                 closeShot = false;
+                aftermath = true;
             }
 
             // Solve the distance from the FOV this shot is heading to, so the
             // framing holds at whatever aspect the window ends up with.
             float desiredFov = closeShot ? Mathf.Lerp(_baseFov, _dramaFov, drama) : _groupFov;
+            float wideWidth = aftermath ? _aftermathFrameWidth : _wideFrameWidth;
             float followDistance = closeShot
                 ? DistanceToFrame(_closeFrameWidth, _closeFrameHeight, desiredFov)
-                : DistanceToFrame(_wideFrameWidth, _wideFrameHeight, desiredFov);
+                : DistanceToFrame(wideWidth, _wideFrameHeight, desiredFov);
 
             // Camera lives on the +Z side: fighters spawn facing +Z, so this
             // side shows their faces.
             Vector3 desiredPosition = new Vector3(
                 target.x * _lateralFollowFraction,
-                _groundY + (closeShot ? _cameraHeight : _groupCameraHeight),
+                _groundY + (closeShot ? _cameraHeight : aftermath ? _aftermathCameraHeight : _groupCameraHeight),
                 target.z + followDistance);
             Vector3 position = Vector3.SmoothDamp(
-                transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime);
+                transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime,
+                Mathf.Infinity, dt);
 
             if (_shakeRemaining > 0f)
             {
                 _shakeRemaining -= dt;
                 float strength = _fallShakeMeters * (_shakeRemaining / SHAKE_DECAY_SECONDS);
-                float time = Time.time * SHAKE_NOISE_SPEED;
+                float time = Time.unscaledTime * SHAKE_NOISE_SPEED;
                 position.x += (Mathf.PerlinNoise(time, 0.13f) - 0.5f) * 2f * strength;
                 position.y += (Mathf.PerlinNoise(0.71f, time) - 0.5f) * 2f * strength;
             }
             transform.position = position;
 
+            float lookLift = closeShot ? _closeLookLift : _groupLookLift;
             _lookPoint = Vector3.SmoothDamp(
-                _lookPoint, target + Vector3.up * 0.8f, ref _lookVelocity, _lookSmoothTime);
+                _lookPoint, target + Vector3.up * lookLift, ref _lookVelocity, _lookSmoothTime,
+                Mathf.Infinity, dt);
             transform.rotation = Quaternion.LookRotation(_lookPoint - position, Vector3.up);
 
             _camera.fieldOfView = Mathf.SmoothDamp(
-                _camera.fieldOfView, desiredFov, ref _fovVelocity, 0.5f);
+                _camera.fieldOfView, desiredFov, ref _fovVelocity, 0.5f, Mathf.Infinity, dt);
         }
 
-        /// <summary>
-        /// Distance at which a <paramref name="widthMeters"/> x
-        /// <paramref name="heightMeters"/> slab exactly fits the frustum, taking
-        /// whichever of the two axes binds. Horizontal FOV is the vertical one
-        /// scaled by the aspect, so on a portrait window the width is almost
-        /// always what binds - the opposite of the landscape intuition the old
-        /// hard-coded distances were tuned with.
-        /// </summary>
+        // Shared with Systems_RaceCamera — see Systems_CameraFraming for why
+        // framing is specified as a slab to contain rather than as a distance.
         private float DistanceToFrame(float widthMeters, float heightMeters, float fovDegrees)
         {
-            float halfVertical = Mathf.Tan(fovDegrees * 0.5f * Mathf.Deg2Rad);
-            float halfHorizontal = halfVertical * Mathf.Max(0.01f, _camera.aspect);
-            float forWidth = widthMeters * 0.5f / Mathf.Max(0.01f, halfHorizontal);
-            float forHeight = heightMeters * 0.5f / Mathf.Max(0.01f, halfVertical);
-            return Mathf.Max(_minFollowDistance, Mathf.Max(forWidth, forHeight));
+            return Systems_CameraFraming.DistanceToFrame(
+                _camera, widthMeters, heightMeters, fovDegrees, _minFollowDistance);
         }
 
         // Maps "the n-th standing fighter" to a rig index; standing membership

@@ -52,14 +52,35 @@ namespace PoBox
 
         private const float SPAWN_HEIGHT = RING_FLOOR_Y + 0.03f;
 
-        // 8 slots: two rows of four inside the 6.1 m canvas. Front row is on
-        // the camera side (+Z) so single spawns stay filmable.
+        /// <summary>
+        /// 8 slots inside the 6.1 m canvas: four ranks of two, running AWAY from
+        /// the camera. Nearest rank first, so a part-filled ring fills from the
+        /// front and a single spawn stays filmable.
+        ///
+        /// It was the other way round — two ranks of four — and that layout is
+        /// what made the balance contest unwatchable on a phone, for a reason no
+        /// amount of camera tuning could fix. A camera has to frame the whole
+        /// field, a portrait 9:16 frame is 1.78x taller than it is wide, and the
+        /// vertical span the shot ends up with is therefore the horizontal span
+        /// it needs DIVIDED BY 0.5625. Four fighters abreast are 4.2 m wide, so
+        /// the shot was always going to be 9.2 m tall whatever the FOV or the
+        /// distance, and a 1.7 m fighter is 18% of that. Measured 2026-08-22:
+        /// the ring came back a quarter of the frame with the arena's unlit
+        /// ceiling filling the top third.
+        ///
+        /// Turned through 90 degrees the field is 1.5 m wide and 4.2 m deep. The
+        /// frame it needs is now barely wider than one fighter, and the depth
+        /// does not cost frame width at all — perspective spreads the four ranks
+        /// UP the picture, which is the one axis a portrait frame has to spare.
+        /// The near rank comes out about a third of the frame tall against the
+        /// old 18%, and the ranks behind it recede instead of lining up.
+        /// </summary>
         private static readonly Vector3[] SlotPositions =
         {
-            new(-2.1f, SPAWN_HEIGHT, 1f), new(-0.7f, SPAWN_HEIGHT, 1f),
-            new(0.7f, SPAWN_HEIGHT, 1f), new(2.1f, SPAWN_HEIGHT, 1f),
-            new(-2.1f, SPAWN_HEIGHT, -1f), new(-0.7f, SPAWN_HEIGHT, -1f),
-            new(0.7f, SPAWN_HEIGHT, -1f), new(2.1f, SPAWN_HEIGHT, -1f)
+            new(-0.75f, SPAWN_HEIGHT, 2.1f), new(0.75f, SPAWN_HEIGHT, 2.1f),
+            new(-0.75f, SPAWN_HEIGHT, 0.7f), new(0.75f, SPAWN_HEIGHT, 0.7f),
+            new(-0.75f, SPAWN_HEIGHT, -0.7f), new(0.75f, SPAWN_HEIGHT, -0.7f),
+            new(-0.75f, SPAWN_HEIGHT, -2.1f), new(0.75f, SPAWN_HEIGHT, -2.1f)
         };
 
         [SerializeField] private ContestRosterEntry[] _roster;
@@ -152,14 +173,14 @@ namespace PoBox
                         ? $"Contest_{entry.displayName}{nameCounts[rosterIndex]}"
                         : $"Contest_{entry.displayName}";
                     Spawn(entry, holder.transform, slots[slotIndex], spawnRotation, instanceName,
-                        nameCounts[rosterIndex] - 1);
+                        nameCounts[rosterIndex] - 1, rosterIndex);
                     spawned++;
                 }
                 if (spawned == 0 && _roster.Length > 0)
                 {
                     // Never start an empty ring — fall back to one default fighter.
                     Spawn(_roster[0], holder.transform, slots[0], spawnRotation,
-                        $"Contest_{_roster[0].displayName}", 0);
+                        $"Contest_{_roster[0].displayName}", 0, 0);
                 }
             }
             finally
@@ -196,16 +217,17 @@ namespace PoBox
         /// finished BrainParameters rather than the prefab's.
         /// </summary>
         private static void Spawn(ContestRosterEntry entry, Transform holder,
-            Vector3 position, Quaternion rotation, string instanceName, int copyIndex)
+            Vector3 position, Quaternion rotation, string instanceName, int copyIndex, int rosterIndex)
         {
             var instance = Instantiate(entry.prefab, holder);
             instance.name = instanceName;
             instance.transform.SetPositionAndRotation(position, rotation);
-            Configure(instance, entry, copyIndex);
+            Configure(instance, entry, copyIndex, rosterIndex);
             instance.transform.SetParent(null, worldPositionStays: true);
         }
 
-        private static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex)
+        private static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex,
+            int rosterIndex)
         {
             var rig = instance.GetComponent<Systems_FighterRig>();
             var agent = instance.GetComponent<Agent_FighterBoxing>();
@@ -262,7 +284,46 @@ namespace PoBox
                     renderers[rendererIndex].sharedMaterial = entry.tint;
                 }
             }
-            TintCopy(instance, copyIndex);
+            Color wash = TintCopy(instance, copyIndex);
+
+            // Recorded here because this is the only code that knows all three
+            // inputs: which roster entry the fighter came from, what tint that
+            // entry carried, and which copy wash the duplicate got. Everything
+            // downstream — scoreboard plates, the match tally, the drama
+            // camera's winner focus — reads it back off the instance instead of
+            // guessing from the GameObject name.
+            instance.AddComponent<Systems_FighterIdentity>().Initialize(
+                instance.name.Replace("Contest_", ""),
+                IdentityColor(entry, rosterIndex) * wash);
+        }
+
+        // Fallback swatches, used for roster entries with no tint material.
+        // Grandma and Grandpa are the reason this exists: they wear their own
+        // textures and are deliberately left untinted, so there is no material
+        // to read a colour off and the scoreboard would otherwise show them
+        // both as plain white.
+        private static readonly Color[] RosterSwatches =
+        {
+            new(0.35f, 0.55f, 1f),   // 0
+            new(1f, 0.45f, 0.72f),   // 1
+            new(0.45f, 0.85f, 0.55f),// 2
+            new(1f, 0.35f, 0.30f)    // 3
+        };
+
+        /// <summary>
+        /// The colour that identifies this fighter on the scoreboard: its tint
+        /// material's albedo where it has one, otherwise a swatch from the
+        /// palette above.
+        /// </summary>
+        private static Color IdentityColor(ContestRosterEntry entry, int rosterIndex)
+        {
+            if (entry.tint != null && entry.tint.HasProperty(BaseColorId))
+            {
+                Color tint = entry.tint.GetColor(BaseColorId);
+                tint.a = 1f;
+                return tint;
+            }
+            return RosterSwatches[rosterIndex % RosterSwatches.Length];
         }
 
         // An eight-slot ring is filled from a four-entry roster, so it normally
@@ -281,11 +342,12 @@ namespace PoBox
             new(0.70f, 1f, 0.72f)    // copy 4: green
         };
 
-        private static void TintCopy(GameObject instance, int copyIndex)
+        /// <summary>Applies the copy wash and returns it, so the identity swatch can match the body.</summary>
+        private static Color TintCopy(GameObject instance, int copyIndex)
         {
             if (copyIndex <= 0)
             {
-                return;
+                return Color.white;
             }
             Color wash = CopyWashes[(copyIndex - 1) % CopyWashes.Length];
             var block = new MaterialPropertyBlock();
@@ -307,6 +369,7 @@ namespace PoBox
                 block.SetColor(BaseColorId, baseColor * wash);
                 renderer.SetPropertyBlock(block);
             }
+            return wash;
         }
 
         // Cached: a contest spawns up to eight fighters off the same two or three

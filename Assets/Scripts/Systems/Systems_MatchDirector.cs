@@ -8,8 +8,8 @@ namespace PoBox
     /// Match layer over the round referee: first fighter to win
     /// ROUNDS_TO_WIN rounds is crowned champion. Shows a persistent star
     /// scoreboard between rounds, freezes the referee at match end, plays the
-    /// champion celebration, then reloads the scene — which lands back on the
-    /// setup menu with fresh random slots (Menu -> Fight -> Champion -> Menu).
+    /// champion celebration, then reloads the scene for a rematch with the same
+    /// line-up (Menu -> Fight -> Champion -> Rematch).
     /// Renders its scoreboard into the referee's HUD document (one panel
     /// fewer). Lives under the contest systems root. Test-scene harness only.
     /// </summary>
@@ -22,7 +22,8 @@ namespace PoBox
 
         private Systems_ContestReferee _contest;
         private readonly System.Collections.Generic.Dictionary<string, int> _wins = new();
-        private Label _scoreboard;
+        private readonly System.Collections.Generic.Dictionary<string, Color> _colors = new();
+        private VisualElement _scoreboard;
         private float _celebrationRemaining;
         private bool _matchOver;
 
@@ -36,14 +37,22 @@ namespace PoBox
             // Share the referee's HUD document instead of owning a panel.
             var root = _contest.GetComponent<UIDocument>().rootVisualElement;
 
-            _scoreboard = new Label();
+            // The referee reports a winner by name, so the tally needs its own
+            // way back to that fighter's colour. Built once here: the roster
+            // cannot change mid-match.
+            Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
+            {
+                Systems_FighterIdentity.Resolve(rigs[rigIndex], out string name, out Color color);
+                _colors[name] = color;
+            }
+
+            _scoreboard = new VisualElement();
+            _scoreboard.AddToClassList("score-row");
             // Placed by the shared HUD stack rather than by an absolute rect of
             // its own: a full-width centred tally reached into the top-left
             // corner and drew over the FPS readout the moment it listed more
             // than a couple of names.
-            _scoreboard.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _scoreboard.style.fontSize = 44f;
-            _scoreboard.style.color = Systems_UiTheme.Gold;
             _scoreboard.pickingMode = PickingMode.Ignore;
             Systems_UiTheme.HudScoreSlot(root).Add(_scoreboard);
 
@@ -78,18 +87,26 @@ namespace PoBox
             }
         }
 
+        /// <summary>
+        /// Rebuilds the star tally, best first. Ordered rather than left in
+        /// dictionary order because this is the only place the player is told
+        /// who is winning the MATCH, and "whoever scored first" is not that.
+        /// </summary>
         private void RefreshScoreboard()
         {
-            var builder = new System.Text.StringBuilder();
-            foreach (System.Collections.Generic.KeyValuePair<string, int> entry in _wins)
+            var ranked = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, int>>(_wins);
+            ranked.Sort((left, right) => right.Value.CompareTo(left.Value));
+
+            _scoreboard.Clear();
+            for (int entryIndex = 0; entryIndex < ranked.Count; entryIndex++)
             {
-                if (builder.Length > 0)
+                System.Collections.Generic.KeyValuePair<string, int> entry = ranked[entryIndex];
+                if (!_colors.TryGetValue(entry.Key, out Color color))
                 {
-                    builder.Append("    ");
+                    color = Color.white;
                 }
-                builder.Append(entry.Key).Append(" ★").Append(entry.Value);
+                _scoreboard.Add(Systems_UiTheme.BuildScoreChip($"{entry.Key} ★{entry.Value}", color));
             }
-            _scoreboard.text = builder.ToString();
         }
 
         private void Update()

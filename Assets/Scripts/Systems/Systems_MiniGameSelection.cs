@@ -26,6 +26,8 @@ namespace PoBox
         [SerializeField] private MiniGameKind _game;
         [SerializeField] private int[] _picks = System.Array.Empty<int>();
         [SerializeField] private bool _hasSelection;
+        // Survives Clear so a rematch can field the same line-up. See LastPicks.
+        [SerializeField] private int[] _lastPicks = System.Array.Empty<int>();
 
         public MiniGameKind Game => _game;
 
@@ -35,10 +37,26 @@ namespace PoBox
         /// <summary>False on a cold start, so a mini-game scene run directly still shows its own menu.</summary>
         public bool HasSelection => _hasSelection;
 
+        /// <summary>
+        /// The most recent line-up this session, still readable after
+        /// <see cref="Clear"/>.
+        ///
+        /// The match director restarts a decided match by reloading the scene,
+        /// and the launcher's Start runs again against a selection the launcher
+        /// itself consumed on the way in — so the rematch fell through to the
+        /// default line-up and silently threw away what the player picked. Pick
+        /// eight Grandmas, win the match, and round one of the rematch is the
+        /// stock roster. Clearing HasSelection is still right (it is what stops
+        /// a stale pick skipping the menu on a cold start); forgetting the picks
+        /// themselves was not.
+        /// </summary>
+        public int[] LastPicks => _lastPicks;
+
         public void Set(MiniGameKind game, int[] picks)
         {
             _game = game;
             _picks = picks ?? System.Array.Empty<int>();
+            _lastPicks = _picks;
             _hasSelection = true;
         }
 
@@ -54,6 +72,7 @@ namespace PoBox
             // Runtime state must not persist across sessions.
             _hasSelection = false;
             _picks = System.Array.Empty<int>();
+            _lastPicks = System.Array.Empty<int>();
         }
     }
 }

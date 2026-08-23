@@ -1,4 +1,4 @@
-using PoBox;
+﻿using PoBox;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -21,7 +21,37 @@ namespace PoBox.Editor
     internal static class RigTool_LocomotionScene
     {
         private const string SCENE_PATH = "Assets/Scenes/SCN_TRAIN_LOCOMOTION.unity";
-        private const string FIGHTER_PREFAB_PATH = "Assets/Prefabs/Fighters/Fighter_Capsule.prefab";
+        /// <summary>
+        /// Every body the shared locomotion brain has to drive, cycled across
+        /// the training grid.
+        ///
+        /// This scene trained 16 copies of Fighter_Capsule and nothing else,
+        /// and that is why two of the game's four fighters do not work. The
+        /// three rigs weigh the same 75 kg but distribute it completely
+        /// differently — the capsule's torso segment is 1.1 kg where Grandpa's
+        /// is 24.3 kg — so the same normalised torque on the same joint produces
+        /// a different response on each body. A policy fitted to one of them is
+        /// not a walking policy, it is a walking-THAT-body policy. Measured
+        /// 2026-08-22 in the live balance contest, Grandma and Grandpa collapsed
+        /// 1.1 to 1.4 s into every single round while the capsule they were
+        /// trained on lasted 12 s.
+        ///
+        /// Cycling the grid over all three is domain randomisation over body
+        /// shape: the brain sees every rig within one batch and cannot overfit
+        /// to a single mass distribution. It costs nothing at training time —
+        /// the grid is the same 16 fighters — and it is the only way one brain
+        /// can honestly serve a roster of three.
+        ///
+        /// Order matters only in that it is stable; 16 does not divide by 3, so
+        /// the capsule gets the spare slots.
+        /// </summary>
+        private static readonly string[] FighterPrefabPaths =
+        {
+            "Assets/Prefabs/Fighters/Fighter_Capsule.prefab",
+            "Assets/Prefabs/Fighters/Fighter_Grandma.prefab",
+            "Assets/Prefabs/Fighters/Fighter_Grandpa.prefab"
+        };
+
         private const int GRID_SIZE = 4;               // 16 fighters, same throughput as balance
         private const float GRID_SPACING = 8f;
         private const int LOCOMOTION_MAX_STEP = 3000;  // 60 s at 50 Hz
@@ -33,13 +63,17 @@ namespace PoBox.Editor
         [MenuItem("Tools/ML Boxing/9. Create Locomotion Training Scene")]
         public static void Create()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FIGHTER_PREFAB_PATH);
-            if (prefab == null)
+            var prefabs = new GameObject[FighterPrefabPaths.Length];
+            for (int prefabIndex = 0; prefabIndex < FighterPrefabPaths.Length; prefabIndex++)
             {
-                EditorUtility.DisplayDialog("Locomotion Scene",
-                    "Fighter prefab not found at " + FIGHTER_PREFAB_PATH +
-                    ".\nBuild/prepare that fighter prefab first (Tools > ML Boxing).", "OK");
-                return;
+                prefabs[prefabIndex] = AssetDatabase.LoadAssetAtPath<GameObject>(FighterPrefabPaths[prefabIndex]);
+                if (prefabs[prefabIndex] == null)
+                {
+                    EditorUtility.DisplayDialog("Locomotion Scene",
+                        "Fighter prefab not found at " + FighterPrefabPaths[prefabIndex] +
+                        ".\nBuild/prepare that fighter prefab first (Tools > ML Boxing).", "OK");
+                    return;
+                }
             }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
@@ -60,14 +94,18 @@ namespace PoBox.Editor
                 for (int gridZ = 0; gridZ < GRID_SIZE; gridZ++)
                 {
                     var position = new Vector3(origin + gridX * GRID_SPACING, SPAWN_HEIGHT, origin + gridZ * GRID_SPACING);
+                    // Cycles the three bodies across the grid — see FighterPrefabPaths.
+                    int slot = gridX * GRID_SIZE + gridZ;
+                    GameObject prefab = prefabs[slot % prefabs.Length];
                     ConvertToLocomotion(
-                        RigTool_BalanceScene.SpawnFighter(prefab, position, gridX * GRID_SIZE + gridZ, variation));
+                        RigTool_BalanceScene.SpawnFighter(prefab, position, slot, variation));
                 }
             }
 
             EditorSceneManager.SaveScene(scene, SCENE_PATH);
-            Debug.Log($"RigTool: locomotion training scene saved to {SCENE_PATH} — {GRID_SIZE * GRID_SIZE} fighters. " +
-                "Train: mlagents-learn Config/BoxerLocomotion01.yaml --run-id=boxer_locomotion01");
+            Debug.Log($"RigTool: locomotion training scene saved to {SCENE_PATH} — {GRID_SIZE * GRID_SIZE} fighters " +
+                $"across {prefabs.Length} bodies. All of them train ONE shared brain, so it has to walk on " +
+                "each — a brain fitted to a single rig is what left Grandma and Grandpa unable to stand.");
         }
 
         // SpawnFighter builds a balance-phase fighter; swap the reward and the

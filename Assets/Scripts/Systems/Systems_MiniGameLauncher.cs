@@ -33,6 +33,16 @@ namespace PoBox
                 return;
             }
 
+            // Rematch: the match director reloads this scene after crowning a
+            // champion, by which point the selection above has already been
+            // consumed. Falling straight through to the defaults here is what
+            // used to throw the player's line-up away between matches.
+            if (_selection != null && _selection.LastPicks.Length > 0)
+            {
+                _spawner.SpawnAndBegin(_selection.LastPicks);
+                return;
+            }
+
             // One of each roster entry, in slot order.
             int slotCount = _spawner.SlotCount;
             var defaults = new int[slotCount];

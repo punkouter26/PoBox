@@ -1,0 +1,32 @@
+boxer_locomotion16, checkpoint Boxer-4999936.onnx (step 4,999,936 of a planned
+18,000,000). STOPPED EARLY AND DELIBERATELY -- this is not a finished run.
+
+THE FIRST BRAIN IN THIS PROJECT TRAINED ON MORE THAN ONE BODY. The scene held
+6 Fighter_Capsule, 5 Fighter_Grandma and 5 Fighter_Grandpa; every previous
+generation trained 16 capsules and nothing else. Reward recipe, gates and
+hyperparameters are gen 15's, untouched, so the run isolates exactly one
+variable: does that recipe survive three bodies?
+
+ANSWER: NO, not at this budget. It plateaued almost immediately and stayed there.
+
+  reward by 1M window   0.173  0.169  0.169  0.177  0.183
+  at 5M                 reward 0.192, Alternation 0.069, StepsSurvived 88.5
+  gen 15 at 5M          reward ~0.55 (it cleared StandStill at 5.7M)
+
+Rising at about +0.006 per million. The StandStill gate is 0.55, which at that
+rate is roughly 60M further steps against a 13M remaining budget. Stopped at its
+pre-registered decision point (reward >= 0.30 by 5M) rather than spending three
+more hours confirming a straight line.
+
+RULED OUT before blaming the policy: that the mixed scene was mis-wired.
+RigTool_LocomotionScene assigns fall sensors by hard-coded joint index (3 and 9
+= shins), chosen against the capsule. All three prefabs order their joints
+identically (3 = ShinL/LeftLeg, 9 = ShinR/RightLeg) and the foot sensors resolve
+correctly, so the result is real rather than an artefact.
+
+WHAT IT IS USEFUL FOR: nothing in the game. Do not wire this into a contest
+scene. It exists to be run in inference in SCN_TRAIN_LOCOMOTION so the per-body
+reward split can be read, which is the thing the trainer's 16-agent average
+hides and the thing that decides what gen 17 should be.
+
+Observation count 127. Not resumable into gen 17 (different network shape).

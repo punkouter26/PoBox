@@ -1,0 +1,218 @@
+# Locomotion gen 16 (2026-08-22). ONE variable changes from gen 15, and it is
+# not in this file: the training scene now holds THREE BODIES instead of one.
+#
+# WHY. Every locomotion generation so far trained 16 copies of Fighter_Capsule,
+# so every brain the project has produced is a walking-THAT-BODY policy. The
+# game ships four fighters. Measured 2026-08-22 in a live balance contest,
+# Grandma and Grandpa collapsed 1.1-1.4 s into every single round while the
+# capsule they were trained on lasted 12 s. The three rigs all total 75 kg but
+# distribute it very differently -- the capsule's torso segment is 1.1 kg where
+# Grandpa's is 24.3 kg -- so identical normalised torque on an identical joint
+# produces a different response on each. No amount of further gait work on the
+# capsule was ever going to reach the other two.
+#
+# RigTool_LocomotionScene now cycles the 16-slot grid across all three prefabs
+# (6 capsule / 5 Grandma / 5 Grandpa). That is domain randomisation over body
+# shape: the brain sees every rig inside one batch and cannot overfit to one
+# mass distribution. It costs nothing at training time -- the grid is the same
+# 16 fighters -- and it is the only way one brain honestly serves the roster.
+#
+# EVERY REWARD TERM, GATE AND HYPERPARAMETER BELOW IS GEN 15's, UNCHANGED. That
+# is deliberate. Gen 15 was the first genuine alternating gait in this project
+# (Alternation 0.736, SingleSupportMean 0.275, SpeedMatch 0.885, verified in
+# inference over 31,901 earning steps), and the question this run asks is
+# exactly one question: does that recipe survive being asked to drive three
+# bodies? Changing a weight at the same time would make the answer unreadable.
+#
+# WHAT TO EXPECT, AND HOW NOT TO MISREAD IT. A three-body domain is harder than
+# a one-body domain, so this run should clear each lesson LATER than gen 15 did
+# and settle at a LOWER reward for the same competence. Reward is not comparable
+# to gen 15's; per-lesson progression and the gait stats are.
+#
+#   Working:     lessons advance, slower than gen 15, with Alternation and
+#                SingleSupportMean climbing together. A lower plateau reward
+#                than gen 15 at the same lesson is the EXPECTED cost of
+#                generality, not a regression.
+#   Overfitting: stats look like gen 15's but the contest still shows Grandma
+#                and Grandpa falling instantly -- the brain found a
+#                capsule-shaped solution and eats the other two as noise. Gen 17
+#                would then need a per-body reward normalisation, not more steps.
+#   Too hard:    see the corrected criterion below.
+#
+# CORRECTION, WRITTEN AT 1M STEPS. The line that used to sit here called the run
+# a failure if it was "stuck at StandStill past ~4M steps". That criterion was
+# wrong, and wrong in the direction that would have thrown away a working run:
+# gen 15 itself sat on StandStill until 5,700,000 steps. I had not read gen 15's
+# own lesson-transition history before writing it. For the record, from
+# results/boxer_locomotion15:
+#
+#   lesson 0 (StandStill)  step          0
+#   lesson 1 (Sway)        step  5,700,000   reward 0.578
+#   lesson 2 (Shuffle)     step  9,150,000   reward 0.663
+#   lesson 3 (Step)        step 15,400,000   reward 0.453
+#
+# So a long StandStill is NORMAL here and says nothing on its own. What matters
+# is the shape of the reward curve inside it. Gen 15 climbed to 0.40 by 500k and
+# then ground upward continuously: 0.43 at 900k, 0.50 at 3.95M, 0.578 at 5.7M.
+#
+# GEN 16 IS NOT DOING THAT. It rose to 0.19 by 500k, sagged to 0.17 by 1M, and
+# has since gone FLAT: 0.170, 0.176, 0.172, 0.178, 0.177 across 1.0M-1.2M. Call
+# it a plateau at ~0.18 against a 0.55 gate, not a collapse.
+#
+# ONE PIECE OF EVIDENCE I USED HERE AND THEN THREW OUT, recorded because the
+# reasoning matters more than the conclusion: I first read gen 16's low
+# Alternation (0.052 at 1M vs gen 15's 0.197) as confirmation of a regression.
+# That comparison is close to meaningless during StandStill. The commanded speed
+# in this lesson is ZERO — the fighter is being asked to stand, not to step — so
+# a low rate of stance changes is the CORRECT behaviour and gen 15's higher
+# figure most likely reflects its fighters shuffling to catch themselves. Judge
+# StandStill on reward and StepsSurvived; Alternation only becomes a comparator
+# from Shuffle onward, once a speed is actually commanded.
+#
+# On those two, at 1.2M: reward 0.177 against gen 15's ~0.42, and first fall at
+# 85 steps (1.7 s) against gen 15's ~110 (2.2 s). Half the reward and a fifth
+# less standing time. That is the real evidence, and it is a plateau well short
+# of the gate rather than the continuous grind upward gen 15 was on by now.
+#
+# A LIMIT OF THESE STATS, worth knowing before drawing conclusions from them:
+# ML-Agents aggregates every agent sharing a behaviour name, so all sixteen
+# fighters average into one number. That makes it IMPOSSIBLE to tell from this
+# log whether the plateau is "all three bodies are mediocre" or "the capsule is
+# fine and two rigs are dragging the mean down" — which are different problems
+# with different fixes. Answer it by running the exported brain in
+# SCN_TEST_BALANCE_CONTEST and watching the three characters separately, not by
+# staring harder at the summaries.
+#
+# RULED OUT AT 3.4M, BEFORE BLAMING THE POLICY: that the mixed scene is simply
+# mis-wired. RigTool_LocomotionScene hands Reward_Locomotion its fall sensors by
+# HARD-CODED JOINT INDEX (JOINT_INDEX_SHIN_L = 3, JOINT_INDEX_SHIN_R = 9), and
+# those indices were chosen against the capsule. If Grandma and Grandpa ordered
+# their joints differently, two thirds of the field would have been scoring falls
+# off an upper arm and no amount of training could have fixed it. This project
+# has lost whole generations to exactly that shape of bug -- gens 1-4 died on a
+# clearance sensor that was reading a reset-tick snapshot.
+#
+# Checked by loading all three prefabs and printing the joint list. The order is
+# identical:
+#
+#   idx  capsule    grandma/grandpa
+#     3  ShinL      LeftLeg
+#     9  ShinR      RightLeg
+#
+# Foot sensors resolve correctly too (FootL/FootR, LeftFoot/RightFoot). The mixed
+# scene is wired right, so the plateau is a real result about the policy rather
+# than an artefact. Worth re-checking if a fourth body is ever added: the indices
+# are still hard-coded and still assume this ordering.
+#
+#   Decision point: BY 5,000,000 STEPS the run needs reward >= 0.30 AND
+#   Locomotion/Alternation >= 0.12, both still rising. That is a deliberately
+#   relaxed bar — gen 15 was at 0.50 by 4M — and it only asks that gen 16 be
+#   going the right way at all.
+#
+#   If it misses: run Config/BoxerLocomotion17.yaml, already staged.
+#
+#   That plan replaced an earlier one, and the earlier one was worse. It said to
+#   drop to TWO bodies (capsule + Grandpa) to find out whether the conflict was
+#   pairwise. Written before I had read CollectObservations, which turns out to
+#   contain nothing describing the body at all -- no masses, no lengths, no id.
+#   The policy cannot tell which rig it is driving, so this is a partially
+#   observable problem rather than just a hard one, and no feed-forward network
+#   can solve it however few bodies you show it. Two bodies would have shrunk
+#   the symptom and left the cause. Gen 17 gives the policy a memory instead, so
+#   it can infer the body from how that body answers its own torques.
+#
+# WATCH: Locomotion/Alternation and Locomotion/SingleSupportMean as in gen 15,
+# but judge the RESULT in SCN_TEST_BALANCE_CONTEST and SCN_TEST_WALK_CONTEST on
+# all three characters. A brain that only walks the capsule has failed this run
+# no matter what the summaries say.
+#
+# NOT RESUMABLE from gen 15: the environment distribution is different.
+# Observation count is still 127 -- all three rigs carry the same 14 joints.
+#
+# RUN LENGTH: 18M steps, the same budget gen 15 had. Three-body physics with two
+# skinned meshes runs slower than 16 capsules, so expect well under gen 15's
+# ~1,900 steps/s and a longer wall clock for the same step count.
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 18000000
+    time_horizon: 256
+    summary_freq: 50000
+    keep_checkpoints: 25
+    # Raised from 200000 now the run is headless: the trainer no longer has to
+    # be stopped for in-scene tests, so checkpoints exist for rollback rather
+    # than to cap the cost of an interruption.
+    checkpoint_interval: 500000
+
+environment_parameters:
+  # Upper end of the commanded speed. Reward_Locomotion draws each episode's
+  # command from [0, speed_command_max] while the cap is low, and holds the
+  # floor at 60% of the cap once the cap clears 0.3 m/s, so late lessons
+  # cannot be farmed by banking easy near-zero commands.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.60
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.40
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.38
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

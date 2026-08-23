@@ -279,8 +279,8 @@ namespace PoBox
             // Scaled so a full-length episode at perfect score returns ~1.
             _stepScale = 1f / Mathf.Max(1, _agent.MaxStep);
             // Cached: bounds is queried twice per fixed step per fighter.
-            _footLeftCollider = _rig.FootLeftSensor.GetComponent<Collider>();
-            _footRightCollider = _rig.FootRightSensor.GetComponent<Collider>();
+            _footLeftCollider = ResolveFootCollider(_rig.FootLeftSensor, "left");
+            _footRightCollider = ResolveFootCollider(_rig.FootRightSensor, "right");
             _allContacts = _rig.GetComponentsInChildren<Sensor_GroundContact>(true);
             _startHeadHeight = _rig.Head.position.y;
             RollCommand();
@@ -501,6 +501,58 @@ namespace PoBox
                 ProductFactor(clearanceReward, _clearanceWeight);
 
             _agent.AddReward(_stepScale * (locomotionReward - _smoothnessWeight * _agent.LastActionDelta01));
+        }
+
+        /// <summary>
+        /// The foot's collider, which is not always on the same GameObject as
+        /// the foot's ground sensor.
+        ///
+        /// This was a plain GetComponent&lt;Collider&gt;() and it silently
+        /// destroyed every training run that included the character rigs. The
+        /// capsule fighter carries its BoxCollider on the same object as the
+        /// sensor ("FootL"), but Fighter_Grandma and Fighter_Grandpa put the
+        /// sensor on the skeleton's foot BONE ("LeftFoot") and the collider on a
+        /// child of it ("LeftFoot_Sole"). GetComponent returned null for those
+        /// two, and the clearance term dereferences it every FixedUpdate.
+        ///
+        /// The failure mode is the nasty kind. It throws
+        /// MissingComponentException PART WAY THROUGH the reward function —
+        /// after the speed-match stats have been accumulated, before AddReward
+        /// is reached — so the agent posts perfectly plausible-looking
+        /// statistics while earning EXACTLY zero reward, forever, and the only
+        /// evidence is an exception in the Editor console that the trainer's
+        /// stdout never shows. Measured 2026-08-22 over 5M steps of
+        /// boxer_locomotion16: all ten Grandma/Grandpa agents at reward
+        /// 0.00000000 while the six capsules trained normally, which reads from
+        /// the outside exactly like "three bodies is too hard for this recipe".
+        /// It was never a training result at all.
+        ///
+        /// Searching children fixes it for any rig that nests its collider.
+        /// Failing loudly is the other half: a null here must never again be
+        /// discoverable only by noticing that a third of the field learns
+        /// nothing.
+        /// </summary>
+        private Collider ResolveFootCollider(Sensor_GroundContact foot, string side)
+        {
+            if (foot == null)
+            {
+                Debug.LogError($"{name}: no {side} foot sensor on this rig — the clearance term " +
+                    "cannot be computed and this agent will earn no reward.");
+                return null;
+            }
+            Collider collider = foot.GetComponent<Collider>();
+            if (collider == null)
+            {
+                collider = foot.GetComponentInChildren<Collider>();
+            }
+            if (collider == null)
+            {
+                Debug.LogError($"{name}: the {side} foot sensor on '{foot.name}' has no Collider on it " +
+                    "or on any child. Ground clearance cannot be measured, so this agent would earn " +
+                    "zero reward for the whole run. Give the foot a collider, or point the sensor at " +
+                    "the object that has one.");
+            }
+            return collider;
         }
 
         // Clamps a [0,1] criterion away from zero, then applies its weight as

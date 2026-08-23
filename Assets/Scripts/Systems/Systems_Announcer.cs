@@ -32,6 +32,7 @@ namespace PoBox
         private Systems_ContestReferee _contest;
         private Systems_HazardDirector _hazards;
         private Systems_MatchDirector _match;
+        private Systems_WinnerBanner _banner;
         private AudioSource _audioSource;
         private Systems_FighterRig[] _rigs;
         private float[] _startHeadHeights;
@@ -120,6 +121,9 @@ namespace PoBox
             {
                 _hazards.HazardChosen += OnHazardChosen;
             }
+            // Presence, not use: the announcer defers the round-winner callout
+            // to the banner whenever one exists. See OnRoundEnded.
+            _banner = FindFirstObjectByType<Systems_WinnerBanner>();
             _match = FindFirstObjectByType<Systems_MatchDirector>();
             if (_match != null)
             {
@@ -193,7 +197,8 @@ namespace PoBox
 
         private string DisplayName(int rigIndex)
         {
-            return _rigs[rigIndex].gameObject.name.Replace("Contest_", "");
+            Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
+            return displayName;
         }
 
         private void OnRoundStarted(int round)
@@ -202,9 +207,27 @@ namespace PoBox
             Announce($"ROUND {round} — FIGHT!");
         }
 
+        /// <summary>
+        /// Rings the bell and otherwise stays out of the winner banner's way.
+        ///
+        /// Both systems bind to RoundEnded and both used to shout about it, so
+        /// the end of every round put "Bot WINS THE ROUND!" at 20% of the screen
+        /// and "BOT WINS!" at 32% — the same fact, in two wordings, in two
+        /// fonts, at the same instant, and the callout ran edge to edge doing
+        /// it. The banner owns this beat: it pops, fires confetti, dips time and
+        /// plays the jingle. The announcer keeps the beats the banner has no
+        /// opinion about — falls, saves, hazards, the round call, the champion.
+        ///
+        /// Falls back to announcing it when the scene has no banner, so a
+        /// stripped-down harness still says who won.
+        /// </summary>
         private void OnRoundEnded(string winnerName)
         {
             RingBell();
+            if (_banner != null)
+            {
+                return;
+            }
             Announce(string.IsNullOrEmpty(winnerName) ? "ROUND OVER!" : $"{winnerName} WINS THE ROUND!");
         }
 

@@ -125,6 +125,64 @@ namespace PoBox
             }
         }
 
+        /// <summary>
+        /// One scoreboard name plate: a colour swatch identifying the fighter,
+        /// then its name and score.
+        ///
+        /// The swatch is the whole point. A plate used to be a bare Label, and
+        /// an eight-slot ring filled from a four-entry roster holds two of each
+        /// kind — so the scoreboard read "Grandma  1.4s" and "Grandma2  1.3s"
+        /// over a ring containing two fighters wearing the same untinted
+        /// texture, with nothing at all connecting either plate to either body.
+        /// The spawner already knows which colour it gave each fighter (roster
+        /// tint, then the copy wash); this is where that answer gets shown.
+        /// </summary>
+        public static VisualElement BuildPlate(Color swatchColor, out Label label)
+        {
+            var plate = new VisualElement();
+            plate.AddToClassList("plate");
+            plate.pickingMode = PickingMode.Ignore;
+
+            var swatch = new VisualElement();
+            swatch.AddToClassList("plate-swatch");
+            swatch.style.backgroundColor = swatchColor;
+            plate.Add(swatch);
+
+            label = new Label();
+            label.AddToClassList("plate-label");
+            plate.Add(label);
+            return plate;
+        }
+
+        /// <summary>
+        /// One entry in the match star tally: "NAME ★n" on the fighter's own
+        /// colour.
+        ///
+        /// The tally used to be a single Label holding every name joined by
+        /// spaces, which wraps rather than truncates — so a full ring pushed it
+        /// to two and three lines of near-identical names ("Standard ★2
+        /// Standard2 ★1") straight down the top of the screen, shoving the
+        /// hazard chip with it. Chips wrap into a row that stays one line for
+        /// as long as the interesting case (two or three fighters on the board)
+        /// lasts, and each carries the swatch that says which fighter it is.
+        /// </summary>
+        public static VisualElement BuildScoreChip(string text, Color swatchColor)
+        {
+            var chip = new VisualElement();
+            chip.AddToClassList("score-chip");
+            chip.pickingMode = PickingMode.Ignore;
+
+            var swatch = new VisualElement();
+            swatch.AddToClassList("plate-swatch");
+            swatch.style.backgroundColor = swatchColor;
+            chip.Add(swatch);
+
+            var label = new Label(text);
+            label.AddToClassList("score-chip-label");
+            chip.Add(label);
+            return chip;
+        }
+
         public static void SetRadius(VisualElement element, float radius)
         {
             element.style.borderTopLeftRadius = radius;
@@ -169,9 +227,14 @@ namespace PoBox
         private const string HUD_SCORE_SLOT_NAME = "hud-score-slot";
         private const string HUD_HAZARD_SLOT_NAME = "hud-hazard-slot";
 
-        // Clears the widest thing either corner puts at this height: "000 FPS"
-        // at 52 px on the left, the MENU button on the right.
-        private const float HUD_CORNER_GUTTER = 250f;
+        // Inset from the panel edges. 250 px was sized to clear the FPS readout
+        // and the MENU button, but both of those END at y 149 and this stack
+        // STARTS at y 158 — so the gutters were dodging things that are not
+        // beside them, and paying 500 px of the 1080 for it. Two star chips
+        // ("Grandma *1", "Grandpa *1") measure about 570 px together and wrapped
+        // to two lines inside the 580 px that left. 80 px is the ordinary screen
+        // margin and fits three chips on one line.
+        private const float HUD_CORNER_GUTTER = 80f;
         // Below the FPS readout, which ends at y 149.
         private const float HUD_STACK_TOP = 158f;
 

@@ -41,7 +41,14 @@ namespace PoBox
             public Sensor_GroundContact[] fallSensors;
             public float startHeadHeight;
             public float aliveTime;
+            /// <summary>
+            /// Head height as a fraction of the start pose, summed over every
+            /// upright tick. Divided by aliveTime it is mean uprightness, and it
+            /// exists to break ties on aliveTime — see <see cref="Beats"/>.
+            /// </summary>
+            public float uprightnessSum;
             public bool fallen;
+            public VisualElement plate;
             public Label label;
         }
 
@@ -94,17 +101,18 @@ namespace PoBox
                         fallSensors.Add(sensor);
                     }
                 }
-                var plate = new Label();
-                plate.AddToClassList("plate");
+                Systems_FighterIdentity.Resolve(rig, out string displayName, out Color plateColor);
+                VisualElement plate = Systems_UiTheme.BuildPlate(plateColor, out Label plateLabel);
                 platesRow.Add(plate);
                 var contestant = new Contestant
                 {
-                    displayName = rig.gameObject.name.Replace("Contest_", ""),
+                    displayName = displayName,
                     rig = rig,
                     agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y,
-                    label = plate
+                    plate = plate,
+                    label = plateLabel
                 };
                 _contestants.Add(contestant);
                 CommandStand(contestant);
@@ -144,11 +152,21 @@ namespace PoBox
                     continue;
                 }
                 contestant.aliveTime += Time.fixedDeltaTime;
+                contestant.uprightnessSum +=
+                    contestant.rig.Head.position.y / contestant.startHeadHeight * Time.fixedDeltaTime;
                 aliveCount++;
             }
 
             bool timeUp = _roundTime >= ROUND_TIME_LIMIT;
-            if ((aliveCount == 0 || timeUp) && _contestants.Count > 0)
+            // Last one standing ends it there and then. Without this the round
+            // ran to its 30 s limit no matter what: measured 2026-08-22, round 2
+            // had seven of eight fighters down inside 5 s and then held on a mat
+            // of bodies for another 25, which is the single longest stretch of
+            // dead air in the game. Guarded on a field of more than one, because
+            // a single-fighter ring — the spawner's fallback when nothing is
+            // picked — would otherwise end every round on its first frame.
+            bool lastStanding = aliveCount == 1 && _contestants.Count > 1;
+            if ((aliveCount == 0 || lastStanding || timeUp) && _contestants.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
                 RaiseRoundEnded(FindLeader()?.displayName ?? "");
@@ -163,8 +181,8 @@ namespace PoBox
             {
                 Contestant contestant = _contestants[contestantIndex];
                 contestant.label.text = $"{contestant.displayName}  {contestant.aliveTime:F1}s";
-                contestant.label.EnableInClassList("plate--down", contestant.fallen && !(roundOver && contestant == leader));
-                contestant.label.EnableInClassList("plate--winner", roundOver && contestant == leader);
+                contestant.plate.EnableInClassList("plate--down", contestant.fallen && !(roundOver && contestant == leader));
+                contestant.plate.EnableInClassList("plate--winner", roundOver && contestant == leader);
             }
             _title.text = roundOver
                 ? $"Round {_round} over — next in {Mathf.Max(0f, _restartTimer):F0}s"
@@ -177,12 +195,47 @@ namespace PoBox
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
                 Contestant contestant = _contestants[contestantIndex];
-                if (leader == null || contestant.aliveTime > leader.aliveTime)
+                if (leader == null || Beats(contestant, leader))
                 {
                     leader = contestant;
                 }
             }
             return leader;
+        }
+
+        /// <summary>
+        /// Longest upright wins; a tie on that goes to whoever stood straighter
+        /// while doing it.
+        ///
+        /// The tie-break is not a nicety. Comparing aliveTime alone with a
+        /// strict &gt; hands every tie to whichever fighter FindObjectsByType
+        /// happened to return first, and at the 30 s round limit ties are the
+        /// NORMAL case, not the edge one: every fighter still standing when time
+        /// runs out has been alive for exactly the round length. Measured
+        /// 2026-08-22, four of eight were sitting on an identical 4.0 s four
+        /// seconds into round 4. So the round — and, three rounds later, the
+        /// match — was being decided by scene hierarchy order.
+        ///
+        /// Mean uprightness is the natural decider because it is the thing the
+        /// contest is nominally about: of two fighters who both lasted the
+        /// distance, the one that spent it nearer its full standing height
+        /// balanced better. It is a float sum over fixed ticks, so an exact tie
+        /// on it is vanishingly unlikely; if one happens, order decides, and by
+        /// then the two really are indistinguishable.
+        /// </summary>
+        private static bool Beats(Contestant candidate, Contestant incumbent)
+        {
+            const float ALIVE_TIME_EPSILON = 0.001f;
+            if (Mathf.Abs(candidate.aliveTime - incumbent.aliveTime) > ALIVE_TIME_EPSILON)
+            {
+                return candidate.aliveTime > incumbent.aliveTime;
+            }
+            return MeanUprightness(candidate) > MeanUprightness(incumbent);
+        }
+
+        private static float MeanUprightness(Contestant contestant)
+        {
+            return contestant.aliveTime > 0f ? contestant.uprightnessSum / contestant.aliveTime : 0f;
         }
 
         /// <summary>
@@ -228,6 +281,7 @@ namespace PoBox
                 }
                 CommandStand(contestant);
                 contestant.aliveTime = 0f;
+                contestant.uprightnessSum = 0f;
                 contestant.fallen = false;
             }
             RaiseRoundStarted(_round);

@@ -24,10 +24,48 @@ namespace PoBox
     public sealed class Systems_WalkContest : Systems_ContestReferee
     {
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
-        private const float ROUND_RESTART_DELAY = 4f;
+        // Was 4 s, set when a round was expected to last most of its 60 s limit.
+        // It does not: measured 2026-08-22, rounds ended at roundTime 2.3 s with
+        // the whole field down, so the race spent nearly twice as long showing a
+        // frozen scoreboard as it did racing. The banner and the crowd cheer
+        // still need room to land, which is what the remaining 2.5 s is for.
+        private const float ROUND_RESTART_DELAY = 2.5f;
         private const float ROUND_TIME_LIMIT = 60f;
         // Commanded pace for the race. 1 m/s is a normal human walk.
         private const float RACE_SPEED = 1.0f;
+
+        /// <summary>
+        /// How far the leader must have actually walked for the round to be
+        /// awarded to anybody.
+        ///
+        /// Without it the race declares a winner no matter what happens, and
+        /// what happens is nothing: measured 2026-08-22 over five rounds, the
+        /// winning distances toward a 5.6 m goal were 0.5 m, 0.2 m and 0.2 m,
+        /// and the rest of the field scored NEGATIVE — round 5 went to Grandpa
+        /// for falling forward 20 cm while the other three fell backward. A
+        /// scoreboard that crowns a champion out of that is lying to the player
+        /// about what it just showed them. Under this bar the round is a no
+        /// contest, no star is awarded, and the match keeps going until somebody
+        /// earns one.
+        ///
+        /// 0.75 m is a bit over one step. It is deliberately low: the point is
+        /// to reject topple noise, not to set a competitive standard.
+        /// </summary>
+        private const float MIN_WIN_DISTANCE = 0.75f;
+
+        /// <summary>
+        /// A round also ends when the field stops making progress for this long.
+        ///
+        /// The fall rule alone cannot end a round in which somebody simply
+        /// stands still — the heuristic bot is very good at not falling over and
+        /// commanding it to walk does not oblige it to — so a stalled race would
+        /// hold the scene for the full 60 s limit showing nothing at all. Ending
+        /// on a stall keeps the worst case at about a quarter of that.
+        /// </summary>
+        private const float STALL_SECONDS = 12f;
+
+        /// <summary>Progress under this in <see cref="STALL_SECONDS"/> counts as no progress at all.</summary>
+        private const float STALL_EPSILON = 0.25f;
 
         [SerializeField] private StyleSheet _styleSheet;
         // World direction from the start edge to the finish edge, and how far
@@ -47,6 +85,7 @@ namespace PoBox
             public float finishTime;
             public bool fallen;
             public bool finished;
+            public VisualElement plate;
             public Label label;
         }
 
@@ -55,6 +94,10 @@ namespace PoBox
         private int _round = 1;
         private float _restartTimer = -1f;
         private float _roundTime;
+        // High-water mark of the whole field, and when it last moved: the stall
+        // rule is about the RACE making progress, not any one racer.
+        private float _bestTravelled;
+        private float _lastProgressTime;
 
         // Called by the walk contest scene builder.
         public void EditorInitialize(Vector3 goalDirection, float goalDistance, StyleSheet styleSheet)
@@ -120,18 +163,19 @@ namespace PoBox
                         fallSensors.Add(sensor);
                     }
                 }
-                var plate = new Label();
-                plate.AddToClassList("plate");
+                Systems_FighterIdentity.Resolve(rig, out string displayName, out Color plateColor);
+                VisualElement plate = Systems_UiTheme.BuildPlate(plateColor, out Label plateLabel);
                 platesRow.Add(plate);
                 var racer = new Racer
                 {
-                    displayName = rig.gameObject.name.Replace("Contest_", ""),
+                    displayName = displayName,
                     rig = rig,
                     agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y,
                     startProjection = Vector3.Dot(rig.Pelvis.position, _goalDirection),
-                    label = plate
+                    plate = plate,
+                    label = plateLabel
                 };
                 _racers.Add(racer);
                 CommandRace(racer);
@@ -173,7 +217,21 @@ namespace PoBox
                     continue;
                 }
 
-                racer.travelled = Vector3.Dot(racer.rig.Pelvis.position, _goalDirection) - racer.startProjection;
+                // High-water mark, floored at zero, and only ever sampled while
+                // the racer is still upright. Both halves matter. Reading the
+                // live projection instead let a racer BANK ITS OWN TOPPLE: the
+                // pelvis flies forward as the body goes down, so the reward for
+                // falling over was the same 20-30 cm that was winning rounds.
+                // The floor is what stops a backward faceplant scoring -0.6 m
+                // and still placing, which is a number no scoreboard should
+                // ever have shown a player.
+                float projected = Vector3.Dot(racer.rig.Pelvis.position, _goalDirection) - racer.startProjection;
+                racer.travelled = Mathf.Max(racer.travelled, Mathf.Max(0f, projected));
+                if (racer.travelled > _bestTravelled + STALL_EPSILON)
+                {
+                    _bestTravelled = racer.travelled;
+                    _lastProgressTime = _roundTime;
+                }
                 if (racer.travelled >= _goalDistance)
                 {
                     racer.travelled = _goalDistance;
@@ -185,16 +243,37 @@ namespace PoBox
             }
 
             bool timeUp = _roundTime >= ROUND_TIME_LIMIT;
-            if ((racingCount == 0 || timeUp) && _racers.Count > 0)
+            bool stalled = racingCount > 0 && _roundTime - _lastProgressTime >= STALL_SECONDS;
+            if ((racingCount == 0 || timeUp || stalled) && _racers.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
-                RaiseRoundEnded(FindLeader()?.displayName ?? "");
+                RaiseRoundEnded(WinnerName());
             }
+        }
+
+        /// <summary>
+        /// Who won the round, or "" for a no contest. A leader who never cleared
+        /// <see cref="MIN_WIN_DISTANCE"/> did not beat anyone — the field just
+        /// fell over in slightly different directions — and an empty name is
+        /// what tells the match director to award no star and the banner to say
+        /// so.
+        /// </summary>
+        private string WinnerName()
+        {
+            Racer leader = FindLeader();
+            if (leader == null)
+            {
+                return "";
+            }
+            return leader.finished || leader.travelled >= MIN_WIN_DISTANCE ? leader.displayName : "";
         }
 
         private void Update()
         {
             bool roundOver = _restartTimer >= 0f;
+            // Only a leader who actually earned the round wears the winner
+            // plate; in a no contest nobody does.
+            bool decided = roundOver && !string.IsNullOrEmpty(WinnerName());
             Racer leader = FindLeader();
             for (int racerIndex = 0; racerIndex < _racers.Count; racerIndex++)
             {
@@ -202,12 +281,17 @@ namespace PoBox
                 racer.label.text = racer.finished
                     ? $"{racer.displayName}  {racer.finishTime:F1}s"
                     : $"{racer.displayName}  {racer.travelled:F1}m";
-                racer.label.EnableInClassList("plate--down", racer.fallen && !(roundOver && racer == leader));
-                racer.label.EnableInClassList("plate--winner", roundOver && racer == leader);
+                racer.plate.EnableInClassList("plate--down", racer.fallen && !(decided && racer == leader));
+                racer.plate.EnableInClassList("plate--winner", decided && racer == leader);
             }
-            _title.text = roundOver
-                ? $"Round {_round} over — next in {Mathf.Max(0f, _restartTimer):F0}s"
-                : $"Walk Contest — Round {_round}  {Mathf.Max(0f, ROUND_TIME_LIMIT - _roundTime):F0}s";
+            if (roundOver)
+            {
+                _title.text = decided
+                    ? $"Round {_round} over — next in {Mathf.Max(0f, _restartTimer):F0}s"
+                    : $"No contest — next in {Mathf.Max(0f, _restartTimer):F0}s";
+                return;
+            }
+            _title.text = $"Walk Contest — Round {_round}  {Mathf.Max(0f, ROUND_TIME_LIMIT - _roundTime):F0}s";
         }
 
         // Ranking: anyone who finished beats anyone who did not, earliest
@@ -268,6 +352,8 @@ namespace PoBox
             _round++;
             _restartTimer = -1f;
             _roundTime = 0f;
+            _bestTravelled = 0f;
+            _lastProgressTime = 0f;
             for (int racerIndex = 0; racerIndex < _racers.Count; racerIndex++)
             {
                 Racer racer = _racers[racerIndex];

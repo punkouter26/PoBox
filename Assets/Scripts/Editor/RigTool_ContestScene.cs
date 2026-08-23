@@ -160,79 +160,6 @@ namespace PoBox.Editor
         }
 
         /// <summary>
-        /// Converts the open contest scene to the setup-menu flow: removes the
-        /// baked fighters (the menu spawns fighters at runtime), parks the
-        /// contest systems under an inactive root the spawner activates after
-        /// spawning, adds the cube thrower, and creates the spawner + menu.
-        /// One-off migration — safe to re-run (no-ops when already converted).
-        /// </summary>
-        [MenuItem("Tools/ML Boxing/7c. Convert Contest Scene To Setup Menu")]
-        public static void ConvertToSetupMenu()
-        {
-            if (GameObject.Find("ContestSpawner") != null)
-            {
-                Debug.Log("RigTool: contest scene already uses the setup-menu flow — nothing to do.");
-                return;
-            }
-
-            Systems_FighterRig[] rigs = UnityEngine.Object.FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.None);
-            for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
-            {
-                UnityEngine.Object.DestroyImmediate(rigs[rigIndex].gameObject);
-            }
-
-            var systemsRoot = new GameObject("ContestSystems");
-            string[] systemRootNames = { "ContestReferee", "WobbleMeterUI", "FallImpactFX", "CrowdAudio", "DebugOverlay" };
-            for (int nameIndex = 0; nameIndex < systemRootNames.Length; nameIndex++)
-            {
-                GameObject systemObject = GameObject.Find(systemRootNames[nameIndex]);
-                if (systemObject != null)
-                {
-                    systemObject.transform.SetParent(systemsRoot.transform, true);
-                }
-            }
-            var throwerObject = new GameObject("CubeThrower");
-            throwerObject.transform.SetParent(systemsRoot.transform, false);
-            throwerObject.AddComponent<Systems_CubeThrower>();
-            systemsRoot.SetActive(false);
-
-            var dramaCamera = UnityEngine.Object.FindFirstObjectByType<Systems_DramaCamera>();
-            if (dramaCamera != null)
-            {
-                dramaCamera.enabled = false; // the spawner enables it post-spawn
-            }
-
-            var rosterEntries = new ContestRosterEntry[Roster.Length];
-            for (int rosterIndex = 0; rosterIndex < Roster.Length; rosterIndex++)
-            {
-                (string prefabPath, string display, bool forceHeuristic) = Roster[rosterIndex];
-                rosterEntries[rosterIndex] = new ContestRosterEntry
-                {
-                    displayName = display,
-                    prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath),
-                    model = forceHeuristic
-                        ? null
-                        : AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>($"Assets/Agents/{display}/Boxer.onnx"),
-                    forceHeuristic = forceHeuristic,
-                    tint = forceHeuristic ? AssetDatabase.LoadAssetAtPath<Material>(BOT_MATERIAL_PATH) : null
-                };
-            }
-            var spawnerObject = new GameObject("ContestSpawner");
-            var spawner = spawnerObject.AddComponent<Systems_ContestSpawner>();
-            spawner.EditorInitialize(rosterEntries, systemsRoot, dramaCamera);
-
-            var menuObject = new GameObject("ContestSetupMenu");
-            var menuDocument = menuObject.AddComponent<UIDocument>();
-            menuDocument.panelSettings = GetOrCreatePanelSettings();
-            var menu = menuObject.AddComponent<Systems_ContestSetupMenu>();
-            menu.EditorInitialize(spawner);
-
-            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-            EditorSceneManager.SaveOpenScenes();
-            Debug.Log("RigTool: contest scene converted to setup-menu flow (8 slots, random defaults, cube thrower) and saved.");
-        }
-
-        /// <summary>
         /// Points every brain-driven roster entry at the shared locomotion brain
         /// and flags it as such.
         ///
@@ -249,6 +176,215 @@ namespace PoBox.Editor
         /// `locomotionBrain` is what tells the spawner to switch the fighter into
         /// that layout before its sensor is built.
         /// </summary>
+        /// <summary>
+        /// Removes what SCN_MENU made redundant, and re-homes what those objects
+        /// were carrying. Idempotent — safe to re-run.
+        ///
+        /// The balance scene is built INCREMENTALLY by 7 / 7b..7g, so it cannot
+        /// be regenerated wholesale the way the walk scene can; anything a later
+        /// pass added would go with it. Hence a targeted pass, in the same shape
+        /// as 7h.
+        ///
+        /// Two objects go:
+        ///
+        /// ContestSetupMenu — a whole second opening menu, title, dropdowns and
+        /// all, living ACTIVE in the shipping scene and reachable only if the
+        /// player somehow arrives without a selection. SCN_MENU (build index 0)
+        /// has asked the same question before this scene loads since the
+        /// mini-game picker landed, so on every real path through the game this
+        /// screen built itself, read the selection, and hid again. Deleting it
+        /// takes ~200 lines of runtime UI out of the build.
+        ///
+        /// CubeThrower — an unannounced second projectile hazard. It predates
+        /// Systems_HazardDirector and now runs alongside it: BALL RAIN drops
+        /// spheres from above while this lobbed cubes from the side, with
+        /// nothing on screen explaining either, and its own ramp took throws to
+        /// 20 m/s — hard enough to floor anything, which is not a difficulty
+        /// curve so much as a timer. Hazards are the director's job.
+        ///
+        /// What has to be RE-HOMED is the reason this is a tool and not a
+        /// delete. The version stamp and the FPS readout both rode the setup
+        /// menu's UIDocument, because it was the one panel that outlived the
+        /// match. Removing the menu without this takes the mandated opening
+        /// version stamp (project rule) out of the scene with it, so a HudChrome
+        /// object is added to carry them — exactly what the walk contest scene
+        /// tool already builds.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/7i. Clean Up Balance Contest Scene")]
+        public static void CleanUpBalanceScene()
+        {
+            int removed = 0;
+            removed += DestroyByName("ContestSetupMenu");
+            removed += DestroyByName("CubeThrower");
+
+            // The setup menu was not only a menu: it was also what read the
+            // selection and called SpawnAndBegin. Deleting it without putting
+            // something back left the balance contest with a full roster, a
+            // referee and a camera, and nobody to start it — an empty ring, no
+            // HUD, and a camera slowly orbiting it forever. Systems_MiniGameLauncher
+            // is that job with the menu taken out; the walk contest has used it
+            // since it was written.
+            var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>(
+                FindObjectsInactive.Include);
+            if (spawner == null)
+            {
+                Debug.LogError("RigTool: no Systems_ContestSpawner in this scene — is SCN_TEST_BALANCE_CONTEST open?");
+                return;
+            }
+            var launcher = spawner.GetComponent<Systems_MiniGameLauncher>();
+            if (launcher == null)
+            {
+                launcher = spawner.gameObject.AddComponent<Systems_MiniGameLauncher>();
+                Debug.Log("RigTool: added Systems_MiniGameLauncher to the spawner — it starts the contest now.");
+            }
+            // Re-wired every run: the serialized references are what actually
+            // make it work, and an already-present launcher with a null spawner
+            // fails exactly as silently as no launcher at all.
+            launcher.EditorInitialize(spawner, RigTool_MenuScene.GetOrCreateSelectionAsset());
+            EditorUtility.SetDirty(launcher);
+
+            // Only after the menu is gone, so the FPS counter it carried is gone
+            // with it and this is the only one left.
+            GameObject chrome = GameObject.Find("HudChrome");
+            if (chrome == null)
+            {
+                chrome = new GameObject("HudChrome");
+                var document = chrome.AddComponent<UIDocument>();
+                document.panelSettings = GetOrCreatePanelSettings();
+                chrome.AddComponent<Systems_VersionStamp>();
+                chrome.AddComponent<Systems_FpsCounter>();
+                Debug.Log("RigTool: added HudChrome (version stamp + FPS) to carry what ContestSetupMenu used to.");
+            }
+
+            // A counter left on any other document would now draw a second
+            // readout at the same coordinates.
+            Systems_FpsCounter[] counters = UnityEngine.Object.FindObjectsByType<Systems_FpsCounter>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int counterIndex = 0; counterIndex < counters.Length; counterIndex++)
+            {
+                if (counters[counterIndex].gameObject != chrome)
+                {
+                    UnityEngine.Object.DestroyImmediate(counters[counterIndex]);
+                    removed++;
+                }
+            }
+
+            ResyncDramaCameraFraming();
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log($"RigTool: balance contest scene cleaned up — {removed} object(s) removed, HUD chrome in place, scene saved.");
+        }
+
+        /// <summary>
+        /// Framing fields the drama camera itself is the authority on. Listed
+        /// here only so the tool knows WHICH fields to re-sync; the values come
+        /// from the component.
+        /// </summary>
+        private static readonly string[] DramaCameraFramingFields =
+        {
+            "_closeFrameWidth", "_closeFrameHeight",
+            "_wideFrameWidth", "_wideFrameHeight",
+            "_minFollowDistance", "_cameraHeight",
+            "_groupCameraHeight", "_groupFov",
+            "_closeLookLift", "_groupLookLift",
+            "_aftermathFrameWidth", "_aftermathCameraHeight"
+        };
+
+        /// <summary>
+        /// Copies the drama camera's own framing defaults over whatever the
+        /// scene has serialized for them.
+        ///
+        /// Necessary because a [SerializeField] default is only ever read when
+        /// the component is FIRST added. Every value the camera carries was
+        /// baked into SCN_TEST_BALANCE_CONTEST when the component went on, so
+        /// retuning the framing in C# changed precisely nothing about the
+        /// scene — it went on framing 7 m of ring from 5.5 m up at 80 degrees
+        /// while the source said otherwise. That silent divergence is exactly
+        /// the trap this project's other stale-constant bugs came out of.
+        ///
+        /// Read off a throwaway instance rather than restated here, so the
+        /// component stays the single source of truth and this list only has to
+        /// name the fields.
+        /// </summary>
+        private static void ResyncDramaCameraFraming()
+        {
+            var camera = UnityEngine.Object.FindFirstObjectByType<Systems_DramaCamera>(FindObjectsInactive.Include);
+            if (camera == null)
+            {
+                Debug.LogWarning("RigTool: no Systems_DramaCamera in this scene — framing not re-synced.");
+                return;
+            }
+            // Inactive so nothing on it runs; RequireComponent brings a Camera
+            // along, which is why this is not just a `new`.
+            var scratch = new GameObject("RigToolDramaCameraDefaults");
+            scratch.SetActive(false);
+            try
+            {
+                var defaults = new SerializedObject(scratch.AddComponent<Systems_DramaCamera>());
+                var target = new SerializedObject(camera);
+                var changes = new System.Text.StringBuilder();
+                for (int fieldIndex = 0; fieldIndex < DramaCameraFramingFields.Length; fieldIndex++)
+                {
+                    string field = DramaCameraFramingFields[fieldIndex];
+                    SerializedProperty source = defaults.FindProperty(field);
+                    SerializedProperty destination = target.FindProperty(field);
+                    if (source == null || destination == null)
+                    {
+                        Debug.LogWarning($"RigTool: Systems_DramaCamera has no field '{field}' — skipped.");
+                        continue;
+                    }
+                    if (!Mathf.Approximately(source.floatValue, destination.floatValue))
+                    {
+                        changes.Append($"{field} {destination.floatValue:F2}->{source.floatValue:F2}  ");
+                        destination.floatValue = source.floatValue;
+                    }
+                }
+                target.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log(changes.Length > 0
+                    ? $"RigTool: drama camera framing re-synced — {changes}"
+                    : "RigTool: drama camera framing already matches the component defaults.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(scratch);
+            }
+        }
+
+        /// <summary>
+        /// Destroys every object with this name, active or not; returns how many
+        /// went.
+        ///
+        /// Deliberately not GameObject.Find, which only searches ACTIVE objects.
+        /// Everything worth removing here lives under ContestSystems, and that
+        /// root is inactive at author time by design — the spawner wakes it once
+        /// the fighters exist — so Find returned null for the cube thrower and
+        /// reported success having removed nothing.
+        /// </summary>
+        private static int DestroyByName(string objectName)
+        {
+            GameObject[] all = UnityEngine.Object.FindObjectsByType<GameObject>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            int removed = 0;
+            for (int objectIndex = 0; objectIndex < all.Length; objectIndex++)
+            {
+                GameObject candidate = all[objectIndex];
+                // Null-checked because destroying a parent takes its children
+                // with it, and they are still in this array.
+                if (candidate == null || candidate.name != objectName)
+                {
+                    continue;
+                }
+                UnityEngine.Object.DestroyImmediate(candidate);
+                removed++;
+            }
+            if (removed > 0)
+            {
+                Debug.Log($"RigTool: removed {removed} x {objectName} from the contest scene.");
+            }
+            return removed;
+        }
+
         [MenuItem("Tools/ML Boxing/7h. Retarget Balance Roster To Locomotion Brain")]
         public static void RetargetRosterToLocomotionBrain()
         {
@@ -451,32 +587,9 @@ namespace PoBox.Editor
                     virtualCamera, cameraObject.GetComponent<Systems_DramaCamera>());
             }
 
-            // Cube impact clips (Kenney CC0).
-            var thrower = UnityEngine.Object.FindFirstObjectByType<Systems_CubeThrower>(FindObjectsInactive.Include);
-            if (thrower != null)
-            {
-                string[] clipPaths =
-                {
-                    "Assets/Audio/Kenney/impactGeneric_light_000.ogg",
-                    "Assets/Audio/Kenney/impactGeneric_light_001.ogg",
-                    "Assets/Audio/Kenney/impactGeneric_light_002.ogg",
-                    "Assets/Audio/Kenney/impactGeneric_light_003.ogg",
-                    "Assets/Audio/Kenney/impactGeneric_light_004.ogg"
-                };
-                var throwerSo = new SerializedObject(thrower);
-                var clipsProperty = throwerSo.FindProperty("_impactClips");
-                clipsProperty.arraySize = clipPaths.Length;
-                for (int clipIndex = 0; clipIndex < clipPaths.Length; clipIndex++)
-                {
-                    clipsProperty.GetArrayElementAtIndex(clipIndex).objectReferenceValue =
-                        AssetDatabase.LoadAssetAtPath<AudioClip>(clipPaths[clipIndex]);
-                }
-                throwerSo.ApplyModifiedPropertiesWithoutUndo();
-            }
-
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
-            Debug.Log("RigTool: presentation upgraded (listener, lights, knockout FX, orbit, winner cam, cube audio) and saved.");
+            Debug.Log("RigTool: presentation upgraded (listener, lights, knockout FX, orbit, winner cam) and saved.");
         }
 
         /// <summary>

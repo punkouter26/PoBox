@@ -42,10 +42,14 @@
 /* Wraps because eight plates do not fit across 1080 px at this font size, and
    the flex default is to shrink them instead — which clipped every name and
    time in the balance contest ("Standard3  2.7s" needs 204 px, got 141). The
-   row is pinned by its bottom edge, so extra lines grow upward off the mat. */
+   row is pinned by its bottom edge, so extra lines grow upward off the mat.
+
+   bottom was 14 px, which put the last row of an eight-fighter ring 16 px off
+   the bottom of a 1920 px panel — under the gesture bar on any modern phone,
+   and touching the edge on all of them. 56 px clears it. */
 .plates-row {
     position: absolute;
-    bottom: 14px;
+    bottom: 56px;
     left: 0;
     right: 0;
     flex-direction: row;
@@ -53,28 +57,82 @@
     justify-content: center;
 }
 
+/* A row now, not a bare label: the swatch that identifies the fighter sits
+   inside it (Systems_UiTheme.BuildPlate). */
 .plate {
+    flex-direction: row;
+    align-items: center;
     background-color: rgba(13, 13, 20, 0.94);
-    color: rgb(255, 255, 255);
     margin-left: 6px;
     margin-right: 6px;
     margin-top: 3px;
     margin-bottom: 3px;
     padding: 4px 10px;
     border-radius: 8px;
-    font-size: 30px;
     flex-shrink: 0;
+}
+
+.plate-label {
+    color: rgb(255, 255, 255);
+    font-size: 30px;
     white-space: nowrap;
 }
 
-.plate--down {
+/* The fighter's own colour, as a dot. Sized in the same units as the text it
+   sits beside so it scales with the plate rather than needing its own tuning,
+   and given a dark ring so a pale wash still reads against the panel. */
+.plate-swatch {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    border-radius: 11px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.55);
+    flex-shrink: 0;
+}
+
+/* The modifiers moved from the label to the plate when the plate grew
+   children — set on the label, the winner's gold background coloured the text
+   box only and left the plate around it dark. */
+.plate--down .plate-label {
     color: rgb(255, 110, 100);
 }
 
 .plate--winner {
     background-color: rgb(217, 173, 64);
+}
+
+.plate--winner .plate-label {
     color: rgb(20, 16, 4);
     -unity-font-style: bold;
+}
+
+/* Match star tally. A wrapping row of chips rather than one long label, so a
+   full ring's worth of near-identical names cannot run down the screen. */
+.score-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.score-chip {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(13, 13, 20, 0.8);
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+    padding: 2px 12px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.score-chip-label {
+    color: rgb(217, 173, 64);
+    font-size: 38px;
+    -unity-font-style: bold;
+    white-space: nowrap;
 }
 
 .winner-banner {

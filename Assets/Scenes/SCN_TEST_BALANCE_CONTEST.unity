@@ -5619,13 +5619,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_DramaCamera
   _closeFrameWidth: 2.4
   _closeFrameHeight: 2.8
-  _wideFrameWidth: 7
-  _wideFrameHeight: 5
+  _wideFrameWidth: 3.4
+  _wideFrameHeight: 4
   _minFollowDistance: 2.2
   _tourSecondsPerFighter: 3
   _cameraHeight: 2.6
-  _groupCameraHeight: 5.5
-  _groupFov: 80
+  _groupCameraHeight: 2.8
+  _groupFov: 70
+  _closeLookLift: 0.8
+  _groupLookLift: -0.35
+  _aftermathFrameWidth: 4.4
+  _aftermathCameraHeight: 3.9
   _lateralFollowFraction: 0.6
   _baseFov: 60
   _dramaFov: 46
@@ -6289,7 +6293,6 @@ Transform:
   - {fileID: 2048993874}
   - {fileID: 1232423899}
   - {fileID: 1079241641}
-  - {fileID: 1512438934}
   - {fileID: 872992364}
   - {fileID: 134940598}
   - {fileID: 1133474771}
@@ -11875,151 +11878,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1437279337
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1437279340}
-  - component: {fileID: 1437279339}
-  - component: {fileID: 1437279338}
-  - component: {fileID: 1437279341}
-  m_Layer: 0
-  m_Name: ContestSetupMenu
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1437279338
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1437279337}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6716bb1d0d0501941bf9a62f49dc44a3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_ContestSetupMenu
-  _spawner: {fileID: 1905224104}
-  _selection: {fileID: 11400000, guid: 158572b8bd2c3994389f72168c90a61f, type: 2}
---- !u!114 &1437279339
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1437279337}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 568e2f9abba05d24290f991c9b9257f8, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 0}
-  m_SortingOrder: 0
-  m_Position: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
-  m_PivotReferenceSize: 0
-  m_Pivot: 0
-  m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &1437279340
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1437279337}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1437279341
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1437279337}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81ead85ffd93ead4fb8e8d585e0af0ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_FpsCounter
---- !u!1 &1512438933
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1512438934}
-  - component: {fileID: 1512438935}
-  m_Layer: 0
-  m_Name: CubeThrower
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1512438934
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1512438933}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 931611426}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1512438935
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1512438933}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 230d45d07f91b3c43aab5efc99f336b8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_CubeThrower
-  _graceSeconds: 10
-  _minIntervalSeconds: 1.5
-  _maxIntervalSeconds: 3
-  _cubeSpeed: 7
-  _maxCubeSpeed: 25
-  _rampEndSeconds: 120
-  _cubeSize: 0.25
-  _cubeMass: 3
-  _throwDistance: 3.5
-  _cubeLifeSeconds: 4
-  _poolSize: 8
-  _impactClips:
-  - {fileID: 8300000, guid: fe57f797b9e15ee4cb2bf8f1ad39fb48, type: 3}
-  - {fileID: 8300000, guid: f068a7568526c8843acc9224d230f421, type: 3}
-  - {fileID: 8300000, guid: cd7d6934976c6184897f4976802731ec, type: 3}
-  - {fileID: 8300000, guid: 08dee391ce69163439297cfb18cc1419, type: 3}
-  - {fileID: 8300000, guid: 4a80a4a6a9f2dd84d94bc84648cda116, type: 3}
-  _sparkMaterial: {fileID: 2100000, guid: a53d10fa1b4fd324ebc46bf474ec56d2, type: 2}
 --- !u!1 &1526785650
 GameObject:
   m_ObjectHideFlags: 0
@@ -12075,6 +11933,87 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1724854023
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1724854027}
+  - component: {fileID: 1724854026}
+  - component: {fileID: 1724854025}
+  - component: {fileID: 1724854024}
+  m_Layer: 0
+  m_Name: HudChrome
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1724854024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1724854023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81ead85ffd93ead4fb8e8d585e0af0ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_FpsCounter
+--- !u!114 &1724854025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1724854023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97c0218a219be794187f5bab27ca9be9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_VersionStamp
+--- !u!114 &1724854026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1724854023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 568e2f9abba05d24290f991c9b9257f8, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 0}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &1724854027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1724854023}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12217,6 +12156,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1905224105}
   - component: {fileID: 1905224104}
+  - component: {fileID: 1905224106}
   m_Layer: 0
   m_Name: ContestSpawner
   m_TagString: Untagged
@@ -12281,6 +12221,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1905224106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1905224103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c486becaea9eb9c48b49fd3cd59a7d67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_MiniGameLauncher
+  _spawner: {fileID: 1905224104}
+  _selection: {fileID: 11400000, guid: 158572b8bd2c3994389f72168c90a61f, type: 2}
 --- !u!1 &1911328670
 GameObject:
   m_ObjectHideFlags: 0
@@ -12528,8 +12482,8 @@ SceneRoots:
   - {fileID: 2031956303}
   - {fileID: 931611426}
   - {fileID: 1905224105}
-  - {fileID: 1437279340}
   - {fileID: 1526785652}
   - {fileID: 2062759128}
   - {fileID: 1427490472}
   - {fileID: 264610349}
+  - {fileID: 1724854027}

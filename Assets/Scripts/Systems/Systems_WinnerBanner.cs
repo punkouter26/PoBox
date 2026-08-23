@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
@@ -64,7 +64,14 @@ namespace PoBox
 
         private void OnRoundEnded(string winnerName)
         {
-            _bannerText.text = string.IsNullOrEmpty(winnerName) ? "DRAW!" : $"{winnerName.ToUpperInvariant()} WINS!";
+            // "NO CONTEST", not "DRAW": an empty winner does not mean the field
+            // tied, it means the walk race's leader never cleared the minimum
+            // distance and nobody earned the round (Systems_WalkContest.
+            // MIN_WIN_DISTANCE). Calling that a draw would tell the player the
+            // race was close when what it actually was is that nothing happened.
+            _bannerText.text = string.IsNullOrEmpty(winnerName)
+                ? "NO CONTEST"
+                : $"{winnerName.ToUpperInvariant()} WINS!";
             _banner.style.display = DisplayStyle.Flex;
             _popTimer = 0f;
             _slowmoTimer = 0f;
