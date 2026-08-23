@@ -112,12 +112,12 @@ tbody tr:last-child td{border-bottom:0}
 caption{caption-side:top; text-align:left; padding:13px; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); border-bottom:1px solid var(--hair)}
 
 .bars{display:flex; flex-direction:column; gap:13px; margin:22px 0}
-.bar{display:grid; grid-template-columns:132px minmax(0,1fr) 88px; align-items:center; gap:14px; font-size:13.5px}
+.bar{display:grid; grid-template-columns:132px minmax(0,1fr) 116px; align-items:center; gap:14px; font-size:13.5px}
 .bar .lbl{font-weight:500}
 .bar .track{position:relative; height:22px; background:var(--surface); border:1px solid var(--hair-soft); border-radius:4px; overflow:hidden}
 .bar .fill{position:absolute; inset:0 auto 0 0; border-radius:0 4px 4px 0}
 .bar .gate{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink)}
-.bar .val{font-family:"IBM Plex Mono",monospace; text-align:right; font-variant-numeric:tabular-nums}
+.bar .val{font-family:"IBM Plex Mono",monospace; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:12.5px}
 
 .chartcard{background:var(--raised); border:1px solid var(--hair); border-radius:4px; margin:24px 0}
 .chartcard .head{padding:16px 18px 0}
@@ -480,18 +480,18 @@ svg.chart{display:block; min-width:640px}
 <script>
 /* ---------- data (from the repository, not illustrative) ---------- */
 const GENS=[
- {g:8, r:0.053, sup:0.021, alt:null, spd:0.507, fall:418, lesson:2, note:"GAIT_FULL_SPEED probe"},
- {g:9, r:0.086, sup:0.020, alt:null, spd:0.435, fall:699, lesson:2, note:"balance record 25.8 s"},
- {g:10,r:0.034, sup:0.030, alt:null, spd:0.794, fall:159, lesson:2, note:"toe-pivot exploit"},
- {g:11,r:0.071, sup:0.024, alt:null, spd:0.547, fall:498, lesson:2, note:"exploit closed, back to standing"},
- {g:12,r:0.356, sup:0.261, alt:null, spd:0.900, fall:84,  lesson:3, note:"Shuffle cleared — economics fix"},
- {g:13,r:0.613, sup:0.951, alt:0.000,spd:0.900, fall:82,  lesson:5, note:"reached Walk — one-legged hop"},
- {g:14,r:0.329, sup:0.087, alt:null, spd:0.888, fall:92,  lesson:3, note:"symmetry bug — paid for standing"},
- {g:15,r:0.350, sup:0.278, alt:0.724,spd:0.882, fall:85,  lesson:3, note:"first real alternating gait"},
- {g:16,r:0.187, sup:0.015, alt:0.050,spd:0.271, fall:91,  lesson:0, note:"stalled at StandStill"},
- {g:17,r:0.574, sup:0.244, alt:0.173,spd:0.823, fall:135, lesson:1, note:"balance up, gait down"},
- {g:18,r:0.337, sup:0.704, alt:0.683,spd:0.841, fall:89,  lesson:4, note:"42M steps — gait peak at 34M"},
- {g:20,r:0.643, sup:0.564, alt:0.201,spd:0.790, fall:134, lesson:0, note:"balance-only, ships"}
+ {g:8, steps:"9.6M", r:0.053, sup:0.021, alt:null, spd:0.507, fall:418, lesson:2, note:"GAIT_FULL_SPEED probe"},
+ {g:9, steps:"8.7M", r:0.086, sup:0.020, alt:null, spd:0.435, fall:699, lesson:2, note:"balance record 25.8 s"},
+ {g:10,steps:"11.0M", r:0.034, sup:0.030, alt:null, spd:0.794, fall:159, lesson:2, note:"toe-pivot exploit"},
+ {g:11,steps:"18M", r:0.071, sup:0.024, alt:null, spd:0.547, fall:498, lesson:2, note:"exploit closed, back to standing"},
+ {g:12,steps:"18M", r:0.356, sup:0.261, alt:null, spd:0.900, fall:84,  lesson:3, note:"Shuffle cleared — economics fix"},
+ {g:13,steps:"18M", r:0.613, sup:0.951, alt:0.000,spd:0.900, fall:82,  lesson:5, note:"reached Walk — one-legged hop"},
+ {g:14,steps:"18M", r:0.329, sup:0.087, alt:null, spd:0.888, fall:92,  lesson:3, note:"symmetry bug — paid for standing"},
+ {g:15,steps:"18M", r:0.350, sup:0.278, alt:0.724,spd:0.882, fall:85,  lesson:3, note:"first real alternating gait"},
+ {g:16,steps:"5.1M", r:0.187, sup:0.015, alt:0.050,spd:0.271, fall:91,  lesson:0, note:"stalled at StandStill"},
+ {g:17,steps:"18M", r:0.574, sup:0.244, alt:0.173,spd:0.823, fall:135, lesson:1, note:"balance up, gait down"},
+ {g:18,steps:"42M", r:0.337, sup:0.704, alt:0.683,spd:0.841, fall:89,  lesson:4, note:"42M steps — gait peak at 34M"},
+ {g:20,steps:"4.5M", r:0.643, sup:0.564, alt:0.201,spd:0.790, fall:134, lesson:0, note:"balance-only, ships"}
 ];
 const JOINTS=[
  ["Torso",24.26,"−30..30","−20..20","−35..35",3,3500,250,5000],
@@ -562,7 +562,7 @@ wireSeg('themeseg',b=>{
 /* ---------- tables ---------- */
 document.getElementById('genrows').innerHTML=GENS.map(d=>{
   const f=v=>v==null?'—':v.toFixed(3);
-  return `<tr><td class="mono">gen ${d.g}</td><td class="num mono">${d.lesson===0&&d.g===20?'4.5M':'18M'}</td><td class="num mono">${d.r.toFixed(3)}</td><td class="num mono">${d.lesson}</td><td class="num mono">${d.fall}</td><td class="num mono">${f(d.sup)}</td><td class="num mono">${f(d.alt)}</td><td class="num mono">${f(d.spd)}</td><td>${d.note}</td></tr>`;
+  return `<tr><td class="mono">gen ${d.g}</td><td class="num mono">${d.steps}</td><td class="num mono">${d.r.toFixed(3)}</td><td class="num mono">${d.lesson}</td><td class="num mono">${d.fall}</td><td class="num mono">${f(d.sup)}</td><td class="num mono">${f(d.alt)}</td><td class="num mono">${f(d.spd)}</td><td>${d.note}</td></tr>`;
 }).join('');
 document.getElementById('jointrows').innerHTML=JOINTS.map(j=>
   `<tr><td class="mono">${j[0]}</td><td class="num mono">${j[1].toFixed(2)}</td><td class="num mono">${j[2]}</td><td class="num mono">${j[3]}</td><td class="num mono">${j[4]}</td><td class="num mono">${j[5]}</td><td class="num mono">${j[6]}</td><td class="num mono">${j[7]}</td><td class="num mono">${j[8]}</td></tr>`).join('');

@@ -1,0 +1,63 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "IBM Plex Sans, Segoe UI, sans-serif"
+    fontSize: 16px
+    primaryColor: "#E7EAEE"
+    primaryTextColor: "#0E1419"
+    primaryBorderColor: "#8A94A0"
+    lineColor: "#5C6773"
+  flowchart:
+    nodeSpacing: 40
+    rankSpacing: 54
+    padding: 12
+---
+flowchart TB
+    subgraph B0["BUILD INDEX 0 — SCN_MENU"]
+      direction TB
+      M1["<b>Main Camera</b>"]
+      M2["<b>MiniGameMenu</b><br/>UIDocument + Systems_MiniGameMenu<br/>builds the whole UI in code — no UXML"]
+      M3["<b>SO_MiniGameSelection</b><br/>ScriptableObject — the ONLY cross-scene state<br/><i>project rule: no singletons, no DontDestroyOnLoad</i>"]
+    end
+
+    subgraph B1["BUILD INDEX 1 — SCN_TEST_BALANCE_CONTEST"]
+      direction TB
+      BA["<b>Always active</b><br/>Ground · BoxingRing · RingRopes · Arena (396 objects)<br/>StadiumLights · PostVolume · HudChrome · Main Camera"]
+      BB["<b>ContestSpawner</b> + <b>MiniGameLauncher</b><br/>reads the roster, spawns 8 from 4 entries"]
+      BC["<b>ContestSystems — starts INACTIVE</b><br/>BalanceContest referee · DramaCamera · Announcer<br/>WinnerBanner · HazardDirector · RoundCountdown<br/>KnockoutFx · FallImpactFx · CrowdAudio · MatchDirector"]
+    end
+
+    subgraph B2["BUILD INDEX 2 — SCN_TEST_WALK_CONTEST"]
+      direction TB
+      WA["<b>Always active</b><br/>Ground · StartLine · FinishLine<br/>HudChrome · Main Camera + RaceCamera"]
+      WB["<b>MiniGameLauncher</b> + <b>ContestSpawner</b><br/>4 racers, one lane each"]
+      WC["<b>ContestSystems — starts INACTIVE</b><br/>WalkContest referee · Announcer · CrowdAudio<br/>RoundCountdown · WinnerBanner · MatchDirector · FallImpactFx"]
+    end
+
+    subgraph TR["NOT IN BUILD — SCN_TRAIN_LOCOMOTION"]
+      direction TB
+      T1["<b>16 × Fighter_00..15</b><br/>Agent + DecisionRequester + Reward_Locomotion<br/>Shover · StrengthCurriculum · TrainingCubes"]
+      T2["<b>Headless by rule</b><br/>no cameras, no HUD, no audio<br/>fully unpacked — no prefab overrides"]
+    end
+
+    M2 -- "player picks game + roster" --> M3
+    M3 -- "SceneManager.LoadScene" --> BB
+    M3 -- "SceneManager.LoadScene" --> WB
+    BB --> SPAWN
+    WB --> SPAWN
+
+    SPAWN["<b>Systems_ContestSpawner.SpawnAndBegin(int[])</b><br/>1 — build each fighter under an INACTIVE holder<br/>2 — Configure(): set observation size from the agent<br/>3 — reparent to scene root → Awake/OnEnable fire HERE<br/>4 — wake ContestSystems, hand over to the referee"]
+
+    SPAWN --> BC
+    SPAWN --> WC
+    SPAWN -.-> NOTE["<b>Why the inactive holder</b><br/>Agent.LazyInitialize snapshots BrainParameters to build<br/>the VectorSensor. Instantiating straight into the scene<br/>runs it BEFORE Configure corrects the width — measured<br/>44,429 truncation warnings in one session."]
+
+    T1 -.-> T2
+
+    classDef accent fill:#C8102E,stroke:#8E0B20,color:#FFFFFF
+    classDef brain fill:#1B4FA0,stroke:#123A78,color:#FFFFFF
+    classDef sleep fill:#F5F6F8,stroke:#B9C0C8,color:#7A828C
+    class SPAWN brain
+    class NOTE accent
+    class BC,WC sleep
