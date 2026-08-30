@@ -23,7 +23,7 @@ namespace PoBox.Editor
         private const string SCENE_PATH = "Assets/Scenes/SCN_MENU.unity";
         private const string SELECTION_PATH = "Assets/Config/SO_MiniGameSelection.asset";
 
-        [MenuItem("Tools/ML Boxing/1. Create Menu Scene")]
+        [MenuItem("Tools/ML Boxing/4. Create Menu Scene")]
         public static void Create()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
@@ -46,6 +46,15 @@ namespace PoBox.Editor
             document.panelSettings = RigTool_ContestScene.GetOrCreatePanelSettings();
             var menu = menuObject.AddComponent<Systems_MiniGameMenu>();
             menu.EditorInitialize(selection);
+
+            // Project rule: the opening scene shows a version stamp, top-left,
+            // non-pickable. Both contest scenes carried one on their HudChrome
+            // and this one never did -- so the rule was satisfied everywhere
+            // except the one scene it names.
+            var chromeObject = new GameObject("HudChrome");
+            var chromeDocument = chromeObject.AddComponent<UIDocument>();
+            chromeDocument.panelSettings = RigTool_ContestScene.GetOrCreatePanelSettings();
+            chromeObject.AddComponent<Systems_VersionStamp>();
 
             EditorSceneManager.SaveScene(scene, SCENE_PATH);
             RegisterAsFirstBuildScene();

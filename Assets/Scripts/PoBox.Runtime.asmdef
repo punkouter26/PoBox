@@ -7,10 +7,7 @@
         "Unity.Cinemachine",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.InputSystem",
-        "UniTask",
-        "VContainer",
-        "MessagePipe"
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

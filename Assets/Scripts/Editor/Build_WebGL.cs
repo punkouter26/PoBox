@@ -31,7 +31,7 @@ namespace PoBox.Editor
         private const string DefaultOutput = "WEB";
         private const string BuildSubdir = "Build";
 
-        [MenuItem("Tools/Web/Build WebGL to WEB/")]
+        [MenuItem("Tools/Web/Build WebGL to WEB")]
         public static void BuildFromMenu()
         {
             var report = Build(DefaultOutput);

@@ -10,9 +10,9 @@ namespace PoBox.Editor
 {
     /// <summary>
     /// Builds SCN_TEST_BALANCE_CONTEST: every available fighter prefab lined
-    /// up on one high-friction floor, each driven by its brain from
-    /// Assets/Agents/&lt;Name&gt;/Boxer.onnx when one exists (zero-action
-    /// physics otherwise). A referee times standing, crowns the longest, and
+    /// up on one high-friction floor, each driven by the one shared locomotion
+    /// brain (zero-action physics if it is missing, and the heuristic PD bot
+    /// by choice). A referee times standing, crowns the longest, and
     /// restarts rounds. Visual test scene — has a camera and light, no
     /// trainer needed: just press Play.
     /// </summary>
@@ -52,7 +52,35 @@ namespace PoBox.Editor
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Bot", true)
         };
 
-        [MenuItem("Tools/ML Boxing/7. Create Balance Contest Scene")]
+        /// <summary>
+        /// The whole balance contest scene, in one idempotent pass.
+        ///
+        /// This used to be eight menu items (7, 7b, 7d..7i) that had to be
+        /// clicked in the right order — each one a migration bolted onto the
+        /// last, with 7c already lost to history. Running them out of order,
+        /// or stopping half way, produced a scene that looked built and was
+        /// not. The steps below are still individually public so they can be
+        /// driven one at a time from the CLI or over MCP:
+        ///
+        ///   Unity.exe -batchmode -quit -projectPath . \
+        ///     -executeMethod PoBox.Editor.RigTool_ContestScene.BuildAll
+        ///
+        /// Only this entry point carries a MenuItem.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/7. Build Balance Contest Scene")]
+        public static void BuildAll()
+        {
+            Create();
+            AddBotToOpenScene();
+            AddPhysicsRopes();
+            AddAnnouncerAndHazards();
+            UpgradeContestPresentation();
+            AddMatchDirector();
+            RetargetRosterToLocomotionBrain();
+            CleanUpBalanceScene();
+            Debug.Log("RigTool: balance contest scene built end to end.");
+        }
+
         public static void Create()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
@@ -93,7 +121,6 @@ namespace PoBox.Editor
         /// objects added after scene creation). The referee, drama camera and
         /// wobble meters discover fighters at runtime, so spawning is enough.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7b. Add Heuristic Bot To Contest Scene")]
         public static void AddBotToOpenScene()
         {
             if (GameObject.Find("Contest_Bot") != null)
@@ -142,7 +169,13 @@ namespace PoBox.Editor
                 TintRenderers(instance, BOT_MATERIAL_PATH); // red = code bot, tell it apart at a glance
                 return instance;
             }
-            var model = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>($"Assets/Agents/{display}/Boxer.onnx");
+            // One shared brain for the whole roster. There used to be a
+            // per-character lookup at Assets/Agents/{display}/Boxer.onnx here,
+            // but no per-character brain ever beat the shared locomotion line,
+            // and RetargetRosterToLocomotionBrain overwrote whatever this
+            // assigned two steps later anyway — so the per-character files sat
+            // in the repo being loaded and then discarded, every build.
+            var model = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(LOCOMOTION_BRAIN_PATH);
             if (model != null)
             {
                 behavior.Model = model;
@@ -151,7 +184,7 @@ namespace PoBox.Editor
             else
             {
                 behavior.BehaviorType = BehaviorType.HeuristicOnly; // zero actions: pure physics
-                Debug.LogWarning($"RigTool: no brain at Assets/Agents/{display}/Boxer.onnx — {display} competes on raw physics.");
+                Debug.LogWarning($"RigTool: no brain at {LOCOMOTION_BRAIN_PATH} — {display} competes on raw physics.");
             }
 
             // Returned so the walk contest builder can re-aim and re-brand the
@@ -210,7 +243,6 @@ namespace PoBox.Editor
         /// object is added to carry them — exactly what the walk contest scene
         /// tool already builds.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7i. Clean Up Balance Contest Scene")]
         public static void CleanUpBalanceScene()
         {
             int removed = 0;
@@ -243,8 +275,7 @@ namespace PoBox.Editor
             launcher.EditorInitialize(spawner, RigTool_MenuScene.GetOrCreateSelectionAsset());
             EditorUtility.SetDirty(launcher);
 
-            // Only after the menu is gone, so the FPS counter it carried is gone
-            // with it and this is the only one left.
+            // Only after the menu is gone, so what it carried is gone with it.
             GameObject chrome = GameObject.Find("HudChrome");
             if (chrome == null)
             {
@@ -252,21 +283,7 @@ namespace PoBox.Editor
                 var document = chrome.AddComponent<UIDocument>();
                 document.panelSettings = GetOrCreatePanelSettings();
                 chrome.AddComponent<Systems_VersionStamp>();
-                chrome.AddComponent<Systems_FpsCounter>();
-                Debug.Log("RigTool: added HudChrome (version stamp + FPS) to carry what ContestSetupMenu used to.");
-            }
-
-            // A counter left on any other document would now draw a second
-            // readout at the same coordinates.
-            Systems_FpsCounter[] counters = UnityEngine.Object.FindObjectsByType<Systems_FpsCounter>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
-            for (int counterIndex = 0; counterIndex < counters.Length; counterIndex++)
-            {
-                if (counters[counterIndex].gameObject != chrome)
-                {
-                    UnityEngine.Object.DestroyImmediate(counters[counterIndex]);
-                    removed++;
-                }
+                Debug.Log("RigTool: added HudChrome (version stamp) to carry what ContestSetupMenu used to.");
             }
 
             ResyncDramaCameraFraming();
@@ -385,7 +402,6 @@ namespace PoBox.Editor
             return removed;
         }
 
-        [MenuItem("Tools/ML Boxing/7h. Retarget Balance Roster To Locomotion Brain")]
         public static void RetargetRosterToLocomotionBrain()
         {
             var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();
@@ -427,7 +443,6 @@ namespace PoBox.Editor
         /// Adds the soft physics ropes (Systems_RingRopes builds the chains at
         /// runtime). Always-active: ropes exist before fighters spawn.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7d. Add Physics Ropes To Contest Scene")]
         public static void AddPhysicsRopes()
         {
             if (GameObject.Find("RingRopes") != null)
@@ -447,7 +462,6 @@ namespace PoBox.Editor
         /// systems root (they self-discover fighters in Start, which runs when
         /// the spawner activates the root after spawning).
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7e. Add Announcer And Hazards To Contest Scene")]
         public static void AddAnnouncerAndHazards()
         {
             var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();
@@ -502,7 +516,6 @@ namespace PoBox.Editor
         /// vignette/slow-mo FX, menu orbit camera, Cinemachine winner orbit,
         /// and Kenney impact clips on the cube thrower. Idempotent.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7f. Upgrade Contest Presentation")]
         public static void UpgradeContestPresentation()
         {
             var cameraObject = GameObject.Find("Main Camera");
@@ -596,7 +609,6 @@ namespace PoBox.Editor
         /// Adds the match director (first to 3 round wins -> champion ->
         /// scene reload back to the menu) under the contest systems root.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/7g. Add Match Director To Contest Scene")]
         public static void AddMatchDirector()
         {
             var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();

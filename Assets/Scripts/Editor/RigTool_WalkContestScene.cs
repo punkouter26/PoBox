@@ -10,9 +10,9 @@ namespace PoBox.Editor
     /// <summary>
     /// Builds SCN_TEST_WALK_CONTEST: the roster lined up along one edge of a
     /// ring-sized lane, racing straight to the far edge under
-    /// <see cref="Systems_WalkContest"/>. Each fighter loads its walk brain
-    /// from Assets/Agents/&lt;Name&gt;_Walk/Boxer.onnx and falls back to the
-    /// balance brain, then to raw physics, so the scene is always playable.
+    /// <see cref="Systems_WalkContest"/>. Every fighter runs the one shared
+    /// locomotion brain, falling back to raw physics if it is missing, so the
+    /// scene is always playable.
     /// Visual test scene — camera and light included, no trainer needed:
     /// just press Play.
     /// </summary>
@@ -78,8 +78,6 @@ namespace PoBox.Editor
         // Gen 7 -- which this scene shipped for five generations -- travelled
         // nowhere at all, so the race was unwinnable by construction.
         //
-        // Per-character brains at Assets/Agents/{name}_Walk/Boxer.onnx still
-        // take precedence -- see ResolveBrain.
         // Gen 18's 34M checkpoint, chosen by measurement rather than by being
         // newest. Benchmarked 2026-08-23 in SCN_TRAIN_LOCOMOTION at a commanded
         // 1 m/s -- the race's own speed -- reading forward travel per BODY,
@@ -206,38 +204,25 @@ namespace PoBox.Editor
             launcher.EditorInitialize(spawner, RigTool_MenuScene.GetOrCreateSelectionAsset());
         }
 
-        // Brain preference, best first:
-        //   1. a per-fighter walk brain
-        //   2. the shared locomotion brain — one model line drives both
-        //      mini-games, so this is the normal case once training lands
-        //   3. the old balance brain, which stands but will not race
+        // One shared locomotion brain drives the whole roster — the same model
+        // line serves both mini-games, at 0 m/s for balance and 1 m/s here.
+        // This used to be a three-tier fallback (per-fighter walk brain, then
+        // the shared brain, then the old balance brain); tiers 1 and 3 never
+        // resolved to anything and their folders are gone.
         // isLocomotion tells the spawner to switch the fighter to the
-        // locomotion observation layout those brains require. The size is
+        // locomotion observation layout the brain requires. The size is
         // computed by Agent_FighterBoxing.ComputeObservationCount, so it
         // tracks the layout automatically (127 as of the gen-4 gait phase).
         private static Unity.InferenceEngine.ModelAsset ResolveBrain(string display, out bool isLocomotion)
         {
             isLocomotion = true;
-            var walkModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
-                $"Assets/Agents/{display}_Walk/Boxer.onnx");
-            if (walkModel != null)
-            {
-                return walkModel;
-            }
             var locomotionModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
                 LOCOMOTION_BRAIN_PATH);
-            if (locomotionModel != null)
+            if (locomotionModel == null)
             {
-                return locomotionModel;
+                Debug.LogWarning($"RigTool: no brain at {LOCOMOTION_BRAIN_PATH} — {display} races on raw physics.");
             }
-
-            isLocomotion = false;
-            var balanceModel = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(
-                $"Assets/Agents/{display}/Boxer.onnx");
-            Debug.LogWarning(balanceModel == null
-                ? $"RigTool: no brain for {display} — it races on raw physics."
-                : $"RigTool: no walk or locomotion brain — {display} races on its balance brain and will just stand.");
-            return balanceModel;
+            return locomotionModel;
         }
 
         private static void BuildGround()
@@ -433,14 +418,13 @@ namespace PoBox.Editor
             crowdSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>Version stamp and FPS readout, on a document that outlives the race.</summary>
+        /// <summary>Version stamp, on a document that outlives the race.</summary>
         private static void BuildHudChrome()
         {
             var chromeObject = new GameObject("HudChrome");
             var document = chromeObject.AddComponent<UIDocument>();
             document.panelSettings = RigTool_ContestScene.GetOrCreatePanelSettings();
             chromeObject.AddComponent<Systems_VersionStamp>();
-            chromeObject.AddComponent<Systems_FpsCounter>();
         }
 
         private static AudioClip LoadClip(string path)

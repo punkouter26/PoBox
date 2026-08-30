@@ -24,11 +24,22 @@ The numbering is the intended order:
 |---|---|
 | `0. Apply Project Settings` | Locks `Time.fixedDeltaTime = 0.02`, gravity, 16 solver iterations |
 | `1. Generate Capsule Biped` / `2. Auto-Rig Selected` / `3. Prepare for Training` | Fighter prefab pipeline |
+| `4. Create Menu Scene` | `SCN_MENU` (build index 0) |
 | `5/5b/5c. Create … Balance Scene` | `SCN_TRAIN_BALANCE`, `_GRANDMA`, `_GRANDPA` |
 | `6. Create Walk Training Scene`, `9. Create Locomotion Training Scene` | `SCN_TRAIN_WALK`, `SCN_TRAIN_LOCOMOTION` |
-| `7*. Contest Scene` (a–g) | `SCN_TEST_BALANCE_CONTEST`, incrementally |
+| `7. Build Balance Contest Scene` | `SCN_TEST_BALANCE_CONTEST`, end to end |
 | `8. Create Walk Contest Scene` | `SCN_TEST_WALK_CONTEST` |
-| `1. Create Menu Scene` | `SCN_MENU` (build index 0) |
+
+The balance contest used to be eight menu items (`7`, `7b`, `7d`..`7i`, with `7c`
+already lost) that had to be clicked in order — each one a migration bolted onto
+the last. They are now one idempotent `BuildAll`. The individual steps are still
+`public static` on `RigTool_ContestScene`, so any one of them can be driven from
+the CLI or over MCP without a menu:
+
+```powershell
+Unity.exe -batchmode -quit -projectPath . `
+          -executeMethod PoBox.Editor.RigTool_ContestScene.BuildAll
+```
 
 **Re-running a scene tool overwrites that scene wholesale**, including asset
 references you edited by hand. Before running one, check the tool's constants —
@@ -42,11 +53,11 @@ headless env build in the loop. Start the trainer first, then press Play:
 
 ```powershell
 .venv\Scripts\activate
-mlagents-learn Config\BoxerLocomotion07.yaml --run-id=boxer_locomotion07
+mlagents-learn Config\BoxerLocomotion20.yaml --run-id=boxer_locomotion20
 ```
 
-Run id matches the config name lowercased (`BoxerLocomotion07.yaml` →
-`boxer_locomotion07`). Output lands in `results/` (gitignored). If Unity logs
+Run id matches the config name lowercased (`BoxerLocomotion20.yaml` →
+`boxer_locomotion20`). Output lands in `results/` (gitignored). If Unity logs
 `Couldn't connect to trainer on port 5004 … Will perform inference instead`, no
 trainer was listening and the scene just ran the baked brains.
 
@@ -99,7 +110,7 @@ Two failure modes to know:
 
 Brain folder names under `Assets/Agents/` have historically lied about which
 generation they contain. Verify with the ONNX input shape before trusting one;
-`Locomotion_gen7/SOURCE.txt` is the format for recording provenance.
+`Locomotion_gen20/SOURCE.txt` is the format for recording provenance.
 
 ### Agent / rig / reward split
 
@@ -165,10 +176,115 @@ namespace `PoBox` (`PoBox.Editor` for tools), split across two assembly definiti
 
 ### Packages
 
-`Packages/` contains **embedded, locally patched copies** of UniTask, MessagePipe and
-VContainer that shadow the git URLs still listed in `Packages/manifest.json` (same
-versions). They are patched for Unity 6000.5 — do not "fix" the manifest by removing
-the embedded folders.
+The dependency list is deliberately short: a package that no script references
+does not stay. UniTask, MessagePipe, VContainer and R3 were removed on
+2026-08-30 — they had **zero references** across all runtime and editor scripts,
+yet carried embedded patched copies in `Packages/`, a NuGet restore under
+`Assets/Packages/`, git-URL manifest entries and three `PoBox.Runtime.asmdef`
+references. Addressables, AI Navigation, Animation Rigging, Memory Profiler,
+Recorder, Android Logcat, Graphy, In-Game Debug Console, Asset Usage Detector
+and NuGetForUnity went the same way.
+
+Two that look unused and are not:
+
+- **`com.unity.pipeline`** is the MCP bridge the Editor is driven through. It
+  reads as an unused experimental package and is load-bearing.
+- **`com.unity.cloud.gltfast`** imports the `.glb` fighter rigs.
 
 `com.unity.ml-agents` 4.1.0 already includes what used to be
 `com.unity.ml-agents.extensions`; adding that package causes GUID conflicts.
+
+After a manifest change, stale `Library/PackageCache/` folders for the removed
+packages keep compiling and fail against their now-missing dependencies. Delete
+those folders; the Assets errors will be zero and the PackageCache ones are the
+whole list.
+
+---
+
+## Android release & Play internal testing
+
+Ported from the PoRacer pipeline on 2026-08-28; PoSumo is the original, already
+shipping on the punkouter27 Play account.
+
+### Identity (permanent — do not change after the first upload)
+
+| Property | Value |
+|---|---|
+| Application id | `com.punkoutersoftware.pobox` |
+| Version / code | `1.0.0` / `1` — bump `VERSION_CODE` in `Editor_ConfigureAndroidRelease` for every upload; Play rejects a reused code |
+| min / target SDK | 26 / 36 (Play requires target 36 for new uploads from 2026-08-31) |
+| Architecture | ARM64, IL2CPP, Release |
+| Orientation | Portrait is locked in `Editor_ConfigureAndroidRelease`. |
+
+### Secrets live OUTSIDE the repo
+
+`C:/Users/punko/Downloads/PoBox-Release/`
+
+- `pobox-upload.jks` — the upload key. **Losing it means losing the ability to
+  update the app.** Back it up somewhere other than this machine.
+- `pobox-upload.pass` — the store/alias password, one line.
+- `upload_certificate.pem` — the public cert, for Play App Signing.
+- `play-service-account.json` — NOT created yet; see the SETUP block at the top of
+  `Tools/play_publish.py`.
+
+Unity does not serialize keystore passwords into `ProjectSettings`, so both Android
+builders read `POBOX_KEYSTORE_PASS` first and fall back to the `.pass` file.
+Without either, the build **aborts** rather than producing an unsigned artifact.
+
+### The tools
+
+| Tool | What it does |
+|---|---|
+| *PoBox → Configure Android Release Settings* | One-shot: identity, SDK levels, orientation, and the launcher icons (adaptive + round + legacy, 6 densities) from `Assets/Icons/`. Re-run after changing icon art |
+| *PoBox → Build Android AAB (Play release)* | Signed bundle → `Builds/Android/PoBox.aab`. Logs `AAB BUILD RESULT:` |
+| *PoBox → Build Android APK* | Sideloadable APK on the SAME key, so it installs over a Play build → `Builds/Android/PoBox.apk`. Logs `BUILD RESULT:` |
+| `Tools/play_publish.py` | Uploads a built AAB. Defaults to the `internal` track as a `draft`; `--dry-run` rehearses and discards |
+
+`Tools/play_publish.py` needs its own venv (`Tools/publish-venv`). Do not install it
+into `.venv` — that one carries load-bearing ml-agents/torch pins, and the C#/Python
+ml-agents versions must stay in exact parity.
+
+### The shipped scene list is explicit
+
+`Editor_BuildAndroidAAB.SHIP_SCENES` names the player's scenes in boot order:
+
+  0. `Assets/Scenes/SCN_MENU.unity`
+  1. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity`
+  2. `Assets/Scenes/SCN_TEST_WALK_CONTEST.unity`
+
+It is a hardcoded list, not whatever is ticked in Build Settings, so a stray
+`SCN_TRAIN_*` tick can never bloat the bundle or — depending on order — boot a
+tester straight into a training rig. Build Settings happens to agree with it
+right now (verified 2026-08-30); the point is that the build does not depend on
+that staying true. A scene named here that is missing on disk **aborts** the build.
+
+### The icons
+
+`Assets/Icons/` holds `AppIcon_Adaptive_Background.png` and
+`AppIcon_Adaptive_Foreground.png` (432x432, the API 26+ pair) and
+`AppIcon_Legacy.png` (512x512, round and pre-adaptive launchers). The adaptive
+FOREGROUND art must stay inside the middle 66% of its canvas — every OEM launcher
+masks the outside to a different shape.
+
+The Play STORE icon is a different file, in `StoreAssets/PlayStoreIcon_512.png`:
+full-bleed, because Play rounds it itself. Do not swap the two.
+
+### What still needs a human in a browser
+
+1. Play Console → Create app, with the application id above.
+2. Store listing, content rating and data-safety forms — drafted in
+   `StoreAssets/play-listing.md`.
+3. Upload the first bundle by hand; Play refuses an API upload before the app is set up.
+4. Create a service account, grant it release permission ON THE APP, and drop its
+   JSON key next to the keystore.
+
+After that, `python Tools/play_publish.py --track internal` owns every upload.
+
+### Headless
+
+```
+Unity.exe -batchmode -quit -nographics -projectPath <root> -buildTarget Android ^
+  -executeMethod PoBox.Editor.Editor_BuildAndroidAAB.Build -logFile <log>
+```
+
+Grep the log for `AAB BUILD RESULT:` — that line is the outcome.
