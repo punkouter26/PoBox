@@ -250,6 +250,12 @@
         "com.unity.modules.physics": "1.0.0"
       }
     },
+    "org.mujoco": {
+      "version": "file:org.mujoco",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,
