@@ -39,8 +39,6 @@ namespace PoBox
         // obs_0; the contest rigs have exactly one, so this is the tensor to measure.
         private const string OBSERVATION_INPUT_NAME = "obs_0";
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private const int JOINT_INDEX_SHIN_L = 3;
-        private const int JOINT_INDEX_SHIN_R = 9;
         /// <summary>
         /// World Y of the ring canvas the fighters stand on. Assets/Art/BoxingRing.glb
         /// carries its canvas 1 m above the model origin, so a ring placed at y = 0
@@ -235,12 +233,29 @@ namespace PoBox
             agent.MaxStep = 0; // the referee owns the round lifecycle
             stamina.enabled = false;
 
+            // Fall sensors by role, not by joint index: the raptor's joint
+            // list is a different shape than the humanoids', and gloves exist
+            // only on rigs with arms. Shins are found by name — the same
+            // convention Reward_Balance and the heuristic bot already rely on.
             rig.Torso.gameObject.AddComponent<Sensor_GroundContact>();
             rig.Head.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.Joints[JOINT_INDEX_SHIN_L].body.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.Joints[JOINT_INDEX_SHIN_R].body.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
+            for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
+            {
+                var jointBody = rig.Joints[jointIndex].body;
+                if (jointBody != null &&
+                    jointBody.name.IndexOf("shin", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    jointBody.gameObject.AddComponent<Sensor_GroundContact>();
+                }
+            }
+            if (rig.GloveLeft != null)
+            {
+                rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
+            }
+            if (rig.GloveRight != null)
+            {
+                rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
+            }
 
             var behavior = instance.GetComponent<BehaviorParameters>();
             if (entry.locomotionBrain)

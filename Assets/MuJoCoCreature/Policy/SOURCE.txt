@@ -1,0 +1,53 @@
+creature_policy.onnx
+====================
+
+Nick balance policy, deployed 2026-08-31.
+
+Provenance
+----------
+run        PoBox-MuJoCo/runs/nick_unity_v2
+checkpoint best.pt, iteration 453 of 600
+model      models/nick_unity.xml -- the MJCF that MjScene ACTUALLY generates,
+           exported from the Unity scene. NOT the authored models/nick.xml.
+           Training against the authored file is what made every earlier
+           attempt collapse in Unity.
+training   157,286,400 env-steps, 8192 worlds, 200 Hz control, MuJoCo Warp
+contract   121 observations / 30 actions, PoBox canonical joint order
+
+Measured (512 fresh-start rollouts, 90 s cap, 0.90 fall threshold)
+------------------------------------------------------------------
+median survival   10.92 s
+mean              12.20 s
+max               89.99 s
+p25               10.08 s
+uprightness       0.983
+zero-action baseline  1.39 s
+
+Why this checkpoint and not a later one
+---------------------------------------
+v3 (sharper height kernel -60, drift weight 0.50, fall threshold 0.90)
+regressed hard: median 1.39 s, i.e. no better than no policy at all. Changing
+the height kernel and the termination threshold together almost certainly
+killed episodes during the normal startup transient, so the policy never
+survived long enough to learn what came after. Change one at a time.
+
+v1 measures 0.83 s on the same footing -- worse than doing nothing. The single
+biggest win in this line was recovering MuJoCo's exact per-joint kv from
+dampratio="1" (read -actuator_biasprm[:,2]) instead of approximating it as
+0.1*kp; the true ratios span 0.021 to 0.225. That alone took the median from
+0.83 s to 10.92 s.
+
+Known remaining flaw
+--------------------
+Fails by a slow crouch, not a topple: head holds 1.389 m for ~9 s, sags to
+1.346, then goes unstable at ~10 s. 252 of 256 failures are this mode. It also
+drifts about 1 m/s -- the drift penalty at weight 0.05 was far too weak, and
+raising it to 0.50 was part of what broke v3.
+
+Do not trust the training log
+-----------------------------
+In-training metrics disagreed with fresh-start evaluation by up to 100x on this
+line, because training measures a steady-state population dominated by
+survivors while evaluation starts every episode cold. The only measurement that
+never contradicted itself is a deterministic fresh-start rollout logging head
+height against time.

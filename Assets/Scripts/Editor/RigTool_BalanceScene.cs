@@ -24,19 +24,13 @@ namespace PoBox.Editor
         private const string GRANDMA_PREFAB_PATH = "Assets/Prefabs/Fighters/Fighter_Grandma.prefab";
         private const string GRANDPA_SCENE_PATH = "Assets/Scenes/SCN_TRAIN_BALANCE_GRANDPA.unity";
         private const string GRANDPA_PREFAB_PATH = "Assets/Prefabs/Fighters/Fighter_Grandpa.prefab";
+        private const string RAPTOR_SCENE_PATH = "Assets/Scenes/SCN_TRAIN_BALANCE_RAPTOR.unity";
+        private const string RAPTOR_PREFAB_PATH = "Assets/Prefabs/Fighters/Fighter_Raptor.prefab";
         private const string VARIATION_ASSET_PATH = "Assets/Config/SO_FighterVariation.asset";
         private const int GRID_SIZE = 4;
         private const float GRID_SPACING = 8f;
         private const int BALANCE_MAX_STEP = 3000;   // 60 s at 50 Hz — matches acceptance criterion 5
         private const float SPAWN_HEIGHT = 0.03f;    // small clearance so feet don't spawn in contact
-
-        // Joint list order (spec table, pelvis skipped): 0=Torso 1=Head
-        // 2=ThighL 3=ShinL 4=FootL 5=UpperArmL 6=ForearmL 7=GloveL
-        // 8=ThighR 9=ShinR 10=FootR 11=UpperArmR 12=ForearmR 13=GloveR.
-        // Index 6 was wrongly used for ShinR before 2026-08-17 — that put a
-        // fall sensor on the LEFT FOREARM and left the right shin untracked.
-        private const int JOINT_INDEX_SHIN_L = 3;
-        private const int JOINT_INDEX_SHIN_R = 9;
 
         [MenuItem("Tools/ML Boxing/5. Create Balance Training Scene")]
         public static void Create()
@@ -59,7 +53,21 @@ namespace PoBox.Editor
                 "Train with: .\\train.ps1 -Config GrandpaBalance01.yaml -RunId grandpa_balance01 (then press Play).");
         }
 
-        private static void CreateFor(string prefabPath, string scenePath, bool firstBuildScene, string trainHint)
+        [MenuItem("Tools/ML Boxing/5d. Create Raptor Balance Scene")]
+        public static void CreateRaptor()
+        {
+            // applyGen2Rig false: the raptor prefab already bakes the 114-obs
+            // foot-height layout, and its training dynamics must equal its
+            // contest dynamics — the contest applies neither muscle-lag
+            // smoothing nor the (humanoid-proportioned) realism profile, so
+            // the training scene must not either.
+            CreateFor(RAPTOR_PREFAB_PATH, RAPTOR_SCENE_PATH, firstBuildScene: false,
+                "Train with: .\\train.ps1 -Config RaptorBalance01.yaml -RunId raptor_balance01 (then press Play).",
+                applyGen2Rig: false);
+        }
+
+        private static void CreateFor(string prefabPath, string scenePath, bool firstBuildScene, string trainHint,
+            bool applyGen2Rig = true)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab == null)
@@ -88,7 +96,7 @@ namespace PoBox.Editor
                 for (int gridZ = 0; gridZ < GRID_SIZE; gridZ++)
                 {
                     var position = new Vector3(origin + gridX * GRID_SPACING, SPAWN_HEIGHT, origin + gridZ * GRID_SPACING);
-                    SpawnFighter(prefab, position, gridX * GRID_SIZE + gridZ, variation);
+                    SpawnFighter(prefab, position, gridX * GRID_SIZE + gridZ, variation, applyGen2Rig);
                 }
             }
 
@@ -221,7 +229,8 @@ namespace PoBox.Editor
             return 1f + ((float)random.NextDouble() * 2f - 1f) * range;
         }
 
-        internal static GameObject SpawnFighter(GameObject prefab, Vector3 position, int index, Systems_FighterVariation variation)
+        internal static GameObject SpawnFighter(GameObject prefab, Vector3 position, int index,
+            Systems_FighterVariation variation, bool applyGen2Rig = true)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
@@ -238,15 +247,31 @@ namespace PoBox.Editor
             // observation vector — non-Markov. Re-enabled in later stages.
             stamina.enabled = false;
 
+            // Fall sensors by role, not joint index: the raptor's joint list
+            // is a different shape than the humanoids', and gloves exist only
+            // on rigs with arms. Same name convention Reward_Balance uses.
             var fallContacts = new List<Sensor_GroundContact>
             {
                 rig.Torso.gameObject.AddComponent<Sensor_GroundContact>(),
-                rig.Head.gameObject.AddComponent<Sensor_GroundContact>(),
-                rig.Joints[JOINT_INDEX_SHIN_L].body.gameObject.AddComponent<Sensor_GroundContact>(),
-                rig.Joints[JOINT_INDEX_SHIN_R].body.gameObject.AddComponent<Sensor_GroundContact>(),
-                rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>(),
-                rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>()
+                rig.Head.gameObject.AddComponent<Sensor_GroundContact>()
             };
+            for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
+            {
+                Rigidbody jointBody = rig.Joints[jointIndex].body;
+                if (jointBody != null &&
+                    jointBody.name.IndexOf("shin", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    fallContacts.Add(jointBody.gameObject.AddComponent<Sensor_GroundContact>());
+                }
+            }
+            if (rig.GloveLeft != null)
+            {
+                fallContacts.Add(rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>());
+            }
+            if (rig.GloveRight != null)
+            {
+                fallContacts.Add(rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>());
+            }
 
             var reward = instance.AddComponent<Reward_Balance>();
             reward.EditorInitialize(agent, rig, stamina, fallContacts.ToArray());
@@ -267,7 +292,10 @@ namespace PoBox.Editor
             var trainingCubes = instance.AddComponent<Systems_TrainingCubes>();
             trainingCubes.EditorInitialize(rig, agent, index);
 
-            ApplyGen2Settings(instance, rig, agent);
+            if (applyGen2Rig)
+            {
+                ApplyGen2Settings(instance, rig, agent);
+            }
 
             ApplyVariation(instance, rig, variation, index);
 

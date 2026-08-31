@@ -42,6 +42,15 @@ namespace PoBox.Editor
         private const int JOINT_INDEX_SHIN_L = 3;
         private const int JOINT_INDEX_SHIN_R = 9;
 
+        // The raptor is its own model line: a 13-joint rig emitting 114
+        // observations, so the shared locomotion brain (127) can never load on
+        // it and the retarget pass below leaves it alone. Its brain comes from
+        // SCN_TRAIN_BALANCE_RAPTOR runs; until one is exported the spawner's
+        // width check falls back to the heuristic bot on its own.
+        private const string RAPTOR_PREFAB_PATH = "Assets/Prefabs/Fighters/Fighter_Raptor.prefab";
+        private const string RAPTOR_BRAIN_PATH = "Assets/Agents/RaptorBalance01/RaptorBalance01.onnx";
+        private const string RAPTOR_DISPLAY_NAME = "Raptor";
+
         // forceHeuristic: code-driven PD bot (project rule: the heuristic bot
         // competes in the game) — never loads a brain, never warns about one.
         private static readonly (string prefabPath, string display, bool forceHeuristic)[] Roster =
@@ -49,6 +58,7 @@ namespace PoBox.Editor
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Standard", false),
             ("Assets/Prefabs/Fighters/Fighter_Grandma.prefab", "Grandma", false),
             ("Assets/Prefabs/Fighters/Fighter_Grandpa.prefab", "Grandpa", false),
+            (RAPTOR_PREFAB_PATH, RAPTOR_DISPLAY_NAME, false),
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Bot", true)
         };
 
@@ -77,6 +87,7 @@ namespace PoBox.Editor
             UpgradeContestPresentation();
             AddMatchDirector();
             RetargetRosterToLocomotionBrain();
+            AddRaptorToRoster();
             CleanUpBalanceScene();
             Debug.Log("RigTool: balance contest scene built end to end.");
         }
@@ -428,6 +439,12 @@ namespace PoBox.Editor
                 {
                     continue;
                 }
+                // The raptor is its own model line (114 obs vs the humanoids'
+                // 127) — the shared brain can never fit it. See AddRaptorToRoster.
+                if (entry.FindPropertyRelative("displayName").stringValue == RAPTOR_DISPLAY_NAME)
+                {
+                    continue;
+                }
                 entry.FindPropertyRelative("model").objectReferenceValue = brain;
                 entry.FindPropertyRelative("locomotionBrain").boolValue = true;
                 retargeted++;
@@ -437,6 +454,75 @@ namespace PoBox.Editor
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
             Debug.Log($"RigTool: {retargeted} roster entries retargeted to {LOCOMOTION_BRAIN_PATH} and scene saved.");
+        }
+
+        /// <summary>
+        /// Inserts the Raptor into the open contest scene's spawner roster,
+        /// before the Bot so the Bot stays last (menu convention). Idempotent:
+        /// an existing Raptor entry is re-pointed at the prefab and brain
+        /// rather than duplicated. The balance spawner itself lives only in
+        /// the saved scene (its creation step, 7c, is lost to history), so the
+        /// roster is edited in place exactly like the retarget pass above.
+        ///
+        /// SCN_MENU's fighter list must stay index-aligned with this roster —
+        /// RigTool_MenuScene owns that side.
+        /// </summary>
+        public static void AddRaptorToRoster()
+        {
+            var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("RigTool: no ContestSpawner in the open scene — open SCN_TEST_BALANCE_CONTEST first.");
+                return;
+            }
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(RAPTOR_PREFAB_PATH);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"RigTool: no raptor prefab at {RAPTOR_PREFAB_PATH} — " +
+                    "run Tools > ML Boxing > 10. Build Raptor Fighter first. Roster left untouched.");
+                return;
+            }
+            // Null until a raptor balance run is exported; the spawner then
+            // falls back to the heuristic bot on its own, which is the honest
+            // behaviour for a fighter whose brain has not landed yet.
+            var brain = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(RAPTOR_BRAIN_PATH);
+
+            var serialized = new SerializedObject(spawner);
+            SerializedProperty roster = serialized.FindProperty("_roster");
+            int raptorIndex = -1;
+            int botIndex = roster.arraySize;
+            for (int entryIndex = 0; entryIndex < roster.arraySize; entryIndex++)
+            {
+                SerializedProperty existing = roster.GetArrayElementAtIndex(entryIndex);
+                string display = existing.FindPropertyRelative("displayName").stringValue;
+                if (display == RAPTOR_DISPLAY_NAME)
+                {
+                    raptorIndex = entryIndex;
+                }
+                else if (display == "Bot")
+                {
+                    botIndex = entryIndex;
+                }
+            }
+            if (raptorIndex < 0)
+            {
+                raptorIndex = Mathf.Min(botIndex, roster.arraySize);
+                roster.InsertArrayElementAtIndex(raptorIndex);
+            }
+            SerializedProperty entry = roster.GetArrayElementAtIndex(raptorIndex);
+            entry.FindPropertyRelative("displayName").stringValue = RAPTOR_DISPLAY_NAME;
+            entry.FindPropertyRelative("prefab").objectReferenceValue = prefab;
+            entry.FindPropertyRelative("model").objectReferenceValue = brain;
+            entry.FindPropertyRelative("forceHeuristic").boolValue = false;
+            // The raptor's brain is a balance brain — never the locomotion layout.
+            entry.FindPropertyRelative("locomotionBrain").boolValue = false;
+            entry.FindPropertyRelative("tint").objectReferenceValue = null;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log($"RigTool: Raptor in roster slot {raptorIndex} " +
+                $"(brain: {(brain != null ? RAPTOR_BRAIN_PATH : "none yet — heuristic bot")}) and scene saved.");
         }
 
         /// <summary>

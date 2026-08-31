@@ -26,7 +26,7 @@ namespace PoBox
         [SerializeField] private Systems_MiniGameSelection _selection;
         // Names offered per slot, in the same order as the receiving scene's
         // spawner roster — the pick is sent across as that roster index.
-        [SerializeField] private string[] _fighterNames = { "Standard", "Grandma", "Grandpa", "Bot" };
+        [SerializeField] private string[] _fighterNames = { "Standard", "Grandma", "Grandpa", "Raptor", "Bot" };
         [SerializeField] private string _balanceScene = "SCN_TEST_BALANCE_CONTEST";
         [SerializeField] private string _walkScene = "SCN_TEST_WALK_CONTEST";
 

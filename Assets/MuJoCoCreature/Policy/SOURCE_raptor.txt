@@ -1,0 +1,22 @@
+raptor_balance.onnx
+====================
+
+WHAT      Balance policy for the Raptor (non-humanoid digitigrade biped),
+          second MuJoCo creature in MuJoCo_TestScene.
+CONTRACT  obs 114 = 13 root + 7*13 joints + 8 feet + 2 heights
+          act 21  = position-servo targets, MapZeroCentered semantics
+          input obs_0 [batch,114], output continuous_actions [batch,21],
+          ML-Agents v3 header, observation normaliser BAKED INTO the graph.
+TRAINED   2026-08-31, PoBox-MuJoCo/runs/raptor_balance_v1, best.pt @ iter 627
+          PPO on mujoco_warp, 2048 worlds, 700 iters, substeps=4 (50 Hz),
+          episode cap 30 s. DR: kp/kv x[0.7,1.3], mass x[0.9,1.1],
+          friction x[0.7,1.3] per world; timestep NOT randomized.
+MODEL     PoBox-MuJoCo/models/raptor_unity.xml -- the MJCF exported from
+          Unity's MjScene, NOT the authored raptor.xml. Regenerate with
+          scripts/raptor_mjcf.py + the Unity import/patch steps in RAPTOR.md.
+MEASURED  python  : >60 s survival, 512/512 rollouts (cap-limited), no DR
+          Unity   : 67 s continuous, zero falls, solo test scene
+          shared  : 62 s zero falls beside Nick in MuJoCo_TestScene
+          baseline: passive fall at 1.52 s (authored) / 1.53 s (exported)
+EXPORT    scripts/export_onnx.py --checkpoint runs/raptor_balance_v1/best.pt
+                                 --obs-size 114 --num-actions 21

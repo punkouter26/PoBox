@@ -112,11 +112,17 @@ namespace PoBox.Editor
         // and by nothing else, so leaving one of them untinted is not a missing
         // flourish, it is a missing identity. Grandma and Grandpa carry their
         // own textures and are deliberately left alone.
+        // The Raptor slot exists to keep this roster index-aligned with
+        // SCN_MENU's fighter list, which serves both mini-games. It runs its
+        // heuristic bot here: its brain is a balance brain and no raptor walk
+        // brain exists (yet), and the shared locomotion brain's 127-obs layout
+        // can never load on a 13-joint rig.
         private static readonly (string prefabPath, string display, bool forceHeuristic, string tintPath)[] Roster =
         {
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Standard", false, "Assets/Art/M_FighterBlue.mat"),
             ("Assets/Prefabs/Fighters/Fighter_Grandma.prefab", "Grandma", false, null),
             ("Assets/Prefabs/Fighters/Fighter_Grandpa.prefab", "Grandpa", false, null),
+            ("Assets/Prefabs/Fighters/Fighter_Raptor.prefab", "Raptor", true, null),
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Bot", true, "Assets/Art/M_BotRed.mat")
         };
 

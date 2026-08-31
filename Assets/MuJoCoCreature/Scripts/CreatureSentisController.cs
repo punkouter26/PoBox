@@ -95,6 +95,9 @@ namespace PoBox.MuJoCoCreature
 
         private double[] _initialQpos;
         private int _numActuators;
+        private MjActuator[] _ownActuators;
+        private MjBaseJoint[] _ownJoints;
+        private double[] _ownQpos0;
         private float _footContactHeight = 0.0525f;
         private bool _ready;
 
@@ -208,8 +211,29 @@ namespace PoBox.MuJoCoCreature
             _observations = new float[ObservationCount];
             _input = new Tensor<float>(new TensorShape(1, ObservationCount));
 
-            _numActuators = (int)_mjScene.Model->nu;
+            // OWN actuators only, sorted by model id (= MJCF/training order).
+            // MjScene is a singleton: in a scene shared with another creature,
+            // Model->nu counts BOTH rigs, and writing ctrl[0..nu) would zero
+            // the other creature's targets every tick. Scoped since the
+            // raptor integration; identical behaviour when alone.
+            _ownActuators = GetComponentsInChildren<MjActuator>();
+            Array.Sort(_ownActuators, (a, b) => a.MujocoId.CompareTo(b.MujocoId));
+            _numActuators = _ownActuators.Length;
             _actions = new float[_numActuators];
+
+            // Own joints + their qpos0 slices, for a reset that touches
+            // nothing belonging to another creature in the shared model.
+            _ownJoints = GetComponentsInChildren<MjBaseJoint>();
+            var qpos0List = new System.Collections.Generic.List<double>();
+            foreach (var j in _ownJoints)
+            {
+                int n = QposSize(j);
+                for (int k = 0; k < n; k++)
+                {
+                    qpos0List.Add(_mjScene.Model->qpos0[j.QposAddress + k]);
+                }
+            }
+            _ownQpos0 = qpos0List.ToArray();
 
             _pelvisId = _pelvis != null ? _pelvis.MujocoId : -1;
             _footLeftId = _footLeft != null ? _footLeft.MujocoId : -1;
@@ -263,6 +287,26 @@ namespace PoBox.MuJoCoCreature
             return true;
         }
 
+        private static int QposSize(MjBaseJoint j)
+        {
+            switch (j)
+            {
+                case MjFreeJoint _: return 7;
+                case MjBallJoint _: return 4;
+                default: return 1;
+            }
+        }
+
+        private static int DofSize(MjBaseJoint j)
+        {
+            switch (j)
+            {
+                case MjFreeJoint _: return 6;
+                case MjBallJoint _: return 3;
+                default: return 1;
+            }
+        }
+
         private unsafe void FixedUpdate()
         {
             if (!_ready && !TryBind())
@@ -272,7 +316,9 @@ namespace PoBox.MuJoCoCreature
 
             MujocoLib.mjData_* d = _mjScene.Data;
 
-            if (d->qpos[2] < _fallHeight)
+            // Height read from the pelvis BODY, not qpos[2]: in a shared
+            // MjScene qpos[2] belongs to whichever creature compiled first.
+            if (d->xpos[3 * _pelvisId + 2] < _fallHeight)
             {
                 ResetCreature();
                 return;
@@ -301,7 +347,7 @@ namespace PoBox.MuJoCoCreature
 
             DebugStepCount++;
             DebugSimTime = d->time;
-            DebugPelvisHeight = (float)d->qpos[2];
+            DebugPelvisHeight = (float)d->xpos[3 * _pelvisId + 2];
             float sumQvel = 0f;
             for (int i = 0; i < (int)_mjScene.Model->nv; i++)
             {
@@ -321,10 +367,16 @@ namespace PoBox.MuJoCoCreature
                 // The policy emits [-1,1]; ctrl is a TARGET ANGLE in radians,
                 // mapped zero-centred exactly as Systems_FighterRig does:
                 //   action >= 0 ? action * high : -action * low
-                double low = _mjScene.Model->actuator_ctrlrange[2 * i];
-                double high = _mjScene.Model->actuator_ctrlrange[2 * i + 1];
+                // Written through the component's Control field, indexed by
+                // the actuator's OWN model id -- MjScene.SyncUnityToMjState
+                // copies Control into d->ctrl after every step, and in a
+                // shared scene actuator i of the model is not necessarily
+                // actuator i of this creature.
+                int id = _ownActuators[i].MujocoId;
+                double low = _mjScene.Model->actuator_ctrlrange[2 * id];
+                double high = _mjScene.Model->actuator_ctrlrange[2 * id + 1];
                 float a = Mathf.Clamp(_actions[i], -1f, 1f);
-                d->ctrl[i] = a >= 0f ? a * high : -a * low;
+                _ownActuators[i].Control = (float)(a >= 0f ? a * high : -a * low);
             }
         }
 
@@ -398,18 +450,28 @@ namespace PoBox.MuJoCoCreature
             {
                 return;
             }
+            // Scoped to THIS creature's joints and actuators: a shared
+            // MjScene holds every creature's state, and the old whole-model
+            // restore teleported the other creature to qpos0 on every fall.
             MujocoLib.mjData_* d = _mjScene.Data;
-            for (int i = 0; i < _initialQpos.Length; i++)
+            int cursor = 0;
+            foreach (var j in _ownJoints)
             {
-                d->qpos[i] = _initialQpos[i];
-            }
-            for (int i = 0; i < (int)_mjScene.Model->nv; i++)
-            {
-                d->qvel[i] = 0.0;
+                int nqj = QposSize(j);
+                for (int k = 0; k < nqj; k++)
+                {
+                    d->qpos[j.QposAddress + k] = _ownQpos0[cursor++];
+                }
+                int nvj = DofSize(j);
+                for (int k = 0; k < nvj; k++)
+                {
+                    d->qvel[j.DofAddress + k] = 0.0;
+                }
             }
             for (int i = 0; i < _numActuators; i++)
             {
-                d->ctrl[i] = 0.0;
+                d->ctrl[_ownActuators[i].MujocoId] = 0.0;
+                _ownActuators[i].Control = 0f;
             }
             MujocoLib.mj_forward(_mjScene.Model, _mjScene.Data);
             DebugResetCount++;
