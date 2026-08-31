@@ -1,0 +1,105 @@
+<?xml version="1.0" ?>
+<mujoco model="raptor">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.005" iterations="20" solver="Newton" integrator="implicitfast"/>
+  <default>
+    <geom type="capsule" condim="3" friction="1.0 0.05 0.05" rgba="0.55 0.62 0.40 1" density="0"/>
+    <joint type="hinge" damping="2" stiffness="0" armature="0.02" limited="true"/>
+    <position ctrllimited="true" dampratio="1"/>
+  </default>
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.24 0.26 0.28" rgb2="0.20 0.22 0.24" width="512" height="512"/>
+    <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.05"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 4" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="20 20 0.1" material="grid" condim="3" friction="1.0 0.05 0.05"/>
+    <body name="Rap_Pelvis" pos="0.00000 0.00000 0.66284">
+      <freejoint name="Rap_root"/>
+      <geom name="Rap_g_Pelvis" fromto="0.00000 0.06000 0.00000 0.00000 -0.10000 0.02000" size="0.0700" mass="4.0000"/>
+      <body name="Rap_Torso" pos="0.00000 0.00000 0.00000">
+        <geom name="Rap_g_Torso" fromto="0.00000 0.00000 0.00000 0.00000 -0.30000 0.10000" size="0.0850" mass="6.0000"/>
+        <joint name="Rap_Torso_pitch" axis="1 0 0" range="-25 25"/>
+        <joint name="Rap_Torso_yaw" axis="0 0 1" range="-30 30"/>
+        <body name="Rap_Neck" pos="0.00000 -0.30000 0.10000">
+          <geom name="Rap_g_Neck" fromto="0.00000 0.00000 0.00000 0.00000 -0.10000 0.13000" size="0.0400" mass="0.8000"/>
+          <joint name="Rap_Neck_pitch" axis="1 0 0" range="-40 30"/>
+          <joint name="Rap_Neck_yaw" axis="0 0 1" range="-45 45"/>
+          <body name="Rap_Head" pos="0.00000 -0.10000 0.13000">
+            <geom name="Rap_g_Head" fromto="0.00000 0.00000 0.00000 0.00000 -0.16000 0.02000" size="0.0520" mass="1.0000"/>
+            <joint name="Rap_Head_pitch" axis="1 0 0" range="-30 30"/>
+          </body>
+        </body>
+      </body>
+      <body name="Rap_Tail01" pos="0.00000 0.00000 0.00000">
+        <geom name="Rap_g_Tail01" fromto="0.00000 0.00000 0.00000 0.00000 0.28000 0.03000" size="0.0480" mass="1.6000"/>
+        <joint name="Rap_Tail01_pitch" axis="1 0 0" range="-35 35"/>
+        <joint name="Rap_Tail01_yaw" axis="0 0 1" range="-40 40"/>
+        <body name="Rap_Tail02" pos="0.00000 0.28000 0.03000">
+          <geom name="Rap_g_Tail02" fromto="0.00000 0.00000 0.00000 0.00000 0.30000 -0.02000" size="0.0320" mass="1.0000"/>
+          <joint name="Rap_Tail02_pitch" axis="1 0 0" range="-35 35"/>
+          <joint name="Rap_Tail02_yaw" axis="0 0 1" range="-40 40"/>
+        </body>
+      </body>
+      <body name="Rap_ThighL" pos="0.09000 0.00000 0.00000">
+        <geom name="Rap_g_ThighL" fromto="0.00000 0.00000 0.00000 0.00000 -0.13000 -0.22517" size="0.0480" mass="1.6000"/>
+        <joint name="Rap_ThighL_pitch" axis="1 0 0" range="-60 35"/>
+        <joint name="Rap_ThighL_roll" axis="0 1 0" range="-20 20"/>
+        <joint name="Rap_ThighL_yaw" axis="0 0 1" range="-20 20"/>
+        <body name="Rap_ShinL" pos="0.00000 -0.13000 -0.22517">
+          <geom name="Rap_g_ShinL" fromto="0.00000 0.00000 0.00000 0.00000 0.17998 -0.21449" size="0.0320" mass="0.8000"/>
+          <joint name="Rap_ShinL_pitch" axis="1 0 0" range="-10 70"/>
+          <body name="Rap_MetaL" pos="0.00000 0.17998 -0.21449">
+            <geom name="Rap_g_MetaL" fromto="0.00000 0.00000 0.00000 0.00000 -0.05176 -0.19319" size="0.0240" mass="0.3000"/>
+            <joint name="Rap_MetaL_pitch" axis="1 0 0" range="-55 35"/>
+            <body name="Rap_FootL" pos="0.00000 -0.05176 -0.19319">
+              <geom name="Rap_g_FootL" fromto="0.00000 0.00000 0.00000 0.00000 -0.12000 0.00000" size="0.0300" mass="0.1000"/>
+              <joint name="Rap_FootL_pitch" axis="1 0 0" range="-30 45"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="Rap_ThighR" pos="-0.09000 0.00000 0.00000">
+        <geom name="Rap_g_ThighR" fromto="0.00000 0.00000 0.00000 0.00000 -0.13000 -0.22517" size="0.0480" mass="1.6000"/>
+        <joint name="Rap_ThighR_pitch" axis="1 0 0" range="-60 35"/>
+        <joint name="Rap_ThighR_roll" axis="0 1 0" range="-20 20"/>
+        <joint name="Rap_ThighR_yaw" axis="0 0 1" range="-20 20"/>
+        <body name="Rap_ShinR" pos="0.00000 -0.13000 -0.22517">
+          <geom name="Rap_g_ShinR" fromto="0.00000 0.00000 0.00000 0.00000 0.17998 -0.21449" size="0.0320" mass="0.8000"/>
+          <joint name="Rap_ShinR_pitch" axis="1 0 0" range="-10 70"/>
+          <body name="Rap_MetaR" pos="0.00000 0.17998 -0.21449">
+            <geom name="Rap_g_MetaR" fromto="0.00000 0.00000 0.00000 0.00000 -0.05176 -0.19319" size="0.0240" mass="0.3000"/>
+            <joint name="Rap_MetaR_pitch" axis="1 0 0" range="-55 35"/>
+            <body name="Rap_FootR" pos="0.00000 -0.05176 -0.19319">
+              <geom name="Rap_g_FootR" fromto="0.00000 0.00000 0.00000 0.00000 -0.12000 0.00000" size="0.0300" mass="0.1000"/>
+              <joint name="Rap_FootR_pitch" axis="1 0 0" range="-30 45"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="Rap_Torso_pitch" joint="Rap_Torso_pitch" kp="60" ctrlrange="-0.436332 0.436332"/>
+    <position name="Rap_Torso_yaw" joint="Rap_Torso_yaw" kp="60" ctrlrange="-0.523599 0.523599"/>
+    <position name="Rap_Neck_pitch" joint="Rap_Neck_pitch" kp="12" ctrlrange="-0.698132 0.523599"/>
+    <position name="Rap_Neck_yaw" joint="Rap_Neck_yaw" kp="12" ctrlrange="-0.785398 0.785398"/>
+    <position name="Rap_Head_pitch" joint="Rap_Head_pitch" kp="6" ctrlrange="-0.523599 0.523599"/>
+    <position name="Rap_Tail01_pitch" joint="Rap_Tail01_pitch" kp="20" ctrlrange="-0.610865 0.610865"/>
+    <position name="Rap_Tail01_yaw" joint="Rap_Tail01_yaw" kp="20" ctrlrange="-0.698132 0.698132"/>
+    <position name="Rap_Tail02_pitch" joint="Rap_Tail02_pitch" kp="12" ctrlrange="-0.610865 0.610865"/>
+    <position name="Rap_Tail02_yaw" joint="Rap_Tail02_yaw" kp="12" ctrlrange="-0.698132 0.698132"/>
+    <position name="Rap_ThighL_pitch" joint="Rap_ThighL_pitch" kp="55" ctrlrange="-1.047198 0.610865"/>
+    <position name="Rap_ThighL_roll" joint="Rap_ThighL_roll" kp="55" ctrlrange="-0.349066 0.349066"/>
+    <position name="Rap_ThighL_yaw" joint="Rap_ThighL_yaw" kp="55" ctrlrange="-0.349066 0.349066"/>
+    <position name="Rap_ShinL_pitch" joint="Rap_ShinL_pitch" kp="45" ctrlrange="-0.174533 1.221730"/>
+    <position name="Rap_MetaL_pitch" joint="Rap_MetaL_pitch" kp="35" ctrlrange="-0.959931 0.610865"/>
+    <position name="Rap_FootL_pitch" joint="Rap_FootL_pitch" kp="15" ctrlrange="-0.523599 0.785398"/>
+    <position name="Rap_ThighR_pitch" joint="Rap_ThighR_pitch" kp="55" ctrlrange="-1.047198 0.610865"/>
+    <position name="Rap_ThighR_roll" joint="Rap_ThighR_roll" kp="55" ctrlrange="-0.349066 0.349066"/>
+    <position name="Rap_ThighR_yaw" joint="Rap_ThighR_yaw" kp="55" ctrlrange="-0.349066 0.349066"/>
+    <position name="Rap_ShinR_pitch" joint="Rap_ShinR_pitch" kp="45" ctrlrange="-0.174533 1.221730"/>
+    <position name="Rap_MetaR_pitch" joint="Rap_MetaR_pitch" kp="35" ctrlrange="-0.959931 0.610865"/>
+    <position name="Rap_FootR_pitch" joint="Rap_FootR_pitch" kp="15" ctrlrange="-0.523599 0.785398"/>
+  </actuator>
+</mujoco>
