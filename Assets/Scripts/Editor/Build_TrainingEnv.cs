@@ -35,16 +35,17 @@ namespace PoBox.Editor
         private const string ExeName = "PoBoxTrain.exe";
 
         /// <summary>
-        /// The one scene the env contains. Training scenes are headless by
-        /// project rule — no cameras, HUD or audio — which is what makes them
-        /// safe to run under -nographics without changes.
+        /// The scene the env contains by default. Training scenes are headless
+        /// by project rule — no cameras, HUD or audio — which is what makes
+        /// them safe to run under -nographics without changes.
         /// </summary>
         private const string TrainingScene = "Assets/Scenes/SCN_TRAIN_LOCOMOTION.unity";
+        private const string RaptorTrainingScene = "Assets/Scenes/SCN_TRAIN_BALANCE_RAPTOR.unity";
 
         [MenuItem("Tools/ML Boxing/Build Headless Training Env")]
         public static void BuildFromMenu()
         {
-            BuildResult result = Build(DefaultOutput);
+            BuildResult result = Build(DefaultOutput, TrainingScene);
             if (result != BuildResult.Succeeded)
             {
                 throw new Exception($"Training env build failed: {result}");
@@ -52,20 +53,31 @@ namespace PoBox.Editor
             EditorUtility.RevealInFinder(Path.GetFullPath(DefaultOutput));
         }
 
+        [MenuItem("Tools/ML Boxing/Build Headless Raptor Training Env")]
+        public static void BuildRaptorFromMenu()
+        {
+            BuildResult result = Build(DefaultOutput, RaptorTrainingScene);
+            if (result != BuildResult.Succeeded)
+            {
+                throw new Exception($"Raptor training env build failed: {result}");
+            }
+            EditorUtility.RevealInFinder(Path.GetFullPath(DefaultOutput));
+        }
+
         /// <summary>Entry point for batch / CLI invocation.</summary>
         public static void Build()
         {
-            if (Build(ResolveOutputDir()) != BuildResult.Succeeded)
+            if (Build(ResolveOutputDir(), TrainingScene) != BuildResult.Succeeded)
             {
                 EditorApplication.Exit(1);
             }
         }
 
-        public static BuildResult Build(string outputDir)
+        public static BuildResult Build(string outputDir, string trainingScene)
         {
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(TrainingScene) == null)
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(trainingScene) == null)
             {
-                Debug.LogError($"Training scene not found at {TrainingScene}.");
+                Debug.LogError($"Training scene not found at {trainingScene}.");
                 return BuildResult.Failed;
             }
 
@@ -83,7 +95,7 @@ namespace PoBox.Editor
 
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { TrainingScene },
+                scenes = new[] { trainingScene },
                 locationPathName = Path.Combine(absoluteOut, ExeName),
                 target = BuildTarget.StandaloneWindows64,
                 targetGroup = BuildTargetGroup.Standalone,

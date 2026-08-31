@@ -15,7 +15,6 @@ namespace PoBox
     public sealed class Reward_Balance : MonoBehaviour
     {
         private const float FALL_PENALTY = -1f;
-        private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         private const float HEIGHT_KERNEL_SHARPNESS = 20f;
         // Under _productReward a single factor of exactly 0 zeroes the whole
         // step and erases the signal from every other criterion. Observed on
@@ -28,6 +27,14 @@ namespace PoBox
         [SerializeField] private Systems_FighterRig _rig;
         [SerializeField] private Systems_Stamina _stamina;
         [SerializeField] private Sensor_GroundContact[] _fallContacts;
+        // Head height below this fraction of the start height terminates the
+        // episode. 0.4 is right for humanoids, whose head tops a vertical
+        // stack — reaching 40% means real collapse. Serialized because the
+        // raptor's head rides a horizontal neck: an ordinary exploratory
+        // crouch passes 40% while still standing (measured on raptor_balance01
+        // gen 1: episode length 26.7 steps, UprightMean 0.87, every episode
+        // ended by "head collapse"). Its scene builder sets 0.25.
+        [SerializeField] private float _headCollapseFraction = 0.4f;
         [SerializeField] private float _uprightWeight = 0.3f;
         [SerializeField] private float _heightWeight = 0.3f;
         [SerializeField] private float _comWeight = 0.2f;
@@ -212,7 +219,7 @@ namespace PoBox
             // collapsed instead of the intended ~64 cm.
             float headAboveGround = _rig.Head.position.y - _rig.GroundY;
             float standingHeadAboveGround = _startHeadHeight - _rig.GroundY;
-            if (headAboveGround < standingHeadAboveGround * HEAD_COLLAPSE_FRACTION)
+            if (headAboveGround < standingHeadAboveGround * _headCollapseFraction)
             {
                 fallCause = _fallContacts.Length; // collapse without registered contact
                 return true;

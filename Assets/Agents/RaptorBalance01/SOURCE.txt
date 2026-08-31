@@ -1,0 +1,21 @@
+RaptorBalance01.onnx
+====================
+
+WHAT      Balance brain for Fighter_Raptor (PhysX port of the MuJoCo raptor).
+CONTRACT  114 observations / 21 continuous actions, behavior "Boxer".
+          13-joint rig, observeOpponent=false, observeFootHeight=true.
+          NOT interchangeable with the MuJoCo raptor's raptor_balance.onnx --
+          identical tensor shape, different coordinate frames and DOF slots.
+TRAINED   2026-08-31, run raptor_balance01, checkpoint Boxer-8999875 (9.0M steps) -- FINAL for this run.
+          mlagents-learn Config/RaptorBalance01.yaml, SCN_TRAIN_BALANCE_RAPTOR,
+          3 headless envs (EnvBuild/PoBoxTrain.exe), FullMotors from step one,
+          head-collapse fraction 0.25 (morphology-specific, see Reward_Balance).
+          Shove/cube curricula had NOT advanced past lesson 1 at this
+          checkpoint -- an untoughened brain; replace with a later checkpoint
+          once the curricula engage.
+MEASURED  At export: reward +0.746 with std 0.018 under LIVE LightShoves
+          (32 N) -- virtually every episode survives the 60 s cap while being
+          shoved at 32 N (= 120 N humanoid-equivalent per kg). Run stopped by
+          hand at 9.6M; curricula reached LightShoves, cubes never unlocked.
+          Humanoid all-time best: 17.7 s. (Supersedes @8.5M 16 N-hardened,
+          @7.5M un-shoved, @5.0M ~20 s first wiring.)

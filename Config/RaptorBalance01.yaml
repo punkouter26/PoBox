@@ -31,24 +31,13 @@ behaviors:
     checkpoint_interval: 500000
 
 environment_parameters:
+  # No strength curriculum: WeakMotors (0.6x) was measured infeasible for this
+  # morphology -- the head rides a horizontal neck cantilever, and at 0.6x the
+  # neck droops through the 40%-of-start collapse threshold in ~0.5 s (episode
+  # length 26.7 steps, HeadHeightAtEnd 0.355, UprightMean 0.87 -- sagging, not
+  # toppling). The MuJoCo raptor trained at full strength from step one.
   strength_scale:
     curriculum:
-      - name: WeakMotors
-        completion_criteria:
-          measure: reward
-          behavior: Boxer
-          signal_smoothing: true
-          min_lesson_length: 100
-          threshold: 0.4
-        value: 0.6
-      - name: MediumMotors
-        completion_criteria:
-          measure: reward
-          behavior: Boxer
-          signal_smoothing: true
-          min_lesson_length: 100
-          threshold: 0.55
-        value: 0.8
       - name: FullMotors
         value: 1.0
   shove_force_max:

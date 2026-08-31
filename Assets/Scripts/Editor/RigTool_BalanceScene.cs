@@ -61,13 +61,17 @@ namespace PoBox.Editor
             // contest dynamics — the contest applies neither muscle-lag
             // smoothing nor the (humanoid-proportioned) realism profile, so
             // the training scene must not either.
+            // headCollapseFraction 0.25: the raptor's head rides a horizontal
+            // neck, so an exploratory crouch passes the humanoid 0.4 threshold
+            // while still standing — measured killing every gen-1 episode in
+            // 26.7 steps. 0.25 of 0.91 m = 0.23 m, genuinely collapsed.
             CreateFor(RAPTOR_PREFAB_PATH, RAPTOR_SCENE_PATH, firstBuildScene: false,
                 "Train with: .\\train.ps1 -Config RaptorBalance01.yaml -RunId raptor_balance01 (then press Play).",
-                applyGen2Rig: false);
+                applyGen2Rig: false, headCollapseFraction: 0.25f);
         }
 
         private static void CreateFor(string prefabPath, string scenePath, bool firstBuildScene, string trainHint,
-            bool applyGen2Rig = true)
+            bool applyGen2Rig = true, float headCollapseFraction = 0.4f)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab == null)
@@ -96,7 +100,8 @@ namespace PoBox.Editor
                 for (int gridZ = 0; gridZ < GRID_SIZE; gridZ++)
                 {
                     var position = new Vector3(origin + gridX * GRID_SPACING, SPAWN_HEIGHT, origin + gridZ * GRID_SPACING);
-                    SpawnFighter(prefab, position, gridX * GRID_SIZE + gridZ, variation, applyGen2Rig);
+                    SpawnFighter(prefab, position, gridX * GRID_SIZE + gridZ, variation, applyGen2Rig,
+                        headCollapseFraction);
                 }
             }
 
@@ -230,7 +235,7 @@ namespace PoBox.Editor
         }
 
         internal static GameObject SpawnFighter(GameObject prefab, Vector3 position, int index,
-            Systems_FighterVariation variation, bool applyGen2Rig = true)
+            Systems_FighterVariation variation, bool applyGen2Rig = true, float headCollapseFraction = 0.4f)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
@@ -281,6 +286,7 @@ namespace PoBox.Editor
             // stays positive, so "fell later" always beats "fell sooner".
             var rewardSo = new SerializedObject(reward);
             rewardSo.FindProperty("_productReward").boolValue = true;
+            rewardSo.FindProperty("_headCollapseFraction").floatValue = headCollapseFraction;
             rewardSo.ApplyModifiedPropertiesWithoutUndo();
 
             var shover = instance.AddComponent<Systems_Shover>();

@@ -11903,6 +11903,12 @@ MonoBehaviour:
     forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 1
+  - displayName: Raptor
+    prefab: {fileID: 4040652973315965141, guid: 21063ba21c7f0b1428daca7926749402, type: 3}
+    model: {fileID: 5022602860645237092, guid: 78b29a94cb7c1c74e929eb8786f9578b, type: 3}
+    forceHeuristic: 0
+    tint: {fileID: 0}
+    locomotionBrain: 0
   - displayName: Bot
     prefab: {fileID: 3971221681163421164, guid: f0bf9a90f072bc34dac4b81f4889c2e1, type: 3}
     model: {fileID: 0}
