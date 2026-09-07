@@ -14,9 +14,9 @@ differs between them is **the width of the input** and **what behaviour they lea
 
 | | |
 |---|---|
-| **Balance ring ships** | `Locomotion_gen20` — 113 steps between falls, +66% on the brain it replaced |
+| **Balance ring ships** | `Locomotion_gen25` — 167.9 steps between falls under shove, +83% on `gen20`, and ahead on every body |
 | **Walk race ships** | `Locomotion_gen18_34M` — Alternation 0.766, a deliberately kept mid-run checkpoint |
-| **Blocker** | Stability. Every walking brain topples about every 1.7 s |
+| **Blocker** | ~~Stability~~ — that was three faults in the instrumentation; see the 2026-09-07 addendum. The open blocker is **gait**: every walk brain slides instead of stepping |
 | **Silent-failure risk** | Observation width. A brain assigned from code whose `obs_0` disagrees with the fighter mismatches **without any error** |
 
 ---
@@ -110,6 +110,60 @@ furthest reached in one unbroken upright run:
 The shipping walk brain averages two centimetres over the pass mark. That is the
 whole explanation for "11 of 13 rounds were no contest" — the field sits exactly
 on the line, so roughly half of all rounds fall short of it.
+
+### What shipped
+
+**`Locomotion_gen25` replaces `Locomotion_gen20` in the balance ring.** Trained
+from scratch, 21.85M steps, final mean reward 0.945. Measured under shove --
+the condition the ring presents, which no previous generation was ever measured
+in -- 4 episodes per fighter:
+
+| steps between falls | heuristic | `gen20` | **`gen25`** |
+|---|---:|---:|---:|
+| ALL | 82.2 | 91.7 | **167.9** |
+| Capsule | 94.8 | 70.1 | **167.9** |
+| Grandma | 64.8 | 106.5 | **172.4** |
+| Grandpa | 84.5 | 103.0 | **163.3** |
+| upright fraction | 0.760 | 0.776 | **0.870** |
+| falls per episode | 27.9 | 25.9 | **15.1** |
+
+It wins on every body, so it does not make the trade the shipping rule forbids.
+Undisturbed it effectively stops falling: during training, steps between falls
+saturated the 3000-step episode on the capsule (2889) and Grandpa (2754).
+
+**The walk race keeps `Locomotion_gen18_34M`**, and this is a deliberate refusal
+rather than an absence of candidates. At commanded speed 1:
+
+| | best run distance | alternation | steps between falls |
+|---|---:|---:|---:|
+| `gen18_34M` (ships) | 0.781 m | **0.601** | 57.4 |
+| `gen29` | **0.912 m** | 0.018 | 95.7 |
+| `gen30` | 0.869 m | 0.037 | 100.1 |
+
+`gen29` travels 17% further than the brain that ships and clears
+`MIN_WIN_DISTANCE` comfortably, which would turn "no contest" rounds back into
+races. It gets there by **sliding**: alternation 0.018 against gen 18's 0.601,
+clearance 0.066 against 0.411. This project's standard, set by gens 13 to 15, is
+that distance bought by not stepping does not count -- and in an active-ragdoll
+game the gait is the thing the player watches. Shipping it would buy a rules
+outcome with a visible regression.
+
+### The open lead on gait
+
+Four walk runs this session all slid rather than stepped, and the suspect is the
+entropy bonus. Gen 21's horizon fix bundled `beta` 0.01 -> 0.005, borrowed from
+ML-Agents' Walker example. That was right for balance -- standing still is
+low-entropy and gen 25 is the proof -- and may be exactly wrong for gait.
+`Agent_FighterBoxing`'s gait-clock comment already recorded the diagnosis in
+2026-08-19: single support 0.005 and foot lift 0.09 mm "at every reward
+weighting tried across three generations -- an exploration problem, not an
+incentive one".
+
+Gen 30 raised it to 0.02 and, at matched lesson and fewer steps, showed more
+alternation than gen 29 (0.054 against 0.011 at ~8M, both still climbing) --
+weakly positive, nowhere near conclusive, and nowhere near gen 18's 0.766. A
+dedicated walk run at `beta` 0.02 or higher, from `gen25`'s weights, with a
+budget past 30M, is the next thing to try.
 
 ### Contest code measured height against the wrong zero
 

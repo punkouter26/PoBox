@@ -1,0 +1,70 @@
+Locomotion_gen25
+
+From run 'boxer_locomotion25', checkpoint Boxer-20999000.onnx -- step 20999000.
+Promoted 2026-09-07.
+
+Config: Config/BoxerLocomotion25.yaml
+Observation count 127 (ground-relative heights, locomotion command observed).
+THE BALANCE BRAIN. Replaces Locomotion_gen20 in SCN_TEST_BALANCE_CONTEST.
+
+Measured with Systems_EvalHarness against the brain it replaces and against the
+code-driven PD bot -- same scene, same three rigs, same commanded speed, same
+episode count, same reward code. 4 episodes per fighter, 64 episodes per column.
+
+UNDER SHOVE, which is the condition the balance ring actually presents
+(-evalShove; the contest runs hazards and shoves, the training scene does not):
+
+  steps between falls      heuristic   gen 20    GEN 25
+    ALL                       82.2      91.7     167.9    +83% over gen 20
+    Capsule                   94.8      70.1     167.9   +140%
+    Grandma                   64.8     106.5     172.4    +62%
+    Grandpa                   84.5     103.0     163.3    +59%
+
+  upright fraction            0.760     0.776     0.870
+  falls per episode            27.9      25.9      15.1
+
+IT WINS ON EVERY BODY. The standing rule in this project is that improving the
+characters by wrecking the capsule is not shippable; gen 25 does not make that
+trade in either direction.
+
+UNDISTURBED, at commanded speed 0, it effectively stops falling: steps between
+falls saturate the 3000-step episode on the capsule (2889) and Grandpa (2754)
+during training, against gen 20's 80 on the capsule.
+
+WHAT MADE THE DIFFERENCE, in the order the evidence arrived:
+
+  1. THE GROUND SENSOR. Contact was a running Enter-minus-Exit tally that
+     desynchronises on the character rigs and never recovers. Grandma's soles
+     were four to eight millimetres BELOW the floor plane while both sensors
+     reported airborne, so ten of sixteen fighters trained against a corrupted
+     objective and read a corrupted observation vector. Re-affirming contact
+     from OnCollisionStay every step fixed it, and improved gen 20 itself by 28%
+     on Grandma with no retraining at all.
+
+  2. THE STANCE THE REWARD COULD NOT SEE. At gaitBlend 0 the support and
+     clearance terms both saturate whether the fighter is planted or holding one
+     foot in the air, so a speed-0 run optimised neither. Gen 20 stands on one
+     leg with the other 0.159 m up for 76% of an episode; the heuristic PD bot,
+     which cannot, OUT-STOOD it on the capsule by 40%. Gen 25 reads
+     singleSupport 0.000 on every body -- squarely on two feet.
+
+  3. SIDEWAYS. The speed term scored only the component of pelvis velocity along
+     the goal direction, so a fighter sliding sideways at 2 m/s scored a perfect
+     1.0 on the heaviest term in the function. Sideways is the direction
+     fighters fall.
+
+  4. THE HORIZON. gamma 0.99 -> 0.995, lambd 0.95 -> 0.97, time_horizon 256 ->
+     1000. At lambd 0.95 advantages stop propagating after 0.4 s, and a fall is
+     caused by a posture entered one to two seconds earlier.
+
+Trained from scratch, 21.85M steps, final mean reward 0.945. Config:
+Config/BoxerLocomotion21.yaml lineage via BoxerLocomotion25.yaml. Checkpoint
+Boxer-20999000.onnx.
+
+127 observations, ground-relative heights.
+
+NOT the walk brain. Gen 25 was trained with the commanded speed pinned at 0 and
+its alternation is 0.000 -- it stands, and it does not walk. The walk race keeps
+Locomotion_gen18_34M. Two mini-games, two brains, which is this project's
+architecture and remains the right one.
+
