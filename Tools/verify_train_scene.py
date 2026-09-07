@@ -22,9 +22,12 @@ import re
 import sys
 
 DEFAULT_SCENE = "Assets/Scenes/SCN_TRAIN_LOCOMOTION.unity"
-# Torso, head, both lower legs, both gloves. Mirrors MIN_FALL_CONTACTS in
-# RigTool_LocomotionScene.
-MIN_FALL_CONTACTS = 6
+# Torso, head, both lower legs, both gloves -- the humanoid set, mirroring
+# MIN_FALL_CONTACTS in RigTool_LocomotionScene. A rig with fewer LIMBS
+# legitimately has fewer: Fighter_Raptor has no arms and so carries four
+# (torso, head, both shins). That is a note, not a failure. A NULL entry is
+# always a failure, on any rig.
+HUMANOID_FALL_CONTACTS = 6
 
 
 def parse(path):
@@ -50,6 +53,8 @@ def main():
     objects, names, owner = parse(scene)
 
     failures = 0
+    short = 0
+    shape = None
     fighters = 0
     for _file_id, (_class_id, body) in objects.items():
         if "_fallContacts:" not in body:
@@ -66,11 +71,17 @@ def main():
             else:
                 resolved.append(names.get(owner.get(value, ""), "?"))
         bad = [r for r in resolved if r in ("NULL", "?")]
-        if bad or len(resolved) < MIN_FALL_CONTACTS:
+        if bad:
             failures += 1
             print(f"  FAIL  {len(resolved)} contacts {resolved}")
+        elif len(resolved) < HUMANOID_FALL_CONTACTS:
+            short += 1
+            shape = tuple(resolved)
 
     print(f"{scene}: {fighters} fighters with a fall detector, {failures} defective")
+    if short:
+        print(f"  note: {short} carry fewer than the humanoid {HUMANOID_FALL_CONTACTS} "
+              f"-- {list(shape)}. Expected on a rig with fewer limbs.")
     if fighters == 0:
         print("  no fighters found - wrong scene, or the component was renamed")
         return 1

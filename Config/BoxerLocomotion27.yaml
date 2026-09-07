@@ -1,0 +1,95 @@
+# Locomotion gen 27 (2026-09-07). Gen 25 trained UNDER SHOVES.
+#
+# THE TRAIN/TEST GAP. SCN_TRAIN_LOCOMOTION disables every fighter's shover on
+# purpose -- shoves fight the walking signal while the speed curriculum is
+# coming up -- so every balance brain this project has produced learned to stand
+# in perfectly still air. SCN_TEST_BALANCE_CONTEST then runs hazards and shoves
+# at it. The brain has never once had to recover from a push, and the game does
+# nothing but push.
+#
+# THE COST IS MEASURED, not assumed. Through Systems_EvalHarness -evalShove, at
+# commanded speed 0, steps between falls:
+#
+#                       undisturbed   +shove    loss
+#   heuristic PD bot         91.6      82.4     -10%
+#   Locomotion_gen20        110.7      92.3     -17%
+#
+# Gen 20 loses nearly twice as much as the hand-written controller does. That is
+# the shape of a policy fitted to still air: it is better in the condition it
+# trained on and gives more of it back the moment the condition changes.
+#
+# WHAT CHANGES: -trainShove on the player (see Systems_TrainingOptions) turns the
+# shovers on, and shove_force_max ramps them from nothing to the contest's own
+# 300 N. Everything else is gen 25 exactly -- same reward, same horizon
+# settings, same speed pin, same budget -- so gen 25 and gen 27 isolate the
+# perturbation.
+#
+# WHY A CURRICULUM RATHER THAN SHOVES FROM STEP ZERO: a fighter that cannot yet
+# stand gains nothing from being pushed over, it just gets a noisier version of
+# the same failure. The first rung is the ordinary standing lesson; shoving
+# starts once it is passed.
+#
+# SUCCESS: gen 27 beats gen 25 UNDER SHOVE. It is allowed to lose to gen 25 in
+# still air -- that is not the condition either mini-game presents, and trading
+# undisturbed performance for robustness is the entire point of the run.
+#
+# Run: mlagents-learn Config/BoxerLocomotion27.yaml --run-id=boxer_locomotion27
+#      --env EnvBuild5/PoBoxTrain.exe --no-graphics --num-envs 6
+#      --base-port 5600 --env-args -trainShove 1
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 60000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # Pinned, exactly as gen 25.
+  speed_command_max: 0.0
+
+  # 0 disables shoving outright (Systems_Shover checks for it), so the first
+  # rung is an ordinary standing lesson and the ladder only starts pushing once
+  # the fighter can stand at all. 300 N is the shover's own serialized maximum,
+  # which is what the balance contest fields.
+  shove_force_max:
+    curriculum:
+      - name: StillAir
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: LightShove
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 150.0
+      - name: FullShove
+        value: 300.0
