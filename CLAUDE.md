@@ -164,12 +164,30 @@ Two failure modes to know:
    `BrainParameters` from the *BehaviorParameters inspector*
    (`Editor/BehaviorParametersEditor.cs`); its runtime path checks the model version
    and nothing else. A brain assigned from code — which is every contest brain —
-   mismatches in **total silence**. `Systems_ContestSpawner.WarnOnObservationMismatch`
-   exists to catch this and is Editor/dev-build only.
+   mismatches in **total silence**. `Systems_BrainCompatibility.Accept` catches
+   it and REFUSES the brain rather than merely reporting it, falling back to the
+   heuristic PD bot — a worse fighter but an honest one. It is deliberately not
+   `[Conditional]`: a player build has to make the same call an Editor run does.
+   Both the contest spawner and the offline evaluation harness go through it, so
+   the evaluator cannot benchmark a brain the game would refuse.
 
 Brain folder names under `Assets/Agents/` have historically lied about which
 generation they contain. Verify with the ONNX input shape before trusting one;
-`Locomotion_gen20/SOURCE.txt` is the format for recording provenance.
+`Locomotion_gen25/SOURCE.txt` is the format for recording provenance, and
+`Tools/promote_brain.ps1` writes one from the checkpoint's own filename rather
+than from what anyone believed the run had reached.
+
+**What ships, as of 2026-09-07:**
+
+| Mini-game | Brain | Why |
+|---|---|---|
+| Balance ring | `Locomotion_gen25` | 167.9 steps between falls under shove against `gen20`'s 91.7, and ahead on every body |
+| Walk race | `Locomotion_gen18_34M` | still the only brain that actually WALKS — alternation 0.601; the faster candidates slide |
+| Raptor | `RaptorBalance01` | its own model line, 13-joint rig; the shared 127-observation brain cannot load on it |
+
+Two mini-games, two brains, and that is the architecture rather than an
+accident: `gen25` was trained with the commanded speed pinned at 0 and cannot
+walk, `gen18` walks and cannot stand still.
 
 ### Agent / rig / reward split
 
