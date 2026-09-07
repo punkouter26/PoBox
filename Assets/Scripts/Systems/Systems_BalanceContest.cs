@@ -174,8 +174,36 @@ namespace PoBox
             if ((aliveCount == 0 || lastStanding || timeUp) && _contestants.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
-                RaiseRoundEnded(FindLeader()?.displayName ?? "");
+                Contestant leaderAtEnd = FindLeader();
+                LogRoundResult(leaderAtEnd, timeUp, lastStanding);
+                RaiseRoundEnded(leaderAtEnd?.displayName ?? "");
             }
+        }
+
+        /// <summary>
+        /// One greppable line per round: who won, how, and how long every
+        /// fighter lasted.
+        ///
+        /// Round outcomes previously existed ONLY in the UI Toolkit HUD, which
+        /// means a headless run of this scene could be verified to start and not
+        /// throw, and nothing else. "Does the contest actually resolve rounds
+        /// correctly" was unanswerable without a human watching a screen, and
+        /// that is the question a shipping decision on a new brain turns on.
+        /// </summary>
+        private void LogRoundResult(Contestant leader, bool timeUp, bool lastStanding)
+        {
+            string reason = lastStanding ? "last standing" : (timeUp ? "time up" : "all down");
+            var line = new System.Text.StringBuilder();
+            line.Append($"CONTEST_ROUND {_round} | {reason} | winner=");
+            line.Append(string.IsNullOrEmpty(leader?.displayName) ? "NO CONTEST" : leader.displayName);
+            line.Append(" |");
+            for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
+            {
+                Contestant contestant = _contestants[contestantIndex];
+                line.Append($" {contestant.displayName}={contestant.aliveTime:F1}s");
+                line.Append(contestant.fallen ? "(down)" : "(up)");
+            }
+            Debug.Log(line.ToString());
         }
 
         private void Update()
