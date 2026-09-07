@@ -64,10 +64,21 @@ namespace PoBox.Editor
             EditorUtility.RevealInFinder(Path.GetFullPath(DefaultOutput));
         }
 
-        /// <summary>Entry point for batch / CLI invocation.</summary>
+        /// <summary>
+        /// Entry point for batch / CLI invocation.
+        ///
+        /// `-buildScene &lt;path&gt;` overrides which scene goes in. It exists so a
+        /// SHIPPED scene can be smoke-tested headlessly: Systems_MiniGameLauncher
+        /// falls back to a default line-up when no menu selection is present, so a
+        /// player built from SCN_TEST_BALANCE_CONTEST spawns its roster and runs a
+        /// round with no input at all. That exercises the spawner, the referee,
+        /// the announcer and the cameras against real fighters, which compiling
+        /// does not.
+        /// </summary>
         public static void Build()
         {
-            if (Build(ResolveOutputDir(), TrainingScene) != BuildResult.Succeeded)
+            string scene = ResolveArgument("-buildScene") ?? TrainingScene;
+            if (Build(ResolveOutputDir(), scene) != BuildResult.Succeeded)
             {
                 EditorApplication.Exit(1);
             }
@@ -144,15 +155,21 @@ namespace PoBox.Editor
 
         private static string ResolveOutputDir()
         {
+            return ResolveArgument("-buildOutput") ?? DefaultOutput;
+        }
+
+        /// <summary>Value following <paramref name="flag"/> on the command line, or null.</summary>
+        private static string ResolveArgument(string flag)
+        {
             string[] args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++)
+            for (int argIndex = 0; argIndex < args.Length - 1; argIndex++)
             {
-                if (string.Equals(args[i], "-buildOutput", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(args[argIndex], flag, StringComparison.OrdinalIgnoreCase))
                 {
-                    return args[i + 1];
+                    return args[argIndex + 1];
                 }
             }
-            return DefaultOutput;
+            return null;
         }
     }
 }
