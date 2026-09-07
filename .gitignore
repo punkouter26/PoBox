@@ -83,3 +83,11 @@ Assets/Agents/_Candidates/
 EnvBuild3/
 EnvBuild4/
 EnvBuild5/
+
+# Build_EvalEnv stages brains here at build time and deletes them afterwards.
+# Ignored so a build that dies midway cannot leave a second copy of every brain
+# in the repo -- and because anything under a Resources folder is dragged into
+# the shipped Android and WebGL players whether a scene references it or not.
+/[Aa]ssets/Resources/EvalBrains/
+/[Aa]ssets/Resources/EvalBrains.meta
+/[Aa]ssets/Agents/_Candidates.meta

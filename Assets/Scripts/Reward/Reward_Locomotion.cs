@@ -509,6 +509,13 @@ namespace PoBox
             // Empty for anything the scene tool did not place, which switches
             // the per-body stats off rather than mislabelling them.
             _statPrefix = string.IsNullOrEmpty(_bodyName) ? null : "Locomotion/" + _bodyName + "/";
+            // The rollover branch that normally sets this fires only when
+            // StepCount DECREASES, which it cannot do on the first step of the
+            // first episode. Left at default it was Vector3.zero, so the first
+            // episode measured distance from the WORLD ORIGIN -- and fighters
+            // stand on an 8 m grid, so it reported up to twelve metres of travel
+            // for a fighter that had not moved.
+            _runStartPosition = _rig.Pelvis.position;
             // -1, not 0. The field's own sentinel for "no fall yet this
             // episode" is a NEGATIVE value, but it defaulted to 0, so the first
             // episode of every run recorded its first fall as "not a fall" and
@@ -558,10 +565,13 @@ namespace PoBox
                 _upStepsSinceFall = 0;
                 _fallRuns++;
                 _recoveryStepsLeft = STUMBLE_RECOVERY_STEPS;
-                // The reset teleports the fighter home, so the next run's
-                // distance is measured from wherever it now stands.
-                _runStartPosition = _rig.Pelvis.position;
                 _rig.ResetToStartPose();
+                // AFTER the reset, not before it. ResetToStartPose teleports the
+                // fighter back to its spawn point, so sampling the pelvis first
+                // measured the next run from where the fighter FELL rather than
+                // from where it restarts, and every distance after the first
+                // fall was offset by the length of that teleport.
+                _runStartPosition = _rig.Pelvis.position;
                 for (int contactIndex = 0; contactIndex < _allContacts.Length; contactIndex++)
                 {
                     _allContacts[contactIndex].ResetContacts();
