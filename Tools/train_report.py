@@ -31,6 +31,7 @@ RESULTS = "results"
 SHIPPING = [
     ("StepsBetweenFalls", "steps between falls  (gen20 capsule: 113)"),
     ("UprightFraction", "fraction of round upright"),
+    ("BestRunDistance", "best run distance, m  (race needs 0.75)"),
     ("Alternation", "alternation  (walking, not hopping; gen18: 0.766)"),
 ]
 DIAGNOSTIC = [
@@ -82,7 +83,7 @@ def tail_mean(acc, tag, window):
 
 
 def fmt(value):
-    return "     --" if value is None else f"{value:7.3f}"
+    return "       --" if value is None else f"{value:9.3f}"
 
 
 def report_run(run_id, window):

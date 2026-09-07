@@ -16,6 +16,7 @@ import sys
 # (json field, label, higher_is_better)
 ROWS = [
     ("stepsBetweenFalls", "steps between falls", True),
+    ("bestRunDistance", "best run distance (m)", True),
     ("uprightFraction", "upright fraction", True),
     ("stumbles", "falls per episode", False),
     ("stepsSurvived", "steps to first fall", True),
@@ -23,6 +24,10 @@ ROWS = [
     ("clearanceMean", "foot clearance", True),
     ("singleSupportMean", "single support", True),
     ("speedMatchMean", "speed match", True),
+    ("footLeftGrounded", "left foot grounded", True),
+    ("footRightGrounded", "right foot grounded", True),
+    ("footLeftLift", "left foot lift (m)", True),
+    ("footRightLift", "right foot lift (m)", True),
 ]
 BODY_ORDER = ["ALL", "Capsule", "Grandma", "Grandpa", "Unlabelled"]
 

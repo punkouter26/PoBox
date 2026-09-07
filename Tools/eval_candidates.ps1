@@ -6,8 +6,13 @@
 # time. This copies the checkpoints in under a gitignored folder, rebuilds the
 # evaluation player, runs the matrix, and cleans up.
 #
-#   pwsh Tools/eval_candidates.ps1 -Runs boxer_locomotion21,boxer_locomotion23
-#   pwsh Tools/eval_candidates.ps1 -Runs boxer_locomotion22 -Speeds 0,1 -Episodes 4
+#   pwsh -Command "& ./Tools/eval_candidates.ps1 -Runs @('boxer_locomotion21','boxer_locomotion23')"
+#   pwsh -Command "& ./Tools/eval_candidates.ps1 -Runs @('boxer_locomotion22') -Speeds 0,1 -Episodes 4"
+#
+# Use -Command, NOT -File, for the array parameters. Under -File every argument
+# arrives as a plain string, so "-Runs a,b" binds the whole thing to Runs[0] as
+# one run named "a,b" -- which then merely warns that it has no checkpoints and
+# silently measures the baselines only.
 #
 # Safe to run WHILE training continues: it builds to EvalBuild, which nothing
 # else holds open, and only reads from results/.

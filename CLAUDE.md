@@ -42,27 +42,82 @@ Unity.exe -batchmode -quit -projectPath . `
 ```
 
 **Re-running a scene tool overwrites that scene wholesale**, including asset
-references you edited by hand. Before running one, check the tool's constants —
+references you edited by hand -- and the committed scene being healthy is no
+evidence that the tool still produces a healthy one. Regenerating
+`SCN_TRAIN_LOCOMOTION` on 2026-09-07 produced a scene in which ten of sixteen
+fighters threw `NullReferenceException` every physics tick and earned zero
+reward, while the trainer reported a plausible mean over the six that still
+worked. Run `python Tools/verify_train_scene.py` after regenerating a training
+scene; it reads the YAML directly and needs no Unity. Before running one, check the tool's constants —
 e.g. `RigTool_WalkContestScene.LOCOMOTION_BRAIN_PATH` decides which brain the whole
 roster gets. A stale constant silently downgrades a scene you just wired up.
 
 ### Training
 
-`mlagents-learn` attaches to the **running Editor** on port 5004 — there is no
-headless env build in the loop. Start the trainer first, then press Play:
+Two ways in, and the headless one is the default now.
+
+**Headless (preferred).** Build a player once, then run as many trainers as the
+machine will take. Nothing needs the Editor open, so several generations can run
+side by side and the project stays free for builds:
 
 ```powershell
-.venv\Scripts\activate
-mlagents-learn Config\BoxerLocomotion20.yaml --run-id=boxer_locomotion20
+Unity.exe -batchmode -quit -nographics -projectPath . -buildTarget Win64 `
+          -executeMethod PoBox.Editor.Build_TrainingEnv.Build -buildOutput EnvBuild
+.venv\Scripts\mlagents-learn Config\BoxerLocomotion21.yaml `
+          --run-id=boxer_locomotion21 --env=EnvBuild\PoBoxTrain.exe `
+          --no-graphics --num-envs 6
 ```
 
-Run id matches the config name lowercased (`BoxerLocomotion20.yaml` →
-`boxer_locomotion20`). Output lands in `results/` (gitignored). If Unity logs
-`Couldn't connect to trainer on port 5004 … Will perform inference instead`, no
-trainer was listening and the scene just ran the baked brains.
+Concurrent runs need **their own `--base-port` and their own env directory**:
+Windows holds a running `.exe` open, so a second generation that changes reward
+code must build to `EnvBuild2/`, `EnvBuild3/` and so on rather than over the top
+of a run in flight. Measured on a 24-core box: 6 envs sustain ~2,500 steps/s per
+run and four concurrent runs sit at ~35% CPU, so the limit is RAM (~250 MB per
+env player), not cores.
 
-The venv pins are load-bearing — `protobuf 3.20.3`, `torch 2.2.2`, `numpy 1.23.5`,
-`mlagents 1.1.0`. Any `pip install` that moves them breaks training; re-pin after.
+**Attached to the Editor.** `mlagents-learn` with no `--env` waits on port 5004;
+start the trainer first, then press Play. If Unity logs `Couldn't connect to
+trainer on port 5004 ... Will perform inference instead`, nothing was listening
+and the scene just ran its baked brains.
+
+Run id matches the config name lowercased (`BoxerLocomotion21.yaml` ->
+`boxer_locomotion21`). Output lands in `results/` (gitignored), with a `.onnx`
+exported at every `checkpoint_interval` -- so a run stopped early still leaves
+usable brains behind and does not need a graceful shutdown to be salvaged.
+
+The venv pins are load-bearing -- `protobuf 3.20.3`, `torch 2.2.2`,
+`numpy 1.23.5`, `mlagents 1.1.0`, on Python 3.10. Any `pip install` that moves
+them breaks training; re-pin after.
+
+### Measuring a brain
+
+Mean reward is not the shipping criterion for either mini-game, and the criteria
+that are -- steps between falls, upright fraction, alternation, distance reached
+before falling -- reach only TensorBoard, which only records while a trainer is
+attached. Three tools close that gap:
+
+| Tool | Answers |
+|---|---|
+| `python Tools/train_report.py <run-id>` | how a **live run** is doing, per body |
+| `pwsh -Command "& ./Tools/eval_candidates.ps1 -Runs @('<run-id>')"` | how a **finished brain** compares to the ones that ship |
+| `python Tools/verify_train_scene.py` | whether a regenerated scene has a hole in its fall detector |
+
+`eval_candidates.ps1` stages a run's latest checkpoint under `Assets/Agents`,
+rebuilds `EvalBuild/` and runs the matrix; it is safe to run while training
+continues. Pass array arguments with `-Command`, never `-File` -- under `-File`
+every argument arrives as a plain string, so `-Runs a,b` silently becomes one run
+named `a,b` and the script measures only the baselines.
+
+**Every measurement includes the heuristic PD bot.** It is the floor a policy has
+to clear, and it is not a soft one: measured 2026-09-07, it out-stands the
+shipping balance brain on the capsule by 40%.
+
+**Statistics are written per body** (`Locomotion/Grandma/StepsBetweenFalls`) as
+well as in aggregate. Sixteen fighters train one shared brain across three rigs,
+and the standing rule is that improving the characters by wrecking the capsule is
+not shippable -- which a single mean cannot see. An aggregate that matches the
+capsule's column exactly is the signature of the character rigs contributing
+nothing at all; see the fall-detector note under **Scene and prefab generation**.
 
 ### WebGL build and deploy
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -63,6 +63,11 @@ namespace PoBox
             public float clearanceMean;
             public float speedMatchMean;
             public float stumbles;
+            public float bestRunDistance;
+            public float footLeftGrounded;
+            public float footRightGrounded;
+            public float footLeftLift;
+            public float footRightLift;
         }
 
         [Serializable]
@@ -88,6 +93,11 @@ namespace PoBox
             public double Clearance;
             public double SpeedMatch;
             public double Stumbles;
+            public double BestRunDistance;
+            public double FootLeftGrounded;
+            public double FootRightGrounded;
+            public double FootLeftLift;
+            public double FootRightLift;
         }
 
         private Reward_Locomotion[] _rewards;
@@ -100,6 +110,8 @@ namespace PoBox
         private int _observationWidth = -1;
         private float _startTime;
         private bool _finished;
+        private bool _diagnoseFeet;
+        private bool _diagnosed;
 
         /// <summary>
         /// Installs the harness only when the command line asks for it, so the
@@ -123,6 +135,7 @@ namespace PoBox
             _targetEpisodes = ParseInt(Argument("-evalEpisodes"), 3);
             _speedCommandMax = ParseFloat(Argument("-evalSpeed"), 0f);
             Time.timeScale = ParseFloat(Argument("-evalTimeScale"), 20f);
+            _diagnoseFeet = Argument("-evalDiagnoseFeet") != null;
             _startTime = Time.realtimeSinceStartup;
 
             _rewards = FindObjectsByType<Reward_Locomotion>(FindObjectsSortMode.None);
@@ -184,6 +197,16 @@ namespace PoBox
             {
                 return;
             }
+            // Once, after the pose has settled under gravity but long before any
+            // policy has done anything interesting.
+            if (_diagnoseFeet && !_diagnosed && Time.realtimeSinceStartup - _startTime > 5f)
+            {
+                _diagnosed = true;
+                for (int rewardIndex = 0; rewardIndex < _rewards.Length; rewardIndex++)
+                {
+                    Debug.Log("FOOT_DIAG " + _rewards[rewardIndex].DescribeFeet());
+                }
+            }
             int slowest = int.MaxValue;
             for (int rewardIndex = 0; rewardIndex < _rewards.Length; rewardIndex++)
             {
@@ -238,6 +261,11 @@ namespace PoBox
             accumulator.Clearance += episode.ClearanceMean;
             accumulator.SpeedMatch += episode.SpeedMatchMean;
             accumulator.Stumbles += episode.Stumbles;
+            accumulator.BestRunDistance += episode.BestRunDistance;
+            accumulator.FootLeftGrounded += episode.FootLeftGrounded;
+            accumulator.FootRightGrounded += episode.FootRightGrounded;
+            accumulator.FootLeftLift += episode.FootLeftLift;
+            accumulator.FootRightLift += episode.FootRightLift;
         }
 
         private void WriteReport()
@@ -276,6 +304,11 @@ namespace PoBox
                 overall.Clearance += accumulator.Clearance;
                 overall.SpeedMatch += accumulator.SpeedMatch;
                 overall.Stumbles += accumulator.Stumbles;
+                overall.BestRunDistance += accumulator.BestRunDistance;
+                overall.FootLeftGrounded += accumulator.FootLeftGrounded;
+                overall.FootRightGrounded += accumulator.FootRightGrounded;
+                overall.FootLeftLift += accumulator.FootLeftLift;
+                overall.FootRightLift += accumulator.FootRightLift;
             }
             results.Sort((left, right) => string.CompareOrdinal(left.body, right.body));
             results.Insert(0, ToResult("ALL", overall.Fighters, overall));
@@ -324,7 +357,12 @@ namespace PoBox
                 singleSupportMean = (float)(accumulator.SingleSupport / divisor),
                 clearanceMean = (float)(accumulator.Clearance / divisor),
                 speedMatchMean = (float)(accumulator.SpeedMatch / divisor),
-                stumbles = (float)(accumulator.Stumbles / divisor)
+                stumbles = (float)(accumulator.Stumbles / divisor),
+                bestRunDistance = (float)(accumulator.BestRunDistance / divisor),
+                footLeftGrounded = (float)(accumulator.FootLeftGrounded / divisor),
+                footRightGrounded = (float)(accumulator.FootRightGrounded / divisor),
+                footLeftLift = (float)(accumulator.FootLeftLift / divisor),
+                footRightLift = (float)(accumulator.FootRightLift / divisor)
             };
         }
 

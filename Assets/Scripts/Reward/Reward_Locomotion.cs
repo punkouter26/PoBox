@@ -340,10 +340,28 @@ namespace PoBox
             public readonly float SpeedMatchMean;
             public readonly float CommandedSpeed;
             public readonly int Stumbles;
+            /// <summary>Furthest reached in one unbroken upright run, in metres.</summary>
+            public readonly float BestRunDistance;
+            /// <summary>
+            /// Fraction of the episode each foot reported ground contact, and
+            /// how high each sat above the floor.
+            ///
+            /// SPLIT BY FOOT ON PURPOSE. Every other support statistic is
+            /// symmetric -- singleSupport is an XOR, clearance takes the higher
+            /// foot -- so a rig on which ONE foot never reaches the floor is
+            /// indistinguishable from a policy that chooses to stand on one leg.
+            /// Those are a rig defect and a behaviour, and they want opposite
+            /// fixes.
+            /// </summary>
+            public readonly float FootLeftGrounded;
+            public readonly float FootRightGrounded;
+            public readonly float FootLeftLift;
+            public readonly float FootRightLift;
 
             public EpisodeSummary(float stepsBetweenFalls, float uprightFraction, float alternation,
                 float stepsSurvived, float singleSupportMean, float clearanceMean, float speedMatchMean,
-                float commandedSpeed, int stumbles)
+                float commandedSpeed, int stumbles, float bestRunDistance,
+                float footLeftGrounded, float footRightGrounded, float footLeftLift, float footRightLift)
             {
                 StepsBetweenFalls = stepsBetweenFalls;
                 UprightFraction = uprightFraction;
@@ -354,11 +372,42 @@ namespace PoBox
                 SpeedMatchMean = speedMatchMean;
                 CommandedSpeed = commandedSpeed;
                 Stumbles = stumbles;
+                BestRunDistance = bestRunDistance;
+                FootLeftGrounded = footLeftGrounded;
+                FootRightGrounded = footRightGrounded;
+                FootLeftLift = footLeftLift;
+                FootRightLift = footRightLift;
             }
         }
 
         /// <summary>Which rig this fighter is, or empty when unlabelled.</summary>
         public string BodyName => _bodyName;
+
+        /// <summary>
+        /// One line describing how each foot is wired and where it actually is,
+        /// for diagnosing a rig whose feet are on the floor but not reporting
+        /// it. Every quantity the support and clearance terms depend on, in the
+        /// order they depend on it.
+        /// </summary>
+        public string DescribeFeet()
+        {
+            return $"{_bodyName}/{name}: " +
+                DescribeFoot("L", _rig.FootLeftSensor, _footLeftCollider) + "  " +
+                DescribeFoot("R", _rig.FootRightSensor, _footRightCollider) +
+                $"  groundY={_rig.GroundY:F3}";
+        }
+
+        private string DescribeFoot(string side, Sensor_GroundContact sensor, Collider collider)
+        {
+            if (sensor == null)
+            {
+                return $"{side}[NO SENSOR]";
+            }
+            string colliderText = collider == null
+                ? "NO COLLIDER"
+                : $"{collider.GetType().Name} on '{collider.name}' minY={collider.bounds.min.y:F4}";
+            return $"{side}[sensor on '{sensor.name}', grounded={sensor.IsGrounded}, {colliderText}]";
+        }
 
         /// <summary>
         /// Overrides the commanded-speed ceiling for an offline evaluation.
@@ -420,6 +469,22 @@ namespace PoBox
         private int _fallRuns;
         private int _episodeSteps;
         private string _statPrefix;
+        // FURTHEST THE FIGHTER GOT IN ONE UNBROKEN UPRIGHT RUN, along the goal
+        // direction. This is the walk race's actual criterion and nothing
+        // measured it: a round is "no contest" unless someone clears 0.75 m,
+        // and 11 of 13 rounds played on 2026-08-23 ended that way.
+        //
+        // It has to be per-RUN rather than per-episode because a fall teleports
+        // the fighter back to its spawn point -- ResetToStartPose restores the
+        // root transform too -- so cumulative episode displacement would be
+        // sawtoothed nonsense. Distance reached before falling is both the
+        // honest measure and the one the race asks for.
+        private Vector3 _runStartPosition;
+        private float _bestRunDistance;
+        private float _footLeftGroundedSum;
+        private float _footRightGroundedSum;
+        private float _footLeftLiftSum;
+        private float _footRightLiftSum;
 
         // Called by the editor scene builder.
         public void EditorInitialize(Agent_FighterBoxing agent, Systems_FighterRig rig,
@@ -470,6 +535,8 @@ namespace PoBox
                 _upStepsCompleted = 0;
                 _fallRuns = 0;
                 _episodeSteps = 0;
+                _bestRunDistance = 0f;
+                _runStartPosition = _rig.Pelvis.position;
             }
             _episodeSteps++;
             _lastStepCount = stepCount;
@@ -491,6 +558,9 @@ namespace PoBox
                 _upStepsSinceFall = 0;
                 _fallRuns++;
                 _recoveryStepsLeft = STUMBLE_RECOVERY_STEPS;
+                // The reset teleports the fighter home, so the next run's
+                // distance is measured from wherever it now stands.
+                _runStartPosition = _rig.Pelvis.position;
                 _rig.ResetToStartPose();
                 for (int contactIndex = 0; contactIndex < _allContacts.Length; contactIndex++)
                 {
@@ -510,6 +580,11 @@ namespace PoBox
             // Upright, settled and earning: exactly the steps "between falls"
             // is supposed to count.
             _upStepsSinceFall++;
+            float runDistance = Vector3.Dot(_rig.Pelvis.position - _runStartPosition, _commandedDirection);
+            if (runDistance > _bestRunDistance)
+            {
+                _bestRunDistance = runDistance;
+            }
 
             Vector3 torsoUp = _rig.Torso.transform.up;
             float uprightDot = Mathf.Max(0f, Vector3.Dot(torsoUp, Vector3.up));
@@ -573,6 +648,10 @@ namespace PoBox
             // the stance foot either.
             float footLeftLift = Mathf.Max(0f, _footLeftCollider.bounds.min.y - _rig.GroundY);
             float footRightLift = Mathf.Max(0f, _footRightCollider.bounds.min.y - _rig.GroundY);
+            _footLeftLiftSum += footLeftLift;
+            _footRightLiftSum += footRightLift;
+            _footLeftGroundedSum += leftDown ? 1f : 0f;
+            _footRightGroundedSum += rightDown ? 1f : 0f;
             float swingHeight = Mathf.Max(footLeftLift, footRightLift);
             float clearance = Mathf.Clamp01(swingHeight / TARGET_CLEARANCE);
             // GEN 9 bug fix: with BOTH feet off the floor there is no stance
@@ -819,6 +898,9 @@ namespace PoBox
                 // 0-1 scale, which is the question both mini-games ask.
                 AddStat("UprightFraction",
                     _episodeSteps > 0 ? (float)_speedMatchSamples / _episodeSteps : 0f);
+                AddStat("BestRunDistance", _bestRunDistance);
+                AddStat("FootLeftGrounded", _footLeftGroundedSum / _speedMatchSamples);
+                AddStat("FootRightGrounded", _footRightGroundedSum / _speedMatchSamples);
 
                 LastEpisode = new EpisodeSummary(
                     _fallRuns > 0 ? (float)_upStepsCompleted / _fallRuns : _episodeSteps,
@@ -829,13 +911,22 @@ namespace PoBox
                     _clearanceSum / _speedMatchSamples,
                     _speedMatchSum / _speedMatchSamples,
                     _commandedSpeed,
-                    _stumbles);
+                    _stumbles,
+                    _bestRunDistance,
+                    _footLeftGroundedSum / _speedMatchSamples,
+                    _footRightGroundedSum / _speedMatchSamples,
+                    _footLeftLiftSum / _speedMatchSamples,
+                    _footRightLiftSum / _speedMatchSamples);
                 EpisodesCompleted++;
             }
             _speedMatchSum = 0f;
             _supportSum = 0f;
             _clearanceSum = 0f;
             _alternationSum = 0f;
+            _footLeftGroundedSum = 0f;
+            _footRightGroundedSum = 0f;
+            _footLeftLiftSum = 0f;
+            _footRightLiftSum = 0f;
             _speedMatchSamples = 0;
         }
 
