@@ -1,0 +1,68 @@
+# Locomotion gen 32 (2026-09-07). NO LADDER. Commanded speed pinned at walking
+# pace, from gen 31's weights.
+#
+# WHY NO LADDER. --resume does not restore curriculum position. Gen 31 was
+# resumed at 15.1M of a 25M budget -- progress 0.60, which its own progress gates
+# put on the Walk rung -- and the lesson tracker restarted at StandStill and
+# began re-walking Sway and Shuffle. So the resume was spending its steps
+# retraining a policy that had reached walking pace to stand still at 0.13 m/s,
+# which is the precise behaviour four runs of this session have shown is the
+# thing to avoid.
+#
+#   ML-AGENTS RESUMES WEIGHTS AND STEP COUNT, NOT LESSONS. A progress-gated
+#   curriculum measures progress from the RESUME, not from zero.
+#
+# WHAT THIS RUN DOES INSTEAD. speed_command_max is pinned at 1.0, and
+# Reward_Locomotion draws each episode's command from
+# [SPEED_COMMAND_MIN_FRACTION * cap, cap] = [0.6, 1.0]. Every episode therefore
+# demands real travel, and standing still cannot satisfy the speed term at any
+# point in the run. Gen 31 already carries the balance to survive at that pace --
+# it reached the Walk rung with best-run distance 0.805 m -- so the only thing
+# left to find is the gait.
+#
+# This is the sharpest form of the question the last four runs asked gently and
+# got a shrug from: alternation has sat between 0.005 and 0.054 while gen 18
+# reaches 0.766, and every one of those runs had SOME commanded speed low enough
+# that sliding paid. Now none of them are.
+#
+# SUCCESS: alternation and clearance climbing where they previously flattened.
+#
+# FAILURE THAT WOULD MEAN SOMETHING: the fighters slide at 1.0 m/s too, or fall
+# constantly and learn nothing. The first would say the gait terms cannot be
+# reached from a standing policy and the walk line needs its own from-scratch
+# lineage rather than a balance hand-off. The second would say the pace jump was
+# too large and wants the ladder back, correctly resumed.
+#
+# Run: mlagents-learn Config/BoxerLocomotion32.yaml --run-id=boxer_locomotion32
+#      --initialize-from=boxer_locomotion31 --env EnvBuild6/PoBoxTrain.exe
+#      --no-graphics --num-envs 8 --base-port 6100
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.02
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 12000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # Pinned. See the header: every episode draws from [0.6, 1.0] m/s.
+  speed_command_max: 1.0
