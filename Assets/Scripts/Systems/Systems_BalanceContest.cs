@@ -105,12 +105,36 @@ namespace PoBox
                 Systems_FighterIdentity.Resolve(rig, out string displayName, out Color plateColor);
                 VisualElement plate = Systems_UiTheme.BuildPlate(plateColor, out Label plateLabel);
                 platesRow.Add(plate);
+                // ROUND ONE STARTS FROM THE SAME POSE EVERY OTHER ROUND DOES.
+                //
+                // It used to start from whatever the spawner left behind: the
+                // fighter is instantiated under an inactive holder, reparented,
+                // and dropped from SPAWN_HEIGHT, so at this moment the ragdoll
+                // is unsettled and carrying whatever velocity the reparent gave
+                // it. Every LATER round begins from ResetToStartPose -- the
+                // canonical pose, velocities zeroed, contacts cleared -- which
+                // is also the pose the policy trained on.
+                //
+                // So round one asked the brain to catch a falling body it had
+                // never seen, and it showed. Measured over two runs of the
+                // scene with Locomotion_gen25, alive times:
+                //
+                //   round 1   everyone down inside 6.4 s
+                //   round 2   29.0 s, 29.0 s, 17.4 s ...
+                //   round 3   29.2 s, 29.2 s, 27.8 s, 26.2 s, 25.1 s ...
+                //
+                // A player watching the FIRST round of a fresh contest was
+                // seeing the worst the game has to offer.
+                ResetRigForRound(rig);
+
                 var contestant = new Contestant
                 {
                     displayName = displayName,
                     rig = rig,
                     agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
+                    // Measured AFTER the reset, so it describes the pose the
+                    // fighter actually stands in rather than a mid-drop one.
                     startHeadHeight = rig.Head.position.y - rig.GroundY,
                     plate = plate,
                     label = plateLabel
@@ -279,6 +303,22 @@ namespace PoBox
         /// re-asserts the command after every round reset. Harmless for a
         /// fighter whose brain does not observe the command.
         /// </summary>
+        /// <summary>
+        /// Puts a rig into the pose a round starts from: the captured start
+        /// pose, velocities zeroed, and every ground sensor cleared.
+        ///
+        /// Shared by round one and every restart so the two cannot drift apart
+        /// again -- they already had, and round one was the worse of the two.
+        /// </summary>
+        private static void ResetRigForRound(Systems_FighterRig rig)
+        {
+            rig.ResetToStartPose();
+            foreach (Sensor_GroundContact sensor in rig.GetComponentsInChildren<Sensor_GroundContact>(true))
+            {
+                sensor.ResetContacts();
+            }
+        }
+
         private static void CommandStand(Contestant contestant)
         {
             if (contestant.agent != null)
@@ -316,11 +356,7 @@ namespace PoBox
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
                 Contestant contestant = _contestants[contestantIndex];
-                contestant.rig.ResetToStartPose();
-                foreach (Sensor_GroundContact sensor in contestant.rig.GetComponentsInChildren<Sensor_GroundContact>(true))
-                {
-                    sensor.ResetContacts();
-                }
+                ResetRigForRound(contestant.rig);
                 CommandStand(contestant);
                 contestant.aliveTime = 0f;
                 contestant.uprightnessSum = 0f;
