@@ -1,4 +1,4 @@
-// filepath: Assets/Scripts/Editor/Build_TrainingEnv.cs
+﻿// filepath: Assets/Scripts/Editor/Build_TrainingEnv.cs
 //
 // Headless ML-Agents training environment. Built so `mlagents-learn` can drive
 // N copies of the player instead of the single running Editor:
@@ -87,11 +87,10 @@ namespace PoBox.Editor
             PlayerSettings.runInBackground = true;
 
             string absoluteOut = Path.GetFullPath(outputDir);
-            if (Directory.Exists(absoluteOut))
+            if (!TryClearOutput(absoluteOut, ExeName))
             {
-                Directory.Delete(absoluteOut, recursive: true);
+                return BuildResult.Failed;
             }
-            Directory.CreateDirectory(absoluteOut);
 
             var options = new BuildPlayerOptions
             {
@@ -110,6 +109,37 @@ namespace PoBox.Editor
             Debug.Log($"Training env build {summary.result} in {summary.totalTime}. " +
                       $"Size: {summary.totalSize} bytes, errors: {summary.totalErrors}.");
             return summary.result;
+        }
+
+
+        /// <summary>
+        /// Empties the output directory, or explains clearly why it could not.
+        ///
+        /// Windows keeps a running .exe and its DLLs open, so a player left over
+        /// from an earlier run makes Directory.Delete throw
+        /// UnauthorizedAccessException on something like 'dstorage.dll'. That
+        /// surfaced as "executeMethod ... threw exception" with the real cause
+        /// forty lines further up the log, which is a poor way to learn that a
+        /// stray process is holding the folder.
+        /// </summary>
+        private static bool TryClearOutput(string absoluteOut, string exeName)
+        {
+            if (Directory.Exists(absoluteOut))
+            {
+                try
+                {
+                    Directory.Delete(absoluteOut, recursive: true);
+                }
+                catch (Exception exception) when (exception is UnauthorizedAccessException || exception is IOException)
+                {
+                    Debug.LogError($"Cannot clear {absoluteOut}: {exception.Message}. Something is holding a " +
+                        $"file open there — almost always a {exeName} still running from an earlier run. " +
+                        "Stop it and build again.");
+                    return false;
+                }
+            }
+            Directory.CreateDirectory(absoluteOut);
+            return true;
         }
 
         private static string ResolveOutputDir()

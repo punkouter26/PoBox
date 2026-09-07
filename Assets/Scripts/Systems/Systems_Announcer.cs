@@ -107,7 +107,7 @@ namespace PoBox
             _saveCooldowns = new float[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
             }
 
             if (_contest != null)
@@ -178,7 +178,13 @@ namespace PoBox
                 {
                     _saveCooldowns[rigIndex] -= dt;
                 }
-                float headFraction = _rigs[rigIndex].Head.position.y / _startHeadHeights[rigIndex];
+            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
+            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
+            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
+            // standing until its head was practically on the floor and this never
+            // fired in the contest at all.
+                float headFraction =
+                    (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY) / _startHeadHeights[rigIndex];
                 if (!_inDip[rigIndex] && headFraction < NEAR_FALL_DIP_FRACTION && headFraction > 0.5f)
                 {
                     _inDip[rigIndex] = true;

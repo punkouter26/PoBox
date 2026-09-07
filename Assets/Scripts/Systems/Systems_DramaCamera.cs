@@ -173,7 +173,7 @@ namespace PoBox
             _wasStanding = new bool[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
                 _wasStanding[rigIndex] = true;
             }
             // Every fighter probes the floor it spawned on; they all share one,
@@ -249,7 +249,13 @@ namespace PoBox
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
                 Systems_FighterRig rig = _rigs[rigIndex];
-                float headFraction = rig.Head.position.y / _startHeadHeights[rigIndex];
+            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
+            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
+            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
+            // standing until its head was practically on the floor and this never
+            // fired in the contest at all.
+                float headFraction =
+                    (rig.Head.position.y - rig.GroundY) / _startHeadHeights[rigIndex];
                 bool standing = headFraction > STANDING_HEAD_FRACTION;
                 float wobble = 1f - Mathf.Clamp01(headFraction)
                     + rig.Pelvis.angularVelocity.magnitude * ANGULAR_VELOCITY_DRAMA_SCALE;

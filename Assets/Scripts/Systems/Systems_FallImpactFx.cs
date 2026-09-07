@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace PoBox
 {
@@ -32,7 +32,7 @@ namespace PoBox
             _armed = new bool[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
                 _armed[rigIndex] = true;
             }
         }
@@ -46,7 +46,13 @@ namespace PoBox
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
                 Systems_FighterRig rig = _rigs[rigIndex];
-                float headFraction = rig.Head.position.y / _startHeadHeights[rigIndex];
+            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
+            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
+            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
+            // standing until its head was practically on the floor and this never
+            // fired in the contest at all.
+                float headFraction =
+                    (rig.Head.position.y - rig.GroundY) / _startHeadHeights[rigIndex];
                 if (_armed[rigIndex] && headFraction < FALL_HEAD_FRACTION)
                 {
                     _armed[rigIndex] = false;

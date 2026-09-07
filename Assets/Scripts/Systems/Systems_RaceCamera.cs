@@ -128,7 +128,7 @@ namespace PoBox
             _startHeadHeights = new float[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
             }
             _groundY = _rigs[0].GroundY;
             _lookPoint = PackCentroid() + Vector3.up * _lookHeight;
@@ -195,7 +195,13 @@ namespace PoBox
             int counted = 0;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                if (_rigs[rigIndex].Head.position.y <= _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
+            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
+            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
+            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
+            // standing until its head was practically on the floor and this never
+            // fired in the contest at all.
+                if (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY
+                    <= _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
                 {
                     continue;
                 }
@@ -226,7 +232,8 @@ namespace PoBox
             {
                 Vector3 pelvis = _rigs[rigIndex].Pelvis.position;
                 allSum += pelvis;
-                if (_rigs[rigIndex].Head.position.y > _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
+                if (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY
+                    > _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
                 {
                     standingSum += pelvis;
                     standingCount++;

@@ -21,6 +21,110 @@ differs between them is **the width of the input** and **what behaviour they lea
 
 ---
 
+## Addendum — 2026-09-07: the blocker was instrumentation, not stability
+
+Everything above this section was written on 2026-08-23 and its **Blocker** line
+reads *"Stability. Every walking brain topples about every 1.7 s."* That reading
+survived twenty generations of reward tuning. It was measuring three faults in
+the instrumentation underneath the policies.
+
+### What was actually wrong
+
+**Ground contact was a tally that drifted.** `Sensor_GroundContact` reported
+grounded while a running total of `OnCollisionEnter` minus `OnCollisionExit` was
+positive. On the imported character rigs that total desynchronises and never
+recovers, because `ResetContacts()` zeroes it while the foot is still resting on
+the floor and no new `Enter` is ever generated for a pair that never separated.
+Measured on fighters standing still:
+
+```
+Capsule/Fighter_00  L[on 'FootL',     grounded=True,  minY=-0.0024]
+Grandma/Fighter_13  L[on 'LeftFoot',  grounded=False, minY=-0.0043]
+                    R[on 'RightFoot', grounded=False, minY=-0.0083]
+```
+
+Grandma's soles are millimetres *below* the floor plane while both sensors
+report airborne. `singleSupport`, the clearance gate, the whole support term,
+fall detection, and eight of the agent's own observations are computed from
+those flags — so ten of sixteen fighters trained against a corrupted objective
+*and* read a corrupted vector. The per-body ordering the project read as a
+difficulty gradient tracks sensor health, not rig difficulty:
+
+| body | feet grounded (heuristic bot) | steps between falls |
+|---|---|---|
+| Capsule | 0.97 / 0.98 | 104 |
+| Grandpa | 0.61 / 1.00 | 66 |
+| Grandma | 0.41 / 0.41 | 38 |
+
+**The scene tool silently disabled ten fighters.** Regenerating
+`SCN_TRAIN_LOCOMOTION` — the documented way to maintain it — produced null fall
+contacts on the character rigs, because the lower-leg sensors were looked up by
+joint indices 3 and 9, positions in the *capsule's* joint list. The reward
+dereferences them every `FixedUpdate`, so those fighters threw
+`NullReferenceException` 50 times a second and earned zero reward while the
+trainer reported a healthy mean over the six that still worked. The committed
+scene did not have the defect, so nothing had ever caught it.
+
+**Nothing measured a finished brain.** Every metric reached only TensorBoard,
+which only records while a trainer is attached, so promotions were argued from
+one run's training curve against another generation's. `Systems_EvalHarness` now
+runs a baked `.onnx` through the training scene with no trainer and reports the
+same numbers, per body, at a chosen commanded speed and with or without shoves.
+
+### What the corrected measurements say
+
+Like-for-like, same scene, same three rigs, same reward code.
+
+| commanded speed 0 | steps between falls | upright | notes |
+|---|---:|---:|---|
+| heuristic PD bot | 91.6 | 0.776 | stands on two feet (`singleSupport` 0.013) |
+| `Locomotion_gen20` | 110.0 | 0.803 | stands on **one** foot, 0.159 m up |
+| heuristic, +shove | 82.4 | 0.760 | −10% under perturbation |
+| `Locomotion_gen20`, +shove | 92.3 | 0.777 | −17% under perturbation |
+
+Two things fall out of that table.
+
+**The hand-written bot out-stands the shipping balance brain on the capsule**,
+112.1 against 80.2, at a higher upright fraction. A PD controller beating twenty
+generations of policy is not a statement about RL; it is a statement about what
+the reward asked for. At `gaitBlend` 0 the support term and the clearance term
+both saturate whether the fighter is planted or holding one foot in the air, so
+a speed-0 balance run optimises neither — and the alternation term added in
+gen 15 to stop exactly this is gated by `gaitBlend`, so it is switched off at
+the one commanded speed a balance brain trains at.
+
+**Gen 20 gives back nearly twice what the bot does when shoved**, which is the
+signature of a policy fitted to still air. `SCN_TRAIN_LOCOMOTION` disables the
+shovers; `SCN_TEST_BALANCE_CONTEST` runs hazards and shoves.
+
+### The walk race, quantified
+
+`Systems_WalkContest.MIN_WIN_DISTANCE` is 0.75 m. Measured at commanded speed 1,
+furthest reached in one unbroken upright run:
+
+| | best run distance | alternation |
+|---|---:|---:|
+| heuristic PD bot | 0.863 m | 0.102 |
+| `Locomotion_gen18_34M` (ships) | **0.767 m** | 0.579 |
+
+The shipping walk brain averages two centimetres over the pass mark. That is the
+whole explanation for "11 of 13 rounds were no contest" — the field sits exactly
+on the line, so roughly half of all rounds fall short of it.
+
+### Contest code measured height against the wrong zero
+
+Both contests, the announcer, the drama camera, the fall-impact FX and the race
+camera all decided "has this fighter collapsed" with a fraction of a **raw world
+Y**. The ring canvas sits at `RING_FLOOR_Y` = 1 m, so 45% of a 2.6 m head height
+is 1.17 m — 17 cm above the canvas. A fighter counted as standing until its head
+was practically on the floor, and the balance contest's round-ranking score gave
+a fighter lying flat 0.385 per second instead of ~0. All are now measured above
+`rig.GroundY`, which is probed per fighter and correct at any altitude.
+
+---
+
+---
+
 ## Tier 2 — What the inventory means
 
 ### The observation-width contract
