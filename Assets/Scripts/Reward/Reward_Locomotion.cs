@@ -124,6 +124,30 @@ namespace PoBox
         // regime at the very bottom, where the lesson is standing and there is
         // no stepping to protect.
         private const float STEPPING_CREDIT_BLEND = 0.25f;
+        // GEN 24 (2026-09-07): how hard off-axis drift is scored, relative to an
+        // equal error along the goal direction.
+        //
+        // THE BLIND SPOT. The speed term scored ONE NUMBER: the component of
+        // pelvis velocity along the goal direction. Velocity across that
+        // direction, and velocity straight down, were not in the reward at all.
+        // At commanded speed 0 that means a fighter sliding sideways at 2 m/s
+        // scores a perfect 1.0 on the single heaviest term in the function
+        // (weight 0.5, against uprightness at 0.15).
+        //
+        // Which matters because sideways is the direction fighters actually
+        // fall. A topple starts as lateral drift of the centre of mass over the
+        // edge of the support patch, and for a whole second of that drift the
+        // reward said nothing was wrong -- the same shape of oversight as the
+        // support term paying a flamingo and a stance alike, in the term next
+        // to it.
+        //
+        // 1.0 scores a metre per second of drift exactly as an equal error in
+        // the commanded direction, which is the assumption that needs no
+        // tuning: it simply stops treating two components of the same vector
+        // differently. Vertical velocity stays out, because a fighter loading
+        // and unloading its legs to balance moves its pelvis up and down on
+        // purpose.
+        private const float OFF_AXIS_SPEED_WEIGHT = 1f;
         // Separate from the blend on purpose: below this the LESSON is about
         // standing, so commands are still drawn from zero. Folding this into
         // the blend constant is what made one number do two unrelated jobs.
@@ -496,9 +520,16 @@ namespace PoBox
 
             // Signed: travelling backwards scores worse than standing still,
             // which stops "fall away from the goal" from looking neutral.
-            float speedAlongGoal = Vector3.Dot(_rig.Pelvis.linearVelocity, _commandedDirection);
+            Vector3 pelvisVelocity = _rig.Pelvis.linearVelocity;
+            float speedAlongGoal = Vector3.Dot(pelvisVelocity, _commandedDirection);
             float speedError = speedAlongGoal - _commandedSpeed;
-            float speedMatchReward = Mathf.Exp(-(speedError * speedError) / (SPEED_KERNEL * SPEED_KERNEL));
+            // GEN 24: drift ACROSS the goal direction is an error too. Measured
+            // in the horizontal plane only -- see OFF_AXIS_SPEED_WEIGHT.
+            Vector3 planarVelocity = new Vector3(pelvisVelocity.x, 0f, pelvisVelocity.z);
+            float offAxisSpeed = (planarVelocity - _commandedDirection * speedAlongGoal).magnitude;
+            float squaredError = (speedError * speedError) +
+                OFF_AXIS_SPEED_WEIGHT * (offAxisSpeed * offAxisSpeed);
+            float speedMatchReward = Mathf.Exp(-squaredError / (SPEED_KERNEL * SPEED_KERNEL));
             _speedMatchSum += speedMatchReward;
             _speedMatchSamples++;
 

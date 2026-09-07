@@ -1,0 +1,66 @@
+# Locomotion gen 24 (2026-09-07). Balance run. Gen 23 plus ONE further reward
+# change, so gens 21 -> 23 -> 24 form an ablation ladder that adds exactly one
+# thing per rung and shares everything else: horizon settings, speed pin,
+# budget, and a from-scratch start.
+#
+#   gen 21   horizon fix only            (gamma/lambd/time_horizon/beta)
+#   gen 23   + tell a stance from a flamingo
+#   gen 24   + score drift ACROSS the goal direction
+#
+# THE CHANGE. The speed term scored one number: pelvis velocity along the goal
+# direction. Velocity across it was not in the reward, so at commanded speed 0 a
+# fighter sliding sideways at 2 m/s scored a perfect 1.0 on the heaviest term in
+# the function -- weight 0.5, against uprightness at 0.15.
+#
+# Sideways is the direction fighters fall. A topple is lateral drift of the
+# centre of mass past the edge of the support patch, and the reward was silent
+# for the whole second that drift takes. See OFF_AXIS_SPEED_WEIGHT.
+#
+# THIS IS THE THIRD OVERSIGHT OF THE SAME SHAPE found today, after a fall
+# detector with two nulls in it and a support term that paid a flamingo like a
+# stance. All three are the reward failing to ask for what was wanted, and none
+# of them is a hyperparameter. That is the pattern gens 5-20 were tuning around.
+#
+# SUCCESS: StepsBetweenFalls above gen 23 on every body, with SpeedMatchMean
+# read as a DIFFERENT quantity than in earlier generations -- it now includes
+# off-axis error, so its numbers are NOT comparable to gens 5-23 and a drop
+# against them is expected rather than a regression.
+#
+# FAILURE THAT WOULD MEAN SOMETHING: drift falls but the fall clock does not.
+# That would mean toppling is not preceded by pelvis translation on a timescale
+# the reward can price, and would point at the ankle/hip torque limits in
+# RigTool_Config rather than at anything in this file.
+#
+# Run: mlagents-learn Config/BoxerLocomotion24.yaml --run-id=boxer_locomotion24
+#      --env EnvBuild3/PoBoxTrain.exe --no-graphics --num-envs 5 --base-port 5300
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 60000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # PINNED AT ZERO, exactly as gen 20. This run must differ from gen 20 in the
+  # estimator and in nothing else that the curriculum controls.
+  speed_command_max: 0.0
