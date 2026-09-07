@@ -1,0 +1,114 @@
+# Locomotion gen 29 (2026-09-07). Gen 28 with the off-axis speed penalty faded
+# out as the commanded speed rises. The pair isolates that one change: same
+# ladder, same budget, both started from boxer_locomotion25.
+#
+# WHY. Gen 24 added off-axis pelvis velocity to the speed error at full weight
+# everywhere, and on the balance line it was a large win -- gen 25 reached
+# reward 0.945 and effectively stopped falling. On the WALK line the same term
+# reads as "do not move sideways", and a stride IS a controlled sideways
+# oscillation of the pelvis over alternating feet.
+#
+# Measured on gen 26 at the Shuffle rung, 23.65M steps:
+#
+#   speed match     0.809    it IS travelling at the commanded pace
+#   alternation     0.005    without ever swapping stance
+#   clearance       0.017    without ever lifting a foot
+#   single support  0.001
+#
+# It is sliding. That is the shuffle-without-lifting failure gens 5-15 fought,
+# and the term meant to make sliding unattractive was instead making stepping
+# expensive. Scaling the penalty by (1 - gaitBlend) keeps gen 24 exactly as it
+# was at commanded speed 0 -- where the balance brain trains and where the win
+# was measured -- and removes it by walking pace.
+#
+# SUCCESS: Alternation and ClearanceMean climbing with the lessons instead of
+# pinned near zero, and BestRunDistance at commanded speed 1 clearly past the
+# 0.75 m the walk race requires.
+#
+# FAILURE THAT WOULD MEAN SOMETHING: alternation still near zero. That would
+# clear the off-axis term of blame and put the shuffle back on the clearance and
+# support terms, where gens 5-15 already looked.
+#
+# Run: mlagents-learn Config/BoxerLocomotion29.yaml --run-id=boxer_locomotion29
+#      --initialize-from=boxer_locomotion25 --env EnvBuild6/PoBoxTrain.exe
+#      --no-graphics --num-envs 6 --base-port 5800
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 50000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # The six-rung ladder is gen 18's, value for value and threshold for
+  # threshold. Changing the curriculum in the same generation as the estimator
+  # would make the comparison against gen 18 unreadable.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.60
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.40
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.38
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

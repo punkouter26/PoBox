@@ -603,6 +603,12 @@ namespace PoBox
             float headDelta = _rig.Head.position.y - _startHeadHeight;
             float heightReward = Mathf.Exp(-20f * headDelta * headDelta);
 
+            // Gait terms fade in with the command: at 0 m/s the agent should
+            // be planted on both feet, so demanding one-foot support there
+            // would punish correct standing. Computed here rather than below
+            // because the speed term now needs it too.
+            float gaitBlend = Mathf.Clamp01(_commandedSpeed / GAIT_FULL_SPEED);
+
             // Signed: travelling backwards scores worse than standing still,
             // which stops "fall away from the goal" from looking neutral.
             Vector3 pelvisVelocity = _rig.Pelvis.linearVelocity;
@@ -612,16 +618,35 @@ namespace PoBox
             // in the horizontal plane only -- see OFF_AXIS_SPEED_WEIGHT.
             Vector3 planarVelocity = new Vector3(pelvisVelocity.x, 0f, pelvisVelocity.z);
             float offAxisSpeed = (planarVelocity - _commandedDirection * speedAlongGoal).magnitude;
+            // GEN 29: the off-axis penalty FADES OUT as the commanded speed
+            // rises, because a walking gait needs lateral motion and a standing
+            // pose does not.
+            //
+            // Gen 24 applied it at full weight everywhere. On the balance line
+            // that was a large win -- gen 25 reached reward 0.945 and stopped
+            // falling almost entirely. On the WALK line it reads as "do not move
+            // sideways", and a stride is exactly a controlled sideways
+            // oscillation of the pelvis over alternating feet. Measured on
+            // gen 26 at the Shuffle rung, 23.65M steps:
+            //
+            //   speed match      0.809   it IS travelling at the commanded pace
+            //   alternation      0.005   without ever swapping stance
+            //   clearance        0.017   without ever lifting a foot
+            //
+            // That is the shuffle-without-lifting failure gens 5-15 fought, and
+            // the term that was supposed to make sliding unattractive was
+            // instead making stepping expensive.
+            //
+            // Scaling by (1 - gaitBlend) keeps gen 24's behaviour exactly at
+            // commanded speed 0, where the balance brain trains and where the
+            // win was measured, and removes it by walking pace.
+            float offAxisWeight = OFF_AXIS_SPEED_WEIGHT * (1f - gaitBlend);
             float squaredError = (speedError * speedError) +
-                OFF_AXIS_SPEED_WEIGHT * (offAxisSpeed * offAxisSpeed);
+                offAxisWeight * (offAxisSpeed * offAxisSpeed);
             float speedMatchReward = Mathf.Exp(-squaredError / (SPEED_KERNEL * SPEED_KERNEL));
             _speedMatchSum += speedMatchReward;
             _speedMatchSamples++;
 
-            // Gait terms fade in with the command: at 0 m/s the agent should
-            // be planted on both feet, so demanding one-foot support there
-            // would punish correct standing.
-            float gaitBlend = Mathf.Clamp01(_commandedSpeed / GAIT_FULL_SPEED);
 
             bool leftDown = _rig.FootLeftSensor.IsGrounded;
             bool rightDown = _rig.FootRightSensor.IsGrounded;
