@@ -413,6 +413,24 @@ namespace PoBox.Editor
             return removed;
         }
 
+        /// <summary>
+        /// Batch entry point: opens the scene, retargets, saves.
+        ///
+        /// The retarget pass edits whatever contest spawner is in the OPEN
+        /// scene, which is right for a menu item and useless from the command
+        /// line -- batch mode opens no scene, so the call finds no spawner and
+        /// warns instead of doing anything. Shipping a new brain is exactly the
+        /// job that wants to be scriptable, so it gets a door that works
+        /// headlessly:
+        ///
+        ///   Unity.exe -batchmode -quit -nographics -projectPath .         ///     -executeMethod PoBox.Editor.RigTool_ContestScene.RetargetRosterBatch
+        /// </summary>
+        public static void RetargetRosterBatch()
+        {
+            EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
+            RetargetRosterToLocomotionBrain();
+        }
+
         public static void RetargetRosterToLocomotionBrain()
         {
             var spawner = UnityEngine.Object.FindFirstObjectByType<Systems_ContestSpawner>();

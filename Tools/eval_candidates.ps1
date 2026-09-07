@@ -26,6 +26,10 @@ param(
     # Brains already under Assets/Agents to measure alongside, plus the
     # code-driven PD bot, which is the floor a policy has to clear.
     [string[]] $Baselines = @('heuristic', 'Locomotion_gen20'),
+    # Turn the per-agent shover on. The balance ring runs hazards and shoves
+    # while SCN_TRAIN_LOCOMOTION disables them, so the default measures
+    # UNDISTURBED standing -- not the question the contest asks.
+    [switch] $Shove,
     [switch] $SkipBuild
 )
 
@@ -90,16 +94,18 @@ if (-not $SkipBuild) {
 $reports = @()
 foreach ($speed in $Speeds) {
     foreach ($brain in (@($Baselines) + $candidates)) {
-        $out = Join-Path $evalDir ("{0}_speed{1}.json" -f $brain, $speed)
-        $run = Start-Process -FilePath (Join-Path $root 'EvalBuild\PoBoxEval.exe') -ArgumentList @(
-            '-batchmode', '-nographics', '-evalBrain', $brain, '-evalEpisodes', $Episodes,
-            '-evalSpeed', $speed, '-evalOutput', $out,
-            '-logFile', (Join-Path $root 'Logs\eval_run.log')) -Wait -PassThru
+        $suffix = if ($Shove) { 'shove' } else { '' }
+        $out = Join-Path $evalDir ("{0}_speed{1}{2}.json" -f $brain, $speed, $suffix)
+        $argv = @('-batchmode', '-nographics', '-evalBrain', $brain, '-evalEpisodes', $Episodes,
+                  '-evalSpeed', $speed, '-evalOutput', $out,
+                  '-logFile', (Join-Path $root 'Logs\eval_run.log'))
+        if ($Shove) { $argv += @('-evalShove', '1') }
+        $run = Start-Process -FilePath (Join-Path $root 'EvalBuild\PoBoxEval.exe') -ArgumentList $argv -Wait -PassThru
         if ($run.ExitCode -ne 0 -or -not (Test-Path $out)) {
             Write-Warning "$brain @ $speed produced no report (exit $($run.ExitCode))"
             continue
         }
-        Write-Host ("measured {0} @ {1}" -f $brain, $speed)
+        Write-Host ("measured {0} @ {1}{2}" -f $brain, $speed, $(if ($Shove) { ' +shove' } else { '' }))
         $reports += $out
     }
 }

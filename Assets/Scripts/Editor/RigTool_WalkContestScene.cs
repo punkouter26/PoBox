@@ -126,6 +126,75 @@ namespace PoBox.Editor
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Bot", true, "Assets/Art/M_BotRed.mat")
         };
 
+        /// <summary>
+        /// Batch entry point: opens the scene, retargets, saves.
+        ///
+        /// The retarget pass edits whatever contest spawner is in the OPEN
+        /// scene, which is right for a menu item and useless from the command
+        /// line -- batch mode opens no scene, so the call finds no spawner and
+        /// warns instead of doing anything. Shipping a new brain is exactly the
+        /// job that wants to be scriptable, so it gets a door that works
+        /// headlessly:
+        ///
+        ///   Unity.exe -batchmode -quit -nographics -projectPath .         ///     -executeMethod PoBox.Editor.RigTool_WalkContestScene.RetargetRosterBatch
+        /// </summary>
+        public static void RetargetRosterBatch()
+        {
+            EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
+            RetargetRosterToLocomotionBrain();
+        }
+
+        /// <summary>
+        /// Re-points every policy-driven roster entry at LOCOMOTION_BRAIN_PATH,
+        /// in place, without rebuilding the scene.
+        ///
+        /// Rebuilding was the only way to change this scene's brain, and
+        /// re-running a scene tool overwrites the scene wholesale -- which on
+        /// 2026-09-07 was shown to be capable of producing a materially
+        /// different scene from the committed one when a tool has drifted from
+        /// the assets it reads. Swapping a brain should not carry that risk.
+        ///
+        /// The heuristic entries are left alone (project rule: the code-driven
+        /// PD bot never loads a brain), and so is the Raptor: it is a separate
+        /// model line on a 13-joint rig, and the shared 127-observation brain
+        /// can never load on it.
+        /// </summary>
+        public static void RetargetRosterToLocomotionBrain()
+        {
+            var spawner = Object.FindFirstObjectByType<Systems_ContestSpawner>();
+            if (spawner == null)
+            {
+                Debug.LogWarning("RigTool: no ContestSpawner in the open scene — open SCN_TEST_WALK_CONTEST first.");
+                return;
+            }
+            var brain = AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>(LOCOMOTION_BRAIN_PATH);
+            if (brain == null)
+            {
+                Debug.LogError($"RigTool: no brain at {LOCOMOTION_BRAIN_PATH} — roster left untouched.");
+                return;
+            }
+
+            var serialized = new SerializedObject(spawner);
+            SerializedProperty roster = serialized.FindProperty("_roster");
+            int retargeted = 0;
+            for (int entryIndex = 0; entryIndex < roster.arraySize; entryIndex++)
+            {
+                SerializedProperty entry = roster.GetArrayElementAtIndex(entryIndex);
+                if (entry.FindPropertyRelative("forceHeuristic").boolValue)
+                {
+                    continue;
+                }
+                entry.FindPropertyRelative("model").objectReferenceValue = brain;
+                entry.FindPropertyRelative("locomotionBrain").boolValue = true;
+                retargeted++;
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log($"RigTool: {retargeted} walk roster entries retargeted to {LOCOMOTION_BRAIN_PATH} and scene saved.");
+        }
+
         [MenuItem("Tools/ML Boxing/8. Create Walk Contest Scene")]
         public static void Create()
         {
