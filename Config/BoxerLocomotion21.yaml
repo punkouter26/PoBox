@@ -1,0 +1,95 @@
+# Locomotion gen 21 (2026-09-07). A BALANCE run: speed pinned at 0.0, from
+# scratch, testing ONE hypothesis — THE CREDIT-ASSIGNMENT HORIZON IS SHORTER
+# THAN THE FAILURE IT IS SUPPOSED TO PREVENT.
+#
+# THE MEASUREMENT THAT MOTIVATES IT. Every generation of this line topples on
+# roughly the same clock, whatever the reward shape:
+#
+#   gen 9   68 steps between falls   (1.4 s)
+#   gen 18  88.6 StepsSurvived       (1.8 s)
+#   gen 20 113 steps between falls   (2.3 s)
+#
+# Twenty generations moved reward TERMS — support ramps, clearance metrics,
+# alternation rates, stumble economics — and the fall clock moved 1.4 s -> 2.3 s.
+# The three horizon parameters were never once touched: gamma 0.99, lambd 0.95
+# and time_horizon 256 are the values gen 1 shipped with.
+#
+# WHY THAT IS THE SUSPECT. A fall is not caused by the action on the tick it
+# happens; it is caused by a posture entered one to two seconds earlier. At
+# 50 Hz that is 50-100 fixed steps of credit to assign backwards. The old
+# settings cannot carry it that far:
+#
+#                       discount on a fall 100 steps away
+#   gamma 0.99                    0.366
+#   gamma 0.995                   0.606
+#
+#   GAE(lambda) advantage horizon ~ 1 / (1 - lambda)
+#   lambd 0.95                     20 steps  (0.4 s)
+#   lambd 0.97                     33 steps  (0.67 s)
+#
+# lambd 0.95 is the tighter constraint of the two and the one nothing has ever
+# questioned: advantages stop propagating after 0.4 s, so an action that dooms
+# the fighter 1.5 s later receives essentially no credit for it. The reward
+# function has been asked, twenty times, to fix something the ADVANTAGE
+# ESTIMATOR cannot see. That is why every generation lands on the same clock.
+#
+# WHAT CHANGES, and nothing else:
+#
+#   gamma         0.99  -> 0.995   value sees 2.8 s instead of 1.4 s
+#   lambd         0.95  -> 0.97    advantages carry 0.67 s instead of 0.4 s
+#   time_horizon  256   -> 1000    bootstrap less often; 1000 is the value
+#                                  ML-Agents' own Walker example ships
+#   beta          0.01  -> 0.005   Walker's value. Half the entropy pressure:
+#                                  standing still is a LOW-entropy behaviour and
+#                                  0.01 pays the policy to keep jittering.
+#
+# The reward function is UNTOUCHED. That is the point — this run is a clean read
+# on the estimator, and a reward edit in the same generation would confound it.
+#
+# THE BASELINE IS ALREADY ON RECORD, so no control run is needed. Gens 17/18 are
+# from-scratch three-body runs on this exact scene and reward at the old
+# horizon settings: ~9M steps to clear the StandStill gate, StepsSurvived 88.6
+# at 34M. Gen 21 is from scratch too and is read against those numbers at equal
+# step counts.
+#
+# SUCCESS: steps between falls WELL past gen 20's 113, on the capsule AND on
+# Grandma/Grandpa. Anything that improves the characters by wrecking the capsule
+# is not shippable — that is the trade that kept gen 18 out of the balance ring.
+#
+# FAILURE THAT WOULD MEAN SOMETHING: the fall clock lands on ~2 s again. That
+# would rule out the estimator and point squarely at the rigs, which have never
+# been shown to be PHYSICALLY capable of a long stand.
+#
+# Run: mlagents-learn Config/BoxerLocomotion21.yaml --run-id=boxer_locomotion21
+#      --env EnvBuild/PoBoxTrain.exe --no-graphics --num-envs 6
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 60000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # PINNED AT ZERO, exactly as gen 20. This run must differ from gen 20 in the
+  # estimator and in nothing else that the curriculum controls.
+  speed_command_max: 0.0

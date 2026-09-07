@@ -240,6 +240,68 @@ namespace PoBox
         // pace in the last one.
         [SerializeField] private float _speedCommandMax;
 
+        // Which BODY this fighter is, so the stats can be split by rig.
+        //
+        // The population is three bodies training ONE shared brain, and the
+        // aggregate hides the only comparison the shipping decision has ever
+        // turned on. Gen 20's own note records it: the capsule stood 672 steps
+        // under gen 9 while Grandma and Grandpa managed 61 and 56, and "anything
+        // that improves the characters by wrecking the capsule is not
+        // shippable". A single mean over sixteen fighters cannot say which
+        // happened, so every generation has had to be re-measured by hand in a
+        // separate scene to find out.
+        //
+        // Set by RigTool_LocomotionScene from the prefab it spawned. Empty on
+        // anything not placed by that tool, in which case only the aggregate
+        // stats are written and nothing lies.
+        [SerializeField] private string _bodyName;
+
+        /// <summary>
+        /// One finished episode's metrics, exactly as written to TensorBoard.
+        ///
+        /// StatsRecorder only goes somewhere when a TRAINER IS ATTACHED, so
+        /// every number this component produces was invisible the moment
+        /// mlagents-learn was not on the other end. That is why comparing a
+        /// baked .onnx against the brain it would replace has always meant
+        /// re-measuring by hand. Systems_EvalHarness reads this instead.
+        /// </summary>
+        public readonly struct EpisodeSummary
+        {
+            public readonly float StepsBetweenFalls;
+            public readonly float UprightFraction;
+            public readonly float Alternation;
+            public readonly float StepsSurvived;
+            public readonly float SingleSupportMean;
+            public readonly float ClearanceMean;
+            public readonly float SpeedMatchMean;
+            public readonly float CommandedSpeed;
+            public readonly int Stumbles;
+
+            public EpisodeSummary(float stepsBetweenFalls, float uprightFraction, float alternation,
+                float stepsSurvived, float singleSupportMean, float clearanceMean, float speedMatchMean,
+                float commandedSpeed, int stumbles)
+            {
+                StepsBetweenFalls = stepsBetweenFalls;
+                UprightFraction = uprightFraction;
+                Alternation = alternation;
+                StepsSurvived = stepsSurvived;
+                SingleSupportMean = singleSupportMean;
+                ClearanceMean = clearanceMean;
+                SpeedMatchMean = speedMatchMean;
+                CommandedSpeed = commandedSpeed;
+                Stumbles = stumbles;
+            }
+        }
+
+        /// <summary>Which rig this fighter is, or empty when unlabelled.</summary>
+        public string BodyName => _bodyName;
+
+        /// <summary>How many episodes this fighter has finished.</summary>
+        public int EpisodesCompleted { get; private set; }
+
+        /// <summary>Metrics of the most recently finished episode.</summary>
+        public EpisodeSummary LastEpisode { get; private set; }
+
         private Collider _footLeftCollider;
         private Collider _footRightCollider;
         // Every contact sensor on the rig, feet included. A teleport-reset
@@ -264,14 +326,29 @@ namespace PoBox
         private float _supportSum;
         private float _clearanceSum;
         private int _speedMatchSamples;
+        // STEPS BETWEEN FALLS. This is the number both shipping decisions in
+        // this project were actually made on -- gen 20 replaced gen 9 on
+        // "68 -> 113 steps between falls" -- and until now it was measured by
+        // hand in a separate scene because nothing recorded it.
+        //
+        // It is NOT StepsSurvived. That one is steps to the FIRST fall of an
+        // episode, and since gen 12 an episode outlives its falls, so it
+        // samples one run per episode and throws away the other twenty. This
+        // averages every completed upright run in the episode.
+        private int _upStepsSinceFall;
+        private int _upStepsCompleted;
+        private int _fallRuns;
+        private int _episodeSteps;
+        private string _statPrefix;
 
         // Called by the editor scene builder.
         public void EditorInitialize(Agent_FighterBoxing agent, Systems_FighterRig rig,
-            Sensor_GroundContact[] fallContacts)
+            Sensor_GroundContact[] fallContacts, string bodyName)
         {
             _agent = agent;
             _rig = rig;
             _fallContacts = fallContacts;
+            _bodyName = bodyName;
         }
 
         private void Start()
@@ -282,7 +359,16 @@ namespace PoBox
             _footLeftCollider = ResolveFootCollider(_rig.FootLeftSensor, "left");
             _footRightCollider = ResolveFootCollider(_rig.FootRightSensor, "right");
             _allContacts = _rig.GetComponentsInChildren<Sensor_GroundContact>(true);
+            ValidateFallContacts();
             _startHeadHeight = _rig.Head.position.y;
+            // Empty for anything the scene tool did not place, which switches
+            // the per-body stats off rather than mislabelling them.
+            _statPrefix = string.IsNullOrEmpty(_bodyName) ? null : "Locomotion/" + _bodyName + "/";
+            // -1, not 0. The field's own sentinel for "no fall yet this
+            // episode" is a NEGATIVE value, but it defaulted to 0, so the first
+            // episode of every run recorded its first fall as "not a fall" and
+            // then reported StepsSurvived = 0 for it.
+            _stepsToFirstFall = -1;
             RollCommand();
         }
 
@@ -300,7 +386,12 @@ namespace PoBox
                 _stepsToFirstFall = -1;
                 _lastStance = 0;
                 _switchRate = 0f;
+                _upStepsSinceFall = 0;
+                _upStepsCompleted = 0;
+                _fallRuns = 0;
+                _episodeSteps = 0;
             }
+            _episodeSteps++;
             _lastStepCount = stepCount;
             if (IsFallen(out int fallCause))
             {
@@ -315,6 +406,10 @@ namespace PoBox
                 // Always recoverable. The episode ends when the agent hits
                 // MaxStep and ML-Agents ends it, never because of a fall.
                 _stumbles++;
+                // Close the upright run this fall just ended.
+                _upStepsCompleted += _upStepsSinceFall;
+                _upStepsSinceFall = 0;
+                _fallRuns++;
                 _recoveryStepsLeft = STUMBLE_RECOVERY_STEPS;
                 _rig.ResetToStartPose();
                 for (int contactIndex = 0; contactIndex < _allContacts.Length; contactIndex++)
@@ -332,6 +427,9 @@ namespace PoBox
                 _recoveryStepsLeft--;
                 return;
             }
+            // Upright, settled and earning: exactly the steps "between falls"
+            // is supposed to count.
+            _upStepsSinceFall++;
 
             Vector3 torsoUp = _rig.Torso.transform.up;
             float uprightDot = Mathf.Max(0f, Vector3.Dot(torsoUp, Vector3.up));
@@ -580,27 +678,66 @@ namespace PoBox
             _agent.SetLocomotionCommand(_commandedSpeed, _commandedDirection);
         }
 
+        /// <summary>
+        /// Writes one stat under the shared "Locomotion/" key AND, when the
+        /// scene tool named this fighter's body, again under
+        /// "Locomotion/&lt;Body&gt;/". The aggregate keeps its exact old name so
+        /// gens 5-20 stay comparable; the per-body copy is what says WHICH rig
+        /// moved.
+        /// </summary>
+        private void AddStat(string key, float value)
+        {
+            Academy.Instance.StatsRecorder.Add("Locomotion/" + key, value);
+            if (_statPrefix != null)
+            {
+                Academy.Instance.StatsRecorder.Add(_statPrefix + key, value);
+            }
+        }
+
         private void FlushEpisodeStats()
         {
             if (_speedMatchSamples > 0)
             {
-                Academy.Instance.StatsRecorder.Add("Locomotion/SpeedMatchMean", _speedMatchSum / _speedMatchSamples);
-                Academy.Instance.StatsRecorder.Add("Locomotion/CommandedSpeed", _commandedSpeed);
+                AddStat("SpeedMatchMean", _speedMatchSum / _speedMatchSamples);
+                AddStat("CommandedSpeed", _commandedSpeed);
                 // The two numbers that say whether it is walking or cheating:
                 // SingleSupportMean near 0 means both feet stayed planted,
                 // ClearanceMean near 0 means it shuffled without lifting.
-                Academy.Instance.StatsRecorder.Add("Locomotion/SingleSupportMean", _supportSum / _speedMatchSamples);
-                Academy.Instance.StatsRecorder.Add("Locomotion/ClearanceMean", _clearanceSum / _speedMatchSamples);
+                AddStat("SingleSupportMean", _supportSum / _speedMatchSamples);
+                AddStat("ClearanceMean", _clearanceSum / _speedMatchSamples);
                 // Steps upright before the FIRST fall. Under gen 12 an episode
                 // outlives its falls, so this is no longer the episode length --
                 // it is still the balance number to compare against gens 5-11.
-                Academy.Instance.StatsRecorder.Add("Locomotion/StepsSurvived",
-                    _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall);
-                Academy.Instance.StatsRecorder.Add("Locomotion/Stumbles", _stumbles);
+                AddStat("StepsSurvived", _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall);
+                AddStat("Stumbles", _stumbles);
                 // 1.0 = swapping stance at a stride cadence, 0.0 = not swapping
                 // at all, whether that is from standing on two feet or hopping on
                 // one. This is the number that says whether it is walking.
-                Academy.Instance.StatsRecorder.Add("Locomotion/Alternation", _alternationSum / _speedMatchSamples);
+                AddStat("Alternation", _alternationSum / _speedMatchSamples);
+                // THE SHIPPING METRIC. Mean length of a completed upright run.
+                // With no fall at all the run never completed, so the episode
+                // length is reported instead -- a LOWER BOUND, and the only
+                // honest thing to say about a fighter that never fell.
+                AddStat("StepsBetweenFalls",
+                    _fallRuns > 0 ? (float)_upStepsCompleted / _fallRuns : _episodeSteps);
+                // Fraction of the episode spent upright, settled and earning.
+                // Falls and their recovery windows are the whole remainder, so
+                // this is "how much of the round was it actually standing" on a
+                // 0-1 scale, which is the question both mini-games ask.
+                AddStat("UprightFraction",
+                    _episodeSteps > 0 ? (float)_speedMatchSamples / _episodeSteps : 0f);
+
+                LastEpisode = new EpisodeSummary(
+                    _fallRuns > 0 ? (float)_upStepsCompleted / _fallRuns : _episodeSteps,
+                    _episodeSteps > 0 ? (float)_speedMatchSamples / _episodeSteps : 0f,
+                    _alternationSum / _speedMatchSamples,
+                    _stepsToFirstFall < 0 ? _agent.MaxStep : _stepsToFirstFall,
+                    _supportSum / _speedMatchSamples,
+                    _clearanceSum / _speedMatchSamples,
+                    _speedMatchSum / _speedMatchSamples,
+                    _commandedSpeed,
+                    _stumbles);
+                EpisodesCompleted++;
             }
             _speedMatchSum = 0f;
             _supportSum = 0f;
@@ -609,11 +746,47 @@ namespace PoBox
             _speedMatchSamples = 0;
         }
 
+        /// <summary>
+        /// Refuses to run with a hole in the fall detector, once, at startup.
+        ///
+        /// A null in this array is not a crash — it is worse. IsFallen
+        /// dereferences it before AddReward is ever reached, so the agent
+        /// throws on every FixedUpdate and earns EXACTLY ZERO reward for the
+        /// whole run, while a player build writes the exception to a log nobody
+        /// reads and the trainer's stdout shows a plausible mean over whichever
+        /// fighters still work. Measured on this scene: ten of sixteen fighters
+        /// dead for 46,784 consecutive physics ticks, indistinguishable from
+        /// the outside from "these rigs are hard to train".
+        /// </summary>
+        private void ValidateFallContacts()
+        {
+            if (_fallContacts == null || _fallContacts.Length == 0)
+            {
+                Debug.LogError($"{name}: no fall contacts assigned. Every fall will go undetected and " +
+                    "this fighter will be scored as upright while lying on the floor.", this);
+                _fallContacts = System.Array.Empty<Sensor_GroundContact>();
+                return;
+            }
+            for (int contactIndex = 0; contactIndex < _fallContacts.Length; contactIndex++)
+            {
+                if (_fallContacts[contactIndex] == null)
+                {
+                    Debug.LogError($"{name}: fall contact {contactIndex} of {_fallContacts.Length} is NULL. " +
+                        "This fighter would throw on every physics tick and earn zero reward for the entire " +
+                        "run. Rebuild the scene with RigTool_LocomotionScene, which resolves these from the " +
+                        "rig rather than by joint index.", this);
+                }
+            }
+        }
+
         private bool IsFallen(out int fallCause)
         {
             for (int contactIndex = 0; contactIndex < _fallContacts.Length; contactIndex++)
             {
-                if (_fallContacts[contactIndex].IsGrounded)
+                // Never dereference a null here: the head-height check below is
+                // a real fall detector on its own, so a partially-wired rig
+                // degrades instead of throwing 50 times a second.
+                if (_fallContacts[contactIndex] != null && _fallContacts[contactIndex].IsGrounded)
                 {
                     fallCause = contactIndex;
                     return true;

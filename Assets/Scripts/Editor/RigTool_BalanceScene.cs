@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using PoBox;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -254,21 +254,32 @@ namespace PoBox.Editor
 
             // Fall sensors by role, not joint index: the raptor's joint list
             // is a different shape than the humanoids', and gloves exist only
-            // on rigs with arms. Same name convention Reward_Balance uses.
+            // on rigs with arms.
             var fallContacts = new List<Sensor_GroundContact>
             {
                 rig.Torso.gameObject.AddComponent<Sensor_GroundContact>(),
                 rig.Head.gameObject.AddComponent<Sensor_GroundContact>()
             };
-            for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
-            {
-                Rigidbody jointBody = rig.Joints[jointIndex].body;
-                if (jointBody != null &&
-                    jointBody.name.IndexOf("shin", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    fallContacts.Add(jointBody.gameObject.AddComponent<Sensor_GroundContact>());
-                }
-            }
+            // THE LOWER LEG IS THE FOOT'S PARENT BODY. It used to be "any joint
+            // body whose name contains 'shin'", which is a capsule-only fact:
+            // the capsule names them ShinL/ShinR, but the imported character
+            // rigs call the same bones LeftLeg/RightLeg, so Grandma and Grandpa
+            // silently received NO lower-leg fall sensors at all.
+            //
+            // That alone was survivable. Paired with RigTool_LocomotionScene
+            // reading those sensors back by hardcoded joint index it was not:
+            // the index found a body, the body had no sensor, and the
+            // locomotion reward got a null it dereferenced every FixedUpdate.
+            // Ten of sixteen fighters then threw NullReferenceException on
+            // every physics tick, earned exactly zero reward for an entire run,
+            // and still reported plausible-looking aggregate statistics --
+            // the same shape of failure the ResolveFootCollider comment in
+            // Reward_Locomotion describes, arriving through a different door.
+            //
+            // Walking up from the foot needs no name convention and no index,
+            // so it holds for the capsule, both characters and the raptor.
+            AddLowerLegSensor(rig.FootLeftSensor, fallContacts);
+            AddLowerLegSensor(rig.FootRightSensor, fallContacts);
             if (rig.GloveLeft != null)
             {
                 fallContacts.Add(rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>());
@@ -323,5 +334,34 @@ namespace PoBox.Editor
             }
             EditorBuildSettings.scenes = scenes.ToArray();
         }
+
+        /// <summary>
+        /// Adds a ground sensor to the body the foot hangs off — the shin on the
+        /// capsule, LeftLeg/RightLeg on the imported characters — and records
+        /// it as a fall contact. Silent no-op if the rig has no such foot, which
+        /// is legitimate for a rig that does not have that limb.
+        /// </summary>
+        private static void AddLowerLegSensor(Sensor_GroundContact foot, List<Sensor_GroundContact> fallContacts)
+        {
+            if (foot == null)
+            {
+                return;
+            }
+            Transform parent = foot.transform.parent;
+            if (parent == null)
+            {
+                return;
+            }
+            var lowerLeg = parent.GetComponentInParent<Rigidbody>();
+            if (lowerLeg == null)
+            {
+                return;
+            }
+            var existing = lowerLeg.GetComponent<Sensor_GroundContact>();
+            fallContacts.Add(existing != null
+                ? existing
+                : lowerLeg.gameObject.AddComponent<Sensor_GroundContact>());
+        }
+
     }
 }

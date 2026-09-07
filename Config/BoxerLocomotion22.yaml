@@ -1,0 +1,117 @@
+# Locomotion gen 22 (2026-09-07). The WALK line, carrying gen 21's horizon fix.
+#
+# Gen 21 tests the credit-assignment hypothesis at speed 0, where the only skill
+# is standing. This run tests the same four parameter changes under the full
+# six-rung curriculum, so the two together say whether the estimator was the
+# limit for BALANCE, for GAIT, or for both. See BoxerLocomotion21.yaml for the
+# reasoning and the measurements behind the four values.
+#
+#   gamma  0.99 -> 0.995   lambd 0.95 -> 0.97
+#   time_horizon 256 -> 1000   beta 0.01 -> 0.005
+#
+# WHY THIS RUN EXISTS AT ALL, given the walk race's blocker is stability and
+# gen 21 attacks stability directly: the walk brain and the balance brain are
+# separate policies by this project's architecture, and the walk one is
+# Locomotion_gen18_34M, trained at the old horizon settings. If the fix works it
+# has to be spent on both, and a curriculum run cannot be recovered from a
+# speed-0 run — gen 20 is the standing proof of that, having deliberately
+# forgotten its gait.
+#
+# THE CONTROL IS ON RECORD. Gen 18 is a from-scratch, three-body, same-scene,
+# same-reward run at the old horizon settings, and its numbers at 34M are:
+#
+#   Alternation 0.766   ClearanceMean 0.428   SingleSupportMean 0.691
+#   SpeedMatchMean 0.844   StepsSurvived 88.6   commanded speed 0.66 m/s
+#
+# Gen 22 is read against those at equal step counts. It also inherits gen 17's
+# pacing warning: a three-body population spent NINE MILLION steps on StandStill
+# before the ladder started moving, so the lesson the run is ON matters as much
+# as the step count when comparing.
+#
+# SUCCESS: StepsSurvived materially past 88.6 while Alternation holds at or
+# above 0.766. Alternation is the metric that separates walking from hopping and
+# shuffling, and gen 14 and gen 13 each bought a headline number by giving it
+# away. A gen 22 that survives longer by standing still has failed.
+#
+# Run: mlagents-learn Config/BoxerLocomotion22.yaml --run-id=boxer_locomotion22
+#      --env EnvBuild/PoBoxTrain.exe --no-graphics --num-envs 5 --base-port 5100
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 50000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # The six-rung ladder is gen 18's, value for value and threshold for
+  # threshold. Changing the curriculum in the same generation as the estimator
+  # would make the comparison against gen 18 unreadable.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.60
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.40
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.38
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

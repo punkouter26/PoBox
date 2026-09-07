@@ -68,3 +68,9 @@ EnvBuild/
 # Play publishing tooling venv — deliberately not .venv, which carries
 # load-bearing ml-agents/torch pins.
 Tools/publish-venv/
+
+# Python bytecode from the Tools/ scripts
+__pycache__/
+
+# Written by the Unity Performance Testing package on every batchmode run.
+/[Aa]ssets/Resources/PerformanceTestRun*.json*
