@@ -84,6 +84,46 @@ namespace PoBox
         // It stays at 0.6 so gen 9 moves one mechanism. The ladder still reads
         // 0 / .33 / .67 / 1 / 1 / 1.
         private const float GAIT_FULL_SPEED = 0.6f;
+        // GEN 23 (2026-09-07): the blend below which standing on ONE foot stops
+        // being paid as if it were standing on two.
+        //
+        // THE DEGENERACY. At gaitBlend 0 the support term reads
+        //   min(1, max(singleSupport, clearance) + planted)
+        // and BOTH states saturate it. A fighter planted on two feet scores
+        // planted = 1. A fighter holding one foot in the air scores
+        // singleSupport = 1. The clearance term is Lerp(1, clearance, 0) = 1
+        // for either. Nothing in the reward can tell them apart, so the
+        // StandStill lesson -- and the whole of a speed-0 balance run -- is
+        // indifferent between a stance and a flamingo.
+        //
+        // Measured on the two brains that ship, at commanded speed 0, through
+        // Systems_EvalHarness:
+        //
+        //                        SingleSupportMean   ClearanceMean
+        //   heuristic PD bot            0.053            0.044     two feet
+        //   Locomotion_gen20            0.740            0.735     one foot
+        //   Locomotion_gen18_34M        0.807            0.804     one foot
+        //
+        // Both trained policies stand on one leg while commanded to hold
+        // still, and the code-driven bot -- which cannot, because its ankle
+        // strategy is written to keep both feet down -- OUT-STANDS BOTH ON THE
+        // CAPSULE: 112 steps between falls against gen 20's 80, at a higher
+        // upright fraction. That is the existence proof that two-footed
+        // standing is available and better; the reward simply never asked for
+        // it.
+        //
+        // WHY A THRESHOLD RATHER THAN A LERP. Paying stepping as
+        // Lerp(planted, stepping, blend) is what gen 9 removed, and for a
+        // measured reason: the two curves cross at blend 0.5, so planting
+        // outscored stepping across the whole lower half of the curriculum and
+        // stepping's edge at rung 3 shrank to 4.1%, which gen 8 proved cannot
+        // pay for a behaviour that risks the episode. Ramping the stepping
+        // credit to FULL by blend 0.25 keeps gen 9's shape everywhere the
+        // walking lessons actually live -- at rung 3 stepping is worth 1.00
+        // against planting's 0.47, exactly as before -- and changes only the
+        // regime at the very bottom, where the lesson is standing and there is
+        // no stepping to protect.
+        private const float STEPPING_CREDIT_BLEND = 0.25f;
         // Separate from the blend on purpose: below this the LESSON is about
         // standing, so commands are still drawn from zero. Folding this into
         // the blend constant is what made one number do two unrelated jobs.
@@ -593,7 +633,13 @@ namespace PoBox
             _alternationSum += alternation;
 
             float planted = doubleSupport * (1f - clearance);
-            float supportReward = Mathf.Min(1f, Mathf.Max(singleSupport, clearance) + (1f - gaitBlend) * planted);
+            // GEN 23: the credit for LOOKING like a step ramps in with the
+            // command instead of being paid in full at every blend. Above
+            // STEPPING_CREDIT_BLEND this is identical to gen 9's term; at
+            // blend 0 it is the difference between a stance and a flamingo.
+            float stepping = Mathf.Max(singleSupport, clearance) *
+                Mathf.Clamp01(gaitBlend / STEPPING_CREDIT_BLEND);
+            float supportReward = Mathf.Min(1f, stepping + (1f - gaitBlend) * planted);
             // Gates the gait credit rather than standing credit: at blend 0 the
             // fighter is supposed to be planted on both feet and swaps nothing,
             // so scaling the StandStill lesson by this would punish correct

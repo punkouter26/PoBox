@@ -78,3 +78,5 @@ __pycache__/
 # Brain evaluation player (Build_EvalEnv), rebuilt on demand.
 EvalBuild/
 eval/
+EnvBuild2/
+Assets/Agents/_Candidates/
