@@ -86,8 +86,12 @@ exported at every `checkpoint_interval` -- so a run stopped early still leaves
 usable brains behind and does not need a graceful shutdown to be salvaged.
 
 The venv pins are load-bearing -- `protobuf 3.20.3`, `torch 2.2.2`,
-`numpy 1.23.5`, `mlagents 1.1.0`, on Python 3.10. Any `pip install` that moves
-them breaks training; re-pin after.
+`numpy 1.23.5`, `mlagents 1.1.0`, on **Python 3.10**. Any `pip install` that
+moves them breaks training; re-pin after. `Tools/requirements-training.txt`
+records the whole stack and how to rebuild it, including installing torch from
+the CPU index first -- the default index pulls the CUDA build, ten times the
+download for no benefit on 3x512 nets whose trainer is bound by environment
+throughput rather than matrix multiplies.
 
 ### Measuring a brain
 

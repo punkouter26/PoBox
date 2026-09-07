@@ -1,0 +1,37 @@
+# Training venv for PoBox. Rebuild with:
+#
+#   <python-3.10>\python.exe -m venv .venv
+#   .venv\Scripts\python.exe -m pip install --upgrade "pip==23.3.2" "setuptools<70" wheel
+#   .venv\Scripts\python.exe -m pip install "torch==2.2.2" --index-url https://download.pytorch.org/whl/cpu
+#   .venv\Scripts\python.exe -m pip install -r Tools/requirements-training.txt
+#
+# PYTHON 3.10. numpy 1.23.5 has no wheels for 3.12, and mlagents 1.1.0 has not
+# been validated above 3.10. torch is installed FIRST and from the CPU index:
+# the default index pulls the CUDA build, which is roughly ten times the
+# download for no benefit -- these are 3x512 fully-connected nets and the
+# trainer is throughput-bound on the environment, not on matrix multiplies.
+#
+# THE PINS ARE LOAD-BEARING. The C# and Python halves of ml-agents speak a
+# versioned protocol and must stay in exact parity, and protobuf 3.20.3 is the
+# last release whose generated code mlagents-envs 1.1.0 accepts. Any
+# `pip install` that moves one of these breaks training; re-pin afterwards.
+#
+# Do NOT install the Play publishing tools in here -- they have their own venv
+# at Tools/publish-venv for exactly this reason.
+#
+# Recorded 2026-09-07, after finding the venv missing entirely and nothing in
+# the repository describing how to rebuild it.
+
+mlagents==1.1.0
+mlagents-envs==1.1.0
+numpy==1.23.5
+protobuf==3.20.3
+
+# Pulled in by the above; pinned so a rebuild reproduces this exact stack.
+attrs==26.1.0
+cattrs==1.5.0
+h5py==3.16.0
+onnx==1.15.0
+PyYAML==6.0.3
+six==1.17.0
+tensorboard==2.20.0
