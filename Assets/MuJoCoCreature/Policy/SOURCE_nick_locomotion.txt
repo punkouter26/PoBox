@@ -1,0 +1,21 @@
+nick_locomotion.onnx
+====================
+
+WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),
+          trained in MUJOCO WARP -- the second policy in this project not trained
+          by Unity ML-Agents, and the comparison point for the Isaac Lab line.
+CONTRACT  127 observations / 30 continuous actions.
+          CreatureSentisController.GatherObservations with _observeLocomotionCommand
+          on: the 121-term balance vector plus commanded speed, pelvis-local
+          commanded direction (3) and the 1.4 Hz gait clock (sin, cos).
+          Foot contact is rest-relative (ankle within 0.03 m of rest).
+          Actions are zero-centred position targets in canonical order.
+          Control every 4 physics steps of 0.005 s (decimation 4, 50 Hz).
+          The observation normaliser is BAKED INTO THE GRAPH; feed raw.
+          input obs_0 [batch,127], output continuous_actions [batch,30].
+MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported by
+          RigTool_NickMuJoCo.ExportNickMjcf. NOT the authored creature.xml.
+TRAINED   2026-09-07, results/nick/nick03, model_2099.pt (iteration 2099), rsl_rl PPO on mujoco_warp.
+          Config: results/nick/nick03/config.json.
+MEASURED  eval_nick.py, 512 fresh-start worlds, no DR: BALANCE (150 N shove every 4 s, 30 s cap) 93% survive full cap, median 30.0 s, upright 1.000, drift 0.32 m, alternation 0.149; WALK (1 m/s, 20 s cap) 100% survive, 1.008 m/s, 20.12 m, alternation 1.000; passive baseline falls at 1.52 s. Resumed from nick02 model_600 with the planted-feet term (w_planted 0.3).
+EXPORT    Tools/MuJoCo/export_onnx.py --run nick03 --checkpoint model_2099.pt

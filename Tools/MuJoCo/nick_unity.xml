@@ -1,0 +1,131 @@
+<mujoco>
+  <worldbody>
+    <body pos="0.0124 -0.02042 0.93203" quat="-1 0 0 0" gravcomp="0" name="Pelvis_0">
+      <freejoint name="root_1" />
+      <geom mass="10.2941" type="capsule" size="0.1 0.06170524" pos="-0.001955 0.001325 0.06165999" quat="0.0191405 0.560933 0.82764 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_Pelvis_2" />
+      <body pos="-0.00391 0.00265 0.12332" quat="-1 0 0 0" gravcomp="0" name="Torso_3">
+        <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-30.00002 30.00002" name="Torso_pitch_6" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-20.00001 20.00001" name="Torso_roll_7" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-34.99998 34.99998" name="Torso_yaw_8" />
+        <geom mass="24.2647" type="capsule" size="0.1100001 0.1671811" pos="-0.007139999 0.003585 0.1669899" quat="0.02390149 0.4485869 0.8934197 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_Torso_9" />
+        <body pos="-0.01428 0.00717 0.33398" quat="-1 0 0 0" gravcomp="0" name="Head_10">
+          <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-40.00002 40.00002" name="Head_pitch_23" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-30.00002 30.00002" name="Head_roll_24" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-44.99999 44.99999" name="Head_yaw_25" />
+          <geom mass="5.1471" type="capsule" size="0.08499998 0.134753" pos="-0.009879998 -0.00478 0.134305" quat="0.04075872 -0.4351512 0.8994343 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_Head_26" />
+        </body>
+        <body pos="0.15558 0.02332 0.2962" quat="-1 0 0 0" gravcomp="0" name="UpperArmL_11">
+          <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 120.0003" name="UpperArmL_pitch_27" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-90.00021 20.00001" name="UpperArmL_roll_28" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 60.00014" name="UpperArmL_yaw_29" />
+          <geom mass="2.2059" type="capsule" size="0.042 0.137714" pos="0.13554 0.017055 -0.01741505" quat="0.7504858 0.08250878 -0.6557158 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_UpperArmL_30" />
+          <body pos="0.27108 0.03411 -0.03483009" quat="-1 0 0 0" gravcomp="0" name="ForearmL_31">
+            <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="0 139.9999" name="ForearmL_pitch_43" />
+            <geom mass="1.4706" type="capsule" size="0.035 0.127338" pos="0.1272049 -0.004730001 0.003375053" quat="0.6976733 -0.02662091 -0.7159213 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ForearmL_44" />
+            <body pos="0.2544099 -0.009460002 0.006750107" quat="-1 0 0 0" gravcomp="0" name="GloveL_45">
+              <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 60.00014" name="GloveL_pitch_55" />
+              <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-24.99998 24.99998" name="GloveL_yaw_56" />
+              <geom mass="0.7353" type="sphere" size="0.05" pos="0 0 0" quat="-1 0 0 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_GloveL_57" />
+            </body>
+          </body>
+        </body>
+        <body pos="-0.17256 0.02333 0.2962" quat="-1 0 0 0" gravcomp="0" name="UpperArmR_12">
+          <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 120.0003" name="UpperArmR_pitch_32" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-20.00001 90.00021" name="UpperArmR_roll_33" />
+          <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 60.00014" name="UpperArmR_yaw_34" />
+          <geom mass="2.2059" type="capsule" size="0.04200001 0.129151" pos="-0.124425 0.017075 -0.03011513" quat="0.7852313 0.08418503 0.6134532 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_UpperArmR_35" />
+          <body pos="-0.24885 0.03415 -0.06023002" quat="-1 0 0 0" gravcomp="0" name="ForearmR_36">
+            <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="0 139.9999" name="ForearmR_pitch_46" />
+            <geom mass="1.4706" type="capsule" size="0.035 0.119485" pos="-0.119265 -0.003835 -0.006150007" quat="0.7250761 -0.0221329 0.6883131 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ForearmR_47" />
+            <body pos="-0.23853 -0.00767 -0.01230001" quat="-1 0 0 0" gravcomp="0" name="GloveR_48">
+              <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-60.00014 60.00014" name="GloveR_pitch_58" />
+              <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-24.99998 24.99998" name="GloveR_yaw_59" />
+              <geom mass="0.7353" type="sphere" size="0.05" pos="0 0 0" quat="-1 0 0 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_GloveR_60" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body pos="0.11895 0.01464 -0.09920001" quat="-1 0 0 0" gravcomp="0" name="ThighL_4">
+        <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-109.9999 20.00001" name="ThighL_pitch_13" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-20.00001 44.99999" name="ThighL_roll_14" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-30.00002 30.00002" name="ThighL_yaw_15" />
+        <geom mass="8.4559" type="capsule" size="0.06 0.202172" pos="0.02548501 0.029285 -0.19841" quat="0.9953369 0.07276519 -0.06332319 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ThighL_16" />
+        <body pos="0.05097 0.05857 -0.39682" quat="-1 0 0 0" gravcomp="0" name="ShinL_17">
+          <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="0 130.0001" name="ShinL_pitch_37" />
+          <geom mass="3.6765" type="capsule" size="0.048 0.138316" pos="0.01563001 0.028345 -0.134475" quat="0.9930336 0.103184 -0.05689748 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ShinL_38" />
+          <body pos="0.03126001 0.05669001 -0.26895" quat="-1 0 0 0" gravcomp="0" name="FootL_39">
+            <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-40.00002 24.99998" name="FootL_pitch_49" />
+            <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-20.00001 20.00001" name="FootL_roll_50" />
+            <geom mass="1.1029" type="capsule" size="0.035 0.0799195" pos="0.03536999 -0.03493501 -0.06257498" quat="0.9441863 -0.2314841 -0.2343661 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_FootL_51" />
+          </body>
+        </body>
+      </body>
+      <body pos="-0.08148 0.00117 -0.09926999" quat="-1 0 0 0" gravcomp="0" name="ThighR_5">
+        <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-109.9999 20.00001" name="ThighR_pitch_18" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-44.99999 20.00001" name="ThighR_roll_19" />
+        <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 0 1" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-30.00002 30.00002" name="ThighR_yaw_20" />
+        <geom mass="8.4559" type="capsule" size="0.06 0.199232" pos="-0.016365 0.00234 -0.198545" quat="0.9991375 0.005877617 0.04110568 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ThighR_21" />
+        <body pos="-0.03273 0.00468 -0.39709" quat="-1 0 0 0" gravcomp="0" name="ShinR_22">
+          <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="0 130.0001" name="ShinR_pitch_40" />
+          <geom mass="3.6765" type="capsule" size="0.048 0.146178" pos="-0.005034998 0.01908 -0.1448399" quat="0.997709 0.0654127 0.0172617 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_ShinR_41" />
+          <body pos="-0.01007 0.03816 -0.2896799" quat="-1 0 0 0" gravcomp="0" name="FootR_42">
+            <joint type="hinge" pos="0 0 0" axis="1 0 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-40.00002 24.99998" name="FootR_pitch_52" />
+            <joint type="hinge" pos="0 0 0" axis="-1.192093E-07 1 0" ref="0" armature="0.02" springref="0" springdamper="0 0" damping="2" stiffness="0" solreflimit="0.02 1" solimplimit="0.9 0.95 0.001 0.5 2" solreffriction="0.02 1" solimpfriction="0.9 0.95 0.001 0.5 2" frictionloss="0" limited="true" margin="0" range="-20.00001 20.00001" name="FootR_roll_53" />
+            <geom mass="1.1029" type="capsule" size="0.035 0.0741313" pos="-0.01977001 -0.045005 -0.05549002" quat="0.9350232 -0.3246441 0.142611 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="g_FootR_54" />
+          </body>
+        </body>
+      </body>
+    </body>
+    <geom density="0" type="plane" size="20 20 1" pos="0 0 0" quat="-1 0 0 0" priority="0" contype="1" conaffinity="1" group="0" condim="3" solmix="1" solref="0.02 1" solimp="0.9 0.95 0.001" margin="0" gap="0" friction="1 0.05 0.05" fluidshape="none" fluidcoef="5 0.25 1.5 1 1" name="floor_61" />
+  </worldbody>
+  <contact />
+  <tendon />
+  <equality />
+  <actuator>
+    <position joint="Torso_pitch_6" ctrllimited="true" forcelimited="false" ctrlrange="-0.523599 0.523599" forcerange="0 0" lengthrange="0 0" gear="1" kp="400" kv="70.16545" name="a_Torso_pitch_62" />
+    <position joint="Torso_roll_7" ctrllimited="true" forcelimited="false" ctrlrange="-0.349066 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="400" kv="89.81155" name="a_Torso_roll_63" />
+    <position joint="Torso_yaw_8" ctrllimited="true" forcelimited="false" ctrlrange="-0.610865 0.610865" forcerange="0 0" lengthrange="0 0" gear="1" kp="400" kv="59.15623" name="a_Torso_yaw_64" />
+    <position joint="Head_pitch_23" ctrllimited="true" forcelimited="false" ctrlrange="-0.698132 0.698132" forcerange="0 0" lengthrange="0 0" gear="1" kp="60" kv="6.686625" name="a_Head_pitch_65" />
+    <position joint="Head_roll_24" ctrllimited="true" forcelimited="false" ctrlrange="-0.523599 0.523599" forcerange="0 0" lengthrange="0 0" gear="1" kp="60" kv="6.697671" name="a_Head_roll_66" />
+    <position joint="Head_yaw_25" ctrllimited="true" forcelimited="false" ctrlrange="-0.785398 0.785398" forcerange="0 0" lengthrange="0 0" gear="1" kp="60" kv="3.039165" name="a_Head_yaw_67" />
+    <position joint="ThighL_pitch_13" ctrllimited="true" forcelimited="false" ctrlrange="-1.91986 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="66.79657" name="a_ThighL_pitch_68" />
+    <position joint="ThighL_roll_14" ctrllimited="true" forcelimited="false" ctrlrange="-0.349066 0.785398" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="66.69353" name="a_ThighL_roll_69" />
+    <position joint="ThighL_yaw_15" ctrllimited="true" forcelimited="false" ctrlrange="-0.523599 0.523599" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="15.98742" name="a_ThighL_yaw_70" />
+    <position joint="ShinL_pitch_37" ctrllimited="true" forcelimited="false" ctrlrange="0 2.26893" forcerange="0 0" lengthrange="0 0" gear="1" kp="400" kv="20.09548" name="a_ShinL_pitch_71" />
+    <position joint="FootL_pitch_49" ctrllimited="true" forcelimited="false" ctrlrange="-0.698132 0.436332" forcerange="0 0" lengthrange="0 0" gear="1" kp="200" kv="4.838298" name="a_FootL_pitch_72" />
+    <position joint="FootL_roll_50" ctrllimited="true" forcelimited="false" ctrlrange="-0.349066 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="200" kv="4.842537" name="a_FootL_roll_73" />
+    <position joint="ThighR_pitch_18" ctrllimited="true" forcelimited="false" ctrlrange="-1.91986 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="67.18878" name="a_ThighR_pitch_74" />
+    <position joint="ThighR_roll_19" ctrllimited="true" forcelimited="false" ctrlrange="-0.785398 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="67.32513" name="a_ThighR_roll_75" />
+    <position joint="ThighR_yaw_20" ctrllimited="true" forcelimited="false" ctrlrange="-0.523599 0.523599" forcerange="0 0" lengthrange="0 0" gear="1" kp="500" kv="10.63666" name="a_ThighR_yaw_76" />
+    <position joint="ShinR_pitch_40" ctrllimited="true" forcelimited="false" ctrlrange="0 2.26893" forcerange="0 0" lengthrange="0 0" gear="1" kp="400" kv="20.97411" name="a_ShinR_pitch_77" />
+    <position joint="FootR_pitch_52" ctrllimited="true" forcelimited="false" ctrlrange="-0.698132 0.436332" forcerange="0 0" lengthrange="0 0" gear="1" kp="200" kv="4.840398" name="a_FootR_pitch_78" />
+    <position joint="FootR_roll_53" ctrllimited="true" forcelimited="false" ctrlrange="-0.349066 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="200" kv="4.605991" name="a_FootR_roll_79" />
+    <position joint="UpperArmL_pitch_27" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 2.0944" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="3.416545" name="a_UpperArmL_pitch_80" />
+    <position joint="UpperArmL_roll_28" ctrllimited="true" forcelimited="false" ctrlrange="-1.5708 0.349066" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="14.60121" name="a_UpperArmL_roll_81" />
+    <position joint="UpperArmL_yaw_29" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 1.0472" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="14.5964" name="a_UpperArmL_yaw_82" />
+    <position joint="ForearmL_pitch_43" ctrllimited="true" forcelimited="false" ctrlrange="0 2.44346" forcerange="0 0" lengthrange="0 0" gear="1" kp="60" kv="2.286285" name="a_ForearmL_pitch_83" />
+    <position joint="GloveL_pitch_55" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 1.0472" forcerange="0 0" lengthrange="0 0" gear="1" kp="20" kv="1.287953" name="a_GloveL_pitch_84" />
+    <position joint="GloveL_yaw_56" ctrllimited="true" forcelimited="false" ctrlrange="-0.436332 0.436332" forcerange="0 0" lengthrange="0 0" gear="1" kp="20" kv="1.287953" name="a_GloveL_yaw_85" />
+    <position joint="UpperArmR_pitch_32" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 2.0944" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="3.981454" name="a_UpperArmR_pitch_86" />
+    <position joint="UpperArmR_roll_33" ctrllimited="true" forcelimited="false" ctrlrange="-0.349066 1.5708" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="13.7216" name="a_UpperArmR_roll_87" />
+    <position joint="UpperArmR_yaw_34" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 1.0472" forcerange="0 0" lengthrange="0 0" gear="1" kp="100" kv="13.56774" name="a_UpperArmR_yaw_88" />
+    <position joint="ForearmR_pitch_46" ctrllimited="true" forcelimited="false" ctrlrange="0 2.44346" forcerange="0 0" lengthrange="0 0" gear="1" kp="60" kv="2.291231" name="a_ForearmR_pitch_89" />
+    <position joint="GloveR_pitch_58" ctrllimited="true" forcelimited="false" ctrlrange="-1.0472 1.0472" forcerange="0 0" lengthrange="0 0" gear="1" kp="20" kv="1.287953" name="a_GloveR_pitch_90" />
+    <position joint="GloveR_yaw_59" ctrllimited="true" forcelimited="false" ctrlrange="-0.436332 0.436332" forcerange="0 0" lengthrange="0 0" gear="1" kp="20" kv="1.287953" name="a_GloveR_yaw_91" />
+  </actuator>
+  <sensor>
+    <framepos objtype="xbody" objname="FootL_39" cutoff="0" name="s_FootL_pos_92" />
+    <framepos objtype="xbody" objname="FootR_42" cutoff="0" name="s_FootR_pos_93" />
+    <framepos objtype="xbody" objname="Head_10" cutoff="0" name="s_Head_pos_94" />
+    <framezaxis objtype="xbody" objname="Pelvis_0" cutoff="0" name="s_Pelvis_up_95" />
+    <subtreecom body="Pelvis_0" cutoff="0" name="s_com_96" />
+  </sensor>
+  <compiler coordinate="local" />
+  <option gravity="0 0 -9.81" timestep="0.004999993" />
+  <option impratio="1" magnetic="0 0 0" wind="0 0 0" density="0" viscosity="0" o_margin="0" o_solref="0.02 1" o_solimp="0.9 0.95 0.001 0.5 2" integrator="implicitfast" cone="pyramidal" jacobian="auto" solver="Newton" iterations="20" tolerance="1E-08" noslip_iterations="0" noslip_tolerance="1E-06" ccd_iterations="50" ccd_tolerance="1E-06">
+    <flag constraint="enable" equality="enable" frictionloss="enable" limit="enable" contact="enable" spring="enable" damper="enable" gravity="enable" clampctrl="enable" warmstart="enable" filterparent="enable" actuation="enable" refsafe="enable" override="disable" energy="disable" fwdinv="disable" multiccd="disable" />
+  </option>
+  <size memory="-1" />
+  <custom />
+  <asset />
+</mujoco>

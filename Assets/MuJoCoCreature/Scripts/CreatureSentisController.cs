@@ -21,6 +21,14 @@
 //   feet    (2)  normalised ground distance            2
 //   ------------------------------------------------------
 //   total  121
+//   command (6)  commanded speed                       1   only when
+//                pelvis-local commanded direction      3   _observeLocomotionCommand
+//                gait clock sin, cos                   2   -> 127
+//
+// The optional 6-term block is Agent_FighterBoxing's _observeLocomotionCommand,
+// term for term, and it is what turns a balance brain into a locomotion brain:
+// the same network is told 0 m/s in the balance ring and ~1 m/s in the walk
+// race. Tools/MuJoCo/nick_env.py builds the identical vector in Python.
 //
 // Feeding a different vector of the same width would load, run, and produce
 // confident nonsense -- ML-Agents and InferenceEngine both only check SHAPE.
@@ -40,8 +48,13 @@ namespace PoBox.MuJoCoCreature
         private const int PER_JOINT_OBS = 7;
         private const int FOOT_OBS = 8;
         private const int FOOT_HEIGHT_OBS = 2;
+        private const int LOCOMOTION_COMMAND_OBS = 6;
         private const float ANGULAR_VELOCITY_SCALE = 20f;
         private const float FOOT_RAY_MAX = 1f;
+        // Agent_FighterBoxing.GAIT_CLOCK_FREQUENCY: the same clock the
+        // ML-Agents locomotion line hands its policy, so the contract is shared.
+        private const float GAIT_CLOCK_FREQUENCY = 1.4f;
+        private const int HEAD_INDEX = 1;
 
         // Canonical PoBox joint order (RigSegment minus the pelvis root). The
         // action vector is consumed in this order, pitch -> roll -> yaw within
@@ -79,6 +92,19 @@ namespace PoBox.MuJoCoCreature
                  "restored afterwards. 0 disables the override.")]
         [SerializeField] private float _fixedTimestepOverride = 0.005f;
 
+        [Header("Locomotion command")]
+        [Tooltip("Append the 6-term locomotion command (speed, pelvis-local " +
+                 "direction, gait clock) to the observation vector, exactly as " +
+                 "Agent_FighterBoxing does under _observeLocomotionCommand. The " +
+                 "brain must have been trained with it: 127 observations, not 121.")]
+        [SerializeField] private bool _observeLocomotionCommand = false;
+        [Tooltip("Run the policy every N physics steps and hold its targets in " +
+                 "between. The MuJoCo Warp locomotion brain was trained at 4 " +
+                 "(50 Hz control on a 0.005 s step); the 2026-08-31 balance brain at 1.")]
+        [SerializeField, Min(1)] private int _decimation = 1;
+        [Tooltip("Commanded forward speed in m/s. 0 is the balance ring, ~1 the walk race.")]
+        [SerializeField] private float _commandedSpeed = 0f;
+
         private float _previousFixedDeltaTime = -1f;
 
         private Worker _worker;
@@ -98,23 +124,95 @@ namespace PoBox.MuJoCoCreature
         private MjActuator[] _ownActuators;
         private MjBaseJoint[] _ownJoints;
         private double[] _ownQpos0;
-        private float _footContactHeight = 0.0525f;
+        // Legacy contract (121-observation balance brain): a foot is "down"
+        // when its ANKLE body is below 5.25 cm, which never fires while
+        // standing -- the ankle rests 15 cm up. Kept verbatim for that brain.
+        private const float LEGACY_FOOT_CONTACT_HEIGHT = 0.0525f;
+        // Locomotion contract: down when the ankle is within this of its rest
+        // height. Tools/MuJoCo/nick_env.py FOOT_CONTACT_ABOVE_REST.
+        private const float FOOT_CONTACT_ABOVE_REST = 0.03f;
+        private float _footLeftContactZ = LEGACY_FOOT_CONTACT_HEIGHT;
+        private float _footRightContactZ = LEGACY_FOOT_CONTACT_HEIGHT;
+        private float _footLeftRestZ;
+        private float _footRightRestZ;
         private bool _ready;
 
+        private int _physicsSteps;     // since reset; drives the decimation
+        private int _policySteps;      // since reset; drives the gait clock
+        private int _shoveStepsLeft;
+        private Vector3 _shoveForce;
+
         public int ObservationCount =>
-            ROOT_OBS + PER_JOINT_OBS * JointBodies.Length + FOOT_OBS + FOOT_HEIGHT_OBS;
+            ROOT_OBS + PER_JOINT_OBS * JointBodies.Length + FOOT_OBS + FOOT_HEIGHT_OBS +
+            (_observeLocomotionCommand ? LOCOMOTION_COMMAND_OBS : 0);
 
         // Safe read-only telemetry. MjData is behind an unsafe pointer, so
         // nothing outside this class (an inspector, a test, the MCP eval
         // sandbox which forbids unsafe) can observe the sim without these.
         public bool IsBound => _ready;
+        /// <summary>The pelvis MjBody's transform, in Unity space, for cameras and the like.</summary>
+        public Transform PelvisTransform => _pelvis != null ? _pelvis.transform : null;
+        public bool ObservesLocomotionCommand => _observeLocomotionCommand;
+        public int Decimation => Mathf.Max(1, _decimation);
+        /// <summary>Seconds between policy decisions: the physics step times the decimation.</summary>
+        public float ControlDeltaTime => Time.fixedDeltaTime * Decimation;
+
+        /// <summary>Commanded forward speed, m/s. Observed by the brain only when it was trained to.</summary>
+        public float CommandedSpeed
+        {
+            get => _commandedSpeed;
+            set => _commandedSpeed = value;
+        }
 
         /// <summary>
-        /// Forces a bind + observation gather and returns the raw 121-vector.
-        /// Exists for the parity harness: the ONLY way to know the C# and Python
-        /// observation builders agree is to feed both the same state and diff
-        /// them element-wise. A shape match proves nothing -- a wrong term is
-        /// the same width as a right one.
+        /// Commanded travel direction as a unit vector in MuJoCo world
+        /// coordinates (Z up), horizontal. Defaults to wherever the pelvis
+        /// faced at the last reset, so "walk" means "walk forward".
+        /// </summary>
+        public Vector3 CommandedDirection { get; private set; } = new Vector3(0f, -1f, 0f);
+
+        public void SetCommand(float speed)
+        {
+            _commandedSpeed = speed;
+        }
+
+        public void SetCommand(float speed, Vector3 directionMjWorld)
+        {
+            _commandedSpeed = speed;
+            var flat = new Vector3(directionMjWorld.x, directionMjWorld.y, 0f);
+            if (flat.sqrMagnitude > 1e-6f)
+            {
+                CommandedDirection = flat.normalized;
+            }
+        }
+
+        /// <summary>Points the command along the pelvis's current heading.</summary>
+        public void FaceCurrentHeading()
+        {
+            var flat = new Vector3(DebugPelvisForward.x, DebugPelvisForward.y, 0f);
+            if (flat.sqrMagnitude > 1e-6f)
+            {
+                CommandedDirection = flat.normalized;
+            }
+        }
+
+        /// <summary>
+        /// Applies a horizontal force to the pelvis for a short time -- the
+        /// balance ring's shove, in MuJoCo terms (xfrc_applied). Force is in
+        /// MuJoCo world coordinates, newtons.
+        /// </summary>
+        public void Shove(Vector3 forceMjWorld, float seconds)
+        {
+            _shoveForce = forceMjWorld;
+            _shoveStepsLeft = Mathf.Max(1, Mathf.RoundToInt(seconds / Mathf.Max(1e-4f, Time.fixedDeltaTime)));
+        }
+
+        /// <summary>
+        /// Forces a bind + observation gather and returns the raw observation
+        /// vector. Exists for the parity harness: the ONLY way to know the C#
+        /// and Python observation builders agree is to feed both the same
+        /// state and diff them element-wise. A shape match proves nothing --
+        /// a wrong term is the same width as a right one.
         /// </summary>
         public unsafe float[] DebugGatherObservations()
         {
@@ -149,6 +247,17 @@ namespace PoBox.MuJoCoCreature
         public double DebugSimTime { get; private set; }
         public int DebugResetCount { get; private set; }
         public int DebugStepCount { get; private set; }
+        // MuJoCo world frame (Z up), refreshed every physics step once bound.
+        public Vector3 DebugPelvisPosition { get; private set; }
+        public Vector3 DebugPelvisForward { get; private set; } = new Vector3(0f, -1f, 0f);
+        public Vector3 DebugPelvisLinVel { get; private set; }
+        public float DebugHeadZ { get; private set; }
+        public float DebugFootLeftZ { get; private set; }
+        public float DebugFootRightZ { get; private set; }
+        public float DebugFootLeftRestZ => _footLeftRestZ;
+        public float DebugFootRightRestZ => _footRightRestZ;
+        public bool DebugFootLeftDown { get; private set; }
+        public bool DebugFootRightDown { get; private set; }
 
         private void Awake()
         {
@@ -211,6 +320,25 @@ namespace PoBox.MuJoCoCreature
             _observations = new float[ObservationCount];
             _input = new Tensor<float>(new TensorShape(1, ObservationCount));
 
+            // Shape check against the graph. InferenceEngine will happily run
+            // a 121-wide vector through a 127-input model and return garbage;
+            // this is the only place the mismatch can be caught.
+            foreach (var input in _runtimeModel.inputs)
+            {
+                var shape = input.shape;
+                // Get(1) is -1 for a dynamic dimension, which is skipped.
+                int width = shape.rank == 2 ? shape.Get(1) : -1;
+                if (width > 0 && width != ObservationCount)
+                {
+                    Debug.LogError($"{nameof(CreatureSentisController)}: model input '{input.name}' is " +
+                                   $"{width} wide but this controller builds {ObservationCount} " +
+                                   $"observations (observeLocomotionCommand={_observeLocomotionCommand}). " +
+                                   "Refusing to drive the creature with a brain it cannot read.", this);
+                    enabled = false;
+                    return false;
+                }
+            }
+
             // OWN actuators only, sorted by model id (= MJCF/training order).
             // MjScene is a singleton: in a scene shared with another creature,
             // Model->nu counts BOTH rigs, and writing ctrl[0..nu) would zero
@@ -247,7 +375,7 @@ namespace PoBox.MuJoCoCreature
 
             _jointBodyIds = new int[JointBodies.Length];
             _jointParentIds = new int[JointBodies.Length];
-            foreach (var body in FindObjectsByType<MjBody>(FindObjectsSortMode.None))
+            foreach (var body in GetComponentsInChildren<MjBody>())
             {
                 int index = Array.IndexOf(JointBodies, body.name);
                 if (index >= 0)
@@ -280,10 +408,34 @@ namespace PoBox.MuJoCoCreature
                 _initialQpos[i] = _mjScene.Model->qpos0[i];
             }
 
+            // Rest heights of the ankle bodies from the model's own qpos0, for
+            // the rest-relative contact test and the demo's clearance column.
+            {
+                var probe = new double[nq];
+                for (int i = 0; i < nq; i++) { probe[i] = _mjScene.Data->qpos[i]; }
+                for (int i = 0; i < nq; i++) { _mjScene.Data->qpos[i] = _initialQpos[i]; }
+                MujocoLib.mj_kinematics(_mjScene.Model, _mjScene.Data);
+                _footLeftRestZ = (float)_mjScene.Data->xpos[3 * _footLeftId + 2];
+                _footRightRestZ = (float)_mjScene.Data->xpos[3 * _footRightId + 2];
+                for (int i = 0; i < nq; i++) { _mjScene.Data->qpos[i] = probe[i]; }
+                MujocoLib.mj_forward(_mjScene.Model, _mjScene.Data);
+            }
+            if (_observeLocomotionCommand)
+            {
+                _footLeftContactZ = _footLeftRestZ + FOOT_CONTACT_ABOVE_REST;
+                _footRightContactZ = _footRightRestZ + FOOT_CONTACT_ABOVE_REST;
+            }
+
             int expectedActions = _numActuators;
             Debug.Log($"{nameof(CreatureSentisController)}: bound. obs={ObservationCount} " +
-                      $"actuators={expectedActions} backend={_backend}");
+                      $"actuators={expectedActions} decimation={Decimation} backend={_backend}");
             _ready = true;
+
+            // The command's default heading is whichever way the creature
+            // faces at rest; sample it now so "walk" has a direction before
+            // anyone calls SetCommand.
+            RefreshTelemetry(_mjScene.Data);
+            FaceCurrentHeading();
             return true;
         }
 
@@ -324,6 +476,34 @@ namespace PoBox.MuJoCoCreature
                 return;
             }
 
+            // Shove: an external force on the pelvis, held for a few steps.
+            // xfrc_applied persists until overwritten, so it is cleared
+            // explicitly the step after the shove ends.
+            if (_shoveStepsLeft > 0)
+            {
+                d->xfrc_applied[6 * _pelvisId + 0] = _shoveForce.x;
+                d->xfrc_applied[6 * _pelvisId + 1] = _shoveForce.y;
+                d->xfrc_applied[6 * _pelvisId + 2] = _shoveForce.z;
+                _shoveStepsLeft--;
+                if (_shoveStepsLeft == 0) { _shoveStepsLeft = -1; }
+            }
+            else if (_shoveStepsLeft < 0)
+            {
+                for (int k = 0; k < 6; k++) { d->xfrc_applied[6 * _pelvisId + k] = 0.0; }
+                _shoveStepsLeft = 0;
+            }
+
+            // Telemetry is refreshed every physics step; the policy only runs
+            // on every Decimation-th one and its targets are held in between,
+            // which is exactly the zero-order hold the training env applies.
+            RefreshTelemetry(d);
+            bool decide = (_physicsSteps % Decimation) == 0;
+            _physicsSteps++;
+            if (!decide)
+            {
+                return;
+            }
+
             GatherObservations(d);
 
             _input.Upload(_observations);
@@ -346,6 +526,7 @@ namespace PoBox.MuJoCoCreature
             }
 
             DebugStepCount++;
+            _policySteps++;
             DebugSimTime = d->time;
             DebugPelvisHeight = (float)d->xpos[3 * _pelvisId + 2];
             float sumQvel = 0f;
@@ -378,6 +559,21 @@ namespace PoBox.MuJoCoCreature
                 float a = Mathf.Clamp(_actions[i], -1f, 1f);
                 _ownActuators[i].Control = (float)(a >= 0f ? a * high : -a * low);
             }
+        }
+
+        private unsafe void RefreshTelemetry(MujocoLib.mjData_* d)
+        {
+            DebugPelvisPosition = BodyPos(d, _pelvisId);
+            Quaternion pelvisRot = BodyQuat(d, _pelvisId);
+            DebugPelvisForward = pelvisRot * new Vector3(0f, -1f, 0f);
+            DebugPelvisLinVel = BodyLinVel(d, _pelvisId);
+            DebugHeadZ = BodyPos(d, _jointBodyIds[HEAD_INDEX]).z;
+            DebugFootLeftZ = BodyPos(d, _footLeftId).z;
+            DebugFootRightZ = BodyPos(d, _footRightId).z;
+            // Telemetry is always rest-relative: the demo counts stance
+            // changes with it, whichever brain is loaded.
+            DebugFootLeftDown = DebugFootLeftZ < _footLeftRestZ + FOOT_CONTACT_ABOVE_REST;
+            DebugFootRightDown = DebugFootRightZ < _footRightRestZ + FOOT_CONTACT_ABOVE_REST;
         }
 
         private unsafe void GatherObservations(MujocoLib.mjData_* d)
@@ -418,8 +614,8 @@ namespace PoBox.MuJoCoCreature
             // +Z whenever a foot is down. Wrong the moment terrain is added.
             float lz = BodyPos(d, _footLeftId).z;
             float rz = BodyPos(d, _footRightId).z;
-            float lGround = lz < _footContactHeight ? 1f : 0f;
-            float rGround = rz < _footContactHeight ? 1f : 0f;
+            float lGround = lz < _footLeftContactZ ? 1f : 0f;
+            float rGround = rz < _footRightContactZ ? 1f : 0f;
             _observations[c++] = lGround;
             _observations[c++] = 0f; _observations[c++] = 0f; _observations[c++] = lGround;
             _observations[c++] = rGround;
@@ -428,6 +624,19 @@ namespace PoBox.MuJoCoCreature
             // --- foot height (2) ---
             _observations[c++] = Mathf.Clamp01(lz / FOOT_RAY_MAX);
             _observations[c++] = Mathf.Clamp01(rz / FOOT_RAY_MAX);
+
+            // --- locomotion command (6), optional ---
+            if (_observeLocomotionCommand)
+            {
+                _observations[c++] = _commandedSpeed;
+                Vector3 localDir = inv * CommandedDirection;
+                _observations[c++] = localDir.x; _observations[c++] = localDir.y; _observations[c++] = localDir.z;
+                // Gait clock, counted in POLICY steps since reset so it is
+                // deterministic and independent of the decimation.
+                float phase = GAIT_CLOCK_FREQUENCY * 2f * Mathf.PI * _policySteps * ControlDeltaTime;
+                _observations[c++] = Mathf.Sin(phase);
+                _observations[c++] = Mathf.Cos(phase);
+            }
         }
 
         private unsafe Vector3 BodyPos(MujocoLib.mjData_* d, int id) =>
@@ -473,7 +682,13 @@ namespace PoBox.MuJoCoCreature
                 d->ctrl[_ownActuators[i].MujocoId] = 0.0;
                 _ownActuators[i].Control = 0f;
             }
+            for (int k = 0; k < 6; k++) { d->xfrc_applied[6 * _pelvisId + k] = 0.0; }
+            _shoveStepsLeft = 0;
             MujocoLib.mj_forward(_mjScene.Model, _mjScene.Data);
+            _physicsSteps = 0;
+            _policySteps = 0;
+            RefreshTelemetry(d);
+            FaceCurrentHeading();
             DebugResetCount++;
         }
 

@@ -1,14 +1,17 @@
 {
-    "name": "PoBox.MuJoCoCreature",
-    "rootNamespace": "PoBox.MuJoCoCreature",
+    "name": "PoBox.MuJoCoCreature.Editor",
+    "rootNamespace": "PoBox.Editor",
     "references": [
+        "PoBox.MuJoCoCreature",
+        "PoBox.Runtime",
         "Mujoco.Runtime",
-        "Unity.InferenceEngine",
-        "Unity.InputSystem"
+        "Unity.InferenceEngine"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
-    "allowUnsafeCode": true,
+    "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

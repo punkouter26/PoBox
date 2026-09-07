@@ -1,0 +1,9 @@
+{
+  "observations": 127,
+  "actions": 30,
+  "decimation": 4,
+  "run": "nick03",
+  "checkpoint": "model_2099.pt",
+  "iteration": 2099,
+  "normaliser_baked_in": true
+}
