@@ -55,6 +55,30 @@
         background: #d9a441;
         transition: width 0.15s;
       }
+      /* App wordmark, upper-left — the Po convention every other app follows in its
+         header. This one has no chrome to put it in, so it sits in the letterbox
+         beside the canvas, and is hidden when there IS no letterbox: on a portrait
+         phone the 9:16 canvas fills the width and a label would cover gameplay. */
+      .po-wordmark {
+        position: fixed;
+        top: 12px;
+        left: 14px;
+        z-index: 10;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #d9a441;
+        opacity: 0.75;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      @media (max-aspect-ratio: 9 / 16) {
+        .po-wordmark {
+          display: none;
+        }
+      }
       #unity-warning {
         position: fixed;
         left: 50%;
@@ -68,6 +92,8 @@
     </style>
   </head>
   <body>
+    <!-- Resolved by Unity at build time, so it can never drift from the product name. -->
+    <div class="po-wordmark">%UNITY_PRODUCT_NAME%</div>
     <div id="unity-container">
       <canvas id="unity-canvas" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
