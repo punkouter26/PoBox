@@ -160,10 +160,34 @@ weighting tried across three generations -- an exploration problem, not an
 incentive one".
 
 Gen 30 raised it to 0.02 and, at matched lesson and fewer steps, showed more
-alternation than gen 29 (0.054 against 0.011 at ~8M, both still climbing) --
-weakly positive, nowhere near conclusive, and nowhere near gen 18's 0.766. A
-dedicated walk run at `beta` 0.02 or higher, from `gen25`'s weights, with a
-budget past 30M, is the next thing to try.
+alternation than gen 29 (0.054 against 0.011 at ~8M) -- weakly positive, and
+then it stalled, for a reason worth recording on its own.
+
+**The curriculum gates were carried across a reward change and stopped meaning
+what they meant.** 0.55 / 0.60 / 0.45 / 0.40 / 0.38 were calibrated against
+gen 18's reward function. This session changed three terms in it, so the same
+NUMBER now marks a different level of competence -- and gen 30 sat at 0.337
+against the Shuffle gate's 0.45 and crept, so it would never have reached the
+commanded speeds where sliding stops working. The same mistake bit gen 27's
+shove ladder, which was gated on a reward the shoving itself depressed. **Gate a
+curriculum on `progress` whenever the reward function has moved.**
+
+`gen31` re-ran the ladder on progress gates over a 25M budget. It walked the
+rungs on schedule and the gait terms climbed monotonically as the commanded pace
+rose -- which is the first time in this session that they moved at all:
+
+| rung | commanded | alternation | clearance |
+|---|---:|---:|---:|
+| Shuffle | 0.32 | 0.015 | 0.023 |
+| Step | 0.49 | 0.037 | 0.070 |
+| Stride | 0.64 | 0.044 | 0.100 |
+| Walk | 0.68 | 0.049 | **0.118** |
+
+Still an order of magnitude short of gen 18's 0.766 alternation and 0.411
+clearance, so it is not a walk brain. But the direction is right and the run was
+stopped by the clock, not by a plateau. **The next run is `gen31`'s config with
+a budget past 30M**, and its checkpoints under `results/boxer_locomotion31/` are
+a legitimate `--initialize-from` starting point.
 
 ### Contest code measured height against the wrong zero
 
