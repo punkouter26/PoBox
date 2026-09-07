@@ -296,6 +296,22 @@ namespace PoBox
         /// <summary>Which rig this fighter is, or empty when unlabelled.</summary>
         public string BodyName => _bodyName;
 
+        /// <summary>
+        /// Overrides the commanded-speed ceiling for an offline evaluation.
+        ///
+        /// RollCommand normally reads "speed_command_max" from the Academy's
+        /// environment parameters, which is how the curriculum drives it. With
+        /// no trainer attached that lookup returns the serialized default, so
+        /// an evaluation run would silently benchmark every brain at whatever
+        /// the scene happens to hold — 0 m/s — and a walking brain would be
+        /// scored on standing still. Systems_EvalHarness sets this before the
+        /// first episode rolls its command.
+        /// </summary>
+        public void SetSpeedCommandMax(float speedCommandMax)
+        {
+            _speedCommandMax = speedCommandMax;
+        }
+
         /// <summary>How many episodes this fighter has finished.</summary>
         public int EpisodesCompleted { get; private set; }
 

@@ -74,3 +74,7 @@ __pycache__/
 
 # Written by the Unity Performance Testing package on every batchmode run.
 /[Aa]ssets/Resources/PerformanceTestRun*.json*
+
+# Brain evaluation player (Build_EvalEnv), rebuilt on demand.
+EvalBuild/
+eval/

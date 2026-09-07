@@ -37,7 +37,6 @@ namespace PoBox
     {
         // ML-Agents names the single vector-observation input of an exported brain
         // obs_0; the contest rigs have exactly one, so this is the tensor to measure.
-        private const string OBSERVATION_INPUT_NAME = "obs_0";
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         /// <summary>
         /// World Y of the ring canvas the fighters stand on. Assets/Art/BoxingRing.glb
@@ -387,62 +386,15 @@ namespace PoBox
             return wash;
         }
 
-        // Cached: a contest spawns up to eight fighters off the same two or three
-        // ModelAssets, and deserializing one is not free.
-        private static readonly Dictionary<ModelAsset, int> ModelObservationWidths = new();
-
         /// <summary>
-        /// True when <paramref name="entry"/>'s brain was trained on the same
-        /// observation width the fighter emits, or when the width cannot be read.
-        /// Logs and returns false otherwise.
-        ///
-        /// ML-Agents runs this comparison only from the BehaviorParameters
-        /// inspector; its runtime path checks the model version and nothing else,
-        /// so a brain assigned from code — which is every brain in a contest —
-        /// mismatches in total silence. Measured 2026-08-20: the balance roster ran
-        /// 119-observation brains on 121-observation fighters without producing a
-        /// single console line.
-        ///
-        /// Deliberately NOT [Conditional]: this decides whether the brain runs at
-        /// all, so a player build has to make the same call an editor run does.
-        /// The width is cached per ModelAsset, so a full ring costs one deserialize
-        /// per distinct brain.
+        /// True when <paramref name="entry"/>'s brain reads the vector this
+        /// fighter emits. The check itself lives in
+        /// <see cref="Systems_BrainCompatibility"/>, so the offline evaluation
+        /// harness refuses exactly the brains this spawner refuses.
         /// </summary>
         private static bool AcceptBrain(ContestRosterEntry entry, string instanceName, int sensorSize)
         {
-            int modelSize = ModelObservationWidth(entry.model);
-            if (modelSize < 0 || modelSize == sensorSize)
-            {
-                return true;
-            }
-            Debug.LogError($"{instanceName}: brain '{entry.model.name}' expects {modelSize} observations but " +
-                $"this fighter emits {sensorSize}, so it would read a shifted vector. Falling back to the " +
-                "heuristic bot — export a brain trained on this layout, or point the roster entry at one " +
-                "that matches.");
-            return false;
-        }
-
-        /// <summary>Width of the obs_0 input of <paramref name="modelAsset"/>, or -1 when unreadable.</summary>
-        private static int ModelObservationWidth(ModelAsset modelAsset)
-        {
-            if (ModelObservationWidths.TryGetValue(modelAsset, out int cached))
-            {
-                return cached;
-            }
-            int width = -1;
-            Model model = ModelLoader.Load(modelAsset);
-            for (int inputIndex = 0; inputIndex < model.inputs.Count; inputIndex++)
-            {
-                Model.Input input = model.inputs[inputIndex];
-                if (input.name != OBSERVATION_INPUT_NAME || input.shape.isRankDynamic || input.shape.rank != 2)
-                {
-                    continue;
-                }
-                width = input.shape.Get(1);
-                break;
-            }
-            ModelObservationWidths[modelAsset] = width;
-            return width;
+            return Systems_BrainCompatibility.Accept(entry.model, instanceName, sensorSize);
         }
     }
 }
