@@ -75,20 +75,30 @@ environment_parameters:
     curriculum:
       - name: StillAir
         completion_criteria:
-          measure: reward
+          # PROGRESS, not reward. The first draft gated this on mean reward
+          # 0.55, the same figure the speed ladder uses -- and gen 25, which is
+          # this run's reward function without the shoving, was at 0.286 by
+          # 2.8M and climbing slowly. On that trajectory gen 27 would have spent
+          # most of its budget in still air and then stalled at the second rung,
+          # because shoving DEPRESSES reward and the next gate would never be
+          # re-reached. A run that never gets shoved cannot test shoving.
+          #
+          # progress is the fraction of max_steps elapsed, so these fire at 6M
+          # and 15M of the 60M budget whatever the reward does.
+          measure: progress
           behavior: Boxer
           signal_smoothing: true
-          min_lesson_length: 250
-          threshold: 0.55
+          min_lesson_length: 100
+          threshold: 0.10
           require_reset: true
         value: 0.0
       - name: LightShove
         completion_criteria:
-          measure: reward
+          measure: progress
           behavior: Boxer
           signal_smoothing: true
-          min_lesson_length: 250
-          threshold: 0.45
+          min_lesson_length: 100
+          threshold: 0.25
           require_reset: true
         value: 150.0
       - name: FullShove
