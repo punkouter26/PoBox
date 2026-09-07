@@ -39,6 +39,7 @@ namespace PoBox
             public Systems_FighterRig rig;
             public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
+            /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
             public float startHeadHeight;
             public float aliveTime;
             /// <summary>
@@ -110,7 +111,7 @@ namespace PoBox
                     rig = rig,
                     agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
-                    startHeadHeight = rig.Head.position.y,
+                    startHeadHeight = rig.Head.position.y - rig.GroundY,
                     plate = plate,
                     label = plateLabel
                 };
@@ -152,8 +153,12 @@ namespace PoBox
                     continue;
                 }
                 contestant.aliveTime += Time.fixedDeltaTime;
+                // Also ground-relative: at ring altitude a fully collapsed
+                // fighter scored 1.0 / 2.6 = 0.385 on this rather than ~0, and
+                // this sum is what ranks the round.
                 contestant.uprightnessSum +=
-                    contestant.rig.Head.position.y / contestant.startHeadHeight * Time.fixedDeltaTime;
+                    (contestant.rig.Head.position.y - contestant.rig.GroundY)
+                    / contestant.startHeadHeight * Time.fixedDeltaTime;
                 aliveCount++;
             }
 
@@ -263,7 +268,16 @@ namespace PoBox
                     return true;
                 }
             }
-            return contestant.rig.Head.position.y < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
+            // GROUND-RELATIVE, never raw world Y. The ring canvas sits at
+            // Systems_ContestSpawner.RING_FLOOR_Y = 1 m, so comparing an
+            // absolute head height against a FRACTION of an absolute head
+            // height silently rescales with altitude: 40% of a 2.6 m head is
+            // 1.04 m, which on a 1 m canvas means the fighter has to sink to
+            // FOUR CENTIMETRES above the floor to count as collapsed instead of
+            // the intended ~64 cm. Reward_Locomotion.IsFallen documents having
+            // hit exactly this; the two contests still had the original form.
+            return contestant.rig.Head.position.y - contestant.rig.GroundY
+                < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
         }
 
         private void StartNextRound()

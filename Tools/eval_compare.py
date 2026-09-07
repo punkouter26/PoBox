@@ -43,7 +43,8 @@ def load(path):
 def column_name(report):
     name = report.get("brain") or os.path.basename(report["_path"])
     speed = report.get("speedCommandMax", 0.0)
-    return f"{name}@{speed:g}"
+    shove = "+shove" if report.get("shove") else ""
+    return f"{name}@{speed:g}{shove}"
 
 
 def main():

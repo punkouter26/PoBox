@@ -77,6 +77,7 @@ namespace PoBox
             public float speedCommandMax;
             public int episodesPerFighter;
             public int observationWidth;
+            public bool shove;
             public string scene;
             public BodyResult[] bodies;
         }
@@ -111,6 +112,7 @@ namespace PoBox
         private float _startTime;
         private bool _finished;
         private bool _diagnoseFeet;
+        private bool _shove;
         private bool _diagnosed;
 
         /// <summary>
@@ -136,6 +138,13 @@ namespace PoBox
             _speedCommandMax = ParseFloat(Argument("-evalSpeed"), 0f);
             Time.timeScale = ParseFloat(Argument("-evalTimeScale"), 20f);
             _diagnoseFeet = Argument("-evalDiagnoseFeet") != null;
+            // The balance ring runs hazards and shoves; SCN_TRAIN_LOCOMOTION
+            // disables the shover because it fights the walking signal. So the
+            // default benchmark measures UNDISTURBED standing, which is not the
+            // question the balance contest asks. -evalShove turns the per-agent
+            // shover back on so a brain can be scored on the thing it will
+            // actually face, without needing a second scene or a second build.
+            _shove = Argument("-evalShove") != null;
             _startTime = Time.realtimeSinceStartup;
 
             _rewards = FindObjectsByType<Reward_Locomotion>(FindObjectsSortMode.None);
@@ -167,6 +176,12 @@ namespace PoBox
                 Reward_Locomotion reward = _rewards[rewardIndex];
                 reward.SetSpeedCommandMax(_speedCommandMax);
 
+                var shover = reward.GetComponent<Systems_Shover>();
+                if (shover != null)
+                {
+                    shover.enabled = _shove;
+                }
+
                 var agent = reward.GetComponent<Agent_FighterBoxing>();
                 var behavior = reward.GetComponent<BehaviorParameters>();
                 if (agent == null || behavior == null)
@@ -188,7 +203,8 @@ namespace PoBox
             }
 
             Debug.Log($"EvalHarness: '{_brainName}' on {_rewards.Length} fighters, " +
-                $"{_targetEpisodes} episodes each, commanded speed max {_speedCommandMax}.");
+                $"{_targetEpisodes} episodes each, commanded speed max {_speedCommandMax}, " +
+                $"shove {(_shove ? "ON" : "off")}.");
         }
 
         private void Update()
@@ -324,6 +340,7 @@ namespace PoBox
                 speedCommandMax = _speedCommandMax,
                 episodesPerFighter = _targetEpisodes,
                 observationWidth = _observationWidth,
+                shove = _shove,
                 scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
                 bodies = results.ToArray()
             };
