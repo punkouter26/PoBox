@@ -1,0 +1,132 @@
+# Locomotion gen 26 (2026-09-07). The WALK line, carrying everything gens 21-25
+# established: the horizon fix, the stance/flamingo distinction, off-axis drift
+# in the speed term, and the ground sensor fix.
+#
+# THE SENSOR FIX IS THE POINT OF THIS RUN, and it is a code change rather than
+# anything in this file. See Sensor_GroundContact.
+#
+# Ground contact was a running total of OnCollisionEnter minus OnCollisionExit.
+# On the imported character rigs that total desynchronises and never recovers,
+# because ResetContacts() zeroes it while the foot is still resting on the floor
+# and no new Enter is ever generated for a pair that never separated. Measured
+# with -evalDiagnoseFeet on a fighter standing still:
+#
+#   Capsule/Fighter_00  L[on 'FootL',     grounded=True,  minY=-0.0024]
+#   Grandma/Fighter_13  L[on 'LeftFoot',  grounded=False, minY=-0.0043]
+#                       R[on 'RightFoot', grounded=False, minY=-0.0083]
+#
+# Grandma's soles are millimetres BELOW the floor plane -- interpenetrating it --
+# while both sensors report airborne.
+#
+# Everything downstream is computed from those flags: singleSupport, the
+# clearance gate, the whole support term, and fall detection itself. So TEN OF
+# SIXTEEN FIGHTERS have been training against a corrupted objective, and the
+# per-body ordering twenty generations read as "the character rigs are harder"
+# tracks sensor health almost exactly:
+#
+#     body      feet grounded (heuristic)   steps between falls (gen 21 @ 3.35M)
+#     Capsule        0.97 / 0.98                      104
+#     Grandpa        0.61 / 1.00                       66
+#     Grandma        0.41 / 0.41                       38
+#
+# Contact is now re-affirmed from OnCollisionStay every physics step instead of
+# tallied, so no reset and no missing Exit can desynchronise it.
+#
+# WHY GENS 21-24 ARE NOT SIMPLY CONTINUED: they cannot be. Their reward signal
+# was wrong for two thirds of the population, so more steps only fit them more
+# closely to the wrong objective. Gen 21 is left running as the pre-fix control.
+#
+#
+# The six-rung ladder is gen 18's, value for value and threshold for threshold.
+#
+# SUCCESS: BestRunDistance past 0.75 m at commanded speed 1 -- the walk race's
+# actual pass mark, which 11 of 13 rounds failed on 2026-08-23 -- with
+# Alternation at or above gen 18's 0.766. A run that travels further by standing
+# still has failed.
+#
+# NOTE ON COMPARABILITY: SpeedMatchMean now includes off-axis error, so its
+# values are NOT comparable to gen 18's 0.844. StepsBetweenFalls, Alternation
+# and BestRunDistance are.
+#
+# Run: mlagents-learn Config/BoxerLocomotion26.yaml --run-id=boxer_locomotion26
+#      --env EnvBuild4/PoBoxTrain.exe --no-graphics --num-envs 6 --base-port 5500
+
+behaviors:
+  Boxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.97
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 512
+      num_layers: 3
+    reward_signals:
+      extrinsic:
+        gamma: 0.995
+        strength: 1.0
+    max_steps: 50000000
+    time_horizon: 1000
+    summary_freq: 50000
+    keep_checkpoints: 40
+    checkpoint_interval: 1000000
+
+environment_parameters:
+  # The six-rung ladder is gen 18's, value for value and threshold for
+  # threshold. Changing the curriculum in the same generation as the estimator
+  # would make the comparison against gen 18 unreadable.
+  speed_command_max:
+    curriculum:
+      - name: StandStill
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.55
+          require_reset: true
+        value: 0.0
+      - name: Sway
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.60
+          require_reset: true
+        value: 0.2
+      - name: Shuffle
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.45
+          require_reset: true
+        value: 0.4
+      - name: Step
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.40
+          require_reset: true
+        value: 0.6
+      - name: Stride
+        completion_criteria:
+          measure: reward
+          behavior: Boxer
+          signal_smoothing: true
+          min_lesson_length: 250
+          threshold: 0.38
+          require_reset: true
+        value: 0.8
+      - name: Walk
+        value: 1.0

@@ -199,7 +199,12 @@ namespace PoBox
             }
             // Once, after the pose has settled under gravity but long before any
             // policy has done anything interesting.
-            if (_diagnoseFeet && !_diagnosed && Time.realtimeSinceStartup - _startTime > 5f)
+            // SCALED time, not wall clock: the harness runs at timeScale 20, so a
+            // single 3000-step episode is over in about three REAL seconds and a
+            // wall-clock trigger of five never fired at all. Four scaled seconds
+            // is 200 fixed steps -- long enough for the pose to settle, short
+            // enough to land inside the first episode at any episode count.
+            if (_diagnoseFeet && !_diagnosed && Time.timeSinceLevelLoad > 4f)
             {
                 _diagnosed = true;
                 for (int rewardIndex = 0; rewardIndex < _rewards.Length; rewardIndex++)
