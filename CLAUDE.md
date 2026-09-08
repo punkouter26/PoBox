@@ -12,6 +12,10 @@ scenes used to evaluate them.
 There is no test suite, no linter, and no build script in the repo. The build,
 scene generation, and training entry points are all listed below.
 
+Binding rules for agents working here — branch policy, when pushing is allowed,
+TensorBoard, fighter colours, physical realism — are in [AGENTS.md](AGENTS.md).
+`DOCS/` holds the project's own summary of itself; read it for orientation.
+
 ## Commands
 
 ### Scene and prefab generation (Unity Editor menu)
@@ -79,6 +83,11 @@ env player), not cores.
 start the trainer first, then press Play. If Unity logs `Couldn't connect to
 trainer on port 5004 ... Will perform inference instead`, nothing was listening
 and the scene just ran its baked brains.
+
+**Start TensorBoard whenever training starts**, and prune dead runs from the
+log directory first so the live one is readable. When training in MuJoCo or
+Isaac Lab, run those with their UI visible rather than headless — watching how
+the creature moves is part of judging the policy. See [AGENTS.md](AGENTS.md).
 
 Run id matches the config name lowercased (`BoxerLocomotion21.yaml` ->
 `boxer_locomotion21`). Output lands in `results/` (gitignored), with a `.onnx`
@@ -177,17 +186,59 @@ generation they contain. Verify with the ONNX input shape before trusting one;
 `Tools/promote_brain.ps1` writes one from the checkpoint's own filename rather
 than from what anyone believed the run had reached.
 
-**What ships, as of 2026-09-07:**
+**What ships, as of 2026-09-08:**
 
 | Mini-game | Brain | Why |
 |---|---|---|
 | Balance ring | `Locomotion_gen25` | 167.9 steps between falls under shove against `gen20`'s 91.7, and ahead on every body |
 | Walk race | `Locomotion_gen18_34M` | still the only brain that actually WALKS — alternation 0.601; the faster candidates slide |
 | Raptor | `RaptorBalance01` | its own model line, 13-joint rig; the shared 127-observation brain cannot load on it |
+| Balance ring (Nick) | `nick_balance_002.onnx` | MuJoCo Warp, trained at the ring's 0.02 s. 31/31 rounds survived, median 17.9 s against Standard's 10.1 |
+| Nick's own ring / demo | `nick_locomotion.onnx` | MuJoCo Warp at 0.005 s. 99% full-cap at 250 N, walks at 0.980 m/s |
 
 Two mini-games, two brains, and that is the architecture rather than an
 accident: `gen25` was trained with the commanded speed pinned at 0 and cannot
 walk, `gen18` walks and cannot stand still.
+
+Nick has two brains for the same reason and one more: `nick_balance_002`
+balances at 0.02 s and CANNOT WALK (0% full-cap, 2.22 s median), while
+`nick_locomotion` walks at 0.005 s and scores at the PASSIVE baseline if run
+at 0.02.
+
+### The timestep is a body property, not a scene setting
+
+`Time.fixedDeltaTime` is global, so one scene has one step, and a policy only
+works at the step its body is stable at. Measured 2026-09-08, both directions:
+
+| scene runs at | Nick | the PhysX cast |
+|---|---|---|
+| 0.02 s | 1.06 s median — the PASSIVE baseline is 1.08 | 30.0 s |
+| 0.005 s | 30.0 s | Standard 30.0 -> **2.9 s** |
+
+Neither survives the other's step, and DecisionPeriod compensation does not
+rescue the PhysX brains — the heuristic bot got BETTER at 0.005 s (2.8 -> 4.0),
+which is the tell that the physics is fine and the learned policies are simply
+out of distribution.
+
+What made a shared ring possible was the BODY. The position servos are kp=400,
+so at armature 0.02 `omega*dt` is 2.83 at a 0.02 s step, past the stability
+limit of 2 — the actuator chatters and the policy has no authority. Armature
+0.2 gives 0.89. It is set on Nick's 30 `MjHingeJoint`s in Unity, NOT the
+Raptor's 21 in the same scene, and exported into `nick_unity.xml` so the
+trainer and the game read one body.
+
+**In-training metrics cannot see any of this.** `Metrics/fall_rate` read
+0.0000 and mean episode length 1000/1000 for a policy whose fresh-start eval
+was 0% walk full-cap and a 3.57 s median. Judge a checkpoint with
+`Tools/MuJoCo/eval_nick.py`, never the reward curve.
+
+### `Tools/ML Boxing/7` is BROKEN — do not run it
+
+`RigTool_ContestScene.BuildAll` destroys the scene it builds. `Create()` opens
+a new empty scene, which removes the `Systems_ContestSpawner` that step `7c`
+used to add and that was never reimplemented; six of the nine steps then bail
+with "run 7c first" and it logs "built end to end" anyway. Recover the balance
+contest with `git checkout` rather than by rebuilding it.
 
 ### Agent / rig / reward split
 
@@ -237,6 +288,14 @@ stale values instead. Anything that must be set before the sensor exists belongs
 These are referred to as "project rules" in comments and are enforced by convention:
 
 - Every app ships one code-driven heuristic bot (here, the PD balance/gait bot).
+- **The cast, and its colours.** A heuristic coded bot, always RED. A reference
+  RL fighter on the standard body, always GREEN and untextured. Then zero or
+  more custom creatures carrying their own textures and skinned meshes. Colour
+  is identity, not decoration: red means "no brain, hand-written", green means
+  "the standard policy on the standard body".
+- **Earth gravity, realistic joints and masses for the creature's size.** A rig
+  that stands only because it is unnaturally heavy or hinged past its anatomy
+  is not shippable, whatever its reward curve says.
 - No singletons and no `DontDestroyOnLoad` — cross-scene state goes through a
   `ScriptableObject` (`Systems_MiniGameSelection`).
 - Opening scene shows a version stamp, top-left, non-pickable.
