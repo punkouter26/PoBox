@@ -1,5 +1,5 @@
-nick_locomotion.onnx
-====================
+nick_balance_002.onnx
+=====================
 
 WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),
           trained in MUJOCO WARP -- the second policy in this project not trained
@@ -15,7 +15,7 @@ CONTRACT  127 observations / 30 continuous actions.
           input obs_0 [batch,127], output continuous_actions [batch,30].
 MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported by
           RigTool_NickMuJoCo.ExportNickMjcf. NOT the authored creature.xml.
-TRAINED   2026-09-08, results/nick/nick06, model_5099.pt (iteration 5099), rsl_rl PPO on mujoco_warp.
-          Config: results/nick/nick06/config.json.
-MEASURED  (run Tools/MuJoCo/eval_nick.py and record the table here)
-EXPORT    Tools/MuJoCo/export_onnx.py --run nick06 --checkpoint model_5099.pt
+TRAINED   2026-09-08, results/nick/nick08, model_1499.pt (iteration 1499), rsl_rl PPO on mujoco_warp.
+          Config: results/nick/nick08/config.json.
+MEASURED  BALANCE-ONLY brain for the 0.02 s PhysX contest ring. 95% full-cap at 150 N, 30.0 s median, stance switches 0.087. CANNOT WALK: 0% full-cap, 2.22 s median. Trained at dt=0.02, decimation=1, joint armature 0.2 (10x the MJCF's 0.02).
+EXPORT    Tools/MuJoCo/export_onnx.py --run nick08 --checkpoint model_1499.pt

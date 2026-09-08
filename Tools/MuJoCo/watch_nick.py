@@ -240,10 +240,17 @@ def main():
     if not args.headless:
         import mujoco.viewer
         viewer = mujoco.viewer.launch_passive(model, data)
-        viewer.cam.distance = 3.5
-        viewer.cam.elevation = -15
+        viewer.cam.distance = 6.0
+        viewer.cam.elevation = -20
         viewer.cam.azimuth = 135
         viewer.cam.lookat[:] = [0.0, 0.0, 0.9]
+        # TRACK the pelvis instead of staring at the origin. A fixed lookat is
+        # fine for BALANCE, where he holds station, and useless for WALK, where
+        # he covers ~10 m in a 10 s phase and leaves the frame in the first two
+        # seconds -- so the phase this tool exists to judge was the one phase
+        # nobody could see.
+        viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        viewer.cam.trackbodyid = pelvis_id
 
     walking = False
     phase = 0

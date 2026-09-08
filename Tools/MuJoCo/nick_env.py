@@ -40,6 +40,7 @@ support, foot clearance and alternation. Falling ends the episode.
 from __future__ import annotations
 
 import math
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -83,7 +84,30 @@ FOOT_RAY_MAX = 1.0
 FOOT_CONTACT_ABOVE_REST = 0.03
 GAIT_CLOCK_HZ = 1.4          # Agent_FighterBoxing.GAIT_CLOCK_FREQUENCY
 REST_FORWARD = (0.0, -1.0, 0.0)   # the controller's "forward" in pelvis frame
-PHYSICS_TIMESTEP = 0.005
+_INTEGRATORS = {"euler": mujoco.mjtIntegrator.mjINT_EULER,
+                "rk4": mujoco.mjtIntegrator.mjINT_RK4,
+                "implicit": mujoco.mjtIntegrator.mjINT_IMPLICIT,
+                "implicitfast": mujoco.mjtIntegrator.mjINT_IMPLICITFAST}
+# Overridable from the environment so the stability sweep does not need edits.
+SOLVER_INTEGRATOR = _INTEGRATORS[os.environ.get("NICK_INTEGRATOR", "implicitfast")]
+SOLVER_ITERATIONS = int(os.environ.get("NICK_SOLVER_ITERS", "20"))
+# Joint armature now lives in the MJCF Unity generates (0.2, set on Nick's 30
+# MjHingeJoints -- NOT the Raptor's 21, which share that scene and whose own
+# brain was trained at 0.02). Keep this at 1.0: it was the sweep knob that
+# found 0.2, and leaving it at 10 would silently square the value. Verified
+# 2026-09-08: nick08 measures 95% full-cap / 30.0 s median either way.
+ARMATURE_SCALE = float(os.environ.get("NICK_ARMATURE_SCALE", "1.0"))
+SOLREF_TIMECONST = float(os.environ.get("NICK_SOLREF", "0"))  # 0 = leave the MJCF value
+PHYSICS_TIMESTEP = float(os.environ.get("NICK_TIMESTEP", "0.005"))
+# 0.005 x decimation 4 = 0.02 s control (50 Hz). RAISING THE PHYSICS STEP TO
+# 0.02 x 1 -- same control rate, so the policy sees nothing different -- was
+# tried on 2026-09-07 to let Nick share a PhysX contest scene at Unity's locked
+# fixedDeltaTime. It does not work, and the reason is the SIM, not the policy:
+# nick03's shipping brain, which measures a 30.0 s balance median here, fell to
+# 1.06 s against a 1.08 s PASSIVE baseline -- the policy had no authority at all.
+# Neither integrator=implicit (NaNs under Warp), armature x3-x5, solref 0.04-0.06,
+# nor 100 solver iterations recovered any of it. 0.01 x 2 is fine (30.0 s / 20.0 s,
+# 80%/100% full-cap), so the cliff sits between 0.01 and 0.02.
 
 
 def stem(name: str) -> str:
@@ -95,7 +119,7 @@ def stem(name: str) -> str:
 class NickEnvCfg:
     model_path: str = str(UNITY_MJCF)
     num_envs: int = 4096
-    decimation: int = 4
+    decimation: int = int(os.environ.get("NICK_DECIMATION", "4"))   # 0.005 x 4 = 0.02 s control
     episode_seconds: float = 20.0
     seed: int = 1
     observe_command: bool = True
@@ -133,9 +157,25 @@ class NickEnvCfg:
 
     # --- perturbations ------------------------------------------------------
     push_probability: float = 1.0 / 150.0   # per control step, after push_start
-    push_force_range: tuple = (50.0, 200.0)  # newtons, horizontal
+    # Upper bound overridable: nick03 trained on <=200 N and falls off a
+    # cliff just past it -- 94% full-cap at 150 N, 65% at 250, 23% at 350,
+    # 4% at 450 (measured 2026-09-07, 128 worlds, 30 s cap).
+    push_force_range: tuple = (50.0, float(os.environ.get("NICK_PUSH_MAX", "200.0")))
     push_steps: int = 8                      # control steps a push lasts (0.16 s)
     push_start_seconds: float = 1.0
+
+    # RING HAZARDS. The contest ring does not only shove: Systems_HazardDirector
+    # runs WIND GUSTS (55 N held for 2 s), GRAVITY LEAN (2.5 deg, a 13 s cycle)
+    # and BALL RAIN. nick08 saw only 0.2 s impulses, and in the ring it showed --
+    # a 4.4 s median there against 95% full-cap in an eval that only shoves.
+    # A tilt is just a constant horizontal acceleration, so it is modelled as a
+    # slowly rotating force of mass * g * sin(angle). Ball rain is NOT modelled:
+    # falling rigid bodies are not a force on the pelvis.
+    hazard_wind_newtons: float = 55.0
+    hazard_wind_seconds: float = 2.0
+    hazard_wind_interval_seconds: tuple = (2.5, 5.0)
+    hazard_lean_degrees: float = 2.5
+    hazard_lean_cycle_seconds: float = 13.0
     init_joint_noise: float = 0.05           # rad, hinge dofs
     init_vel_noise: float = 0.1
     exact_start_fraction: float = 0.3        # resets from the exact rest pose, as Unity does
@@ -248,6 +288,28 @@ class NickEnv:
         # --- CPU model: ids, rest pose, contract checks ---------------------
         self.mjm = mujoco.MjModel.from_xml_path(cfg.model_path)
         self.mjm.opt.timestep = PHYSICS_TIMESTEP
+        # STIFFNESS vs TIMESTEP. The position servos are kp=400 against
+        # armature=0.02, so omega = sqrt(kp/I) ~ 141 rad/s and explicit
+        # stability wants dt < 2/omega ~ 0.014 s. That is fine at 0.005 and
+        # over the line at 0.02, where the body goes numerically unstable and
+        # the policy loses all authority -- measured 2026-09-07, nick03's
+        # shipping brain fell to a 1.06 s median against a 1.08 s PASSIVE
+        # baseline. Integrate the stiff terms implicitly instead of shrinking
+        # the step, which is what lets 0.02 match Unity's locked fixedDeltaTime.
+        if SOLVER_INTEGRATOR is not None:
+            self.mjm.opt.integrator = SOLVER_INTEGRATOR
+        if SOLVER_ITERATIONS:
+            self.mjm.opt.iterations = SOLVER_ITERATIONS
+        if ARMATURE_SCALE != 1.0:
+            self.mjm.dof_armature[:] = self.mjm.dof_armature * ARMATURE_SCALE
+        # CONTACT time constant must be >= ~2 * timestep or contacts cannot be
+        # resolved: the MJCF ships solref="0.02 1", which is 4x the old 0.005
+        # step and only 1x a 0.02 one. Feet then penetrate instead of pushing
+        # off, which is why a known-good policy measured at the PASSIVE
+        # baseline when the step was raised.
+        if SOLREF_TIMECONST > 0.0:
+            self.mjm.geom_solref[:, 0] = SOLREF_TIMECONST
+            self.mjm.opt.o_solref[0] = SOLREF_TIMECONST
         self.mjd = mujoco.MjData(self.mjm)
         mujoco.mj_forward(self.mjm, self.mjd)
         self._resolve_ids()
@@ -285,10 +347,19 @@ class NickEnv:
         self.switch_rate = torch.zeros(n, device=dev)
         self.push_steps_left = torch.zeros(n, dtype=torch.long, device=dev)
         self.push_force = torch.zeros(n, 3, device=dev)
+        # 0 = shoves only, 1 = + wind gusts, 2 = + gravity lean. Sampled per
+        # episode so a world sees one hazard at a time, as a ring round does.
+        self.hazard_mode = torch.zeros(n, dtype=torch.long, device=dev)
+        self.wind_steps_left = torch.zeros(n, dtype=torch.long, device=dev)
+        self.wind_force = torch.zeros(n, 3, device=dev)
+        self.wind_wait = torch.zeros(n, dtype=torch.long, device=dev)
+        self.lean_phase = torch.zeros(n, device=dev)
         self.fell = torch.zeros(n, dtype=torch.bool, device=dev)
         self.qpos0 = torch.tensor(self.mjm.qpos0, device=dev, dtype=self.qpos.dtype)
         self.ctrl_low = torch.tensor(self.mjm.actuator_ctrlrange[:, 0], device=dev, dtype=torch.float32)
         self.ctrl_high = torch.tensor(self.mjm.actuator_ctrlrange[:, 1], device=dev, dtype=torch.float32)
+        # Whole-creature mass: a gravity tilt scales with it.
+        self.total_mass = float(self.mjm.body_mass.sum())
         self.rest_forward = torch.tensor(REST_FORWARD, device=dev)
         self.rest_foot_z_t = torch.tensor(self.rest_foot_z, device=dev)
         self._hinge_qpos_mask = torch.zeros(self.mjm.nq, device=dev)
@@ -547,6 +618,41 @@ class NickEnv:
         self.push_steps_left = torch.where(start, torch.full_like(self.push_steps_left, cfg.push_steps), self.push_steps_left)
         active = self.push_steps_left > 0
         force = torch.where(active.unsqueeze(1), self.push_force, torch.zeros_like(self.push_force))
+
+        # WIND GUSTS: held for hazard_wind_seconds, then a pause, repeating.
+        wind_steps = max(1, int(round(cfg.hazard_wind_seconds / self.control_dt)))
+        lo, hi = cfg.hazard_wind_interval_seconds
+        wait_lo = max(1, int(round(lo / self.control_dt)))
+        wait_hi = max(wait_lo + 1, int(round(hi / self.control_dt)))
+        is_wind = (self.hazard_mode == 1) & eligible
+        gust_angle = torch.rand(n, device=self.device) * 2.0 * math.pi
+        fresh_wind = torch.stack([torch.cos(gust_angle) * cfg.hazard_wind_newtons,
+                                  torch.sin(gust_angle) * cfg.hazard_wind_newtons,
+                                  torch.zeros(n, device=self.device)], dim=1)
+        begin = is_wind & (self.wind_steps_left <= 0) & (self.wind_wait <= 0)
+        self.wind_force = torch.where(begin.unsqueeze(1), fresh_wind, self.wind_force)
+        self.wind_steps_left = torch.where(begin, torch.full_like(self.wind_steps_left, wind_steps),
+                                           self.wind_steps_left)
+        blowing = is_wind & (self.wind_steps_left > 0)
+        force = force + torch.where(blowing.unsqueeze(1), self.wind_force,
+                                    torch.zeros_like(self.wind_force))
+        just_ended = blowing & (self.wind_steps_left == 1)
+        fresh_wait = torch.randint(wait_lo, wait_hi, (n,), device=self.device)
+        self.wind_wait = torch.where(just_ended, fresh_wait, torch.clamp(self.wind_wait - 1, min=0))
+        self.wind_steps_left = torch.clamp(self.wind_steps_left - 1, min=0)
+
+        # GRAVITY LEAN: a tilt is a constant horizontal acceleration, so it is
+        # mass * g * sin(tilt) applied at the pelvis, rotating once per cycle.
+        lean_newtons = (self.total_mass * 9.81
+                        * math.sin(math.radians(cfg.hazard_lean_degrees)))
+        self.lean_phase = self.lean_phase + (2.0 * math.pi * self.control_dt
+                                             / max(1e-3, cfg.hazard_lean_cycle_seconds))
+        is_lean = (self.hazard_mode == 2) & eligible
+        lean = torch.stack([torch.cos(self.lean_phase) * lean_newtons,
+                            torch.sin(self.lean_phase) * lean_newtons,
+                            torch.zeros(n, device=self.device)], dim=1)
+        force = force + torch.where(is_lean.unsqueeze(1), lean, torch.zeros_like(lean))
+
         self.xfrc[:, self.pelvis_id, 0:3] = force.to(self.xfrc.dtype)
         self.push_steps_left = torch.clamp(self.push_steps_left - 1, min=0)
 
@@ -564,6 +670,15 @@ class NickEnv:
         dev = self.device
         dtype = self.qpos.dtype
         m1 = mask.unsqueeze(1)
+
+        # One hazard per episode, like one hazard per ring round.
+        fresh_mode = torch.randint(0, 3, (n,), device=dev)
+        self.hazard_mode = torch.where(mask, fresh_mode, self.hazard_mode)
+        self.wind_steps_left = torch.where(mask, torch.zeros_like(self.wind_steps_left),
+                                           self.wind_steps_left)
+        self.wind_wait = torch.where(mask, torch.zeros_like(self.wind_wait), self.wind_wait)
+        self.lean_phase = torch.where(mask, torch.rand(n, device=dev) * 2.0 * math.pi,
+                                      self.lean_phase)
 
         exact = (torch.rand(n, device=dev) < cfg.exact_start_fraction).float().unsqueeze(1)
         noise = (torch.rand(n, self.mjm.nq, device=dev) * 2.0 - 1.0) * cfg.init_joint_noise * self._hinge_qpos_mask
