@@ -157,7 +157,14 @@ namespace PoBox
             StyleGameButton(_balanceButton, game == MiniGameKind.Balance);
             StyleGameButton(_walkButton, game == MiniGameKind.Walk);
 
-            int slotCount = game == MiniGameKind.Balance ? BALANCE_SLOTS : WALK_SLOTS;
+            // ONE ROW PER FIGHTER, never more. BALANCE_SLOTS/WALK_SLOTS are the
+            // ring's CAPACITY, not the line-up: offering 8 rows for 5 fighters
+            // meant the default filled the extra three by wrapping, so the menu
+            // opened on Standard, Grandma, Grandpa, Raptor, Bot, Standard,
+            // Grandma, Grandpa -- three duplicates nobody asked for. Two
+            // fighters with the same brain on the same body are not a match-up.
+            int capacity = game == MiniGameKind.Balance ? BALANCE_SLOTS : WALK_SLOTS;
+            int slotCount = Mathf.Min(capacity, _fighterNames.Length);
             _slotsHeading.text = game == MiniGameKind.Balance
                 ? $"RING  ·  {slotCount} FIGHTERS"
                 : $"START LINE  ·  {slotCount} RACERS";
@@ -212,8 +219,10 @@ namespace PoBox
 
                 // Empty label: the badge already names the slot, and the
                 // built-in label would push the value box off-centre.
+                // One of each, in roster order. Anything past the roster opens
+                // EMPTY rather than wrapping back to the first fighter.
                 var dropdown = new DropdownField(string.Empty, choices,
-                    _fighterNames.Length > 0 ? slotIndex % _fighterNames.Length : choices.Count - 1);
+                    slotIndex < _fighterNames.Length ? slotIndex : choices.Count - 1);
                 dropdown.style.flexGrow = 1f;
                 dropdown.style.marginLeft = 0f;
                 dropdown.style.marginRight = 0f;

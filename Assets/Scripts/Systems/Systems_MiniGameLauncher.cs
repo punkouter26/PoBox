@@ -43,13 +43,21 @@ namespace PoBox
                 return;
             }
 
-            // One of each roster entry, in slot order.
+            // ONE of each roster entry, in slot order -- which is what this
+            // comment always claimed and the code did not do. `slotIndex %
+            // rosterLength` filled every one of the 8 slots by wrapping, so a
+            // 5-entry roster spawned 8 fighters: Standard, Grandma, Grandpa,
+            // Raptor, Bot, and then Standard2, Grandma2, Grandpa2 as copies.
+            // Duplicates make the contest unreadable -- two fighters with the
+            // same brain on the same body are not a match-up -- and the round
+            // log had to disambiguate them with a suffix. Unused slots take -1
+            // and stay empty.
             int slotCount = _spawner.SlotCount;
             var defaults = new int[slotCount];
             int rosterLength = _spawner.Roster.Length;
             for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
             {
-                defaults[slotIndex] = rosterLength > 0 ? slotIndex % rosterLength : -1;
+                defaults[slotIndex] = slotIndex < rosterLength ? slotIndex : -1;
             }
             _spawner.SpawnAndBegin(defaults);
         }
