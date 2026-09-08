@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Unity.InferenceEngine;
+using Unity.MLAgents;
 using Unity.MLAgents.Policies;
 using UnityEngine;
 
@@ -46,6 +47,9 @@ namespace PoBox
         /// only because height observations are ground-relative (Systems_FighterRig.GroundY).
         /// </summary>
         public const float RING_FLOOR_Y = 1f;
+
+        /// <summary>Decision interval every shipped brain was trained at.</summary>
+        private const float TRAINED_DECISION_SECONDS = 0.02f;
 
         private const float SPAWN_HEIGHT = RING_FLOOR_Y + 0.03f;
 
@@ -254,6 +258,23 @@ namespace PoBox
             if (rig.GloveRight != null)
             {
                 rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
+            }
+
+            // DECISION CADENCE IS THE CONTRACT; THE PHYSICS STEP IS NOT.
+            // Every brain in this roster was trained deciding once per 0.02 s
+            // with DecisionPeriod 1. Sharing a scene with a MuJoCo creature
+            // costs a finer step -- CreatureSentisController pins
+            // Time.fixedDeltaTime for the whole scene -- and at 0.005 s a
+            // DecisionPeriod of 1 drives these policies FOUR TIMES too fast.
+            // Holding each action for proportionally more physics steps is
+            // exactly MuJoCo's decimation under another name, and it keeps the
+            // 50 Hz the policy learned. The gait clock needs no help: it is
+            // StepCount * Time.fixedDeltaTime, i.e. elapsed seconds already.
+            var requester = instance.GetComponent<DecisionRequester>();
+            if (requester != null)
+            {
+                requester.DecisionPeriod = Mathf.Max(1, Mathf.RoundToInt(
+                    TRAINED_DECISION_SECONDS / Mathf.Max(1e-5f, Time.fixedDeltaTime)));
             }
 
             var behavior = instance.GetComponent<BehaviorParameters>();

@@ -4,7 +4,8 @@
     "references": [
         "Mujoco.Runtime",
         "Unity.InferenceEngine",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "PoBox.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

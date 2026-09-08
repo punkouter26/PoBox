@@ -36,7 +36,10 @@ namespace PoBox
         private sealed class Contestant
         {
             public string displayName;
+            /// <summary>Null for a fighter that is not a PhysX rig (see external).</summary>
             public Systems_FighterRig rig;
+            /// <summary>Set instead of rig for a non-PhysX contestant, e.g. the MuJoCo creature.</summary>
+            public IContestFighter external;
             public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
@@ -57,6 +60,8 @@ namespace PoBox
         private Label _title;
         private int _round = 1;
         private float _restartTimer = -1f;
+        /// <summary>Active hazard, so a round line says what the fighters were up against.</summary>
+        private string _hazard = "none";
         private float _roundTime;
 
         private void Start()
@@ -89,6 +94,9 @@ namespace PoBox
             platesRow.AddToClassList("plates-row");
             platesRow.pickingMode = PickingMode.Ignore;
             hudRoot.Add(platesRow);
+
+            var hazards = FindFirstObjectByType<Systems_HazardDirector>(FindObjectsInactive.Include);
+            if (hazards != null) { hazards.HazardChosen += name => _hazard = name; }
 
             Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
             for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
@@ -142,6 +150,28 @@ namespace PoBox
                 _contestants.Add(contestant);
                 CommandStand(contestant);
             }
+
+            // Fighters that are not PhysX rigs -- currently the MuJoCo creature.
+            // Discovered the same way and refereed by the same rules; only the
+            // four IContestFighter calls differ. See Systems_ContestFighter.
+            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.InstanceID))
+            {
+                if (behaviour is not IContestFighter fighter) { continue; }
+                VisualElement extPlate = Systems_UiTheme.BuildPlate(Color.cyan, out Label extLabel);
+                platesRow.Add(extPlate);
+                fighter.ResetForRound();
+                var extContestant = new Contestant
+                {
+                    displayName = fighter.DisplayName,
+                    external = fighter,
+                    fallSensors = System.Array.Empty<Sensor_GroundContact>(),
+                    startHeadHeight = fighter.HeadHeightAboveGround,
+                    plate = extPlate,
+                    label = extLabel
+                };
+                _contestants.Add(extContestant);
+                CommandStand(extContestant);
+            }
         }
 
         private void FixedUpdate()
@@ -181,7 +211,9 @@ namespace PoBox
                 // fighter scored 1.0 / 2.6 = 0.385 on this rather than ~0, and
                 // this sum is what ranks the round.
                 contestant.uprightnessSum +=
-                    (contestant.rig.Head.position.y - contestant.rig.GroundY)
+                    (contestant.external != null
+                        ? contestant.external.HeadHeightAboveGround
+                        : contestant.rig.Head.position.y - contestant.rig.GroundY)
                     / contestant.startHeadHeight * Time.fixedDeltaTime;
                 aliveCount++;
             }
@@ -218,7 +250,7 @@ namespace PoBox
         {
             string reason = lastStanding ? "last standing" : (timeUp ? "time up" : "all down");
             var line = new System.Text.StringBuilder();
-            line.Append($"CONTEST_ROUND {_round} | {reason} | winner=");
+            line.Append($"CONTEST_ROUND {_round} | {reason} | hazard={_hazard} | winner=");
             line.Append(string.IsNullOrEmpty(leader?.displayName) ? "NO CONTEST" : leader.displayName);
             line.Append(" |");
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
@@ -321,6 +353,7 @@ namespace PoBox
 
         private static void CommandStand(Contestant contestant)
         {
+            if (contestant.external != null) { contestant.external.CommandStand(); return; }
             if (contestant.agent != null)
             {
                 contestant.agent.SetLocomotionCommand(0f, Vector3.forward);
@@ -329,6 +362,12 @@ namespace PoBox
 
         private bool HasFallen(Contestant contestant)
         {
+            if (contestant.external != null)
+            {
+                return contestant.external.ReportsDown
+                    || contestant.external.HeadHeightAboveGround
+                       < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
+            }
             for (int sensorIndex = 0; sensorIndex < contestant.fallSensors.Length; sensorIndex++)
             {
                 if (contestant.fallSensors[sensorIndex].IsGrounded)
@@ -356,7 +395,8 @@ namespace PoBox
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
                 Contestant contestant = _contestants[contestantIndex];
-                ResetRigForRound(contestant.rig);
+                if (contestant.external != null) { contestant.external.ResetForRound(); }
+                else { ResetRigForRound(contestant.rig); }
                 CommandStand(contestant);
                 contestant.aliveTime = 0f;
                 contestant.uprightnessSum = 0f;
