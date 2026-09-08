@@ -62,6 +62,7 @@ namespace PoBox.Editor
             ("Assets/Prefabs/Fighters/Fighter_Capsule.prefab", "Bot", true)
         };
 
+
         /// <summary>
         /// The whole balance contest scene, in one idempotent pass.
         ///
@@ -92,7 +93,38 @@ namespace PoBox.Editor
             Debug.Log("RigTool: balance contest scene built end to end.");
         }
 
-        public static void Create()
+/// <summary>Opens the shipped balance contest and plays it; CONTEST_ROUND lines follow.</summary>
+        public static void PlayBalanceContest()
+        {
+            if (EditorApplication.isPlaying) { return; }
+            EditorSceneManager.OpenScene("Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity", OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>Opens the menu scene and plays it, for checking the line-up picker.</summary>
+        public static void PlayMenu()
+        {
+            if (EditorApplication.isPlaying) { return; }
+            EditorSceneManager.OpenScene("Assets/Scenes/SCN_MENU.unity", OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>Opens the shipped walk contest and plays it.</summary>
+        public static void PlayWalkContest()
+        {
+            if (EditorApplication.isPlaying) { return; }
+            EditorSceneManager.OpenScene("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity", OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>Leaves play mode, so a driven run can be ended from outside.</summary>
+        public static void StopPlaying()
+        {
+            if (EditorApplication.isPlaying) { EditorApplication.ExitPlaymode(); }
+            Debug.Log("RigTool: exiting play mode.");
+        }
+
+                public static void Create()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
@@ -170,8 +202,15 @@ namespace PoBox.Editor
             rig.Head.gameObject.AddComponent<Sensor_GroundContact>();
             rig.Joints[JOINT_INDEX_SHIN_L].body.gameObject.AddComponent<Sensor_GroundContact>();
             rig.Joints[JOINT_INDEX_SHIN_R].body.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
+            // Gloves are optional: the Raptor is a 13-joint rig with NO ARMS,
+            // so its GloveLeft/GloveRight are null. SpawnContestant used to
+            // deref them unconditionally, which threw the moment BuildAll tried
+            // to place the Raptor -- a latent break the committed scene hid,
+            // exactly the "healthy scene is no evidence the tool still works"
+            // hazard in CLAUDE.md. A fighter with no gloves simply gets no
+            // glove ground-sensors.
+            if (rig.GloveLeft != null) { rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>(); }
+            if (rig.GloveRight != null) { rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>(); }
 
             var behavior = instance.GetComponent<BehaviorParameters>();
             if (forceHeuristic)
@@ -295,6 +334,26 @@ namespace PoBox.Editor
                 document.panelSettings = GetOrCreatePanelSettings();
                 chrome.AddComponent<Systems_VersionStamp>();
                 Debug.Log("RigTool: added HudChrome (version stamp) to carry what ContestSetupMenu used to.");
+            }
+
+            // Contest scenes place NOTHING at author time: Systems_ContestSpawner
+            // instantiates the roster when the scene starts. Create() lays the
+            // fighters out in a line only so the steps between it and here have
+            // something to read, and this is where they go again.
+            //
+            // Leaving them behind gives the scene TWO rosters, and the author-time
+            // one sits on a floor that no longer fits it: LINE_SPACING is 2 m, so
+            // six entries span x -5..+5, while BuildGround's canvas is 6.1 m wide
+            // (x -3.05..+3.05) since it stopped being the old 40 m slab. Measured
+            // 2026-09-07 on a scene built without this step: Standard (x=-5) and
+            // Bot (x=+5) started in mid-air and were down in 0.4 s, and all 52
+            // rounds were won by Grandpa (x=-1), one of only two fighters standing
+            // on the platform at all. A healthy ring runs a full 30 s round.
+            foreach (Systems_FighterRig rig in UnityEngine.Object.FindObjectsByType<Systems_FighterRig>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                UnityEngine.Object.DestroyImmediate(rig.gameObject);
+                removed++;
             }
 
             ResyncDramaCameraFraming();
