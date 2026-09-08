@@ -76,7 +76,10 @@ namespace PoBox
         private sealed class Racer
         {
             public string displayName;
+            /// <summary>Null for a non-PhysX racer (see external).</summary>
             public Systems_FighterRig rig;
+            /// <summary>Set instead of rig for e.g. the MuJoCo creature.</summary>
+            public IContestFighter external;
             public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
@@ -181,6 +184,27 @@ namespace PoBox
                 _racers.Add(racer);
                 CommandRace(racer);
             }
+
+            // Racers that are not PhysX rigs -- currently the MuJoCo creature.
+            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.InstanceID))
+            {
+                if (behaviour is not IContestFighter fighter) { continue; }
+                VisualElement extPlate = Systems_UiTheme.BuildPlate(Color.cyan, out Label extLabel);
+                platesRow.Add(extPlate);
+                fighter.ResetForRound();
+                var extRacer = new Racer
+                {
+                    displayName = fighter.DisplayName,
+                    external = fighter,
+                    fallSensors = System.Array.Empty<Sensor_GroundContact>(),
+                    startHeadHeight = fighter.HeadHeightAboveGround,
+                    startProjection = Vector3.Dot(fighter.WorldPosition, _goalDirection),
+                    plate = extPlate,
+                    label = extLabel
+                };
+                _racers.Add(extRacer);
+                CommandRace(extRacer);
+            }
         }
 
         private void FixedUpdate()
@@ -226,7 +250,9 @@ namespace PoBox
                 // The floor is what stops a backward faceplant scoring -0.6 m
                 // and still placing, which is a number no scoreboard should
                 // ever have shown a player.
-                float projected = Vector3.Dot(racer.rig.Pelvis.position, _goalDirection) - racer.startProjection;
+                float projected = Vector3.Dot(
+                    racer.external != null ? racer.external.WorldPosition : racer.rig.Pelvis.position,
+                    _goalDirection) - racer.startProjection;
                 racer.travelled = Mathf.Max(racer.travelled, Mathf.Max(0f, projected));
                 if (racer.travelled > _bestTravelled + STALL_EPSILON)
                 {
@@ -248,6 +274,8 @@ namespace PoBox
             if ((racingCount == 0 || timeUp || stalled) && _racers.Count > 0)
             {
                 _restartTimer = ROUND_RESTART_DELAY;
+                LogRaceResult(FindLeader(),
+                    racingCount == 0 ? "all done" : timeUp ? "time up" : "stalled");
                 RaiseRoundEnded(WinnerName());
             }
         }
@@ -297,6 +325,29 @@ namespace PoBox
 
         // Ranking: anyone who finished beats anyone who did not, earliest
         // finish first; among the unfinished, furthest travelled wins.
+        /// <summary>
+        /// One greppable line per race, the counterpart of
+        /// Systems_BalanceContest's CONTEST_ROUND. The walk race had NO
+        /// logging at all -- one Debug.LogError about a missing StyleSheet --
+        /// so "did anyone actually walk" was unanswerable without a human
+        /// watching a screen, which is the question a shipping decision on a
+        /// locomotion brain turns on.
+        /// </summary>
+        private void LogRaceResult(Racer leader, string reason)
+        {
+            var line = new System.Text.StringBuilder();
+            line.Append($"WALK_RESULT {_round} | {reason} | goal={_goalDistance:F1}m | winner=");
+            line.Append(string.IsNullOrEmpty(leader?.displayName) ? "NO CONTEST" : leader.displayName);
+            line.Append(" |");
+            for (int racerIndex = 0; racerIndex < _racers.Count; racerIndex++)
+            {
+                Racer racer = _racers[racerIndex];
+                line.Append($" {racer.displayName}={racer.travelled:F2}m");
+                line.Append(racer.finished ? "(finished)" : racer.fallen ? "(down)" : "(up)");
+            }
+            Debug.Log(line.ToString());
+        }
+
         private Racer FindLeader()
         {
             Racer leader = null;
@@ -333,6 +384,7 @@ namespace PoBox
             {
                 return;
             }
+            if (racer.external != null) { racer.external.CommandWalk(RACE_SPEED, _goalDirection); return; }
             racer.agent.SetLocomotionCommand(RACE_SPEED, _goalDirection);
         }
 
@@ -353,6 +405,11 @@ namespace PoBox
             // FOUR CENTIMETRES above the floor to count as collapsed instead of
             // the intended ~64 cm. Reward_Locomotion.IsFallen documents having
             // hit exactly this; the two contests still had the original form.
+            if (racer.external != null)
+            {
+                return racer.external.ReportsDown
+                    || racer.external.HeadHeightAboveGround < racer.startHeadHeight * HEAD_COLLAPSE_FRACTION;
+            }
             return racer.rig.Head.position.y - racer.rig.GroundY
                 < racer.startHeadHeight * HEAD_COLLAPSE_FRACTION;
         }
@@ -367,12 +424,19 @@ namespace PoBox
             for (int racerIndex = 0; racerIndex < _racers.Count; racerIndex++)
             {
                 Racer racer = _racers[racerIndex];
-                racer.rig.ResetToStartPose();
-                foreach (Sensor_GroundContact sensor in racer.rig.GetComponentsInChildren<Sensor_GroundContact>(true))
+                if (racer.external != null) { racer.external.ResetForRound(); }
+                else { racer.rig.ResetToStartPose(); }
+                // A non-PhysX racer has no ground sensors to clear.
+                if (racer.rig != null)
                 {
-                    sensor.ResetContacts();
+                    foreach (Sensor_GroundContact sensor in racer.rig.GetComponentsInChildren<Sensor_GroundContact>(true))
+                    {
+                        sensor.ResetContacts();
+                    }
                 }
-                racer.startProjection = Vector3.Dot(racer.rig.Pelvis.position, _goalDirection);
+                racer.startProjection = Vector3.Dot(
+                    racer.external != null ? racer.external.WorldPosition : racer.rig.Pelvis.position,
+                    _goalDirection);
                 CommandRace(racer);
                 racer.travelled = 0f;
                 racer.finishTime = 0f;

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86c781e7db345df4488ce49cb62f2446, type: 3}
+  m_Name: SpectatorKit
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_SpectatorKit
+  overlayMaterial: {fileID: 2100000, guid: 6f72580d4c2766a408ef46d27d6a5bc9, type: 2}
+  impactClips:
+  - {fileID: 8300000, guid: 6c74369698e536e4cb5d2dd1eab2f8fb, type: 3}
+  - {fileID: 8300000, guid: aca17d5b59b09454ea6c0df2720df66c, type: 3}
+  - {fileID: 8300000, guid: 81e1d158430254f48ac9738ccadf95c3, type: 3}
+  dossiers:
+  - {fileID: 11400000, guid: 9c0075291fed49045a661091a48057f7, type: 2}
+  - {fileID: 11400000, guid: 58a951ee319af834cb1cedf656f4bfec, type: 2}
+  - {fileID: 11400000, guid: 8759183e6c2e3d9418bbb01f160d862b, type: 2}
+  - {fileID: 11400000, guid: 18855c96049638d45be7a86efd0ae928, type: 2}

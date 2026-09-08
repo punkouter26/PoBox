@@ -36,8 +36,33 @@ namespace PoBox
         /// <summary>One fighter has gone down; carries its display name.</summary>
         public event System.Action<string> FighterFell;
 
-        /// <summary>Set by the match director when the match is decided: the referee stops starting new rounds.</summary>
-        public bool HoldRestarts { get; set; }
+        /// <summary>
+        /// RESPAWNING IS A TRAINING MECHANIC. An episode that resets a fallen
+        /// body so it can try again is how a policy learns; it is not how a
+        /// contest works. With this off the fighters fall, stay fallen, and the
+        /// final tableau holds -- nobody stands back up because the clock said
+        /// so. Left ON for anything that genuinely wants repeated rounds.
+        /// </summary>
+        [Tooltip("Start a fresh round after each one ends. OFF for game scenes: " +
+                 "fighters fall and stay fallen. Resetting a fallen body is a " +
+                 "training mechanic.")]
+        [SerializeField] private bool _restartRoundsAutomatically = true;
+
+        private bool _holdRestarts;
+
+        /// <summary>
+        /// True once the referee should stop starting new rounds — set by the
+        /// match director when the match is decided, and always true when
+        /// automatic restarts are off.
+        /// </summary>
+        public bool HoldRestarts
+        {
+            get => _holdRestarts || !_restartRoundsAutomatically;
+            set => _holdRestarts = value;
+        }
+
+        /// <summary>Editor-time setup: see <see cref="_restartRoundsAutomatically"/>.</summary>
+        public void EditorSetAutomaticRestarts(bool restart) => _restartRoundsAutomatically = restart;
 
         protected void RaiseRoundEnded(string winnerName) => RoundEnded?.Invoke(winnerName);
 

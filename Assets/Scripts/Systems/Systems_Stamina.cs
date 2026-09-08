@@ -100,11 +100,48 @@ namespace PoBox
                 {
                     continue;
                 }
-                float angularSpeed = entry.body.angularVelocity.magnitude;
-                float torqueProxy = Mathf.Min(entry.baseMaxForce, entry.baseSpring * springScale * angularSpeed);
-                total += torqueProxy * angularSpeed;
+                total += TorqueProxy(entry, springScale) * entry.body.angularVelocity.magnitude;
             }
             return total;
+        }
+
+        /// <summary>
+        /// The v1 torque proxy for one joint: min(maxForce, spring x |w|),
+        /// never the action vector (project rule — an action is a request, not
+        /// a force, and a policy that saturates its actions while the body is
+        /// pinned is doing no work at all).
+        ///
+        /// PUBLIC AND STATIC because <see cref="Systems_JointStressView"/> has
+        /// to show the same number this drains stamina from, and the contest
+        /// disables this component outright
+        /// (<c>Systems_ContestSpawner.Configure</c> sets stamina.enabled =
+        /// false) so the overlay cannot simply read a field off it. Two copies
+        /// of this expression would be two different definitions of "working
+        /// hard" — one the fighter feels and one the audience sees.
+        /// </summary>
+        public static float TorqueProxy(RigJointEntry entry, float springScale)
+        {
+            if (entry == null || entry.body == null)
+            {
+                return 0f;
+            }
+            float angularSpeed = entry.body.angularVelocity.magnitude;
+            return Mathf.Min(entry.baseMaxForce, entry.baseSpring * springScale * angularSpeed);
+        }
+
+        /// <summary>
+        /// <see cref="TorqueProxy"/> as a fraction of what the joint's motor can
+        /// actually deliver, so 1 means "saturated, no authority left". The
+        /// proxy is already clamped to baseMaxForce, so this needs no clamp of
+        /// its own beyond guarding a rig entry whose maxForce is zero.
+        /// </summary>
+        public static float JointLoad01(RigJointEntry entry, float springScale)
+        {
+            if (entry == null || entry.baseMaxForce <= 0f)
+            {
+                return 0f;
+            }
+            return TorqueProxy(entry, springScale) / entry.baseMaxForce;
         }
     }
 }

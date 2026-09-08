@@ -188,14 +188,28 @@ namespace PoBox.Editor
         }
 
                 [MenuItem("Tools/ML Boxing/14. Add Nick To Balance Ring")]
-        public static void AddNickToBalanceContest()
+        public static void AddNickToBalanceContest() =>
+            AddNickToContest(CONTEST_SCENE_PATH, new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f));
+
+        /// <summary>
+        /// Nick on the walk race's start line. He runs the SAME 0.02 s balance
+        /// brain -- it is the only one that works at the ring's step -- and it
+        /// walks at 0.853 m/s with alternation 1.000 but stays up only ~2.2 s
+        /// against a 5.6 m goal. Placing him is honest; expect him to fall short
+        /// until a walk brain is trained at 0.02 s.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/17. Add Nick To Walk Race")]
+        public static void AddNickToWalkContest() =>
+            AddNickToContest("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity", new Vector3(2.75f, 0.03f, -2.8f));
+
+        private static void AddNickToContest(string scenePath, Vector3 position)
         {
             if (EditorApplication.isPlaying)
             {
                 Debug.LogError("RigTool: leave play mode before editing the contest scene.");
                 return;
             }
-            Scene scene = EditorSceneManager.OpenScene(CONTEST_SCENE_PATH, OpenSceneMode.Single);
+            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
             foreach (GameObject root in scene.GetRootGameObjects())
             {
@@ -221,6 +235,14 @@ namespace PoBox.Editor
             serialized.FindProperty("_decimation").intValue = 1;
             // 0 disables the override: the ring keeps its own 0.02 s.
             serialized.FindProperty("_fixedTimestepOverride").floatValue = 0f;
+            // NO AUTO-RESET IN A CONTEST. The controller restarts the creature
+            // whenever the pelvis drops below _fallHeight, which is right for
+            // TRAINING -- an episode ends on a fall -- and wrong here: Nick
+            // popped back onto his feet while the other five stayed down, and a
+            // racer that keeps standing up keeps the race alive so the round
+            // never ends. A negative height can never be reached, so he now
+            // falls and STAYS fallen, judged by head height like everyone else.
+            serialized.FindProperty("_fallHeight").floatValue = -1f;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             var contestant = nick.GetComponent<Systems_NickContestant>();
@@ -229,12 +251,11 @@ namespace PoBox.Editor
             contestantSerialized.FindProperty("_controller").objectReferenceValue = controller;
             contestantSerialized.ApplyModifiedPropertiesWithoutUndo();
 
-            // Slot 5 of Systems_ContestSpawner.SlotPositions. The five roster
-            // fighters fill slots 0-4, so this is the free one INSIDE the ropes.
-            // He was at x=2.25 first, which is on the ring floor but 1.5 m
-            // outside the widest slot -- standing beyond the ropes, simulating
-            // and scoring correctly while being invisible in the ring.
-            nick.transform.position = new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f);
+            // The caller passes a free slot. He was at x=2.25 in the ring
+            // first, which is on the floor but 1.5 m outside the widest slot --
+            // standing beyond the ropes, simulating and scoring correctly while
+            // being invisible.
+            nick.transform.position = position;
 
             AttachNickSkin(nick);
 

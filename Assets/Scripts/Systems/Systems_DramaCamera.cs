@@ -1,13 +1,36 @@
-﻿using UnityEngine;
+﻿using Unity.Cinemachine;
+using UnityEngine;
 
 namespace PoBox
 {
     /// <summary>
     /// Spectator camera for the contest test scene: follows the wobbliest
-    /// still-standing fighter, punches the FOV in as drama rises, and adds a
-    /// short shake when someone goes down. Falls back to framing the whole
-    /// ring when nobody is left standing. Self-discovers contestants at Start.
+    /// still-standing fighter, punches the FOV in as drama rises, and shakes
+    /// when bodies land. Falls back to framing the whole ring when nobody is
+    /// left standing. Self-discovers contestants at Start.
     /// Test-scene harness only — not used in training or the game loop.
+    ///
+    /// IT DIRECTS, CINEMACHINE FRAMES. This used to write Main Camera's
+    /// transform directly, and everything it did was a SmoothDamp — including
+    /// changing subject, which meant that every time the shot moved from one
+    /// fighter to another the lens SLID across the ring to get there. A cut is
+    /// the most basic verb in broadcast grammar and the old camera could not
+    /// perform one. So the shot geometry below is unchanged, every solved
+    /// constant is kept, and the result is written to one of two
+    /// CinemachineCameras instead of to the Camera; changing shot swaps which
+    /// one is live, and CinemachineBrain does the cut or the blend. Two of
+    /// them, rather than one, precisely because a cut needs an outgoing and an
+    /// incoming camera to cut between — a single vcam that teleports is a
+    /// glitch, not an edit.
+    ///
+    /// THE PRIORITIES ARE NEGATIVE ON PURPOSE. The scene already contains a
+    /// CinemachineBrain and a winner-orbit vcam that
+    /// <see cref="Systems_WinnerCamera"/> activates at round end, and that vcam
+    /// carries the default priority of 0. Anything at or above 0 here would
+    /// outrank the winner shot and the round would never celebrate. Sitting
+    /// below it means the winner orbit still takes over simply by being
+    /// enabled, and now BLENDS in rather than snapping, which is a better shot
+    /// than it used to get for free.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public sealed class Systems_DramaCamera : MonoBehaviour
@@ -32,8 +55,37 @@ namespace PoBox
         private const int GROUP_SHOT_MIN_STANDING = 4;
         private const float ANGULAR_VELOCITY_DRAMA_SCALE = 0.15f;
         private const float WOBBLE_SMOOTH_RATE = 3f;
-        private const float SHAKE_DECAY_SECONDS = 0.45f;
-        private const float SHAKE_NOISE_SPEED = 11f;
+
+        /// <summary>
+        /// Priority of the live and the parked shot camera. Both below the
+        /// winner orbit's 0 — see the class comment.
+        /// </summary>
+        private const int LIVE_PRIORITY = -10;
+        private const int PARKED_PRIORITY = -20;
+
+        /// <summary>
+        /// The house blend, used for anything this director did not explicitly
+        /// choose — most importantly the transition INTO the winner orbit,
+        /// which <see cref="Systems_WinnerCamera"/> triggers by activating its
+        /// own vcam while this one is being disabled. Restored every frame that
+        /// is not a deliberate edit, so a cut chosen for a subject change can
+        /// never leak onto an unrelated transition later.
+        /// </summary>
+        private static readonly CinemachineBlendDefinition HouseBlend =
+            new(CinemachineBlendDefinition.Styles.EaseInOut, 0.6f);
+
+        /// <summary>A change of subject is a cut. That is the whole point.</summary>
+        private static readonly CinemachineBlendDefinition CutBlend =
+            new(CinemachineBlendDefinition.Styles.Cut, 0f);
+
+        /// <summary>
+        /// Pulling back off the fighters — into the aftermath tableau, or back
+        /// out to the group once a round resets — is the one move that should
+        /// NOT be a cut: it is the camera relaxing, and cutting to a wide shot
+        /// of the same subject reads as a mistake rather than as an edit.
+        /// </summary>
+        private static readonly CinemachineBlendDefinition SettleBlend =
+            new(CinemachineBlendDefinition.Styles.EaseInOut, 0.85f);
 
         // Framing is specified as the world width and height the shot must
         // CONTAIN, not as a camera distance, because the distance that achieves
@@ -142,9 +194,25 @@ namespace PoBox
         [SerializeField] private float _dramaFov = 42f;
         [SerializeField] private float _positionSmoothTime = 0.7f;
         [SerializeField] private float _lookSmoothTime = 0.4f;
-        [SerializeField] private float _fallShakeMeters = 0.2f;
+        /// <summary>
+        /// Shake amplitude, as the impulse velocity handed to Cinemachine for a
+        /// full-strength impact. Metres per second, not metres: an impulse is a
+        /// kick the listener decays, not a fixed offset.
+        /// </summary>
+        [SerializeField] private float _maxShakeVelocity = 0.55f;
+
+        /// <summary>Which kind of shot is on air. A change of kind is an edit.</summary>
+        private enum ShotKind { Group, Close, Aftermath }
 
         private Camera _camera;
+        private CinemachineBrain _brain;
+        private CinemachineCamera[] _shotCameras;
+        private CinemachineImpulseSource _impulseSource;
+        private int _liveShot;
+        private ShotKind _shotKind = ShotKind.Group;
+        private int _shotSubject = -1;
+        private bool _shotInitialized;
+
         private Systems_ContestReferee _contest;
         private Systems_FighterRig _winnerFocus;
         private Systems_FighterRig[] _rigs;
@@ -154,11 +222,12 @@ namespace PoBox
         private Vector3 _lookPoint;
         private Vector3 _lookVelocity;
         private Vector3 _positionVelocity;
+        private float _fov;
         private float _fovVelocity;
         private float _groundY;
-        private float _shakeRemaining;
         private int _tourOrdinal;
         private float _tourTimer;
+        private bool _discovered;
 
         private void Awake()
         {
@@ -167,7 +236,31 @@ namespace PoBox
 
         private void Start()
         {
+            Discover();
+        }
+
+        /// <summary>
+        /// Finds the fighters and builds the camera rig, once.
+        ///
+        /// Retried from LateUpdate rather than assumed to have worked, because
+        /// this component is enabled by <see cref="Systems_ContestSpawner"/>
+        /// after it spawns — so Start normally runs with a full ring, but a
+        /// scene that enables it earlier would otherwise latch an empty roster
+        /// forever and never draw a shot.
+        /// </summary>
+        private void Discover()
+        {
+            if (_discovered)
+            {
+                return;
+            }
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            if (_rigs.Length == 0)
+            {
+                return;
+            }
+            _discovered = true;
+
             _smoothedWobble = new float[_rigs.Length];
             _startHeadHeights = new float[_rigs.Length];
             _wasStanding = new bool[_rigs.Length];
@@ -180,6 +273,9 @@ namespace PoBox
             // so the first is the ring floor (or the walk lane).
             _groundY = _rigs.Length > 0 ? _rigs[0].GroundY : 0f;
             _lookPoint = RingCenter() + Vector3.up;
+            _fov = _baseFov;
+
+            BuildCameraRig();
 
             _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
@@ -189,6 +285,63 @@ namespace PoBox
             }
         }
 
+        /// <summary>
+        /// The brain, the two shot cameras and the impulse source, all built in
+        /// code so that no scene has to be regenerated to gain them —
+        /// regenerating a contest scene is the documented way to destroy one
+        /// (see CLAUDE.md on <c>BuildAll</c>).
+        /// </summary>
+        private void BuildCameraRig()
+        {
+            _brain = GetComponent<CinemachineBrain>();
+            if (_brain == null)
+            {
+                _brain = gameObject.AddComponent<CinemachineBrain>();
+            }
+            _brain.DefaultBlend = HouseBlend;
+
+            _impulseSource = gameObject.AddComponent<CinemachineImpulseSource>();
+            // Reset() supplies these in the editor and is never called on a
+            // runtime AddComponent, so an unset definition would default to the
+            // Custom shape with an empty curve and generate silence.
+            _impulseSource.ImpulseDefinition = new CinemachineImpulseDefinition
+            {
+                ImpulseChannel = 1,
+                ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump,
+                CustomImpulseShape = new AnimationCurve(),
+                ImpulseDuration = 0.32f,
+                ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform,
+                DissipationDistance = 100f,
+                DissipationRate = 0.25f,
+                PropagationSpeed = 343f
+            };
+
+            _shotCameras = new CinemachineCamera[2];
+            _shotCameras[0] = BuildShotCamera("CM_Drama_A");
+            _shotCameras[1] = BuildShotCamera("CM_Drama_B");
+            _liveShot = 0;
+            _shotCameras[0].Priority = LIVE_PRIORITY;
+            _shotCameras[1].Priority = PARKED_PRIORITY;
+        }
+
+        /// <summary>
+        /// One shot camera: a bare CinemachineCamera, which in Cinemachine 3
+        /// simply publishes its own transform when it carries no procedural
+        /// components — that is what lets the solved geometry below keep being
+        /// the thing that aims the shot — plus an impulse listener so it feels
+        /// the shakes this director generates.
+        /// </summary>
+        private CinemachineCamera BuildShotCamera(string cameraName)
+        {
+            var host = new GameObject(cameraName);
+            host.transform.SetPositionAndRotation(transform.position, transform.rotation);
+            var shotCamera = host.AddComponent<CinemachineCamera>();
+            shotCamera.Lens = LensSettings.Default;
+            shotCamera.Lens.FieldOfView = _baseFov;
+            host.AddComponent<CinemachineImpulseListener>();
+            return shotCamera;
+        }
+
         private void OnDestroy()
         {
             if (_contest != null)
@@ -196,6 +349,38 @@ namespace PoBox
                 _contest.RoundEnded -= OnRoundEnded;
                 _contest.RoundStarted -= OnRoundStarted;
             }
+            if (_shotCameras == null)
+            {
+                return;
+            }
+            for (int shotIndex = 0; shotIndex < _shotCameras.Length; shotIndex++)
+            {
+                if (_shotCameras[shotIndex] != null)
+                {
+                    Destroy(_shotCameras[shotIndex].gameObject);
+                }
+            }
+        }
+
+        /// <summary>
+        /// A body just landed: kick the camera, scaled by how hard.
+        ///
+        /// Called by <see cref="Systems_ImpactFx"/> from the contact itself,
+        /// which is why this director no longer generates its own shake when it
+        /// notices a fighter's head drop below the fall line. That test fired
+        /// on a HEIGHT crossing — some tens of milliseconds after or before the
+        /// body actually arrived, and at the same strength for a topple as for
+        /// a faceplant. Both systems shaking would also have double-counted
+        /// every fall.
+        /// </summary>
+        public void ShakeAt(Vector3 position, float strength01)
+        {
+            if (_impulseSource == null)
+            {
+                return;
+            }
+            float velocity = Mathf.Lerp(0.12f, _maxShakeVelocity, Mathf.Clamp01(strength01));
+            _impulseSource.GenerateImpulseAtPositionWithVelocity(position, Vector3.down * velocity);
         }
 
         /// <summary>
@@ -226,7 +411,8 @@ namespace PoBox
 
         private void LateUpdate()
         {
-            if (_rigs == null || _rigs.Length == 0)
+            Discover();
+            if (_rigs == null || _rigs.Length == 0 || _shotCameras == null)
             {
                 return;
             }
@@ -243,6 +429,12 @@ namespace PoBox
             // had just moved the fighters and the camera could not follow them
             // until GO.
             float dt = Time.unscaledDeltaTime;
+
+            // Restored every frame, so a Cut chosen for one edit cannot leak on
+            // to the next transition — including the winner orbit's, which this
+            // director does not perform and must not accidentally style.
+            _brain.DefaultBlend = HouseBlend;
+
             int bestIndex = -1;
             float bestWobble = -1f;
             int standingCount = 0;
@@ -261,11 +453,6 @@ namespace PoBox
                     + rig.Pelvis.angularVelocity.magnitude * ANGULAR_VELOCITY_DRAMA_SCALE;
                 _smoothedWobble[rigIndex] = Mathf.Lerp(
                     _smoothedWobble[rigIndex], wobble, dt * WOBBLE_SMOOTH_RATE);
-
-                if (_wasStanding[rigIndex] && !standing)
-                {
-                    _shakeRemaining = SHAKE_DECAY_SECONDS;
-                }
                 _wasStanding[rigIndex] = standing;
 
                 if (standing)
@@ -283,12 +470,18 @@ namespace PoBox
             float drama;
             bool closeShot;
             bool aftermath = false;
+            // The subject this shot is ABOUT, so that touring from one fighter
+            // to the next registers as an edit even though the shot kind has
+            // not changed. -1 for shots that are about the field rather than
+            // about a fighter.
+            int subject = -1;
             if (_winnerFocus != null)
             {
                 // Winner display: hold a close shot on the round's champion.
                 target = _winnerFocus.Pelvis.position;
                 drama = 0.85f;
                 closeShot = true;
+                subject = IndexOf(_winnerFocus);
             }
             else if (standingCount >= GROUP_SHOT_MIN_STANDING)
             {
@@ -312,12 +505,14 @@ namespace PoBox
                 target = _rigs[focusIndex].Pelvis.position;
                 drama = Mathf.Max(0.6f, Mathf.Clamp01(_smoothedWobble[focusIndex]));
                 closeShot = true;
+                subject = focusIndex;
             }
             else if (bestIndex >= 0)
             {
                 target = _rigs[bestIndex].Pelvis.position;
                 drama = Mathf.Clamp01(bestWobble);
                 closeShot = true;
+                subject = bestIndex;
             }
             else
             {
@@ -327,6 +522,8 @@ namespace PoBox
                 closeShot = false;
                 aftermath = true;
             }
+
+            ShotKind kind = aftermath ? ShotKind.Aftermath : closeShot ? ShotKind.Close : ShotKind.Group;
 
             // Solve the distance from the FOV this shot is heading to, so the
             // framing holds at whatever aspect the window ends up with.
@@ -342,28 +539,97 @@ namespace PoBox
                 target.x * _lateralFollowFraction,
                 _groundY + (closeShot ? _cameraHeight : aftermath ? _aftermathCameraHeight : _groupCameraHeight),
                 target.z + followDistance);
-            Vector3 position = Vector3.SmoothDamp(
-                transform.position, desiredPosition, ref _positionVelocity, _positionSmoothTime,
-                Mathf.Infinity, dt);
-
-            if (_shakeRemaining > 0f)
-            {
-                _shakeRemaining -= dt;
-                float strength = _fallShakeMeters * (_shakeRemaining / SHAKE_DECAY_SECONDS);
-                float time = Time.unscaledTime * SHAKE_NOISE_SPEED;
-                position.x += (Mathf.PerlinNoise(time, 0.13f) - 0.5f) * 2f * strength;
-                position.y += (Mathf.PerlinNoise(0.71f, time) - 0.5f) * 2f * strength;
-            }
-            transform.position = position;
-
             float lookLift = closeShot ? _closeLookLift : _groupLookLift;
-            _lookPoint = Vector3.SmoothDamp(
-                _lookPoint, target + Vector3.up * lookLift, ref _lookVelocity, _lookSmoothTime,
-                Mathf.Infinity, dt);
-            transform.rotation = Quaternion.LookRotation(_lookPoint - position, Vector3.up);
+            Vector3 desiredLook = target + Vector3.up * lookLift;
 
-            _camera.fieldOfView = Mathf.SmoothDamp(
-                _camera.fieldOfView, desiredFov, ref _fovVelocity, 0.5f, Mathf.Infinity, dt);
+            bool cutting = !_shotInitialized || kind != _shotKind || subject != _shotSubject;
+            if (cutting)
+            {
+                PerformEdit(kind);
+                _shotKind = kind;
+                _shotSubject = subject;
+                _shotInitialized = true;
+                // The incoming camera is placed EXACTLY on the solved pose, with
+                // its smoothing state cleared. Anything else and the new shot
+                // starts by sliding out of wherever the old one happened to be,
+                // which is the slide this whole rewrite exists to remove — the
+                // brain's blend, not a SmoothDamp, is what handles the
+                // transition now.
+                _lookPoint = desiredLook;
+                _lookVelocity = Vector3.zero;
+                _positionVelocity = Vector3.zero;
+                _fov = desiredFov;
+                _fovVelocity = 0f;
+            }
+
+            CinemachineCamera live = _shotCameras[_liveShot];
+            Vector3 position = cutting
+                ? desiredPosition
+                : Vector3.SmoothDamp(live.transform.position, desiredPosition, ref _positionVelocity,
+                    _positionSmoothTime, Mathf.Infinity, dt);
+            _lookPoint = cutting
+                ? desiredLook
+                : Vector3.SmoothDamp(_lookPoint, desiredLook, ref _lookVelocity, _lookSmoothTime,
+                    Mathf.Infinity, dt);
+            _fov = cutting
+                ? desiredFov
+                : Mathf.SmoothDamp(_fov, desiredFov, ref _fovVelocity, 0.5f, Mathf.Infinity, dt);
+
+            live.transform.SetPositionAndRotation(
+                position, Quaternion.LookRotation(_lookPoint - position, Vector3.up));
+            live.Lens.FieldOfView = _fov;
+        }
+
+        /// <summary>
+        /// Makes the cut: chooses how this transition should look, then swaps
+        /// which of the two shot cameras is live so the brain has something to
+        /// cut FROM and something to cut TO.
+        /// </summary>
+        private void PerformEdit(ShotKind incoming)
+        {
+            if (_shotInitialized)
+            {
+                _brain.DefaultBlend = ChooseBlend(_shotKind, incoming);
+                _liveShot = 1 - _liveShot;
+            }
+            else
+            {
+                // First shot of the contest: there is nothing to blend from, and
+                // easing in from the menu orbit's pose would read as a drift.
+                _brain.DefaultBlend = CutBlend;
+            }
+            _shotCameras[_liveShot].Priority = LIVE_PRIORITY;
+            _shotCameras[1 - _liveShot].Priority = PARKED_PRIORITY;
+        }
+
+        private static CinemachineBlendDefinition ChooseBlend(ShotKind outgoing, ShotKind incoming)
+        {
+            // Settling onto the aftermath tableau, or opening back out to the
+            // field when a round resets, is a move rather than an edit.
+            if (incoming == ShotKind.Aftermath)
+            {
+                return SettleBlend;
+            }
+            if (incoming == ShotKind.Group && outgoing == ShotKind.Close)
+            {
+                return SettleBlend;
+            }
+            // Everything else — tightening onto a fighter as the ring thins,
+            // touring from one to the next, coming out of the aftermath into a
+            // fresh round — is a cut.
+            return CutBlend;
+        }
+
+        private int IndexOf(Systems_FighterRig rig)
+        {
+            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            {
+                if (_rigs[rigIndex] == rig)
+                {
+                    return rigIndex;
+                }
+            }
+            return -1;
         }
 
         // Shared with Systems_RaceCamera — see Systems_CameraFraming for why

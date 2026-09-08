@@ -27,6 +27,7 @@ namespace PoBox
     {
         [SerializeField] private string _displayName;
         [SerializeField] private Color _plateColor = Color.white;
+        [SerializeField] private int _rosterIndex = -1;
 
         /// <summary>Name shown on plates, callouts and the match scoreboard.</summary>
         public string DisplayName => _displayName;
@@ -34,10 +35,21 @@ namespace PoBox
         /// <summary>Swatch colour that identifies this fighter in the ring.</summary>
         public Color PlateColor => _plateColor;
 
-        public void Initialize(string displayName, Color plateColor)
+        /// <summary>
+        /// Which <see cref="ContestRosterEntry"/> this fighter was spawned
+        /// from, or -1 for a fighter placed by hand. It is the only reliable
+        /// route from a body in the ring back to the BRAIN it was given, which
+        /// is what <see cref="Systems_TaleOfTheTape"/> needs: the display name
+        /// cannot do it, because a ring holding two of a kind names them
+        /// "Grandma" and "Grandma2" and only the first matches any roster entry.
+        /// </summary>
+        public int RosterIndex => _rosterIndex;
+
+        public void Initialize(string displayName, Color plateColor, int rosterIndex)
         {
             _displayName = displayName;
             _plateColor = plateColor;
+            _rosterIndex = rosterIndex;
         }
 
         /// <summary>

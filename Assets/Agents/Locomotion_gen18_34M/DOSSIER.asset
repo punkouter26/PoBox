@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a87c7f95cd98c4b44a59c8feaf6beacc, type: 3}
+  m_Name: DOSSIER
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_BrainDossier
+  model: {fileID: 5022602860645237092, guid: 412647dde7f96ae4fb722455b7c60128, type: 3}
+  brainLabel: Locomotion_gen18_34M
+  runId: boxer_locomotion18
+  trainingSteps: 33999872
+  observationCount: 127
+  headlineStat: alternation 0.601
+  note: 'The walk brain: still the only one that actually WALKS.'

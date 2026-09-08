@@ -53,6 +53,34 @@ namespace PoBox.MuJoCoCreature
         }
 
         /// <summary>
+        /// The controller commands in the creature's own frame, so the Unity
+        /// direction is converted: MuJoCo is Z-up, Unity Y-up, which makes
+        /// Unity's (x, y, z) the creature's (x, z, y).
+        /// </summary>
+        public void CommandWalk(float metresPerSecond, Vector3 directionWorld)
+        {
+            if (_controller == null) { return; }
+            // Unity is Y-up and LEFT-handed; MuJoCo is Z-up and right-handed, so
+            // one axis flips. REST_FORWARD is (0,-1,0) in the pelvis frame, i.e.
+            // the creature's forward is MuJoCo -Y, so Unity +Z maps to -Y.
+            // Getting this sign wrong is not subtle and is not loud either: he
+            // walked 2.35 m BACKWARD down the track while the scoreboard, which
+            // floors travel at zero, reported 0.04 m.
+            var inCreatureFrame = new Vector3(directionWorld.x, -directionWorld.z, directionWorld.y);
+            _controller.SetCommand(metresPerSecond, inCreatureFrame);
+        }
+
+        /// <summary>Unity world position of the pelvis, for measuring travel.</summary>
+        public Vector3 WorldPosition
+        {
+            get
+            {
+                Transform pelvis = _controller != null ? _controller.PelvisTransform : null;
+                return pelvis != null ? pelvis.position : transform.position;
+            }
+        }
+
+        /// <summary>
         /// MuJoCo is Z-up, so the head's height is DebugHeadZ -- not a Unity
         /// transform's y. It is already measured from the creature's own floor,
         /// which is what the ring wants: height above the floor, never world Y.

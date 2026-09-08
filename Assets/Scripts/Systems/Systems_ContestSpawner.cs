@@ -99,6 +99,16 @@ namespace PoBox
         public ContestRosterEntry[] Roster => _roster;
         public int SlotCount => ActiveSlots.Length;
 
+        /// <summary>Where slot <paramref name="index"/> stands, for author-time placement.</summary>
+        public Vector3 SlotPosition(int index)
+        {
+            Vector3[] slots = ActiveSlots;
+            return slots[Mathf.Clamp(index, 0, slots.Length - 1)];
+        }
+
+        /// <summary>Facing every fighter starts a round in.</summary>
+        public Quaternion SpawnRotation => Quaternion.Euler(_spawnEuler);
+
         private Vector3[] ActiveSlots =>
             _slotPositionsOverride != null && _slotPositionsOverride.Length > 0
                 ? _slotPositionsOverride
@@ -138,6 +148,27 @@ namespace PoBox
         private void Awake()
         {
             Unity.MLAgents.CommunicatorFactory.Enabled = false;
+
+            // HERE AS WELL AS IN SpawnAndBegin, BECAUSE HALF THE CONTEST SCENES
+            // NEVER SPAWN ANYTHING. `Tools/ML Boxing/15` places the roster into
+            // the scene at author time and disables Systems_MiniGameLauncher, so
+            // SCN_TEST_BALANCE_CONTEST ships with five Contest_* fighters and
+            // Nick already in it and SpawnAndBegin is never called. Hooking only
+            // the spawn path meant the spectator systems were silently absent
+            // from exactly the scene that ships — the contest ran, the HUD and
+            // referee worked, and nothing announced that three systems had never
+            // been created.
+            //
+            // Both call sites are needed and neither is redundant. In an
+            // author-placed scene the systems root is already active, so
+            // components added now get their Start next frame with the fighters
+            // already in the scene. In a spawned scene the root is still asleep
+            // here and the fighters do not exist yet, so this adds them and the
+            // call in SpawnAndBegin is the no-op — but that call is what
+            // guarantees the ordering when the root reference is only resolved
+            // by then. EnsureSpectatorSystems is idempotent, so running twice
+            // costs one GetComponentInChildren each.
+            EnsureSpectatorSystems(_systemsRoot);
         }
 
         /// <summary>Spawns one fighter per slot (roster index, -1 = empty slot), then starts the contest.</summary>
@@ -193,6 +224,10 @@ namespace PoBox
 
             if (_systemsRoot != null)
             {
+                // Added while the root is still asleep, so their Start runs when
+                // it wakes — with a full ring to discover, exactly like the
+                // announcer and the hazard director beside them.
+                EnsureSpectatorSystems(_systemsRoot);
                 _systemsRoot.SetActive(true);
             }
             if (_menuOrbit != null)
@@ -212,6 +247,73 @@ namespace PoBox
         }
 
         /// <summary>
+        /// Attaches the spectator systems that carry no scene state of their
+        /// own: the joint-stress heatmap, the impulse-scaled impact FX and the
+        /// pre-round tale of the tape.
+        ///
+        /// WIRED AT RUNTIME RATHER THAN PLACED IN THE SCENE, ON PURPOSE. The
+        /// contest scenes are generated artifacts and the tool that generates
+        /// this one is the documented way to destroy it — `BuildAll` opens an
+        /// empty scene and never re-adds the spawner, so six of its nine steps
+        /// bail while it logs success anyway (CLAUDE.md). Anything that has to
+        /// be dragged into SCN_TEST_BALANCE_CONTEST by hand is therefore one
+        /// regeneration away from being silently absent, with a scene that still
+        /// runs and simply shows less. These three need no serialized
+        /// references — they discover fighters themselves and load their assets
+        /// from <see cref="Systems_SpectatorKit"/> — so there is nothing to be
+        /// gained by putting them in the scene and a whole failure mode to be
+        /// avoided by not.
+        ///
+        /// Idempotent: adding a second copy would double every thud and every
+        /// glow, and this runs once per contest start.
+        /// </summary>
+        private static void EnsureSpectatorSystems(GameObject systemsRoot)
+        {
+            if (systemsRoot == null)
+            {
+                // Worth a line rather than a silent return: with no systems root
+                // the entire spectator layer is absent, and its absence looks
+                // exactly like it working badly.
+                Debug.LogWarning("Systems_ContestSpawner: no systems root — joint stress, impact FX " +
+                                 "and the tale of the tape will not be attached.");
+                return;
+            }
+            int added = 0;
+            if (systemsRoot.GetComponentInChildren<Systems_ImpactFx>(true) == null)
+            {
+                AddSpectatorSystem<Systems_ImpactFx>(systemsRoot, "ImpactFx");
+                added++;
+            }
+            if (systemsRoot.GetComponentInChildren<Systems_JointStressView>(true) == null)
+            {
+                AddSpectatorSystem<Systems_JointStressView>(systemsRoot, "JointStressView");
+                added++;
+            }
+            if (systemsRoot.GetComponentInChildren<Systems_TaleOfTheTape>(true) == null)
+            {
+                AddSpectatorSystem<Systems_TaleOfTheTape>(systemsRoot, "TaleOfTheTape");
+                added++;
+            }
+            if (added > 0)
+            {
+                // One line, once per contest. These systems are created rather
+                // than placed, so this is the only way to tell from a log
+                // whether they exist at all — which is the question that took a
+                // play session to answer the first time.
+                Debug.Log($"Systems_ContestSpawner: attached {added} spectator system(s) to " +
+                          $"{systemsRoot.name}.");
+            }
+        }
+
+        private static void AddSpectatorSystem<T>(GameObject systemsRoot, string objectName)
+            where T : Component
+        {
+            var host = new GameObject(objectName);
+            host.transform.SetParent(systemsRoot.transform, false);
+            host.AddComponent<T>();
+        }
+
+        /// <summary>
         /// Instantiates one fighter under <paramref name="holder"/> — which the caller
         /// keeps inactive — configures it, then reparents it to the scene root. That
         /// last step is what activates it, so Awake and OnEnable run against the
@@ -227,7 +329,16 @@ namespace PoBox
             instance.transform.SetParent(null, worldPositionStays: true);
         }
 
-        private static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex,
+        /// <summary>
+        /// PUBLIC so the editor tool that places the roster at author time
+        /// calls this exact code rather than a second copy of it. The
+        /// observation size is set here, and a scene whose fighters were
+        /// configured by a divergent copy would mis-size its sensors in total
+        /// silence -- see the observation-size contract in CLAUDE.md.
+        /// Safe to call from the Editor: components do not Awake until play
+        /// begins, so anything set here is serialized before the sensor exists.
+        /// </summary>
+        public static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex,
             int rosterIndex)
         {
             var rig = instance.GetComponent<Systems_FighterRig>();
@@ -329,7 +440,8 @@ namespace PoBox
             // guessing from the GameObject name.
             instance.AddComponent<Systems_FighterIdentity>().Initialize(
                 instance.name.Replace("Contest_", ""),
-                IdentityColor(entry, rosterIndex) * wash);
+                IdentityColor(entry, rosterIndex) * wash,
+                rosterIndex);
         }
 
         // Fallback swatches, used for roster entries with no tint material.

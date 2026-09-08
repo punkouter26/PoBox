@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace PoBox
 {
     /// <summary>
@@ -33,6 +35,20 @@ namespace PoBox
 
         /// <summary>Command "hold station": the balance ring's only order.</summary>
         void CommandStand();
+
+        /// <summary>
+        /// Command "walk that way at that speed": the walk race's order.
+        /// Direction is a UNITY world-space vector; an implementation on a
+        /// creature that thinks in another frame converts it.
+        /// </summary>
+        void CommandWalk(float metresPerSecond, Vector3 directionWorld);
+
+        /// <summary>
+        /// Unity world position, for measuring distance travelled. Not the
+        /// creature's own frame: the race projects this onto a goal direction
+        /// authored in Unity.
+        /// </summary>
+        Vector3 WorldPosition { get; }
 
         /// <summary>
         /// Head height ABOVE THE FLOOR, never raw world Y -- the ring canvas

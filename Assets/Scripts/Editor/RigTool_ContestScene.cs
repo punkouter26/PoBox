@@ -36,6 +36,8 @@ namespace PoBox.Editor
         // one leg and topples every 1.7 s, which loses a contest scored on
         // staying upright. Newest and best are different questions per scene.
         private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Locomotion_gen25/Locomotion_gen25.onnx";
+        private const string BALANCE_SCENE_PATH = "Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity";
+        private const string WALK_SCENE_PATH = "Assets/Scenes/SCN_TEST_WALK_CONTEST.unity";
         private const float LINE_SPACING = 2f;
         private const float SPAWN_HEIGHT = Systems_ContestSpawner.RING_FLOOR_Y + 0.03f;
 
@@ -101,7 +103,123 @@ namespace PoBox.Editor
             EditorApplication.EnterPlaymode();
         }
 
-        /// <summary>Opens the menu scene and plays it, for checking the line-up picker.</summary>
+/// <summary>
+        /// Places the roster in the SCENE, at author time, instead of leaving
+        /// Systems_ContestSpawner to instantiate it when the game starts.
+        ///
+        /// The fighters become ordinary scene objects you can select, move and
+        /// inspect next to Nick, who is already placed this way because the
+        /// spawner cannot carry a MuJoCo creature.
+        ///
+        /// It calls Systems_ContestSpawner.Configure -- the SAME method the
+        /// runtime path uses -- rather than repeating its work. That method
+        /// sets VectorObservationSize from what the agent will actually emit,
+        /// and a second copy of that logic drifting out of step is exactly how
+        /// this project shipped a 121-wide sensor to a 127-observation agent.
+        /// Calling it from the Editor is safe: nothing Awakes until play
+        /// begins, so the values are serialized before any sensor is built.
+        ///
+        /// Instances are UNPACKED, as the training scenes are, so the added
+        /// sensors and corrected sizes are real scene data rather than prefab
+        /// overrides that a prefab edit could revert.
+        ///
+        /// TRADE-OFF: the menu's line-up picker no longer decides who fights.
+        /// The scene now says. Systems_MiniGameLauncher is disabled here so it
+        /// cannot spawn a second copy of everyone on top of these.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/15. Place Roster In Balance Scene")]
+        public static void PlaceRosterInScene() => PlaceRosterIn(BALANCE_SCENE_PATH);
+
+        /// <summary>
+        /// The same for the walk race. Its spawner carries a
+        /// _slotPositionsOverride -- a six-wide start line at z = -2.8 rather
+        /// than the ring's paired slots -- and SlotPosition returns overrides,
+        /// so the placement code needs no special case.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/16. Place Roster In Walk Scene")]
+        public static void PlaceWalkRosterInScene() => PlaceRosterIn(WALK_SCENE_PATH);
+
+        private static void PlaceRosterIn(string scenePath)
+        {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogError("RigTool: leave play mode before editing the contest scene.");
+                return;
+            }
+            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+
+            var spawner = Object.FindFirstObjectByType<Systems_ContestSpawner>(FindObjectsInactive.Include);
+            if (spawner == null)
+            {
+                Debug.LogError("RigTool: no Systems_ContestSpawner in the scene — nothing to read the roster from.");
+                return;
+            }
+
+            // Clear any previous placement so this is idempotent.
+            int removed = 0;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name.StartsWith("Contest_")) { Object.DestroyImmediate(root); removed++; }
+            }
+
+            ContestRosterEntry[] roster = spawner.Roster;
+            int placed = 0;
+            for (int rosterIndex = 0; rosterIndex < roster.Length; rosterIndex++)
+            {
+                ContestRosterEntry entry = roster[rosterIndex];
+                if (entry?.prefab == null)
+                {
+                    Debug.LogWarning($"RigTool: roster entry {rosterIndex} has no prefab — skipped.");
+                    continue;
+                }
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(entry.prefab, scene);
+                PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely,
+                    InteractionMode.AutomatedAction);
+                instance.name = $"Contest_{entry.displayName}";
+                instance.transform.SetPositionAndRotation(
+                    spawner.SlotPosition(placed), spawner.SpawnRotation);
+
+                Systems_ContestSpawner.Configure(instance, entry, 0, rosterIndex);
+                placed++;
+            }
+
+            var launcher = spawner.GetComponent<Systems_MiniGameLauncher>();
+            if (launcher != null) { launcher.enabled = false; }
+
+            // TAKE OVER THE REST OF THE SPAWNER'S JOB, not just the spawning.
+            // SpawnAndBegin also wakes the sleeping systems root that holds the
+            // referee, and enables the drama camera. Disabling the launcher
+            // without doing this leaves a scene with fighters, a roster and
+            // nobody to start the contest -- the walk race ran to no result at
+            // all until this was added, because its referee never woke up.
+            var spawnerObject = new SerializedObject(spawner);
+            var systemsRoot = spawnerObject.FindProperty("_systemsRoot").objectReferenceValue as GameObject;
+            if (systemsRoot != null && !systemsRoot.activeSelf)
+            {
+                systemsRoot.SetActive(true);
+                Debug.Log($"RigTool: woke the systems root '{systemsRoot.name}'.");
+            }
+            var drama = spawnerObject.FindProperty("_dramaCamera").objectReferenceValue as Systems_DramaCamera;
+            if (drama != null && !drama.enabled) { drama.enabled = true; }
+
+            // NO RESPAWNING IN A GAME SCENE. Resetting a fallen body so it can
+            // try again is a training mechanic; here the fighters fall, stay
+            // fallen, and the last round holds on screen.
+            var referee = Object.FindFirstObjectByType<Systems_ContestReferee>(FindObjectsInactive.Include);
+            if (referee != null)
+            {
+                referee.EditorSetAutomaticRestarts(false);
+                EditorUtility.SetDirty(referee);
+                Debug.Log($"RigTool: automatic round restarts OFF on {referee.GetType().Name}.");
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"RigTool: placed {placed} fighter(s) in {scenePath} ({removed} replaced); " +
+                      "the launcher is disabled so nothing spawns on top of them.");
+        }
+
+                /// <summary>Opens the menu scene and plays it, for checking the line-up picker.</summary>
         public static void PlayMenu()
         {
             if (EditorApplication.isPlaying) { return; }
