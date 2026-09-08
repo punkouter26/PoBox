@@ -96,3 +96,9 @@ SmokeBuildWalk/
 EnvBuild6/
 WatchBuild/
 shots/
+
+# MuJoCo plugin's runtime log and trainer stderr dumps — run artifacts.
+MUJOCO_LOG.TXT
+Tools/MuJoCo/*.err
+# ML-Agents profiler output: rewritten on every play, meaningless in review.
+Assets/ML-Agents/Timers/
