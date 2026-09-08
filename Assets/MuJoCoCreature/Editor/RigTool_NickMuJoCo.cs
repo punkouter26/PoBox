@@ -40,6 +40,10 @@ namespace PoBox.Editor
         private const string SOURCE_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/MuJoCo_TestScene.unity";
         private const string SOURCE_ROOT_NAME = "Creature";
         private const string DEMO_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_DemoScene.unity";
+        private const string CONTEST_SCENE_PATH = "Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity";
+        private const string NICK_GLB_PATH = "Assets/MuJoCoCreature/Model/RIGGED_Nick.glb";
+        private const string BALANCE_BRAIN_PATH = "Assets/MuJoCoCreature/Policy/nick_balance_002.onnx";
+        private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";
         // Written by Tools/MuJoCo/export_onnx.py. A constant, so a stale brain
@@ -50,7 +54,197 @@ namespace PoBox.Editor
         private const float TRAINING_TIMESTEP = 0.005f;
 
         [MenuItem("Tools/ML Boxing/12. Build Nick MuJoCo Demo Scene")]
-        public static void BuildDemoScene()
+/// <summary>
+        /// Nick's own balance ring. Same construction as the demo scene -- the
+        /// creature cloned from the source scene, the same environment, the
+        /// same HUD -- but driven by Systems_NickBalanceRing, which runs 30 s
+        /// rounds under shoves that get 100 N harder each time and logs
+        /// CONTEST_ROUND exactly as Systems_BalanceContest does.
+        ///
+        /// It is a SEPARATE scene from SCN_TEST_BALANCE_CONTEST because the two
+        /// cannot share a timestep; the measurements are in the summary on
+        /// Systems_NickBalanceRing.
+        /// </summary>
+        [MenuItem("Tools/ML Boxing/13. Build Nick Balance Ring")]
+        public static void BuildBalanceRing()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            GameObject nick = CloneCreatureFromSourceScene(scene);
+            if (nick == null) { return; }
+
+            BuildEnvironment(out Transform cameraTransform);
+            ConfigureController(nick, out CreatureSentisController controller);
+            UIDocument hud = BuildHud();
+
+            // A balance ring keeps him on the spot, so the camera does not need
+            // to follow -- which also sidesteps the demo camera's Y-up offset
+            // being applied in the creature's Z-up frame.
+            if (cameraTransform != null)
+            {
+                cameraTransform.position = new Vector3(3.0f, 1.6f, -3.0f);
+                cameraTransform.LookAt(new Vector3(0f, 0.9f, 0f));
+            }
+
+            var ring = nick.AddComponent<Systems_NickBalanceRing>();
+            var serialized = new SerializedObject(ring);
+            serialized.FindProperty("_controller").objectReferenceValue = controller;
+            serialized.FindProperty("_hud").objectReferenceValue = hud;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Directory.CreateDirectory(Path.GetDirectoryName(RING_SCENE_PATH));
+            EditorSceneManager.SaveScene(scene, RING_SCENE_PATH);
+            Debug.Log($"RigTool: built {RING_SCENE_PATH}. Press Play, or run it and grep CONTEST_ROUND.");
+        }
+
+        /// <summary>Opens Nick's balance ring and plays it; CONTEST_ROUND lines follow.</summary>
+        public static void PlayBalanceRing()
+        {
+            if (EditorApplication.isPlaying) { return; }
+            EditorSceneManager.OpenScene(RING_SCENE_PATH, OpenSceneMode.Single);
+            Debug.Log("RigTool: entering play mode on Nick's balance ring. Watch for CONTEST_ROUND lines.");
+            EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>
+        /// Adds Nick to the shipped PhysX balance ring, or refreshes him if he
+        /// is already there.
+        ///
+        /// He is placed AT AUTHOR TIME, which the contest scenes otherwise
+        /// forbid -- Systems_ContestSpawner instantiates everyone else from a
+        /// roster. The spawner cannot carry him: it configures
+        /// BehaviorParameters and an Agent_FighterBoxing that a MuJoCo creature
+        /// does not have, and its roster holds prefabs while Nick is cloned
+        /// from a scene. Systems_BalanceContest finds him through
+        /// IContestFighter instead, so the referee needs nothing else.
+        ///
+        /// He runs at the RING's timestep, not his own: the controller's
+        /// timestep pin is switched OFF here, because pinning 0.005 s would
+        /// drop Standard from 30.0 s to 2.9 s.
+        /// </summary>
+/// <summary>
+        /// Swaps Nick's collision capsules for the skinned mesh from
+        /// RIGGED_Nick.glb.
+        ///
+        /// MuJoCo never sees the skin: the MJCF carries capsules and inertias
+        /// only, so physics runs on the rigid bodies while SkinnedRigBinder
+        /// copies each body's world transform onto the matching bone every
+        /// LateUpdate. The capsules stay -- they ARE the physics -- their
+        /// renderers just stop drawing.
+        ///
+        /// Returns the number of bone->body links, which is the thing worth
+        /// checking: a silent 0 means the bone names did not match and the mesh
+        /// will hang in the bind pose while the capsules move underneath it.
+        /// </summary>
+        private static int AttachNickSkin(GameObject nick)
+        {
+            var glb = AssetDatabase.LoadAssetAtPath<GameObject>(NICK_GLB_PATH);
+            if (glb == null)
+            {
+                Debug.LogError($"RigTool: no rigged mesh at {NICK_GLB_PATH}; Nick keeps his capsules.");
+                return 0;
+            }
+
+            foreach (SkinnedRigBinder stale in nick.GetComponentsInChildren<SkinnedRigBinder>(true))
+            {
+                Object.DestroyImmediate(stale.gameObject);
+            }
+
+            var skin = (GameObject)PrefabUtility.InstantiatePrefab(glb, nick.transform);
+            skin.name = "NickSkin";
+            skin.transform.localPosition = Vector3.zero;
+            skin.transform.localRotation = Quaternion.identity;
+
+            var renderers = skin.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            if (renderers.Length == 0)
+            {
+                Debug.LogError($"RigTool: {NICK_GLB_PATH} has no SkinnedMeshRenderer; Nick keeps his capsules.");
+                Object.DestroyImmediate(skin);
+                return 0;
+            }
+
+            var binder = skin.AddComponent<SkinnedRigBinder>();
+            int links = binder.Rebind(skin.transform);
+            if (links == 0)
+            {
+                Debug.LogError("RigTool: SkinnedRigBinder matched NO bones to bodies — " +
+                               "the mesh would hang in its bind pose. Capsules kept.");
+                Object.DestroyImmediate(skin);
+                return 0;
+            }
+
+            // Hide the physics capsules now that there is something better to
+            // look at. Only the g_* geom renderers: the cloned floor and
+            // anything else in the hierarchy are left alone.
+            int hidden = 0;
+            foreach (MeshRenderer renderer in nick.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (!renderer.name.StartsWith("g_")) { continue; }
+                renderer.enabled = false;
+                hidden++;
+            }
+            Debug.Log($"RigTool: Nick skinned — {links} bone links, {hidden} capsule renderer(s) hidden.");
+            return links;
+        }
+
+                [MenuItem("Tools/ML Boxing/14. Add Nick To Balance Ring")]
+        public static void AddNickToBalanceContest()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogError("RigTool: leave play mode before editing the contest scene.");
+                return;
+            }
+            Scene scene = EditorSceneManager.OpenScene(CONTEST_SCENE_PATH, OpenSceneMode.Single);
+
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == "Nick") { Object.DestroyImmediate(root); }
+            }
+
+            GameObject nick = CloneCreatureFromSourceScene(scene);
+            if (nick == null) { return; }
+            ConfigureController(nick, out CreatureSentisController controller);
+
+            var serialized = new SerializedObject(controller);
+            // BALANCE-ONLY brain, trained at the ring's 0.02 s on the armature
+            // 0.2 body. nick_locomotion.onnx must NOT be used here: it is the
+            // 0.005 s walker and scores at the passive baseline at this step.
+            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(BALANCE_BRAIN_PATH);
+            if (brain == null)
+            {
+                Debug.LogError($"RigTool: no brain at {BALANCE_BRAIN_PATH}; Nick not added.");
+                return;
+            }
+            serialized.FindProperty("_onnxModelAsset").objectReferenceValue = brain;
+            serialized.FindProperty("_observeLocomotionCommand").boolValue = true;
+            serialized.FindProperty("_decimation").intValue = 1;
+            // 0 disables the override: the ring keeps its own 0.02 s.
+            serialized.FindProperty("_fixedTimestepOverride").floatValue = 0f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var contestant = nick.GetComponent<Systems_NickContestant>();
+            if (contestant == null) { contestant = nick.AddComponent<Systems_NickContestant>(); }
+            var contestantSerialized = new SerializedObject(contestant);
+            contestantSerialized.FindProperty("_controller").objectReferenceValue = controller;
+            contestantSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // Slot 5 of Systems_ContestSpawner.SlotPositions. The five roster
+            // fighters fill slots 0-4, so this is the free one INSIDE the ropes.
+            // He was at x=2.25 first, which is on the ring floor but 1.5 m
+            // outside the widest slot -- standing beyond the ropes, simulating
+            // and scoring correctly while being invisible in the ring.
+            nick.transform.position = new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f);
+
+            AttachNickSkin(nick);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("RigTool: Nick added to the balance ring (decimation 1, timestep pin off, " +
+                      $"brain {BALANCE_BRAIN_PATH}). Play and grep CONTEST_ROUND.");
+        }
+
+                public static void BuildDemoScene()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -212,6 +406,22 @@ namespace PoBox.Editor
 
             GameObject nick = Object.Instantiate(creature);
             nick.name = "Nick";
+
+            // MAKE HIM VISIBLE. MuJoCo_TestScene is a physics test bed where the
+            // RaptorRig supplies the visual, so 15 of the creature's 16 geom
+            // MeshRenderers are switched OFF in it -- and Instantiate copies that
+            // faithfully. Cloned into a demo or a ring the result is a creature
+            // that simulates perfectly and cannot be seen, which is exactly what
+            // happened: every NICK_DEMO and CONTEST_ROUND number was correct
+            // while the game view showed an empty floor. The renderers all have
+            // materials; they just needed switching on.
+            int shown = 0;
+            foreach (MeshRenderer renderer in nick.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (!renderer.enabled) { renderer.enabled = true; shown++; }
+            }
+            if (shown > 0) { Debug.Log($"RigTool: enabled {shown} geom renderer(s) on the clone."); }
+
             nick.transform.position = Vector3.zero;
             SceneManager.MoveGameObjectToScene(nick, target);
             EditorSceneManager.CloseScene(source, true);
