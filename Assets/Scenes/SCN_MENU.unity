@@ -156,6 +156,7 @@ MonoBehaviour:
   - Grandpa
   - Raptor
   - Bot
+  - Nick
   _balanceScene: SCN_TEST_BALANCE_CONTEST
   _walkScene: SCN_TEST_WALK_CONTEST
 --- !u!114 &124428362

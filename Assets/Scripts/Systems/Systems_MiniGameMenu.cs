@@ -21,12 +21,20 @@ namespace PoBox
     {
         private const string EMPTY_CHOICE = "Empty";
         private const int BALANCE_SLOTS = 8;
-        private const int WALK_SLOTS = 4;
+        // The walk race fields the same six as the ring. This was 4, so the
+        // start line advertised four racers and six ran.
+        private const int WALK_SLOTS = 6;
 
         [SerializeField] private Systems_MiniGameSelection _selection;
         // Names offered per slot, in the same order as the receiving scene's
         // spawner roster — the pick is sent across as that roster index.
-        [SerializeField] private string[] _fighterNames = { "Standard", "Grandma", "Grandpa", "Raptor", "Bot" };
+        // MUST MATCH THE FIGHTERS THE CONTEST SCENES ACTUALLY FIELD. Both
+        // SCN_TEST_*_CONTEST place five Systems_FighterRig plus Nick, who is
+        // refereed through IContestFighter from another assembly -- so a sweep
+        // that only looks at rigs does not see him, and this list did not
+        // either. The menu offered five fighters for a six-fighter ring and
+        // Nick appeared on the scoreboard having never been listed.
+        [SerializeField] private string[] _fighterNames = { "Standard", "Grandma", "Grandpa", "Raptor", "Bot", "Nick" };
         [SerializeField] private string _balanceScene = "SCN_TEST_BALANCE_CONTEST";
         [SerializeField] private string _walkScene = "SCN_TEST_WALK_CONTEST";
 

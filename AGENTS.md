@@ -85,7 +85,39 @@ the anatomy allows is not shippable, however good its reward curve looks.
 
 ## Android builds
 
-Compile for Android phones using **https://github.com/joanllobera/mujoco-bin/**.
+**MuJoCo does not currently run on Android in this project, and the obvious fix
+does not work.** Measured on a Pixel 9 Pro, 2026-09-09:
+
+- Without a native library the player throws `DllNotFoundException: Unable to
+  load DLL 'mujoco'` once per contest scene and then
+  `NullReferenceException: Failed to create Mujoco runtime` at
+  `MjScene.StepScene` **every physics tick** -- 2,133 of them in one 20 s
+  round. Nick does not simulate. He also cannot fall, so the referee declares
+  him the winner of every round. The Editor smoke test cannot see any of this,
+  because the Editor has `Assets/Plugins/mujoco.dll` and the phone does not.
+- **https://github.com/joanllobera/mujoco-bin/** ships an arm64-v8a
+  `libmujoco.so` and it loads (`nativeloader: ... ok`, zero DllNotFound), but
+  the binary is **MuJoCo 3.3.7** -- not the 3.5.0 its README claims nor the
+  3.3.0 in its package.json, both of which were read out of the binary itself.
+  This project's `Packages/org.mujoco` bindings are pinned at
+  `mjVERSION_HEADER = 3012000`. The app segfaults about a second after the
+  library loads: `signal 11 (SIGSEGV), fault addr 0x0 (write)` on the Unity
+  main thread, inside managed code. Nine minor versions of `mjModel`/`mjData`
+  layout drift is not survivable by struct marshalling.
+
+So there are two real options, and both are decisions rather than fixes:
+
+1. **Build MuJoCo 3.12.0 for Android from source** and keep the one-version
+   invariant the whole Nick line depends on (trainer and game on the same
+   engine version and the same MJCF). The fork the binaries above came from
+   documents the procedure.
+2. **Move the whole project to 3.3.7** -- plugin, Windows DLL and Android .so
+   together, which is what mujoco-bin's README actually instructs. This makes
+   Android work today and **breaks parity with the trainer**, which is
+   mujoco_warp 3.12.0. Nick's brains were trained against 3.12.0 physics.
+
+Do not install the 3.3.7 `.so` on its own. It turns a working app into a
+crash on launch, which is strictly worse than Nick standing still.
 
 ## Answering
 
