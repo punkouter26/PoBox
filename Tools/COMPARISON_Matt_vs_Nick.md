@@ -88,7 +88,7 @@ brain once.
 
 nick03 = nick02 resumed from iteration 600 with a planted-feet factor at zero
 command (`NickEnvCfg.w_planted`), 1500 more iterations. It is the brain in
-`Assets/MuJoCoCreature/Policy/nick_locomotion.onnx`. The Unity BALANCE phase
+`Assets/Agents/Nick_Locomotion/nick_locomotion.onnx`. The Unity BALANCE phase
 above is measured **with the demo's auto-shove on** (150 N for 0.2 s every
 4 s) and he never goes down; the march-in-place is gone (1 stance change in
 10 s against 69 before, 7 cm of drift against 40). The exported graph was also

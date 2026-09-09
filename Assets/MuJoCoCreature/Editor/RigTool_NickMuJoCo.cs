@@ -42,18 +42,18 @@ namespace PoBox.Editor
         private const string DEMO_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_DemoScene.unity";
         private const string CONTEST_SCENE_PATH = "Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity";
         private const string NICK_GLB_PATH = "Assets/MuJoCoCreature/Model/RIGGED_Nick.glb";
-        private const string BALANCE_BRAIN_PATH = "Assets/MuJoCoCreature/Policy/nick_balance_002.onnx";
+        private const string BALANCE_BRAIN_PATH = "Assets/Agents/Nick_Balance002/nick_balance_002.onnx";
         private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";
         // Written by Tools/MuJoCo/export_onnx.py. A constant, so a stale brain
         // is visible here rather than buried in a scene file.
-        private const string LOCOMOTION_BRAIN_PATH = "Assets/MuJoCoCreature/Policy/nick_locomotion.onnx";
+        private const string LOCOMOTION_BRAIN_PATH = "Assets/Agents/Nick_Locomotion/nick_locomotion.onnx";
         // Training env control rate: 4 physics steps of 0.005 s per decision.
         private const int LOCOMOTION_DECIMATION = 4;
         private const float TRAINING_TIMESTEP = 0.005f;
 
-        [MenuItem("Tools/ML Boxing/12. Build Nick MuJoCo Demo Scene")]
+        [MenuItem("PoBox/Nick/Build Demo Scene")]
 /// <summary>
         /// Nick's own balance ring. Same construction as the demo scene -- the
         /// creature cloned from the source scene, the same environment, the
@@ -65,7 +65,7 @@ namespace PoBox.Editor
         /// cannot share a timestep; the measurements are in the summary on
         /// Systems_NickBalanceRing.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/13. Build Nick Balance Ring")]
+        [MenuItem("PoBox/Nick/Build Balance Ring")]
         public static void BuildBalanceRing()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -187,7 +187,7 @@ namespace PoBox.Editor
             return links;
         }
 
-                [MenuItem("Tools/ML Boxing/14. Add Nick To Balance Ring")]
+                [MenuItem("PoBox/Nick/Add To Balance Ring")]
         public static void AddNickToBalanceContest() =>
             AddNickToContest(CONTEST_SCENE_PATH, new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f));
 
@@ -198,7 +198,7 @@ namespace PoBox.Editor
         /// against a 5.6 m goal. Placing him is honest; expect him to fall short
         /// until a walk brain is trained at 0.02 s.
         /// </summary>
-        [MenuItem("Tools/ML Boxing/17. Add Nick To Walk Race")]
+        [MenuItem("PoBox/Nick/Add To Walk Race")]
         public static void AddNickToWalkContest() =>
             AddNickToContest("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity", new Vector3(2.75f, 0.03f, -2.8f));
 

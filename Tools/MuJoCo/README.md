@@ -21,7 +21,7 @@ on the same engine and the same model file in both places.
 
 ## What ships, as of 2026-09-07
 
-`Assets/MuJoCoCreature/Policy/nick_locomotion.onnx` = `results/nick/nick03/model_2099.pt`
+`Assets/Agents/Nick_Locomotion/nick_locomotion.onnx` = `results/nick/nick03/model_2099.pt`
 (nick02 to iteration 600, then resumed with the planted-feet term for 1500
 more). Fresh-start on 512 worlds: 93% survive 30 s of 150 N shoves every 4 s,
 100% walk 20 s at 1.008 m/s. In Unity (`Nick_DemoScene`, shoves on): 0 falls,
@@ -41,7 +41,7 @@ follow-up run should add an over-lift kernel. Change one thing at a time.
 | `train_nick.py` | PPO run: TensorBoard on :6007, MuJoCo viewer following the newest checkpoint |
 | `watch_nick.py` | MuJoCo viewer replay of a checkpoint or an exported `.onnx`, BALANCE/WALK phases, `NICK_WATCH` lines |
 | `eval_nick.py` | Fresh-start survival/speed/alternation tables on a Warp batch, no domain randomisation |
-| `export_onnx.py` | Checkpoint → `Assets/MuJoCoCreature/Policy/nick_locomotion.onnx` + `SOURCE_nick_locomotion.txt` |
+| `export_onnx.py` | Checkpoint → `Assets/Agents/Nick_Locomotion/nick_locomotion.onnx` + `SOURCE.txt` |
 | `parity_check.py` | Element-wise diff of the C# and Python observation builders through the live Editor |
 | `.venv/` | Python 3.11, `mujoco==3.12.0`, `mujoco-warp==3.12.0`, `warp-lang 1.17`, `torch 2.14.0+cu130`, `rsl-rl-lib==2.3.3` (gitignored) |
 

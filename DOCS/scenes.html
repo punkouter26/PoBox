@@ -140,7 +140,7 @@ tbody tr:last-child td{border-bottom:0}
   </div>
 
   <h3>Generated, not hand-authored</h3>
-  <p>Every scene is rebuilt from <code>Tools/ML Boxing/*</code> menu items backed by <code>RigTool_*.cs</code>. Re-running one overwrites that scene <b>wholesale</b>, including references edited by hand.</p>
+  <p>The three shipping scenes (<code>SCN_MENU</code> and both contest scenes) are hand-authored and committed; their generators were deleted on 2026-09-08. The <code>SCN_TRAIN_*</code> scenes are still rebuilt from <code>SceneTool_*.cs</code>, which now have no menu items and are driven from the CLI or the command bridge. Re-running one overwrites that scene <b>wholesale</b>, including references edited by hand.</p>
   <div class="tblwrap">
     <table>
       <thead><tr><th>Menu item</th><th>Builds</th><th>Constant to check first</th></tr></thead>
@@ -153,7 +153,7 @@ tbody tr:last-child td{border-bottom:0}
       </tbody>
     </table>
   </div>
-  <p class="note">A stale constant silently downgrades a scene you just wired up. Both contest scenes pinned <code>Locomotion_gen7</code> through such a constant for five generations, and the walk contest's finish-line material was reverted this way after being fixed — caught by <code>RigTool_SceneAudit</code>.</p>
+  <p class="note">A stale constant silently downgrades a scene you just wired up. Both contest scenes pinned <code>Locomotion_gen7</code> through such a constant for five generations, and the walk contest's finish-line material was reverted this way after being fixed — caught by <code>SceneTool_Audit</code>.</p>
 </section>
 
 <footer style="border-top:3px solid var(--ink);padding-top:20px;margin-top:36px;font-size:13px;color:var(--ink-3)">

@@ -128,7 +128,7 @@ def report_run(run_id, window):
 
     if not present:
         print("  (no per-body stats: this run predates the body split, or the "
-              "scene was not rebuilt by RigTool_LocomotionScene)")
+              "scene was not rebuilt by SceneTool_LocomotionTraining)")
 
 
 def main():

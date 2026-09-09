@@ -18,43 +18,74 @@ TensorBoard, fighter colours, physical realism — are in [AGENTS.md](AGENTS.md)
 
 ## Commands
 
-### Scene and prefab generation (Unity Editor menu)
+### Scenes: authored, not generated
 
-Scenes and fighter prefabs are **generated artifacts**, not hand-authored. They are
-rebuilt from `Tools/ML Boxing/*` menu items backed by `Assets/Scripts/Editor/RigTool_*.cs`.
-The numbering is the intended order:
+**The three shipping scenes are hand-authored assets.** `SCN_MENU`,
+`SCN_TEST_BALANCE_CONTEST` and `SCN_TEST_WALK_CONTEST` are tuned in the Editor
+and committed. The tools that used to build them
+(`RigTool_MenuScene`, `RigTool_ContestScene`, `RigTool_WalkContestScene`,
+1,622 lines) were deleted on 2026-09-08.
 
-| Menu item | Builds |
+That is a deliberate reversal. `RigTool_ContestScene.BuildAll` destroyed the
+scene it built -- `Create()` opened a new empty scene, removing the
+`Systems_ContestSpawner` an earlier step had added and that was never
+reimplemented, so six of its nine steps bailed with "run 7c first" and it logged
+"built end to end" anyway. A generator that cannot reproduce the artifact is not
+a generator; it is a way to lose one. Edit these scenes by hand and commit them.
+
+**Training scenes are still generated**, because sixteen fighters on a shared
+ground box is not something to tune by hand. Those tools kept their
+`public static` entry points and LOST their menu items, so a regeneration that
+discards hand tuning cannot happen by a misclick:
+
+| Entry point | Builds |
 |---|---|
-| `0. Apply Project Settings` | Locks `Time.fixedDeltaTime = 0.02`, gravity, 16 solver iterations |
-| `1. Generate Capsule Biped` / `2. Auto-Rig Selected` / `3. Prepare for Training` | Fighter prefab pipeline |
-| `4. Create Menu Scene` | `SCN_MENU` (build index 0) |
-| `5/5b/5c. Create … Balance Scene` | `SCN_TRAIN_BALANCE`, `_GRANDMA`, `_GRANDPA` |
-| `6. Create Walk Training Scene`, `9. Create Locomotion Training Scene` | `SCN_TRAIN_WALK`, `SCN_TRAIN_LOCOMOTION` |
-| `7. Build Balance Contest Scene` | `SCN_TEST_BALANCE_CONTEST`, end to end |
-| `8. Create Walk Contest Scene` | `SCN_TEST_WALK_CONTEST` |
+| `SceneTool_BalanceTraining.Create` / `.CreateGrandma` / `.CreateGrandpa` / `.CreateRaptor` | `SCN_TRAIN_BALANCE`, `_GRANDMA`, `_GRANDPA`, `_RAPTOR` |
+| `SceneTool_WalkTraining.Create` | `SCN_TRAIN_WALK` |
+| `SceneTool_LocomotionTraining.Create` | `SCN_TRAIN_LOCOMOTION` |
 
-The balance contest used to be eight menu items (`7`, `7b`, `7d`..`7i`, with `7c`
-already lost) that had to be clicked in order — each one a migration bolted onto
-the last. They are now one idempotent `BuildAll`. The individual steps are still
-`public static` on `RigTool_ContestScene`, so any one of them can be driven from
-the CLI or over MCP without a menu:
+Drive one from the command bridge while the Editor is open:
+
+```powershell
+echo PoBox.Editor.SceneTool_LocomotionTraining.Create > Temp/agent-command.txt
+```
+
+or headlessly with the Editor closed:
 
 ```powershell
 Unity.exe -batchmode -quit -projectPath . `
-          -executeMethod PoBox.Editor.RigTool_ContestScene.BuildAll
+          -executeMethod PoBox.Editor.SceneTool_LocomotionTraining.Create
 ```
 
-**Re-running a scene tool overwrites that scene wholesale**, including asset
-references you edited by hand -- and the committed scene being healthy is no
-evidence that the tool still produces a healthy one. Regenerating
-`SCN_TRAIN_LOCOMOTION` on 2026-09-07 produced a scene in which ten of sixteen
-fighters threw `NullReferenceException` every physics tick and earned zero
-reward, while the trainer reported a plausible mean over the six that still
-worked. Run `python Tools/verify_train_scene.py` after regenerating a training
-scene; it reads the YAML directly and needs no Unity. Before running one, check the tool's constants —
-e.g. `RigTool_WalkContestScene.LOCOMOTION_BRAIN_PATH` decides which brain the whole
-roster gets. A stale constant silently downgrades a scene you just wired up.
+**Re-running a scene tool overwrites that scene wholesale**, and the committed
+scene being healthy is no evidence that the tool still produces a healthy one.
+Regenerating `SCN_TRAIN_LOCOMOTION` on 2026-09-07 produced a scene in which ten
+of sixteen fighters threw `NullReferenceException` every physics tick and earned
+zero reward, while the trainer reported a plausible mean over the six that still
+worked. Run `python Tools/verify_train_scene.py` afterwards; it reads the YAML
+directly and needs no Unity.
+
+Fighter prefabs are still generated too, from `PoBox/Fighter/*`.
+
+### Checking the shipping scenes
+
+Two tools, and they catch different things:
+
+| Tool | Finds |
+|---|---|
+| `PoBox/Scene/Audit Shippable Scenes` (`SceneTool_Audit`) | dangling GUID references, missing tints, camera framing -- static, no play mode |
+| `PoBox/Scene/Smoke Test Shippable Scenes` (`SceneTool_SmokeTest`) | runtime exceptions, and what each fighter's brain actually resolved to |
+
+The smoke test plays each of the three scenes for 20 s and writes
+`Tools/cleanup/SCENE_SMOKE_REPORT.md`: errors counted by signature, then one row
+per fighter with its sensor width beside the width the rig derives. It reports
+per fighter on purpose, because an aggregate cannot see ten broken bodies behind
+six working ones. It refuses to run if an open scene has unsaved changes, since
+it walks scenes with `OpenScene`, which discards them without prompting.
+
+It reports `IContestFighter` implementers separately from `Systems_FighterRig`,
+because Nick is refereed through that interface from another assembly and the
+rig sweep cannot see him.
 
 ### Training
 
@@ -139,7 +170,7 @@ Unity.exe -batchmode -quit -projectPath . -buildTarget WebGL `
           -executeMethod PoBox.Editor.Build_WebGL.Build -buildOutput WEB
 ```
 
-Also available as `Tools/Web/Build WebGL to WEB/`. Output is the committed static
+Also available as `PoBox/Build/WebGL`. Output is the committed static
 site in `WEB/`, deployed to Azure Static Web Apps by
 `.github/workflows/azure-static-web-apps.yml`. See [WEB/README.md](WEB/README.md).
 `.github/workflows/build-web.yml` rebuilds on pushes to `main` touching sources.
@@ -162,8 +193,8 @@ Current fighters: 14 joints → 121 without the locomotion command, 127 with it.
 
 Every place that sizes `BehaviorParameters.VectorObservationSize` must call
 `ComputeObservationCount` (or `Agent_FighterBoxing.ExpectedObservationCount`) rather
-than restate the flags — `RigTool_PrepareForTraining`, `RigTool_BalanceScene`,
-`RigTool_LocomotionScene`, and `Systems_ContestSpawner.Configure` all do.
+than restate the flags — `RigTool_PrepareForTraining`, `SceneTool_BalanceTraining`,
+`SceneTool_LocomotionTraining`, and `Systems_ContestSpawner.Configure` all do.
 
 Two failure modes to know:
 
@@ -179,6 +210,11 @@ Two failure modes to know:
    `[Conditional]`: a player build has to make the same call an Editor run does.
    Both the contest spawner and the offline evaluation harness go through it, so
    the evaluator cannot benchmark a brain the game would refuse.
+
+**Every brain lives under `Assets/Agents/<Name>/`, one folder each, with a
+`SOURCE.txt` beside it.** Nick's two and the MuJoCo raptor's used to sit in
+`Assets/MuJoCoCreature/Policy/` instead, which put the brain the balance ring
+loads in a different tree from the brain the walk race loads.
 
 Brain folder names under `Assets/Agents/` have historically lied about which
 generation they contain. Verify with the ONNX input shape before trusting one;
@@ -231,14 +267,6 @@ trainer and the game read one body.
 0.0000 and mean episode length 1000/1000 for a policy whose fresh-start eval
 was 0% walk full-cap and a 3.57 s median. Judge a checkpoint with
 `Tools/MuJoCo/eval_nick.py`, never the reward curve.
-
-### `Tools/ML Boxing/7` is BROKEN — do not run it
-
-`RigTool_ContestScene.BuildAll` destroys the scene it builds. `Create()` opens
-a new empty scene, which removes the `Systems_ContestSpawner` that step `7c`
-used to add and that was never reimplemented; six of the nine steps then bail
-with "run 7c first" and it logs "built end to end" anyway. Recover the balance
-contest with `git checkout` rather than by rebuilding it.
 
 ### Agent / rig / reward split
 
@@ -306,9 +334,30 @@ These are referred to as "project rules" in comments and are enforced by convent
 ### Naming and assemblies
 
 Type prefixes map to folders under `Assets/Scripts/`: `Agent_`, `Systems_`,
-`Reward_`, `Sensor_`, and `RigTool_`/`Build_` for editor-only code. Everything is in
-namespace `PoBox` (`PoBox.Editor` for tools), split across two assembly definitions:
-`PoBox.Runtime` and `PoBox.Editor`.
+`Reward_`, `Sensor_`. Everything is in namespace `PoBox` (`PoBox.Editor` for
+tools), split across two assembly definitions: `PoBox.Runtime` and `PoBox.Editor`.
+Nick carries his own pair, `PoBox.MuJoCoCreature` and `.Editor`, because the
+shipping game must not have to link the MuJoCo plugin.
+
+Editor code is grouped by what it acts on, and the prefix follows the folder:
+
+| Folder | Prefix | Acts on |
+|---|---|---|
+| `Editor/Build/` | `Build_` | produces an artifact: a player, a bundle, WebGL |
+| `Editor/Rig/` | `RigTool_` | the fighter prefab and rig pipeline |
+| `Editor/Scene/` | `SceneTool_` | authors or inspects a scene |
+| `Editor/` | `Editor_` | editor infrastructure: the command bridge, project settings |
+
+The scene tools were named `RigTool_*` and built no rigs. `Editor_BuildAndroid`
+and `Editor_BuildAndroidAAB` were one class each for two artifacts off one key,
+and only the bundle path applied the SDK levels, ARM64 and IL2CPP -- so an APK
+built for testing could differ from the bundle that shipped, under a comment
+claiming it could not. They are now `Build_Android.Aab` and `.Apk` over one
+`Configure`.
+
+**One menu root: `PoBox/`.** It was three (`PoBox/`, `Tools/ML Boxing/`,
+`Tools/Web/`) with numbered items whose numbers had holes in them and two
+different items numbered 17.
 
 ### Packages
 
@@ -347,10 +396,10 @@ shipping on the punkouter27 Play account.
 | Property | Value |
 |---|---|
 | Application id | `com.punkoutersoftware.pobox` |
-| Version / code | `1.0.0` / `1` — bump `VERSION_CODE` in `Editor_ConfigureAndroidRelease` for every upload; Play rejects a reused code |
+| Version / code | `1.0.0` / `1` — bump `VERSION_CODE` in `Build_AndroidSettings` for every upload; Play rejects a reused code |
 | min / target SDK | 26 / 36 (Play requires target 36 for new uploads from 2026-08-31) |
 | Architecture | ARM64, IL2CPP, Release |
-| Orientation | Portrait is locked in `Editor_ConfigureAndroidRelease`. |
+| Orientation | Portrait is locked in `Build_AndroidSettings`. |
 
 ### Secrets live OUTSIDE the repo
 
@@ -371,9 +420,9 @@ Without either, the build **aborts** rather than producing an unsigned artifact.
 
 | Tool | What it does |
 |---|---|
-| *PoBox → Configure Android Release Settings* | One-shot: identity, SDK levels, orientation, and the launcher icons (adaptive + round + legacy, 6 densities) from `Assets/Icons/`. Re-run after changing icon art |
-| *PoBox → Build Android AAB (Play release)* | Signed bundle → `Builds/Android/PoBox.aab`. Logs `AAB BUILD RESULT:` |
-| *PoBox → Build Android APK* | Sideloadable APK on the SAME key, so it installs over a Play build → `Builds/Android/PoBox.apk`. Logs `BUILD RESULT:` |
+| *PoBox → Build → Configure Android Release* (`Build_AndroidSettings`) | One-shot: identity, SDK levels, orientation, and the launcher icons (adaptive + round + legacy, 6 densities) from `Assets/Icons/`. Re-run after changing icon art |
+| *PoBox → Build → Android AAB (Play release)* (`Build_Android.Aab`) | Signed bundle → `Builds/Android/PoBox.aab`. Logs `AAB BUILD RESULT:` |
+| *PoBox → Build → Android APK* (`Build_Android.Apk`) | Sideloadable APK on the SAME key, so it installs over a Play build → `Builds/Android/PoBox.apk`. Logs `BUILD RESULT:` |
 | `Tools/play_publish.py` | Uploads a built AAB. Defaults to the `internal` track as a `draft`; `--dry-run` rehearses and discards |
 
 `Tools/play_publish.py` needs its own venv (`Tools/publish-venv`). Do not install it
@@ -382,7 +431,7 @@ ml-agents versions must stay in exact parity.
 
 ### The shipped scene list is explicit
 
-`Editor_BuildAndroidAAB.SHIP_SCENES` names the player's scenes in boot order:
+`Build_Android.SHIP_SCENES` names the player's scenes in boot order:
 
   0. `Assets/Scenes/SCN_MENU.unity`
   1. `Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity`
@@ -420,7 +469,7 @@ After that, `python Tools/play_publish.py --track internal` owns every upload.
 
 ```
 Unity.exe -batchmode -quit -nographics -projectPath <root> -buildTarget Android ^
-  -executeMethod PoBox.Editor.Editor_BuildAndroidAAB.Build -logFile <log>
+  -executeMethod PoBox.Editor.Build_Android.Aab -logFile <log>
 ```
 
 Grep the log for `AAB BUILD RESULT:` — that line is the outcome.

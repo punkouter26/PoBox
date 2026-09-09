@@ -61,7 +61,7 @@ import urllib.request
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# The application id is permanent once published. Editor_BuildAndroidAAB.APP_ID is
+# The application id is permanent once published. Build_Android.APP_ID is
 # the one that actually ships; this must match it or the API 404s on an app that
 # does not exist under this developer account.
 PACKAGE_NAME = "com.punkoutersoftware.pobox"

@@ -19,7 +19,7 @@ WHAT GOES IN THE GRAPH.
    different numbers is the worst outcome available, because nothing
    downstream would notice.
 
-Writes Assets/MuJoCoCreature/Policy/nick_locomotion.onnx plus SOURCE_nick_locomotion.txt,
+Writes Assets/Agents/Nick_Locomotion/nick_locomotion.onnx plus SOURCE.txt,
 the provenance format this project uses for brains.
 """
 from __future__ import annotations
@@ -34,7 +34,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 REPO = HERE.parent.parent
 LOG_ROOT = REPO / "results" / "nick"
-DEFAULT_OUT = REPO / "Assets" / "MuJoCoCreature" / "Policy" / "nick_locomotion.onnx"
+DEFAULT_OUT = REPO / "Assets" / "Agents" / "Nick_Locomotion" / "nick_locomotion.onnx"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--run", default="nick01")
@@ -126,7 +126,11 @@ print("onnxruntime check: max |onnx - torch| = %.3e over random observations" % 
 if worst > 1e-4:
     raise SystemExit("ABORT: exported graph does not match the torch policy.")
 
-source = out.parent / ("SOURCE_%s.txt" % out.stem)
+# One brain per folder under Assets/Agents/, each with its provenance in a
+# SOURCE.txt beside it -- the convention every other brain in the project
+# follows. Naming it after the checkpoint instead put two different files
+# in one folder and made the folder name the only clue to which was which.
+source = out.parent / "SOURCE.txt"
 source.write_text(
     "%s\n%s\n\n"
     "WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),\n"

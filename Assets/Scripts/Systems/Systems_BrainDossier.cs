@@ -14,7 +14,7 @@ namespace PoBox
     /// run id, the checkpoint step and the observation count. The headline
     /// statistic is not: "167.9 steps between falls under shove against gen20's
     /// 91.7" is a sentence, not a field. So the parseable half is filled in by
-    /// <c>RigTool_SpectatorKit</c> from SOURCE.txt and the ONNX itself, and the
+    /// <c>SceneTool_SpectatorKit</c> from SOURCE.txt and the ONNX itself, and the
     /// headline is authored once and left alone. A shipped build never opens a
     /// .txt file.
     ///

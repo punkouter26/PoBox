@@ -23,7 +23,7 @@ import sys
 
 DEFAULT_SCENE = "Assets/Scenes/SCN_TRAIN_LOCOMOTION.unity"
 # Torso, head, both lower legs, both gloves -- the humanoid set, mirroring
-# MIN_FALL_CONTACTS in RigTool_LocomotionScene. A rig with fewer LIMBS
+# MIN_FALL_CONTACTS in SceneTool_LocomotionTraining. A rig with fewer LIMBS
 # legitimately has fewer: Fighter_Raptor has no arms and so carries four
 # (torso, head, both shins). That is a note, not a failure. A NULL entry is
 # always a failure, on any rig.
@@ -86,7 +86,7 @@ def main():
         print("  no fighters found - wrong scene, or the component was renamed")
         return 1
     if failures:
-        print("  Regenerate with RigTool_LocomotionScene, which resolves fall contacts")
+        print("  Regenerate with SceneTool_LocomotionTraining, which resolves fall contacts")
         print("  from the rig rather than by hardcoded joint index.")
         return 1
     print("  OK - every fighter has a complete fall detector")

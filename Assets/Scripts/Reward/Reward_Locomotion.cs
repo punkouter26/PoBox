@@ -315,7 +315,7 @@ namespace PoBox
         // happened, so every generation has had to be re-measured by hand in a
         // separate scene to find out.
         //
-        // Set by RigTool_LocomotionScene from the prefab it spawned. Empty on
+        // Set by SceneTool_LocomotionTraining from the prefab it spawned. Empty on
         // anything not placed by that tool, in which case only the aggregate
         // stats are written and nothing lies.
         [SerializeField] private string _bodyName;
@@ -992,7 +992,7 @@ namespace PoBox
                 {
                     Debug.LogError($"{name}: fall contact {contactIndex} of {_fallContacts.Length} is NULL. " +
                         "This fighter would throw on every physics tick and earn zero reward for the entire " +
-                        "run. Rebuild the scene with RigTool_LocomotionScene, which resolves these from the " +
+                        "run. Rebuild the scene with SceneTool_LocomotionTraining, which resolves these from the " +
                         "rig rather than by joint index.", this);
                 }
             }

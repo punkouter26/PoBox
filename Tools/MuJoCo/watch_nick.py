@@ -7,7 +7,7 @@
     Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/watch_nick.py --run nick01 --follow
 
     # the EXPORTED graph, through onnxruntime: proves the .onnx, not just the .pt
-    Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/watch_nick.py --onnx Assets/MuJoCoCreature/Policy/nick_locomotion.onnx
+    Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/watch_nick.py --onnx Assets/Agents/Nick_Locomotion/nick_locomotion.onnx
 
     # no window, many phases, for a table
     Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/watch_nick.py --run nick01 --headless --phases 10
