@@ -684,6 +684,8 @@ are not bought with more actuator force or more chatter.
 
 ### 2.9 Shipped
 
+Champion: `nick12/model_3700`, unbeaten by six continuations.
+
 `results/nick/nick12/model_3700.pt` exported over
 `Assets/Agents/Nick_Balance002/nick_balance_002.onnx`, which is the file
 **both** `SCN_TEST_BALANCE_CONTEST` and `SCN_TEST_WALK_CONTEST` load (same
@@ -704,6 +706,29 @@ The folder is still called `Nick_Balance002` and the brain is no longer
 balance-only. Renaming it rewrites the guid that two hand-authored, committed
 scenes reference, which is a worse trade than a stale folder name; `SOURCE.txt`
 carries the truth.
+
+### 2.10 `nick16` -- the walking share pushed further, 90 % to 95 %
+
+Finding 10 said the walk was starved of data: 75 % -> 90 % of episodes moved
+it from 65 % to 83 %. `nick16` is the same knob again, `stand_still_fraction`
+0.10 -> 0.05, from the same `nick12/model_3700`.
+
+| checkpoint | BALANCE | WALK | RING |
+|---|---|---|---|
+| (start: nick12 3700) | 99 % | **83 %** | **96 %** |
+| 3800 | 95 % | 83 % | 92 % |
+| 3900 | 96 % | 81 % | 95 % |
+| 4000 | 99 % | 79 % | 93 % |
+| 4200 | 97 % | 64 % | 92 % |
+| 4699 | 98 % | 72 % | 96 % |
+
+**The trend does not extrapolate.** The best walk in the run equals the
+checkpoint it started from, and RING is 4 points worse. 90 % walking episodes
+was near the optimum, not a point on a line, and the decay with iterations
+still dominates whatever the data share is.
+
+Six continuations from `nick12/model_3700` now -- hazard exposure, three
+learning rates, shove exposure, walking share -- and none has improved it.
 
 ---
 
@@ -734,9 +759,12 @@ last-checkpoint-is-not-best), `Tools/MuJoCo/README.md` (what ships), and
 **What is still not understood.** Clean-walk survival decays under continued
 training at every learning rate tried, while balance and ring hold. Removing
 the training/evaluation mismatch that seemed to explain it made it far worse
-(Finding 14), so the mechanism is still open. That is the first thing to look
-at next, and the cheapest probe is a run at `stand_still_fraction=0.05` to see
-whether the decay tracks the walking data share the way Finding 10 suggests.
+(Finding 14), so the mechanism is still open. The cheapest probe --
+`stand_still_fraction=0.05`, run as `nick16` -- came back negative, so the
+decay is not simply the walking data share either. What is left to try is a
+**fresh** run rather than a seventh fine-tune: every experiment in this log
+after the screens started from a checkpoint trained under different settings,
+which is a poor way to ask what an objective converges to.
 
 **Not attempted, and why:** the over-lift kernel and the control-cost term are
 implemented and inert. Both change the reward, and every run in this log
