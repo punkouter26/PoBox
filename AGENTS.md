@@ -105,19 +105,21 @@ does not work.** Measured on a Pixel 9 Pro, 2026-09-09:
   main thread, inside managed code. Nine minor versions of `mjModel`/`mjData`
   layout drift is not survivable by struct marshalling.
 
-So there are two real options, and both are decisions rather than fixes:
+**RESOLVED 2026-09-09 by building MuJoCo 3.12.0 for Android from source.**
+`Assets/Plugins/Android/libmujoco.so` is now arm64-v8a at exactly the version
+the bindings pin, so the trainer and the game stay on one engine version and
+one MJCF -- the invariant the whole Nick line depends on. It needs two
+one-line portability patches (bionic declares `aligned_alloc` only from API 28,
+and does not define `_POSIX_C_SOURCE`, so MuJoCo's `localtime_r` guard hits a
+hard `#error`). Build recipe, patch and measurements:
+[Tools/MuJoCo/android/README.md](Tools/MuJoCo/android/README.md).
 
-1. **Build MuJoCo 3.12.0 for Android from source** and keep the one-version
-   invariant the whole Nick line depends on (trainer and game on the same
-   engine version and the same MJCF). The fork the binaries above came from
-   documents the procedure.
-2. **Move the whole project to 3.3.7** -- plugin, Windows DLL and Android .so
-   together, which is what mujoco-bin's README actually instructs. This makes
-   Android work today and **breaks parity with the trainer**, which is
-   mujoco_warp 3.12.0. Nick's brains were trained against 3.12.0 physics.
+On device the three failure signatures went to zero and Nick simulates. **The
+cost is frame rate: 60 fps drops to about 20 during a contest**, which is the
+open item.
 
-Do not install the 3.3.7 `.so` on its own. It turns a working app into a
-crash on launch, which is strictly worse than Nick standing still.
+Do not install the 3.3.7 `.so` instead. It turns a working app into a crash on
+launch, which is strictly worse than Nick standing still.
 
 ## Answering
 

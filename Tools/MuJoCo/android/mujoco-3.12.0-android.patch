@@ -1,0 +1,34 @@
+diff --git a/src/engine/engine_util_errmem.c b/src/engine/engine_util_errmem.c
+index 9eb9399..c1a22d0 100644
+--- a/src/engine/engine_util_errmem.c
++++ b/src/engine/engine_util_errmem.c
+@@ -50,6 +50,18 @@ void (*mju_user_free) (void*) = 0;
+ static inline void* mju_alignedMalloc(size_t size, size_t align) {
+ #ifdef _WIN32
+   return _aligned_malloc(size, align);
++#elif defined(__ANDROID__)
++  // ANDROID: bionic only declares aligned_alloc from API 28, and this project
++  // ships minSdk 26. posix_memalign has been there since API 16 and has the
++  // same contract for the alignments MuJoCo asks for (64, a power of two and a
++  // multiple of sizeof(void*)). Freed with plain free(), as below.
++  {
++    void* ptr = NULL;
++    if (posix_memalign(&ptr, align, size) != 0) {
++      return NULL;
++    }
++    return ptr;
++  }
+ #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+   return aligned_alloc(align, size);
+ #endif
+@@ -218,7 +230,9 @@ static void mju_localTimeStr(char* buf, int buf_sz) {
+   struct tm timeinfo;
+   time(&rawtime);
+ 
+-#if defined(_POSIX_C_SOURCE) || defined(__APPLE__) || defined(__STDC_VERSION_TIME_H__) || defined(__EMSCRIPTEN__)
++#if defined(_POSIX_C_SOURCE) || defined(__APPLE__) || defined(__STDC_VERSION_TIME_H__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
++  // ANDROID: bionic provides localtime_r but does not define _POSIX_C_SOURCE
++  // by default, so without __ANDROID__ this falls through to the #error.
+   localtime_r(&rawtime, &timeinfo);
+ #elif defined(_WIN32)
+   localtime_s(&timeinfo, &rawtime);
