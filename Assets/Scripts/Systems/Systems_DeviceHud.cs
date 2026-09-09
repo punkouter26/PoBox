@@ -68,6 +68,12 @@ namespace PoBox
             if (FindFirstObjectByType<Systems_DeviceHud>() != null) { return; }
             var go = new GameObject("Systems_DeviceHud");
             go.AddComponent<Systems_DeviceHud>();
+            // Frame-cost attribution rides along in the scenes that have a
+            // creature to attribute. Diagnostic, and temporary.
+            if (SceneManager.GetActiveScene().name != MENU_SCENE)
+            {
+                go.AddComponent<Systems_MuJoCoProfile>();
+            }
             // No DontDestroyOnLoad: it belongs to the scene that just loaded and
             // the next load gets its own.
         }
@@ -351,6 +357,11 @@ namespace PoBox
 
             lines.Add($"{Screen.width}x{Screen.height} · {SystemInfo.graphicsDeviceType} · fixed {Time.fixedDeltaTime * 1000f:0}ms");
             if (Time.timeScale != 1f) { lines.Insert(0, $"TIME SCALE IS {Time.timeScale:0.00} — physics is not running at speed"); }
+
+            if (!string.IsNullOrEmpty(Systems_MuJoCoProfile.Summary))
+            {
+                lines.Insert(0, Systems_MuJoCoProfile.Summary);
+            }
 
             var text = new StringBuilder();
             for (int i = 0; i < lines.Count; i++)
