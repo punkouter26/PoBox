@@ -53,6 +53,12 @@ namespace PoBox
         /// </summary>
         public static void AddVersionStamp(VisualElement root)
         {
+            // SUPERSEDED by Systems_DeviceHud, which draws the version bottom-right
+            // as part of the one HUD every scene gets. Drawing it here as well put
+            // the version in two corners at once on the menu. Kept as a no-op so
+            // the call sites read the same and nobody re-adds a second stamp.
+            if (root != null) { return; }
+
             var stamp = new Label(Application.version);
             stamp.pickingMode = PickingMode.Ignore;
             stamp.style.position = Position.Absolute;

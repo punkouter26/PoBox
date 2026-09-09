@@ -1,0 +1,23 @@
+
+  at Mujoco.MjEngineTool.LoadModelFromString (System.String contents) [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjScene.CompileScene (System.Xml.XmlDocument mjcf, System.Collections.Generic.IEnumerable`1[T] components) [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjScene.CreateScene (System.Boolean skipCompile) [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjScene.FixedUpdate () [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjScene.StepScene () [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjVfs..ctor () [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjVfs.Finalize () [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MjVfs.ReleaseUnmanagedMemory () [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MujocoLib.mj_defaultVFS (System.Void* vfs) [0x00000] in <00000000000000000000000000000000>:0 
+  at Mujoco.MujocoLib.mj_deleteVFS (System.Void* vfs) [0x00000] in <00000000000000000000000000000000>:0 
+  at Unity.MLAgents.Inference.TensorProxy.Dispose () [0x00000] in <00000000000000000000000000000000>:0 
+  at Unity.MLAgents.Inference.TensorProxy.Finalize () [0x00000] in <00000000000000000000000000000000>:0 
+09-09 08:29:42.662  1550  3116 W SignedPackage: Cannot get ApplicationInfo for package: com.google.android.devicelockcontroller
+09-09 08:29:43.230  1550  1771 W ApplicationInfo: Large ApplicationInfo parcel: size=22020 package=com.google.android.googlequicksearchbox splits=3 sharedLibs=5 resDirs=1 overlayPaths=1
+09-09 08:29:43.232  1550  2792 W ApplicationInfo: Large ApplicationInfo parcel: size=22020 package=com.google.android.googlequicksearchbox splits=3 sharedLibs=5 resDirs=1 overlayPaths=1
+ApplicationInfo 'com.punkoutersoftware.pobox', Version '1.0.0', Min API Level '26', Target API Level '36'
+Built from '6000.5/staging' branch, Version '6000.5.6f1 (0e0577a1a2ac)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+Device Model 'Google Pixel 9 Pro', OS 'Android OS 17 (API 37)'
+DllNotFoundException: Unable to load DLL 'mujoco'. Tried the load the following dynamic libraries: Unable to load dynamic library '/system/bin/mujoco' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "/system/bin/mujoco" not found
+NullReferenceException: Failed to create Mujoco runtime.
+NullReferenceException: Object reference not set to an instance of an object.
+java.lang.ClassNotFoundException: Didn't find class "com.google.android.play.core.assetpacks.AssetPackManager" on path: DexPathList[[zip file "/data/app/~~W7k0iMkuU7ChGqLOoLl08A==/com.punkoutersoftware.pobox-mUMOgkZ7GslpvqnLlFaa6w==/base.apk"],nativeLibraryDirectories=[/data/app/~~W7k0iMkuU7ChGqLOoLl08A==/com.punkoutersoftware.pobox-mUMOgkZ7GslpvqnLlFaa6w==/lib/arm64, /data/app/~~W7k0iMkuU7ChGqLOoLl08A==/com.punkoutersoftware.pobox-mUMOgkZ7GslpvqnLlFaa6w==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]

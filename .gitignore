@@ -2,8 +2,13 @@
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
-[Bb]uild/
-[Bb]uilds/
+# Anchored to the repo root. Unanchored, "[Bb]uild/" also matched
+# Assets/Scripts/Editor/Build/, which quietly kept Build_Android.cs -- the
+# file that produces the Play artifact, holds the keystore paths and owns
+# SHIP_SCENES -- out of version control entirely. A fresh clone could not
+# build for Android and nothing said so.
+/[Bb]uild/
+/[Bb]uilds/
 [Ll]ogs/
 .utmp/
 [Uu]ser[Ss]ettings/

@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace PoBox.Editor
 {
@@ -30,7 +31,18 @@ namespace PoBox.Editor
         private const string LEGACY = ICON_DIR + "AppIcon_Legacy.png";
 
         private const string VERSION = "1.0.0";
-        private const int VERSION_CODE = 1;
+        // FLOOR, not the value. Play rejects a reused version code, so every
+        // build takes max(this, current + 1) and the number only ever goes up.
+        // It was a const 1, which meant a second upload was rejected and the
+        // fix was to remember to edit this file.
+        private const int VERSION_CODE_FLOOR = 1;
+
+        /// <summary>Next version code: one past whatever the project is on.</summary>
+        private static int NextVersionCode()
+        {
+            int current = PlayerSettings.Android.bundleVersionCode;
+            return Mathf.Max(VERSION_CODE_FLOOR, current + 1);
+        }
 
         [MenuItem("PoBox/Build/Configure Android Release")]
         public static void Apply()
@@ -39,7 +51,8 @@ namespace PoBox.Editor
             PlayerSettings.productName = "PoBox";
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, Build_Android.APP_ID);
             PlayerSettings.bundleVersion = VERSION;
-            PlayerSettings.Android.bundleVersionCode = VERSION_CODE;
+            int versionCode = NextVersionCode();
+            PlayerSettings.Android.bundleVersionCode = versionCode;
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)36;
@@ -47,14 +60,8 @@ namespace PoBox.Editor
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.SetIl2CppCompilerConfiguration(NamedBuildTarget.Android, Il2CppCompilerConfiguration.Release);
 
-            // Portrait-only: this project's UI is laid out against a 9:16 reference,
-            // so a landscape rotation is not a degraded experience, it is a broken one.
-            PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
-            PlayerSettings.allowedAutorotateToPortrait = true;
-            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
-            PlayerSettings.allowedAutorotateToLandscapeLeft = false;
-            PlayerSettings.allowedAutorotateToLandscapeRight = false;
 
+            ApplyDeviceSettings();
 
             // Signing paths only — Unity never serializes the passwords.
             PlayerSettings.Android.useCustomKeystore = true;
@@ -63,9 +70,52 @@ namespace PoBox.Editor
 
             string iconReport = ApplyIcons();
             AssetDatabase.SaveAssets();
+            // ProjectSettings.asset lives outside Assets/, so SaveAssets does not
+            // cover it and the values would live only in the open Editor while
+            // the file on disk still said the old thing. This is what writes it.
+            EditorApplication.ExecuteMenuItem("File/Save Project");
 
             Debug.Log($"ANDROID CONFIG RESULT: id={Build_Android.APP_ID} v{VERSION} " +
-                      $"(code {VERSION_CODE}) min=26 target=36 arch=ARM64 IL2CPP | {iconReport}");
+                      $"(code {versionCode}) min=26 target=36 arch=ARM64 IL2CPP " +
+                      $"gfx=Vulkan,GLES3 framePacing=on cutout=on | {iconReport}");
+        }
+
+        /// <summary>
+        /// The device-facing settings, shared with <see cref="Build_Android"/> so a
+        /// build that never ran the menu item still gets them. Keeping them only
+        /// in Apply() is the same trap this project already hit once, where the
+        /// APK and the AAB were configured by different code paths.
+        /// </summary>
+        internal static void ApplyDeviceSettings()
+        {
+            // Portrait-only: this project's UI is laid out against a 9:16 reference,
+            // so a landscape rotation is not a degraded experience, it is a broken one.
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+            PlayerSettings.allowedAutorotateToPortrait = true;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = false;
+            PlayerSettings.allowedAutorotateToLandscapeRight = false;
+
+            // GRAPHICS. Vulkan first, GLES3 as the fallback: URP on Vulkan is
+            // the faster path on every device this ships to, and leaving the
+            // list on "auto" lets Unity pick GLES3 first on some vendors.
+            PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[]
+            {
+                GraphicsDeviceType.Vulkan,
+                GraphicsDeviceType.OpenGLES3,
+            });
+
+            // Frame pacing: this is a physics game at a fixed 0.02 s step, so a
+            // jittery present is visible as the fighters stuttering even when
+            // the average frame rate is fine.
+            PlayerSettings.Android.optimizedFramePacing = true;
+
+            // Draw into the cutout/notch area. The HUD pads itself back out of
+            // it with Screen.safeArea (Systems_DeviceHud), so nothing lands
+            // under the camera hole -- rendering short of the cutout instead
+            // leaves a black band on exactly the phones this is tested on.
+            PlayerSettings.Android.renderOutsideSafeArea = true;
         }
 
         private static string ApplyIcons()
