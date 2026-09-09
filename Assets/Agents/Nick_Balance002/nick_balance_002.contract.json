@@ -1,9 +1,11 @@
 {
   "observations": 127,
   "actions": 30,
-  "decimation": 4,
-  "run": "nick08",
-  "checkpoint": "model_1499.pt",
-  "iteration": 1499,
+  "decimation": 1,
+  "physics_timestep": 0.02,
+  "control_dt": 0.02,
+  "run": "nick12",
+  "checkpoint": "model_3700.pt",
+  "iteration": 3700,
   "normaliser_baked_in": true
 }

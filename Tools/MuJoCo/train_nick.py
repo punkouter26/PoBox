@@ -47,6 +47,12 @@ parser.add_argument("--tensorboard-port", type=int, default=6007)
 parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--save-interval", type=int, default=50)
 parser.add_argument("--w-planted", type=float, default=None, help="override NickEnvCfg.w_planted for this run")
+parser.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
+                    help="override any NickEnvCfg field, repeatable (e.g. --env w_overlift=0.3). "
+                         "Tuples take a comma: --env speed_range=0.3,1.2")
+parser.add_argument("--train", action="append", default=[], metavar="KEY=VALUE",
+                    help="override a PPO hyperparameter, repeatable "
+                         "(e.g. --train learning_rate=5e-4 --train gamma=0.995 --train num_steps_per_env=32)")
 args = parser.parse_args()
 
 
@@ -102,6 +108,31 @@ log_dir = LOG_ROOT / args.run_name
 cfg = NickEnvCfg(num_envs=args.num_envs, seed=args.seed, model_path=preferred_model_path())
 if args.w_planted is not None:
     cfg.w_planted = args.w_planted
+
+
+def coerce(current, text: str):
+    """Parse an override against the field's existing type. Tuples keep their
+    length so a typo becomes an error here rather than a silent config."""
+    if isinstance(current, tuple):
+        parts = tuple(float(x) for x in text.split(","))
+        if len(parts) != len(current):
+            raise SystemExit("--env %s wants %d comma-separated values" % (text, len(current)))
+        return parts
+    if isinstance(current, bool):
+        return text.lower() in ("1", "true", "yes", "on")
+    if isinstance(current, int) and not isinstance(current, bool):
+        return int(float(text))
+    if isinstance(current, float):
+        return float(text)
+    return text
+
+
+for item in args.env:
+    key, _, value = item.partition("=")
+    if not hasattr(cfg, key):
+        raise SystemExit("NickEnvCfg has no field %r" % key)
+    setattr(cfg, key, coerce(getattr(cfg, key), value))
+    print("  env override %s = %r" % (key, getattr(cfg, key)))
 
 if args.smoke:
     env = NickEnv(cfg)
@@ -164,6 +195,16 @@ train_cfg = {
     },
 }
 
+for item in args.train:
+    key, _, value = item.partition("=")
+    for section in (train_cfg, train_cfg["algorithm"], train_cfg["policy"]):
+        if key in section:
+            section[key] = coerce(section[key], value)
+            print("  train override %s = %r" % (key, section[key]))
+            break
+    else:
+        raise SystemExit("no PPO hyperparameter named %r" % key)
+
 log_dir.mkdir(parents=True, exist_ok=True)
 json.dump({"env": env.config_dict(), "train": train_cfg}, open(log_dir / "config.json", "w"), indent=2, default=str)
 runner = OnPolicyRunner(env, train_cfg, log_dir=str(log_dir), device=str(env.device))
@@ -181,6 +222,7 @@ if args.until_iteration is not None:
     iterations = args.until_iteration - runner.current_learning_iteration
     if iterations <= 0:
         print("TRAINING_DONE (already at iteration %d)" % runner.current_learning_iteration)
+        sys.stdout.flush()
         os._exit(0)
 
 viewer = None if args.no_ui else start_viewer(log_dir)
@@ -191,4 +233,8 @@ finally:
     if viewer is not None and viewer.poll() is None:
         viewer.terminate()
 print("TRAINING_DONE")
+# os._exit skips the atexit flush, and with stdout redirected to a log the
+# final line is still sitting in a block buffer. Flush before leaving, or a
+# watcher waiting on TRAINING_DONE waits for ever.
+sys.stdout.flush()
 os._exit(0)

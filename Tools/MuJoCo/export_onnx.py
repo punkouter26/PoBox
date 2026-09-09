@@ -47,7 +47,15 @@ import torch                                   # noqa: E402
 import torch.nn as nn                          # noqa: E402
 
 sys.path.insert(0, str(HERE))
-from nick_env import ACT_DIM, OBS_BASE, OBS_COMMAND   # noqa: E402
+from nick_env import ACT_DIM, OBS_BASE, OBS_COMMAND, PHYSICS_TIMESTEP, NickEnvCfg   # noqa: E402
+
+# THE CONTROL RATE IS NOT A CONSTANT. It was written into every SOURCE.txt as
+# "decimation 4, 0.005 s" regardless of what the run used, which is how
+# Assets/Agents/Nick_Balance002 came to claim a 0.005 s contract for a brain
+# trained at 0.02 x 1 -- and how that brain then got evaluated at the wrong
+# step and recorded as unable to walk. Read the values the env actually used.
+DECIMATION = NickEnvCfg().decimation
+CONTROL_DT = PHYSICS_TIMESTEP * DECIMATION
 
 OBS_DIM = OBS_BASE + OBS_COMMAND
 
@@ -142,7 +150,9 @@ source.write_text(
     "          commanded direction (3) and the 1.4 Hz gait clock (sin, cos).\n"
     "          Foot contact is rest-relative (ankle within 0.03 m of rest).\n"
     "          Actions are zero-centred position targets in canonical order.\n"
-    "          Control every 4 physics steps of 0.005 s (decimation 4, 50 Hz).\n"
+    "          Control every %d physics step(s) of %.4f s (decimation %d, %.0f Hz).\n"
+    "          EVALUATE AND RUN IT AT THIS STEP. A policy measured at another\n"
+    "          one measures a creature that is not this one.\n"
     "          The observation normaliser is BAKED INTO THE GRAPH; feed raw.\n"
     "          input obs_0 [batch,%d], output continuous_actions [batch,%d].\n"
     "MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported by\n"
@@ -151,11 +161,13 @@ source.write_text(
     "          Config: results/nick/%s/config.json.\n"
     "MEASURED  %s\n"
     "EXPORT    Tools/MuJoCo/export_onnx.py --run %s --checkpoint %s\n"
-    % (out.name, "=" * len(out.name), OBS_DIM, ACT_DIM, OBS_DIM, ACT_DIM,
+    % (out.name, "=" * len(out.name), OBS_DIM, ACT_DIM,
+       DECIMATION, PHYSICS_TIMESTEP, DECIMATION, 1.0 / CONTROL_DT, OBS_DIM, ACT_DIM,
        datetime.date.today().isoformat(), args.run, ckpt_path.name, ckpt.get("iter", "?"),
        args.run, args.notes or "(run Tools/MuJoCo/eval_nick.py and record the table here)",
        args.run, ckpt_path.name))
-json.dump({"observations": OBS_DIM, "actions": ACT_DIM, "decimation": 4, "run": args.run,
+json.dump({"observations": OBS_DIM, "actions": ACT_DIM, "decimation": DECIMATION,
+           "physics_timestep": PHYSICS_TIMESTEP, "control_dt": CONTROL_DT, "run": args.run,
            "checkpoint": ckpt_path.name, "iteration": ckpt.get("iter", None),
            "normaliser_baked_in": True},
           open(out.parent / ("%s.contract.json" % out.stem), "w"), indent=2)

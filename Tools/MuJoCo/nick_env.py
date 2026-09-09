@@ -141,6 +141,16 @@ class NickEnvCfg:
     w_alternation: float = 0.5
     w_smoothness: float = 0.05
     w_planted: float = 0.3          # both feet down at zero command (nick03+)
+    # Over-lift kernel. The clearance factor saturates at foot_clearance_target
+    # and nothing above it costs anything, so nick03 walks with a 0.3 m march.
+    # This fades in with the command exactly as clearance does. 0 = off, and
+    # factor(x, 0) == 1, so the baseline reward is bit-identical with it off.
+    w_overlift: float = 0.0
+    overlift_target: float = 0.16   # metres of swing above rest before it costs
+    overlift_kernel: float = 0.01
+    # Subtractive, on the normalised action vector (actions are already [-1,1]),
+    # so it is dimensionless and does not depend on the actuator gains.
+    w_ctrl_cost: float = 0.0
     product_floor: float = 0.01
     reward_scale: float = 5.0
     gait_blend_speed: float = 0.5
@@ -161,6 +171,13 @@ class NickEnvCfg:
     # cliff just past it -- 94% full-cap at 150 N, 65% at 250, 23% at 350,
     # 4% at 450 (measured 2026-09-07, 128 worlds, 30 s cap).
     push_force_range: tuple = (50.0, float(os.environ.get("NICK_PUSH_MAX", "200.0")))
+    # HOW HARD WALKING EPISODES ARE SHOVED, as a fraction of push_force_range.
+    # The walk race is not a shove rig -- it has no HazardDirector and nothing
+    # pushes a runner -- but training shoved walking episodes at up to 600 N,
+    # and clean-walk survival decayed under every learning rate tried (nick13
+    # at 1.5e-4, nick14 at 1.0e-5) while balance and ring held. 1.0 keeps the
+    # old behaviour; 0 makes walking episodes match the race.
+    push_scale_when_moving: float = 1.0
     push_steps: int = 8                      # control steps a push lasts (0.16 s)
     push_start_seconds: float = 1.0
 
@@ -171,6 +188,14 @@ class NickEnvCfg:
     # A tilt is just a constant horizontal acceleration, so it is modelled as a
     # slowly rotating force of mass * g * sin(angle). Ball rain is NOT modelled:
     # falling rigid bodies are not a force on the pelvis.
+    # WHICH EPISODES SEE THE HAZARDS. Only SCN_TEST_BALANCE_CONTEST carries a
+    # Systems_HazardDirector -- the walk race has none -- so gusts and lean are
+    # a standing-episode disturbance, not a universal one. Training them into
+    # walking episodes as well taught nick10 to walk leaning into a crosswind
+    # that is not there in the walk race: RING rose to 88-96% while clean WALK
+    # fell from nick08's 82% to 49-56%. Shoves stay on everywhere; nick08
+    # walked at 82% with the 600 N range, so impulses are not the problem.
+    hazards_when_standing_only: bool = True
     hazard_wind_newtons: float = 55.0
     hazard_wind_seconds: float = 2.0
     hazard_wind_interval_seconds: tuple = (2.5, 5.0)
@@ -327,6 +352,11 @@ class NickEnv:
         self.xpos = wp.to_torch(self.d.xpos)
         self.xquat_raw = wp.to_torch(self.d.xquat)
         self.cvel = wp.to_torch(self.d.cvel)
+        # Read-only views for the effort and jerk KPIs. Reductions over these
+        # are GPU-side and land in extras["log"] as 0-dim tensors, so they add
+        # no host sync to the control step.
+        self.actuator_force = wp.to_torch(self.d.actuator_force)
+        self.qacc = wp.to_torch(self.d.qacc)
         self._quat_perm = self.self_check()
         self._randomise_worlds()
 
@@ -561,6 +591,11 @@ class NickEnv:
         def factor(value, weight):
             return torch.clamp(value, min=cfg.product_floor) ** weight
 
+        # Over-lift: free up to overlift_target, then a gaussian falloff. Fades
+        # in with the command like the other gait factors.
+        overlift = torch.exp(-torch.clamp(swing_height.max(dim=1)[0] - cfg.overlift_target,
+                                          min=0.0) ** 2 / cfg.overlift_kernel)
+
         locomotion = (
             factor(upright, cfg.w_upright)
             * factor(height, cfg.w_height)
@@ -570,9 +605,13 @@ class NickEnv:
             * factor(clearance, cfg.w_clearance * blend)
             * factor(alternation, cfg.w_alternation * blend)
             * factor(planted, cfg.w_planted * (1.0 - blend))
+            * factor(overlift, cfg.w_overlift * blend)
         )
         smoothness = torch.mean((self.actions - self.prev_actions) ** 2, dim=1)
-        reward = cfg.reward_scale * (locomotion - cfg.w_smoothness * smoothness) * self.control_dt
+        action_cost = torch.mean(self.actions ** 2, dim=1)
+        reward = cfg.reward_scale * (locomotion
+                                     - cfg.w_smoothness * smoothness
+                                     - cfg.w_ctrl_cost * action_cost) * self.control_dt
 
         self.fell = (s["pelvis_z"] < cfg.fall_pelvis_fraction * self.rest_pelvis_z) | (s["up"][:, 2] < cfg.fall_up_z)
         reward = reward + cfg.pen_termination * self.fell.float()
@@ -595,6 +634,27 @@ class NickEnv:
             "Metrics/foot_clearance": swing_height.max(dim=1)[0].mean(),
             "Metrics/height": s["pelvis_z"].mean(),
             "Metrics/fall_rate": self.fell.float().mean(),
+            # --- physical stability / effort KPIs -------------------------
+            # Torso tilt in degrees, the readable form of `upright`: 0 is
+            # perfectly vertical, 90 is on its side.
+            "Metrics/tilt_deg": torch.rad2deg(torch.acos(torch.clamp(s["up"][:, 2], -1.0, 1.0))).mean(),
+            # Actuator effort actually delivered (N*m), not the commanded
+            # target: the position servos can be fighting the limits while the
+            # action vector looks calm.
+            "Metrics/actuator_force_abs": self.actuator_force.abs().float().mean(),
+            "Metrics/actuator_force_max": self.actuator_force.abs().float().amax(dim=1).mean(),
+            "Metrics/action_cost": action_cost.mean(),
+            "Metrics/action_rate": smoothness.mean(),
+            # Joint acceleration on the hinge dofs: the jerk/chatter tell.
+            "Metrics/joint_accel_abs": self.qacc[:, 6:].abs().float().mean(),
+            # Velocity tracking as an error rather than a ratio, plus the
+            # fraction of moving worlds inside the +/-10% band.
+            "Metrics/track_err_frac": torch.sum((measured - speed).abs()
+                                                / torch.clamp(speed, min=0.1) * moving) / n_moving,
+            "Metrics/track_within_10pct": torch.sum(((measured - speed).abs()
+                                                     <= 0.1 * torch.clamp(speed, min=0.1)).float()
+                                                    * moving) / n_moving,
+            "Metrics/overlift_factor": torch.sum(overlift * moving) / n_moving,
         }
         return reward
 
@@ -614,6 +674,10 @@ class NickEnv:
         magnitude = torch.empty(n, device=self.device).uniform_(*cfg.push_force_range)
         fresh = torch.stack([torch.cos(angle) * magnitude, torch.sin(angle) * magnitude,
                              torch.zeros(n, device=self.device)], dim=1)
+        if cfg.push_scale_when_moving != 1.0:
+            moving = (self.commands[:, 0] > 0.1).float().unsqueeze(1)
+            scale = 1.0 + moving * (cfg.push_scale_when_moving - 1.0)
+            fresh = fresh * scale
         self.push_force = torch.where(start.unsqueeze(1), fresh, self.push_force)
         self.push_steps_left = torch.where(start, torch.full_like(self.push_steps_left, cfg.push_steps), self.push_steps_left)
         active = self.push_steps_left > 0
@@ -624,7 +688,13 @@ class NickEnv:
         lo, hi = cfg.hazard_wind_interval_seconds
         wait_lo = max(1, int(round(lo / self.control_dt)))
         wait_hi = max(wait_lo + 1, int(round(hi / self.control_dt)))
-        is_wind = (self.hazard_mode == 1) & eligible
+        # Gate on the command, not on the measured speed: the episode is a
+        # standing episode or it is not, and the policy should not be able to
+        # switch the hazards off by walking away.
+        hazard_ok = eligible
+        if cfg.hazards_when_standing_only:
+            hazard_ok = hazard_ok & (self.commands[:, 0] <= 0.1)
+        is_wind = (self.hazard_mode == 1) & hazard_ok
         gust_angle = torch.rand(n, device=self.device) * 2.0 * math.pi
         fresh_wind = torch.stack([torch.cos(gust_angle) * cfg.hazard_wind_newtons,
                                   torch.sin(gust_angle) * cfg.hazard_wind_newtons,
@@ -647,7 +717,7 @@ class NickEnv:
                         * math.sin(math.radians(cfg.hazard_lean_degrees)))
         self.lean_phase = self.lean_phase + (2.0 * math.pi * self.control_dt
                                              / max(1e-3, cfg.hazard_lean_cycle_seconds))
-        is_lean = (self.hazard_mode == 2) & eligible
+        is_lean = (self.hazard_mode == 2) & hazard_ok
         lean = torch.stack([torch.cos(self.lean_phase) * lean_newtons,
                             torch.sin(self.lean_phase) * lean_newtons,
                             torch.zeros(n, device=self.device)], dim=1)
@@ -713,7 +783,21 @@ class NickEnv:
 
     # ------------------------------------------------------------- reporting
     def config_dict(self) -> dict:
-        return asdict(self.cfg)
+        # The module-level physics settings are env-var driven and were NOT
+        # recorded before: nick04/07/08's config.json says decimation 1 and
+        # leaves the reader to infer the 0.02 s step. Record them.
+        d = asdict(self.cfg)
+        d["physics"] = {
+            "timestep": PHYSICS_TIMESTEP,
+            "control_dt": self.control_dt,
+            "integrator": str(SOLVER_INTEGRATOR),
+            "solver_iterations": SOLVER_ITERATIONS,
+            "armature_scale": ARMATURE_SCALE,
+            "solref_timeconst": SOLREF_TIMECONST,
+            "dof_armature": float(self.mjm.dof_armature[6]),
+            "total_mass": self.total_mass,
+        }
+        return d
 
 
 def preferred_model_path() -> str:

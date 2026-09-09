@@ -19,7 +19,28 @@ The whole difference is the last two rows. Matt's policy has to survive a
 translation between two physics engines and two rig conventions; Nick's runs
 on the same engine and the same model file in both places.
 
-## What ships, as of 2026-09-07
+## What ships, as of 2026-09-09
+
+`Assets/Agents/Nick_Balance002/nick_balance_002.onnx` = `results/nick/nick12/model_3700.pt`,
+and **both contest scenes load it** -- `SCN_TEST_BALANCE_CONTEST` and
+`SCN_TEST_WALK_CONTEST` carry the same guid at 0.02 s x decimation 1. Ten
+consecutive 512-world evaluations at that step: ring (shoves + one hazard per
+world) **96.2%**, balance **97.9%**, clean walk **86.5%** at 0.895 m/s. The
+brain it replaces measured 76 / 84 / 64. Full derivation, and the three
+measurement errors it corrected, in `rl_optimization_log.md` in the repo root.
+
+Two things about this folder's name and history:
+
+- The folder is called `Nick_Balance002` and the brain is not balance-only.
+  Renaming it would rewrite the guid both hand-authored scenes reference, so
+  the name stays and `SOURCE.txt` says what it actually is.
+- **Evaluate at the step the brain was trained at.** `eval_nick.py` defaults
+  to 0.005 s; every 0.02 s brain needs `NICK_TIMESTEP=0.02 NICK_DECIMATION=1`
+  in the environment. The tool prints its control step on every run now,
+  because getting this wrong is what put "CANNOT WALK, 0% full-cap" into this
+  project's docs about a brain that walks.
+
+## What shipped as of 2026-09-07 (superseded)
 
 `Assets/Agents/Nick_Locomotion/nick_locomotion.onnx` = `results/nick/nick03/model_2099.pt`
 (nick02 to iteration 600, then resumed with the planted-feet term for 1500
@@ -31,6 +52,8 @@ comparison are in `Tools/COMPARISON_Matt_vs_Nick.md`.
 Known cosmetic flaw: he lifts his feet ~0.3 m when walking, a high march. The
 clearance factor saturates at 0.10 m and nothing penalises going higher; a
 follow-up run should add an over-lift kernel. Change one thing at a time.
+(`NickEnvCfg.w_overlift` now exists for this, default 0 and therefore inert;
+it has not been run.)
 
 ## Layout
 

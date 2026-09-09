@@ -222,6 +222,13 @@ generation they contain. Verify with the ONNX input shape before trusting one;
 `Tools/promote_brain.ps1` writes one from the checkpoint's own filename rather
 than from what anyone believed the run had reached.
 
+**The last checkpoint is not the best one.** PPO on this line oscillates
+across a plateau rather than settling on it: in run `nick12` the final
+`model_4699` walks in 32% of starts where `model_3700`, a thousand iterations
+earlier, walks in 83% -- with balance and ring healthy at both, so no
+aggregate flags it. Sweep checkpoints against `eval_nick.py` and promote the
+one that measures best.
+
 **What ships, as of 2026-09-08:**
 
 | Mini-game | Brain | Why |
@@ -229,17 +236,33 @@ than from what anyone believed the run had reached.
 | Balance ring | `Locomotion_gen25` | 167.9 steps between falls under shove against `gen20`'s 91.7, and ahead on every body |
 | Walk race | `Locomotion_gen18_34M` | still the only brain that actually WALKS — alternation 0.601; the faster candidates slide |
 | Raptor | `RaptorBalance01` | its own model line, 13-joint rig; the shared 127-observation brain cannot load on it |
-| Balance ring (Nick) | `nick_balance_002.onnx` | MuJoCo Warp, trained at the ring's 0.02 s. 31/31 rounds survived, median 17.9 s against Standard's 10.1 |
+| Balance ring AND walk race (Nick) | `nick_balance_002.onnx` | MuJoCo Warp at the contest step, 0.02 s x decimation 1. Both scenes load this one file. nick12/model_3700, 2026-09-09: ring 96%, balance 98%, walk 87% over 10 consecutive 512-world evaluations |
 | Nick's own ring / demo | `nick_locomotion.onnx` | MuJoCo Warp at 0.005 s. 99% full-cap at 250 N, walks at 0.980 m/s |
 
 Two mini-games, two brains, and that is the architecture rather than an
 accident: `gen25` was trained with the commanded speed pinned at 0 and cannot
 walk, `gen18` walks and cannot stand still.
 
-Nick has two brains for the same reason and one more: `nick_balance_002`
-balances at 0.02 s and CANNOT WALK (0% full-cap, 2.22 s median), while
-`nick_locomotion` walks at 0.005 s and scores at the PASSIVE baseline if run
-at 0.02.
+Nick's `nick_locomotion` walks at 0.005 s and scores at the PASSIVE baseline
+if run at 0.02, so it stays in his own demo scene. **Both contest scenes load
+`nick_balance_002`** -- check the `_onnxModelAsset` guid in either scene
+before assuming otherwise.
+
+The line that used to sit here, that `nick_balance_002` "CANNOT WALK (0%
+full-cap, 2.22 s median)", was **a measurement taken at the wrong timestep**.
+`eval_nick.py` defaults to 0.005 s, and a 0.02 s brain evaluated there fails
+exactly the way this project documents in the other direction. Measured at its
+own step the old brain walked at 64% and the current one walks at 87%.
+Two rules came out of that, and both are enforced in code now:
+
+- **Every evaluation of a Nick brain sets `NICK_TIMESTEP` and
+  `NICK_DECIMATION` to the values it was trained at**, which its `SOURCE.txt`
+  states and `eval_nick.py` prints on every run.
+- `eval_nick.py` perturbs the start pose (`--start-noise`, default on). With
+  the exact rest pose, no domain randomisation and a deterministic policy,
+  all N worlds are the SAME world and the walk table has an effective sample
+  size of one. The old giveaway was the passive baseline reading median =
+  mean = p25 = 1.52 s for every brain ever measured.
 
 ### The timestep is a body property, not a scene setting
 

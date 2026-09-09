@@ -10,12 +10,19 @@ CONTRACT  127 observations / 30 continuous actions.
           commanded direction (3) and the 1.4 Hz gait clock (sin, cos).
           Foot contact is rest-relative (ankle within 0.03 m of rest).
           Actions are zero-centred position targets in canonical order.
-          Control every 4 physics steps of 0.005 s (decimation 4, 50 Hz).
+          Control every 1 physics step(s) of 0.0200 s (decimation 1, 50 Hz).
+          EVALUATE AND RUN IT AT THIS STEP. A policy measured at another
+          one measures a creature that is not this one.
           The observation normaliser is BAKED INTO THE GRAPH; feed raw.
           input obs_0 [batch,127], output continuous_actions [batch,30].
 MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported by
           RigTool_NickMuJoCo.ExportNickMjcf. NOT the authored creature.xml.
-TRAINED   2026-09-08, results/nick/nick08, model_1499.pt (iteration 1499), rsl_rl PPO on mujoco_warp.
-          Config: results/nick/nick08/config.json.
-MEASURED  BALANCE-ONLY brain for the 0.02 s PhysX contest ring. 95% full-cap at 150 N, 30.0 s median, stance switches 0.087. CANNOT WALK: 0% full-cap, 2.22 s median. Trained at dt=0.02, decimation=1, joint armature 0.2 (10x the MJCF's 0.02).
-EXPORT    Tools/MuJoCo/export_onnx.py --run nick08 --checkpoint model_1499.pt
+TRAINED   2026-09-09, results/nick/nick12, model_3700.pt (iteration 3700), rsl_rl PPO on mujoco_warp.
+          Config: results/nick/nick12/config.json.
+MEASURED  10 consecutive evaluations, 512 perturbed starts each, at its own 0.02 s x decimation 1 (eval_nick.py --repeats 10).
+          RING (shoves + one ring hazard per world) 96.2% full-cap, min 95, max 98 -- the incumbent nick08 measured 76%.
+          BALANCE (150 N every 4 s, 30 s) 97.9%, min 97 -- nick08 measured 84%.
+          WALK (1 m/s, 20 s, clean) 86.5%, min 83, at 0.895 m/s, alternation 1.000 -- nick08 measured 64%.
+          Effort and stability: torso tilt 6.5 deg standing / 9.4 walking, delivered actuator |f| 33.9 / 52.2 Nm, hinge |qacc| 96 / 150.
+          Better than the brain it replaces on all three tables. See rl_optimization_log.md.
+EXPORT    Tools/MuJoCo/export_onnx.py --run nick12 --checkpoint model_3700.pt
