@@ -22,7 +22,7 @@ request or `git sync`. Preserve pre-existing edits.
 - [x] 1. Record the starting state: review/preserve existing edits and verify Unity opens.
 - [x] 2. Verify Git setup: check Unity/training exclusions and local master workflow.
 - [x] 3. Inventory all skinned characters, rigs, controllers and scene entries.
-- [ ] 4. Record actual round duration, hazards, crossing distance, scoring and controls.
+- [x] 4. Record actual round duration, hazards, crossing distance, scoring and controls.
 - [ ] 5. Test each current character in both contests and record the active brain and outcomes.
 - [ ] 6. Check body proportions, joint limits, floor contact, self-collision and cross-engine contestant collisions.
 

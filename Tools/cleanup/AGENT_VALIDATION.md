@@ -35,3 +35,25 @@ containing Balance is not evidence that this policy cannot walk.
 
 Pending fresh complete-round measurements. The earlier smoke test is only
 historical context and was recorded before the preserved capsule removal.
+
+## Actual contest rules
+
+- Balance: maximum 30 seconds; ends earlier when all fall or only one of multiple
+  entrants remains. Ranking is upright survival time, then mean standing height.
+  For acceptance, record whether a character remained upright through round end
+  and the actual duration; a short last-standing win does not establish 30-second
+  robustness.
+- Walking: 5.6 metres along the scene's goal direction, commanded at 1 m/s,
+  maximum 60 seconds. A race stalls after 12 seconds without at least 0.25 m of
+  additional field progress. Finishers rank by finish time, others by upright
+  distance. A 0.75 m partial-distance win is NOT a completed crossing.
+- Falls: non-foot ground contacts or head height below 40% of starting height;
+  external contestants also expose a down/reset signal.
+- Balance hazards: one random wind, gravity lean or ball-rain condition per
+  round, plus existing shovers. Their actual reach across physics engines must
+  be checked before claiming comparable exposure.
+- Current scene configuration disables automatic restarts while a match
+  director expects three wins. Initial round-start events are also absent in
+  both referees. Record these as flow defects, not training failures.
+- Existing menu/contest UI and input remain the presentation baseline. No new
+  shove, start, pause or reset controls are requested.
