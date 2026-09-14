@@ -20,7 +20,7 @@ request or `git sync`. Preserve pre-existing edits.
 ## Sequential checklist
 
 - [x] 1. Record the starting state: review/preserve existing edits and verify Unity opens.
-- [ ] 2. Verify Git setup: check Unity/training exclusions and local master workflow.
+- [x] 2. Verify Git setup: check Unity/training exclusions and local master workflow.
 - [ ] 3. Inventory all skinned characters, rigs, controllers and scene entries.
 - [ ] 4. Record actual round duration, hazards, crossing distance, scoring and controls.
 - [ ] 5. Test each current character in both contests and record the active brain and outcomes.
@@ -61,3 +61,6 @@ are context only and must not be marked as current acceptance passes.
   stopped, SCN_MENU loaded and clean. Coplay MCP is not connected; use the
   existing com.unity.pipeline 0.5.0 HTTP command bridge (the installed newer CLI
   cannot submit commands to this version directly).
+- Git check-ignore confirms Library, Temp, results and nested .venv directories
+  are ignored; Assets/Scripts/Editor/Build remains eligible for version control.
+  No .gitignore change is needed. No Android device is connected yet.
