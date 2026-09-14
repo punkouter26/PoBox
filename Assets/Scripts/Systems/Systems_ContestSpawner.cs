@@ -294,6 +294,26 @@ namespace PoBox
                 AddSpectatorSystem<Systems_TaleOfTheTape>(systemsRoot, "TaleOfTheTape");
                 added++;
             }
+            // Contact shadows, footfalls and the strain tint. Same contract as
+            // the four above: they discover fighters themselves, load what they
+            // need from Systems_SpectatorKit, and hold no scene state — so they
+            // are attached here rather than dragged into a hand-authored scene
+            // that a regeneration could silently drop them from.
+            if (systemsRoot.GetComponentInChildren<Systems_BlobShadow>(true) == null)
+            {
+                AddSpectatorSystem<Systems_BlobShadow>(systemsRoot, "BlobShadow");
+                added++;
+            }
+            if (systemsRoot.GetComponentInChildren<Systems_Footsteps>(true) == null)
+            {
+                AddSpectatorSystem<Systems_Footsteps>(systemsRoot, "Footsteps");
+                added++;
+            }
+            if (systemsRoot.GetComponentInChildren<Systems_FighterShading>(true) == null)
+            {
+                AddSpectatorSystem<Systems_FighterShading>(systemsRoot, "FighterShading");
+                added++;
+            }
             // Added AFTER the tale of the tape so its Start runs after the card
             // exists. Nothing depends on that ordering today — the commentary
             // borrows the referee's document, not the card's — but the two share

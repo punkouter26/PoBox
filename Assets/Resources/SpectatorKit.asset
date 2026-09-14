@@ -17,7 +17,28 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 6c74369698e536e4cb5d2dd1eab2f8fb, type: 3}
   - {fileID: 8300000, guid: aca17d5b59b09454ea6c0df2720df66c, type: 3}
   - {fileID: 8300000, guid: 81e1d158430254f48ac9738ccadf95c3, type: 3}
+  blobShadowMaterial: {fileID: 2100000, guid: f4c63acedc2a80145a30beb9c8022eae, type: 2}
+  footstepCanvasClips:
+  - {fileID: 8300000, guid: 5c91569a27522ed4691c58442d7813d9, type: 3}
+  - {fileID: 8300000, guid: 0ee9c654fcb3c3547813806df2eafe84, type: 3}
+  - {fileID: 8300000, guid: 9ae0ff633290eca49b2b6a36ba51131a, type: 3}
+  - {fileID: 8300000, guid: ddbc9aca68feb974ba927800d07900ee, type: 3}
+  - {fileID: 8300000, guid: b3f781311c4f1474896bf1c52b9106e1, type: 3}
+  footstepFloorClips:
+  - {fileID: 8300000, guid: 03fad616b27bdf2418a75cba8ccfc6c0, type: 3}
+  - {fileID: 8300000, guid: 40f8071dcda3fb8428960cde57c0e08e, type: 3}
+  - {fileID: 8300000, guid: b2474d1bf89e76c40bd9850688cce323, type: 3}
+  - {fileID: 8300000, guid: c33a9652661fcdb4bb404aa67f1e9935, type: 3}
+  - {fileID: 8300000, guid: cd19d8ae9d9fbc74c899f5c22f8de067, type: 3}
+  mixer: {fileID: 0}
+  crowdGroup: {fileID: 0}
+  foleyGroup: {fileID: 0}
+  announcerGroup: {fileID: 0}
   dossiers:
+  - {fileID: 11400000, guid: 603c177f4b9a2e14db457a11a975ba1e, type: 2}
   - {fileID: 11400000, guid: 9c0075291fed49045a661091a48057f7, type: 2}
   - {fileID: 11400000, guid: 8759183e6c2e3d9418bbb01f160d862b, type: 2}
+  - {fileID: 11400000, guid: 988459216f353a8498c5f592130ff494, type: 2}
+  - {fileID: 11400000, guid: 44611995f23a7de48856c1d931b49506, type: 2}
   - {fileID: 11400000, guid: 18855c96049638d45be7a86efd0ae928, type: 2}
+  - {fileID: 11400000, guid: 055fa3d5b64079c458984f93b6e97981, type: 2}

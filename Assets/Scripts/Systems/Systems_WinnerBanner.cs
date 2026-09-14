@@ -30,6 +30,10 @@ namespace PoBox
 
         private void Start()
         {
+            // The bell and the winner jingle are the booth, not the bodies:
+            // announcer bus, never ducked.
+            Systems_AudioMix.Route(_audioSource, AudioBus.Announcer);
+
             // Guarded rather than [RequireComponent]: the referee type is now
             // abstract, and Unity's RequireComponent would try to AddComponent it.
             _contest = GetComponent<Systems_ContestReferee>();

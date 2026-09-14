@@ -62,6 +62,13 @@ namespace PoBox
 
         private void Start()
         {
+            // The announcer bus is the one thing never ducked — it is what the
+            // others duck FOR. Routed in Start rather than Awake because the mix
+            // installs itself on AfterSceneLoad, which Unity runs after every
+            // scene object's Awake and before every Start: a route in Awake
+            // would find no mix and silently leave the bell off the bus.
+            Systems_AudioMix.Route(_audioSource, AudioBus.Announcer);
+
             var root = GetComponent<UIDocument>().rootVisualElement;
             Systems_UiTheme.ApplyDefaultFont(root);
 
@@ -268,6 +275,17 @@ namespace PoBox
             _callout.style.display = DisplayStyle.Flex;
             _callout.style.opacity = 1f;
             _calloutRemaining = CALLOUT_SECONDS;
+
+            // Get the crowd out of the way for as long as the line is up. The
+            // duck is asked for HERE rather than polled from CalloutActive so
+            // that it starts on the same frame as the text: a duck that begins
+            // when something notices the callout is already a callout arrives
+            // after the word it was supposed to clear.
+            Systems_AudioMix mix = Systems_AudioMix.Find();
+            if (mix != null)
+            {
+                mix.DuckFor(CALLOUT_SECONDS);
+            }
         }
 
         /// <summary>

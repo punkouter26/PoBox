@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a87c7f95cd98c4b44a59c8feaf6beacc, type: 3}
   m_Name: DOSSIER
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_BrainDossier
-  model: {fileID: 5022602860645237092, guid: 78b29a94cb7c1c74e929eb8786f9578b, type: 3}
-  brainLabel: RaptorBalance01
-  runId: raptor_balance01
-  trainingSteps: 8999875
+  model: {fileID: 5022602860645237092, guid: fd42cdcdc32c89b48bf932f4c490a31d, type: 3}
+  brainLabel: RaptorMuJoCo_Balance
+  runId: 
+  trainingSteps: 0
   observationCount: 114
   headlineStat: 
-  note: The raptor's own model line, 13-joint rig. The shared 127-observation brain cannot load on it.
+  note: 
   eloRating: 0
   ladderRank: 0
   ladderEntrants: 0

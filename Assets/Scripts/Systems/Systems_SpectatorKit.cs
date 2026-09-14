@@ -1,5 +1,6 @@
 using Unity.InferenceEngine;
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace PoBox
 {
@@ -33,6 +34,28 @@ namespace PoBox
 
         [Tooltip("Body-on-canvas impacts, picked at random and pitched by impulse.")]
         public AudioClip[] impactClips;
+
+        [Tooltip("Multiply-blended disc drawn under each fighter by Systems_BlobShadow. " +
+                 "Never applied to a fighter's own renderers.")]
+        public Material blobShadowMaterial;
+
+        [Tooltip("Footfalls on the ring canvas — the soft set. Systems_Footsteps.")]
+        public AudioClip[] footstepCanvasClips;
+
+        [Tooltip("Footfalls on the arena floor — the hard set. Systems_Footsteps.")]
+        public AudioClip[] footstepFloorClips;
+
+        [Tooltip("The mix. Optional: Systems_AudioMix falls back to per-source gains without it.")]
+        public AudioMixer mixer;
+
+        [Tooltip("Crowd bus. Ducked while the announcer speaks.")]
+        public AudioMixerGroup crowdGroup;
+
+        [Tooltip("Foley bus — bodies, footsteps, impacts. Ducked while the announcer speaks.")]
+        public AudioMixerGroup foleyGroup;
+
+        [Tooltip("Announcer bus — the bell and the play-by-play. Never ducked.")]
+        public AudioMixerGroup announcerGroup;
 
         [Tooltip("One per brain under Assets/Agents. Matched to a roster entry by ModelAsset reference.")]
         public Systems_BrainDossier[] dossiers;

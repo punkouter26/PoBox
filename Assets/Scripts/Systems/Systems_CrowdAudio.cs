@@ -29,6 +29,12 @@ namespace PoBox
                 _ambienceSource.loop = true;
                 _ambienceSource.volume = _ambienceVolume;
                 _ambienceSource.spatialBlend = 0f;
+                // Registered BEFORE Play, so the mix captures 0.25 as this
+                // source's authored level rather than whatever the gains have
+                // already moved it to. On the crowd bus, which is the one the
+                // announcer ducks — a bed this constant is exactly what buries
+                // a callout when nothing gets out of its way.
+                Systems_AudioMix.Route(_ambienceSource, AudioBus.Crowd);
                 _ambienceSource.Play();
             }
             if (_contest != null)

@@ -50,10 +50,22 @@ namespace PoBox
         private const int MAX_PARTICLES = 240;
         private const float PARTICLE_LIFETIME = 0.5f;
 
+        /// <summary>
+        /// Impulse above which a contact also throws sweat. Deliberately well
+        /// up the range: scuff dust says "something touched", sweat says "that
+        /// hurt", and a cue that fires on every contact says neither. A 5 kg
+        /// limb arriving at 4 m/s is about 20 N-s (FULL_IMPULSE), so this is
+        /// roughly the top third of what the ring produces.
+        /// </summary>
+        private const float SWEAT_IMPULSE = 9f;
+
+        private const int MAX_SWEAT = 120;
+
         private Systems_FighterRig[] _rigs;
         private Systems_DramaCamera _dramaCamera;
         private Systems_SpectatorKit _kit;
         private ParticleSystem _scuff;
+        private ParticleSystem _sweat;
         private AudioSource[] _voices;
         private int _nextVoice;
         private float[] _cooldowns;
@@ -72,6 +84,7 @@ namespace PoBox
             _owners = new Transform[_rigs.Length];
 
             _scuff = BuildScuffParticles();
+            _sweat = BuildSweatParticles();
             _voices = BuildVoices();
 
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
@@ -154,6 +167,13 @@ namespace PoBox
                 (impulse - MIN_IMPULSE) / (FULL_IMPULSE - MIN_IMPULSE));
 
             EmitScuff(point, normal, strength);
+            // Only the hard ones. The gate is on the RAW impulse rather than on
+            // the normalised strength, so it means the same thing whatever
+            // MIN_IMPULSE is later tuned to.
+            if (impulse >= SWEAT_IMPULSE)
+            {
+                EmitSweat(point, strength);
+            }
             PlayThud(point, strength);
 
             // The camera shake and the impact are the same event, so they come
@@ -185,6 +205,29 @@ namespace PoBox
             _scuff.transform.SetPositionAndRotation(point, Quaternion.LookRotation(normal));
             int count = Mathf.RoundToInt(Mathf.Lerp(3f, 22f, strength));
             _scuff.Emit(emitParams, count);
+        }
+
+        /// <summary>
+        /// Sweat. Sprayed UP and outward rather than along the contact normal
+        /// like the scuff: dust comes off the surface that was hit, sweat comes
+        /// off the body that hit it, and throwing both the same way made one
+        /// look like a brighter copy of the other.
+        /// </summary>
+        private void EmitSweat(Vector3 point, float strength)
+        {
+            if (_sweat == null)
+            {
+                return;
+            }
+            var emitParams = new ParticleSystem.EmitParams
+            {
+                position = point,
+                applyShapeToPosition = true,
+                startSize = Mathf.Lerp(0.018f, 0.035f, strength),
+                startLifetime = Mathf.Lerp(0.35f, 0.7f, strength)
+            };
+            _sweat.transform.SetPositionAndRotation(point, Quaternion.LookRotation(Vector3.up));
+            _sweat.Emit(emitParams, Mathf.RoundToInt(Mathf.Lerp(4f, 18f, strength)));
         }
 
         private void PlayThud(Vector3 point, float strength)
@@ -264,6 +307,56 @@ namespace PoBox
             return particles;
         }
 
+        /// <summary>
+        /// The sweat burst. Same manual-emission arrangement as the scuff, and
+        /// the same reason for building it in code: nothing has to be dragged
+        /// into a scene this system is not placed in.
+        ///
+        /// Heavier gravity and a narrower cone than the scuff, so the droplets
+        /// arc rather than drift — dust hangs, water falls, and at this scale
+        /// that difference is most of what separates the two to the eye.
+        /// </summary>
+        private ParticleSystem BuildSweatParticles()
+        {
+            var host = new GameObject("ImpactSweat");
+            host.transform.SetParent(transform, false);
+            var particles = host.AddComponent<ParticleSystem>();
+            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            ParticleSystem.MainModule main = particles.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.maxParticles = MAX_SWEAT;
+            main.startLifetime = 0.55f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1.4f, 3.6f);
+            main.startSize = 0.025f;
+            main.gravityModifier = 1.8f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.85f, 0.92f, 1f, 0.85f));
+            // Scaled time, like the scuff: the droplets are part of the physical
+            // event and should carry through a slow-motion knockout with it.
+            main.useUnscaledTime = false;
+
+            ParticleSystem.EmissionModule emission = particles.emission;
+            emission.enabled = false;   // manual Emit only
+
+            ParticleSystem.ShapeModule shape = particles.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 22f;
+            shape.radius = 0.06f;
+
+            var renderer = host.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            if (_kit != null && _kit.overlayMaterial != null)
+            {
+                renderer.sharedMaterial = _kit.overlayMaterial;
+            }
+            return particles;
+        }
+
         private AudioSource[] BuildVoices()
         {
             var voices = new AudioSource[AUDIO_VOICES];
@@ -279,7 +372,10 @@ namespace PoBox
                 source.rolloffMode = AudioRolloffMode.Linear;
                 source.minDistance = 2f;
                 source.maxDistance = 22f;
-                voices[voiceIndex] = source;
+                // On the foley bus, so the announcer ducks it rather than
+                // talking over it. Null-safe: a scene with no mix gets the
+                // source back unchanged.
+                voices[voiceIndex] = Systems_AudioMix.Route(source, AudioBus.Foley);
             }
             return voices;
         }

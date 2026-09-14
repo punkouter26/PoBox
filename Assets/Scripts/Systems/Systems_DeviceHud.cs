@@ -45,6 +45,7 @@ namespace PoBox
         private float _smoothedFps;
         private float _nextDebugRefresh;
         private Rect _lastSafeArea;
+        private Systems_PerfTelemetry _telemetry;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
@@ -68,6 +69,10 @@ namespace PoBox
             if (FindFirstObjectByType<Systems_DeviceHud>() != null) { return; }
             var go = new GameObject("Systems_DeviceHud");
             go.AddComponent<Systems_DeviceHud>();
+            // Where the frame goes, in every scene that has a HUD to draw it on.
+            // Unlike the MuJoCo profile below it costs nothing and toggles
+            // nothing, so there is no reason to withhold it from the menu.
+            go.AddComponent<Systems_PerfTelemetry>();
             // Frame-cost attribution rides along in the scenes that have a
             // creature to attribute. Diagnostic, and temporary.
             if (SceneManager.GetActiveScene().name != MENU_SCENE)
@@ -84,6 +89,8 @@ namespace PoBox
             // 120 Hz panel that is a choice, not a limit, and at a 0.02 s physics
             // step it reads as the fighters stepping in slow motion.
             if (Application.targetFrameRate != 60) { Application.targetFrameRate = 60; }
+
+            _telemetry = GetComponent<Systems_PerfTelemetry>();
 
             UIDocument host = FindHost();
             if (host == null)
@@ -240,7 +247,17 @@ namespace PoBox
                 _smoothedFps = _smoothedFps <= 0f
                     ? instant
                     : Mathf.Lerp(_smoothedFps, instant, FPS_SMOOTHING);
-                if (_fps != null) { _fps.text = $"{_smoothedFps:0} FPS"; }
+                if (_fps != null)
+                {
+                    // Frame TIME beside the rate, and nothing else up here. The
+                    // rest of the telemetry goes in the debug block below: the
+                    // title already claims 40% of a portrait width and the MENU
+                    // button claims the right corner, so a centred line long
+                    // enough to carry draw calls would run into both.
+                    _fps.text = _telemetry != null
+                        ? $"{_smoothedFps:0} FPS · {_telemetry.FrameMillis:0.0}ms"
+                        : $"{_smoothedFps:0} FPS";
+                }
             }
 
             if (Screen.safeArea != _lastSafeArea) { ApplySafeArea(); }
@@ -356,6 +373,13 @@ namespace PoBox
             else { lines.Add($"{total} fighters up"); }
 
             lines.Add($"{Screen.width}x{Screen.height} · {SystemInfo.graphicsDeviceType} · fixed {Time.fixedDeltaTime * 1000f:0}ms");
+            if (_telemetry != null)
+            {
+                // Where the frame went. The share is the number the open 20 fps
+                // item turns on: a humanoid's fixed step should be a few percent
+                // of the frame, and this says when it is two thirds of it.
+                lines.Add(_telemetry.Summarise());
+            }
             if (Time.timeScale != 1f) { lines.Insert(0, $"TIME SCALE IS {Time.timeScale:0.00} — physics is not running at speed"); }
 
             if (!string.IsNullOrEmpty(Systems_MuJoCoProfile.Summary))

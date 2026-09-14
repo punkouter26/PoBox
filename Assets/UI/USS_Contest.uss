@@ -1,6 +1,59 @@
-﻿/* Contest HUD theme — single source of style for the test-scene UI.
+/* Contest HUD theme — single source of style for the test-scene UI.
+   ==================================================================
+
+   DESIGN TOKENS, AND WHY THEY ARRIVED LATE. Every colour and size below used to
+   be written out at each use: rgba(13,13,20,0.94) appeared in three rules,
+   rgb(217,173,64) in two, and the same gold is ALSO declared in C# as
+   Systems_UiTheme.Gold. So a palette change meant finding every literal, and
+   the two halves of the palette could drift without anything failing. The
+   tokens at the top are now the one place the values live.
+
+   Every use is var(--token, <the literal it replaced>). The fallback is not
+   decoration: if a variable ever fails to resolve, the rule still paints the
+   colour it painted before rather than dropping to a UI Toolkit default, which
+   for a dark HUD means invisible text on an invisible panel.
+
+   THE PORTRAIT BUDGET. The target is 1080x1920 and the rule is that everything
+   fits on the one screen — no ScrollView, no clipping, nothing under the
+   gesture bar. The bands, top to bottom:
+
+       0      –  ~64px   device HUD top bar (title, frame rate, MENU)
+       12px   –  ~70px   .top-bar          the title chip, inset past both
+       32%    –          .winner-banner    transient
+       42%    –          .countdown-label  transient
+       bottom 260px      .commentary-band  transient, above the plates
+       bottom 150px      .score-row        star tally
+       bottom 56px       .plates-row       name plates, wrapping UPWARD
+
+   Three of those wrap, and a wrapping row that grows without a limit is how a
+   HUD silently eats the ring it is drawn over. Each is capped in rows below and
+   the comments say what the cap is worth in fighters.
+
    Palette matches Systems_UiTheme: Gold rgb(217,173,64), GoldBright
    rgb(255,230,102), PanelDark rgba(13,13,20,0.94). */
+
+:root {
+    --pobox-gold: rgb(217, 173, 64);
+    --pobox-gold-bright: rgb(255, 230, 102);
+    --pobox-panel: rgba(13, 13, 20, 0.94);
+    --pobox-panel-soft: rgba(13, 13, 20, 0.8);
+    --pobox-text: rgb(255, 255, 255);
+    --pobox-text-on-gold: rgb(20, 16, 4);
+    --pobox-down: rgb(255, 110, 100);
+    --pobox-ink: rgba(0, 0, 0, 0.55);
+
+    /* Chips and plates share a radius and a rhythm; a HUD whose corners
+       disagree by 6px reads as two HUDs. */
+    --pobox-radius-chip: 8px;
+    --pobox-radius-title: 14px;
+    --pobox-gap: 6px;
+
+    /* The bottom inset. 56px clears the gesture bar on every phone this is
+       tested on; 14px, which it used to be, put an eight-fighter ring's last
+       row 16px off the bottom of a 1920px panel — under the bar on any modern
+       phone and touching the edge on all of them. */
+    --pobox-safe-bottom: 56px;
+}
 
 .hud-root {
     position: absolute;
@@ -29,10 +82,10 @@
    longest title, "Balance Contest — Round 1  30s", on one line within the
    690 px band; anything longer wraps instead of clipping. */
 .title-chip {
-    background-color: rgba(13, 13, 20, 0.94);
-    color: rgb(255, 255, 255);
+    background-color: var(--pobox-panel, rgba(13, 13, 20, 0.94));
+    color: var(--pobox-text, rgb(255, 255, 255));
     padding: 6px 14px;
-    border-radius: 14px;
+    border-radius: var(--pobox-radius-title, 14px);
     font-size: 32px;
     max-width: 100%;
     -unity-font-style: bold;
@@ -44,17 +97,19 @@
    time in the balance contest ("Standard3  2.7s" needs 204 px, got 141). The
    row is pinned by its bottom edge, so extra lines grow upward off the mat.
 
-   bottom was 14 px, which put the last row of an eight-fighter ring 16 px off
-   the bottom of a 1920 px panel — under the gesture bar on any modern phone,
-   and touching the edge on all of them. 56 px clears it. */
+   max-height is the guard on that growth: three rows at 44px plus margins is
+   enough for twelve plates, which is more than any roster can field, and past
+   it the row stops climbing rather than reaching the title chip. */
 .plates-row {
     position: absolute;
-    bottom: 56px;
+    bottom: var(--pobox-safe-bottom, 56px);
     left: 0;
     right: 0;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    max-height: 168px;
+    overflow: hidden;
 }
 
 /* A row now, not a bare label: the swatch that identifies the fighter sits
@@ -62,18 +117,18 @@
 .plate {
     flex-direction: row;
     align-items: center;
-    background-color: rgba(13, 13, 20, 0.94);
-    margin-left: 6px;
-    margin-right: 6px;
+    background-color: var(--pobox-panel, rgba(13, 13, 20, 0.94));
+    margin-left: var(--pobox-gap, 6px);
+    margin-right: var(--pobox-gap, 6px);
     margin-top: 3px;
     margin-bottom: 3px;
     padding: 4px 10px;
-    border-radius: 8px;
+    border-radius: var(--pobox-radius-chip, 8px);
     flex-shrink: 0;
 }
 
 .plate-label {
-    color: rgb(255, 255, 255);
+    color: var(--pobox-text, rgb(255, 255, 255));
     font-size: 30px;
     white-space: nowrap;
 }
@@ -87,7 +142,7 @@
     margin-right: 10px;
     border-radius: 11px;
     border-width: 2px;
-    border-color: rgba(0, 0, 0, 0.55);
+    border-color: var(--pobox-ink, rgba(0, 0, 0, 0.55));
     flex-shrink: 0;
 }
 
@@ -95,41 +150,45 @@
    children — set on the label, the winner's gold background coloured the text
    box only and left the plate around it dark. */
 .plate--down .plate-label {
-    color: rgb(255, 110, 100);
+    color: var(--pobox-down, rgb(255, 110, 100));
 }
 
 .plate--winner {
-    background-color: rgb(217, 173, 64);
+    background-color: var(--pobox-gold, rgb(217, 173, 64));
 }
 
 .plate--winner .plate-label {
-    color: rgb(20, 16, 4);
+    color: var(--pobox-text-on-gold, rgb(20, 16, 4));
     -unity-font-style: bold;
 }
 
 /* Match star tally. A wrapping row of chips rather than one long label, so a
-   full ring's worth of near-identical names cannot run down the screen. */
+   full ring's worth of near-identical names cannot run down the screen.
+   Capped at two rows for the same reason .plates-row is capped at three: this
+   sits directly above it and a third row would overlap the plates. */
 .score-row {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    max-height: 112px;
+    overflow: hidden;
 }
 
 .score-chip {
     flex-direction: row;
     align-items: center;
-    background-color: rgba(13, 13, 20, 0.8);
+    background-color: var(--pobox-panel-soft, rgba(13, 13, 20, 0.8));
     margin-left: 5px;
     margin-right: 5px;
     margin-top: 3px;
     margin-bottom: 3px;
     padding: 2px 12px;
-    border-radius: 8px;
+    border-radius: var(--pobox-radius-chip, 8px);
     flex-shrink: 0;
 }
 
 .score-chip-label {
-    color: rgb(217, 173, 64);
+    color: var(--pobox-gold, rgb(217, 173, 64));
     font-size: 38px;
     -unity-font-style: bold;
     white-space: nowrap;
@@ -145,7 +204,7 @@
 
 .winner-text {
     font-size: 88px;
-    color: rgb(255, 230, 102);
+    color: var(--pobox-gold-bright, rgb(255, 230, 102));
     -unity-font-style: bold;
 }
 
@@ -155,7 +214,7 @@
     left: 0;
     right: 0;
     font-size: 220px;
-    color: rgb(255, 255, 255);
+    color: var(--pobox-text, rgb(255, 255, 255));
     -unity-font-style: bold;
     -unity-text-align: middle-center;
 }

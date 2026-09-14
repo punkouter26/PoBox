@@ -27,6 +27,10 @@ namespace PoBox
 
         private void Start()
         {
+            // The thud is a body sound, so it rides the foley bus with the
+            // scuffs and the footsteps and ducks under a callout with them.
+            Systems_AudioMix.Route(_audioSource, AudioBus.Foley);
+
             _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
             _startHeadHeights = new float[_rigs.Length];
             _armed = new bool[_rigs.Length];
