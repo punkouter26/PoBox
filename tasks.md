@@ -47,7 +47,10 @@ moving to the next. Track the individual status in the results table below.
 Verified skinned inventory: Nick, Grandma and Grandpa. See
 Tools/cleanup/AGENT_VALIDATION.md. Raptor is a primitive legacy contestant with
 no supplied skinned source. Historical reports are context only; fresh runtime
-measurements remain pending.
+measurements are recorded in the validation report. Nick has passed one balance
+round and a complete 5.6 m crossing after runtime timing/heading fixes. This is
+provisional: force limits and shared collisions still require work. Grandma and
+Grandpa have not completed the crossing. No new training has started.
 
 ## Starting state
 

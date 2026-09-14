@@ -41,7 +41,7 @@ using UnityEngine;
 
 namespace PoBox.MuJoCoCreature
 {
-    [DefaultExecutionOrder(-50)] // after MjScene's own stepping order
+    [DefaultExecutionOrder(-50)] // submit this tick's controls before MjScene steps
     public sealed class CreatureSentisController : MonoBehaviour
     {
         private const int ROOT_OBS = 13;
@@ -76,6 +76,8 @@ namespace PoBox.MuJoCoCreature
         [SerializeField] private Transform _groundReference;
 
         public float GroundHeight => _groundReference != null ? _groundReference.position.y : 0f;
+
+        private Quaternion _policyFrameInverse = Quaternion.identity;
 
         [Header("Bodies")]
         [SerializeField] private MjBody _pelvis;
@@ -266,6 +268,9 @@ namespace PoBox.MuJoCoCreature
 
         private void Awake()
         {
+            // Policies learn in the rig's authored frame. Rotating a contestant
+            // onto the start line must rotate world-vector observations with it.
+            _policyFrameInverse = Quaternion.Inverse(MjEngineTool.MjQuaternion(transform.rotation));
             // MjScene does NOT honour the MJCF's own timestep. When it
             // regenerates the model at play time, MjcfGenerationContext writes
             //     optionMjcf.SetAttribute("timestep", $"{Time.fixedDeltaTime}")
@@ -562,7 +567,12 @@ namespace PoBox.MuJoCoCreature
                 double low = _mjScene.Model->actuator_ctrlrange[2 * id];
                 double high = _mjScene.Model->actuator_ctrlrange[2 * id + 1];
                 float a = Mathf.Clamp(_actions[i], -1f, 1f);
-                _ownActuators[i].Control = (float)(a >= 0f ? a * high : -a * low);
+                float target = (float)(a >= 0f ? a * high : -a * low);
+                _ownActuators[i].Control = target;
+                // MjScene synchronizes component controls AFTER mj_step. The
+                // trainer writes ctrl BEFORE stepping, so writing only Control
+                // adds a full physics tick of action delay in the game.
+                d->ctrl[id] = target;
             }
         }
 
@@ -595,9 +605,9 @@ namespace PoBox.MuJoCoCreature
             _observations[c++] = lin.x; _observations[c++] = lin.y; _observations[c++] = lin.z;
             Vector3 ang = (inv * BodyAngVel(d, _pelvisId)) / ANGULAR_VELOCITY_SCALE;
             _observations[c++] = ang.x; _observations[c++] = ang.y; _observations[c++] = ang.z;
-            Vector3 up = pelvisRot * new Vector3(0f, 0f, 1f);
+            Vector3 up = _policyFrameInverse * (pelvisRot * new Vector3(0f, 0f, 1f));
             _observations[c++] = up.x; _observations[c++] = up.y; _observations[c++] = up.z;
-            Vector3 fwd = pelvisRot * new Vector3(0f, -1f, 0f);
+            Vector3 fwd = _policyFrameInverse * (pelvisRot * new Vector3(0f, -1f, 0f));
             _observations[c++] = fwd.x; _observations[c++] = fwd.y; _observations[c++] = fwd.z;
 
             // --- proprioception (7 per joint) ---
@@ -610,7 +620,7 @@ namespace PoBox.MuJoCoCreature
                 _observations[c++] = local.x;
                 _observations[c++] = local.y;
                 _observations[c++] = local.z;
-                Vector3 w = BodyAngVel(d, _jointBodyIds[j]) / ANGULAR_VELOCITY_SCALE;
+                Vector3 w = (_policyFrameInverse * BodyAngVel(d, _jointBodyIds[j])) / ANGULAR_VELOCITY_SCALE;
                 _observations[c++] = w.x; _observations[c++] = w.y; _observations[c++] = w.z;
             }
 

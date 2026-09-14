@@ -126,3 +126,24 @@ random hazard, but its self-collision defect remains and walking still fails.
 Unity compilation: no errors. Shippable scene reference audit: all clear.
 Scene saves regenerate MuJoCo display mesh IDs; serialized mesh references were
 checked separately from code diffs. No character hierarchy was removed.
+
+## Control timing and heading repairs verified
+
+Unity's MuJoCo component copies actuator controls after stepping. The controller
+now also writes the native control buffer before that step, matching training
+and removing an unintended 20 ms action delay. World-vector observations are
+expressed in the authored creature's starting frame, so placing a rig facing
+the other way does not change what its policy sees. Nick was turned toward the
+walking finish through Unity Pipeline; the controls and appearance are unchanged.
+
+With the existing Nick_Balance002 policy, Nick survived a 6.84-second balance
+round and remained upright for approximately 58 seconds in that trial. In the
+walking scene on 2026-09-14 at 20:43 UTC, the referee measured a **full 5.6 m
+crossing in 6.34 seconds**, finished=True and fallen=False. Grandma reached
+0.849 m and Grandpa 0.677 m before falling. These results validate the runtime
+repairs, but are not final shipping acceptance: finite actuator forces, shared
+collisions and equal hazard exposure remain unresolved.
+
+The local Python 3.11 environment now loads MuJoCo/Warp 3.12.0, Newton 1.6.0,
+PyTorch 2.8.0 CUDA 12.8 and rsl-rl 2.3.3. CUDA detects the RTX 2060. Newton can
+import Nick's 15-body MJCF. No new training run has started.
