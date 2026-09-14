@@ -26,6 +26,13 @@ This overrides the usual "branch before committing to the default branch"
 default. It is a solo repository; a branch here only adds a merge step and a
 chance for work to sit unmerged.
 
+### `git sync` commits everything first
+
+**A `git sync` is: commit every outstanding change, then push.** Never push
+with a dirty working tree, and never leave modified files behind for the next
+session to rediscover. If something in the tree should *not* be committed, say
+so and ask — do not quietly push around it.
+
 ### Merging a leftover branch safely
 
 Checking out `master` reverts the working tree to master's contents, which can
@@ -44,9 +51,47 @@ already in the commit you are merging.
 starting work to get the overall picture, rather than reconstructing it from
 the source every time.
 
+## Training: MuJoCo / Newton only
+
+**All new training happens in MuJoCo or Newton.** Not Unity ML-Agents / PhysX.
+The `SCN_TRAIN_*` scenes, the `Config/Boxer*.yaml` runs and the
+`Locomotion_gen*` brains described in [CLAUDE.md](CLAUDE.md) are the **legacy
+PhysX line**: keep them working, keep measuring against them, but do not start
+a new generation there. New policies are trained against a MuJoCo/Newton body,
+the way Nick is (`Tools/MuJoCo/`, `nick_unity.xml`).
+
+The reason is the one already documented for Nick: the trainer and the game
+have to read **one body at one timestep**. An MJCF exported from the same rig
+the game loads gives that; a PhysX ragdoll retuned by hand does not.
+
+### A rig starts from a skinned mesh the user supplies
+
+**Ask for the skinned mesh before training anything.** Do not invent a body, do
+not reuse the capsule as a stand-in, and do not start a run while waiting for
+the asset.
+
+Given the model, the pipeline is: read the **rig structure out of that model**
+(bone hierarchy, bone lengths, bind pose), convert it into the MuJoCo/Newton
+body definition, and train against that. The mesh is the source of truth for
+proportions; the MJCF is generated from it, never hand-guessed to match.
+
+**One creature at a time.** More creature and human models are coming, but
+until they arrive the job is to teach the **current** model every behaviour it
+needs — stand, balance under shove, walk, turn — rather than to broaden the
+cast.
+
+### Close the Unity Editor for long runs
+
+**Any MuJoCo RL run expected to take 30 minutes or more: tell the user to save
+and close the Unity Editor first, and tell them explicitly when training is
+over and they can reopen it.** A long run and an open Editor compete for the
+same cores and the same MuJoCo plugin. Do not start such a run and leave the
+user guessing whether the project is theirs again.
+
 ## Training runs
 
-These apply to every trainer — ML-Agents, MuJoCo, Isaac Lab.
+These apply to every trainer — MuJoCo, Newton, Isaac Lab, and ML-Agents for
+as long as the legacy line is still being measured.
 
 - **Always start TensorBoard when training starts**, so progress is visible
   without being asked for it.
@@ -58,8 +103,10 @@ These apply to every trainer — ML-Agents, MuJoCo, Isaac Lab.
   runs are not to be launched headless by default: the user watches how the
   creature moves during and after training, and that observation is part of
   how a policy gets judged. Headless is an optimisation to be asked for, not
-  assumed. (Unity ML-Agents training scenes remain headless by rule — they
-  carry no cameras — and TensorBoard is the window into those.)
+  assumed. **Use Newton to show the training if that is the better viewer**
+  — the requirement is that the motion is watchable, not which app draws
+  it. (Unity ML-Agents training scenes remain headless by rule — they carry
+  no cameras — and TensorBoard is the window into those.)
 
 ## Fighter conventions
 
@@ -82,6 +129,76 @@ Creatures move under **Earth gravity**, with joint ranges and masses that are
 realistic **for the size of the creature being modelled**. A rig that stands
 only because it is unnaturally heavy, unnaturally light, or hinged past what
 the anatomy allows is not shippable, however good its reward curve looks.
+
+### Joints move at human speed and human force
+
+If the agent is a human, its joints move at a **speed and torque a real human
+joint produces** — angular velocity limits and actuator force ceilings taken
+from human ranges, not whatever number makes the reward curve climb. A policy
+that only balances because its hips can snap at 30 rad/s, or because its ankle
+can apply a torque a person could not, is not shippable. Scale the same way for
+non-human creatures: force and speed follow the anatomy and the mass.
+
+Note the existing tension documented in [CLAUDE.md](CLAUDE.md): the position
+servos are kp=400 and stability at a 0.02 s step was bought with armature 0.2.
+Any change to gains, armature or force limits is a **body** change — it
+invalidates the policies trained on it, and it has to stay inside the realism
+budget above rather than escape it.
+
+### Everything collides, and nothing passes through anything
+
+**All body parts of every creature must collide correctly** — with each other,
+with other creatures, and with the environment. No creature may pass through
+another creature, through the ground, through the ring, or through any static
+object.
+
+That means, concretely:
+
+- Every limb carries a collision geometry, not just the ones that happen to
+  matter for the current reward.
+- Self-collision is **on** unless disabling a specific pair is justified and
+  written down. A body that clips its own thigh through its own torso is
+  learning from physics the player will not see.
+- Creature-vs-creature collision is on. Two fighters that interpenetrate are
+  not boxing.
+- Check this on the **generated MJCF and the Unity rig both**, since contact
+  exclusion is easy to inherit silently from an exporter default.
+
+## Build the scene with MCP, not with code
+
+**Prefer creating GameObjects, prefabs and scene content through the Unity MCP
+bridge over writing a script that spawns them at runtime.** Anything static —
+ground, ring, platforms, hazards, lights, cameras, props, spawn markers —
+should exist as a real object in a real scene that the user can select and drag,
+not as coordinates buried in C#.
+
+The reason is direct: the user adjusts positions by hand. A static object placed
+by code can only be moved by editing and recompiling code; the same object
+placed via MCP is moved in the Inspector in two seconds. Reach for code only for
+things that genuinely cannot be authored — the N-fighter training grids, and the
+contest spawner's roster-driven instantiation, both of which are already
+documented as deliberate in [CLAUDE.md](CLAUDE.md).
+
+This is also the standing reversal recorded in CLAUDE.md: the three shipping
+scenes are **hand-authored assets**, because a generator that cannot reproduce
+its artifact is a way to lose one.
+
+## Unity tooling
+
+Drive the Editor with whichever of these gives the best result for the task —
+they are all fair game, and more than one may be used in a session:
+
+- **Unity CLI / the command bridge** — `Temp/agent-command.txt` and
+  `-executeMethod`, documented in [CLAUDE.md](CLAUDE.md). Best for headless
+  builds and for invoking a named static method.
+- **https://github.com/AnkleBreaker-Studio/unity-mcp-plugin**
+- **https://github.com/CoplayDev/unity-mcp**
+- **https://github.com/IvanMurzak/Unity-MCP**
+
+The three MCP servers overlap; pick per task rather than per habit, and say
+which one was used when it matters to reproducing the result. `com.unity.pipeline`
+in the manifest is the existing MCP bridge and is load-bearing — do not remove
+it as unreferenced.
 
 ## Android builds
 
@@ -121,6 +238,21 @@ open item.
 Do not install the 3.3.7 `.so` instead. It turns a working app into a crash on
 launch, which is strictly worse than Nick standing still.
 
+**Standing instruction: compile MuJoCo for phones the
+https://github.com/joanllobera/mujoco-bin/ way** — that repo is the reference
+for the Android/arm64 toolchain and NDK setup, and
+[Tools/MuJoCo/android/README.md](Tools/MuJoCo/android/README.md) is this
+project's recipe built on it. Take the **method** from mujoco-bin; take the
+**version** from `Packages/org.mujoco` (`mjVERSION_HEADER`). Never ship a
+prebuilt `.so` whose version does not match the bindings, whatever its README
+claims — read the version out of the binary.
+
 ## Answering
+
+**Write for a non-technical reader.** Plain language, no jargon where a normal
+word works, and say what it means for the game rather than only what the code
+does. The point of an answer here is that the user can decide the next step from
+it without decoding it first. Keep the precise numbers — they are the evidence —
+just explain what they imply.
 
 Any answer longer than ~100 words ends with a **TLDR of about 20 words**.

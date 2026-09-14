@@ -12,8 +12,13 @@ scenes used to evaluate them.
 There is no test suite, no linter, and no build script in the repo. The build,
 scene generation, and training entry points are all listed below.
 
-Binding rules for agents working here — branch policy, when pushing is allowed,
-TensorBoard, fighter colours, physical realism — are in [AGENTS.md](AGENTS.md).
+Binding rules for agents working here are in [AGENTS.md](AGENTS.md): branch
+policy and what `git sync` means, **new training goes to MuJoCo/Newton rather
+than ML-Agents**, **ask for the skinned mesh before building a rig**, when to
+close the Editor for a long run, TensorBoard, showing the simulator's UI,
+**authoring scene objects through MCP instead of from code**, which Unity MCP
+servers are available, fighter colours, physical realism including joint
+speed/force limits and full collision, and how to write an answer.
 `DOCS/` holds the project's own summary of itself; read it for orientation.
 
 ## Commands
@@ -87,7 +92,11 @@ It reports `IContestFighter` implementers separately from `Systems_FighterRig`,
 because Nick is refereed through that interface from another assembly and the
 rig sweep cannot see him.
 
-### Training
+### Training (the legacy PhysX line)
+
+**New training does not happen here.** [AGENTS.md](AGENTS.md) puts new policies
+on MuJoCo/Newton; this section documents the existing ML-Agents line, which is
+kept running so shipping brains can still be measured and rebuilt.
 
 Two ways in, and the headless one is the default now.
 
