@@ -150,13 +150,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_MiniGameMenu
   _selection: {fileID: 11400000, guid: 158572b8bd2c3994389f72168c90a61f, type: 2}
-  _fighterNames:
-  - Standard
-  - Grandma
-  - Grandpa
-  - Raptor
-  - Bot
-  - Nick
   _balanceScene: SCN_TEST_BALANCE_CONTEST
   _walkScene: SCN_TEST_WALK_CONTEST
 --- !u!114 &124428362
