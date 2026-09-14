@@ -40,21 +40,88 @@ namespace PoBox
         // that rule and fail to compile.
         private MonoBehaviour _scene;
         private bool _resolved;
+        private bool _gaveUp;
+        private int _resolveAttempts;
 
-        public static bool Enabled { get; set; } = true;
+        /// <summary>Attempts to find the creature before accepting there is none.</summary>
+        private const int RESOLVE_ATTEMPTS = 40;
+
+        /// <summary>Command-line switch that turns this on. See <see cref="Enabled"/>.</summary>
+        private const string SWITCH = "-mjprofile";
+
+        /// <summary>
+        /// Whether the profile runs at all. FALSE IN A NORMAL SESSION: only a
+        /// player launched with <c>-mjprofile</c> turns it on.
+        ///
+        /// IT SWITCHES OFF LIVE GAMEPLAY, which is acceptable for a measurement
+        /// and not for anything else. The three phases disable the creature's
+        /// controller for two thirds of every cycle and its physics for a third,
+        /// so a contest holding him plays with a body that is un-controlled for
+        /// twelve seconds out of eighteen and not simulated at all for six of
+        /// them — on a loop, for the whole session. That is what this did in
+        /// every build and every contest, because nothing ever set Enabled to
+        /// false. It also destroys the very thing this project judges a policy
+        /// by, which is watching how the creature moves.
+        ///
+        /// Opting IN rather than out is the choice
+        /// <see cref="Systems_EvalHarness"/> already makes for its own
+        /// command-line install, and for the same reason: a measurement and the
+        /// thing being measured cannot honestly run at the same time.
+        /// </summary>
+        public static bool Enabled { get; set; } = RequestedOnCommandLine();
+
+        private static bool RequestedOnCommandLine()
+        {
+            string[] arguments = System.Environment.GetCommandLineArgs();
+            for (int index = 0; index < arguments.Length; index++)
+            {
+                if (string.Equals(arguments[index], SWITCH, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>Latest attribution, for the debug panel. Empty until it has data.</summary>
         public static string Summary { get; private set; } = string.Empty;
 
         private void Start()
         {
+            if (!Enabled)
+            {
+                // Disabled at the component rather than short-circuited in
+                // Update: a disabled MonoBehaviour costs nothing at all, and this
+                // one must not be able to touch the creature by any path.
+                enabled = false;
+                return;
+            }
             _phaseStart = Time.unscaledTime;
             Resolve();
         }
 
+        /// <summary>
+        /// Finds the creature by type name, retried briefly because a scene can
+        /// create it a frame or two after this component starts — and then GIVES
+        /// UP RATHER THAN RETRYING FOREVER.
+        ///
+        /// Both ships' scenes are handed this component unconditionally, and a
+        /// contest with no creature in it has nothing to attribute. The unbounded
+        /// version of this ran a full FindObjectsByType over every MonoBehaviour
+        /// in the scene on EVERY FRAME, allocating an array each time, for the
+        /// whole session. Forty attempts is under a second at 50 Hz — longer than
+        /// any scene here takes to build its creature, and short enough not to be
+        /// noticed.
+        /// </summary>
         private void Resolve()
         {
             if (_resolved) { return; }
+            if (_resolveAttempts++ >= RESOLVE_ATTEMPTS)
+            {
+                _resolved = true;
+                _gaveUp = true;
+                return;
+            }
             foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
             {
                 if (behaviour == null) { continue; }
@@ -69,7 +136,7 @@ namespace PoBox
         {
             if (!Enabled) { return; }
             Resolve();
-            if (!_resolved) { return; }
+            if (_gaveUp || !_resolved) { return; }
 
             float elapsed = Time.unscaledTime - _phaseStart;
             float dt = Time.unscaledDeltaTime;

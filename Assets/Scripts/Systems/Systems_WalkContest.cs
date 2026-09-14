@@ -378,14 +378,22 @@ namespace PoBox
         // Tells the fighter to walk. A trained brain reads this as an
         // observation; the code-driven bot reads it to switch its scripted gait
         // on. Without it both would just stand on the start line.
+        //
+        // THE CREATURE IS ASKED FIRST, and the order is the whole fix. This used
+        // to return early when there was no Agent_FighterBoxing on the racer,
+        // which is every racer that answers IContestFighter instead of being a
+        // PhysX rig — and there is no path from such a racer to
+        // CommandWalk below the early return, so the MuJoCo creature was never
+        // once told to walk in the race. It stood on the start line while the
+        // plates reported its distance. Systems_BalanceContest.CommandStand has
+        // always branched on the creature first; this is the same shape.
         private void CommandRace(Racer racer)
         {
-            if (racer.agent == null)
-            {
-                return;
-            }
             if (racer.external != null) { racer.external.CommandWalk(RACE_SPEED, _goalDirection); return; }
-            racer.agent.SetLocomotionCommand(RACE_SPEED, _goalDirection);
+            if (racer.agent != null)
+            {
+                racer.agent.SetLocomotionCommand(RACE_SPEED, _goalDirection);
+            }
         }
 
         private bool HasFallen(Racer racer)

@@ -25,6 +25,38 @@ namespace PoBox
     /// </summary>
     public sealed class Systems_FighterIdentity : MonoBehaviour
     {
+        /// <summary>
+        /// The line-up the menu offers, in pick order — and the ONE place that
+        /// order is written down.
+        ///
+        /// It used to be written down twice and independently: as
+        /// <c>_fighterNames</c> on the menu, and as the <c>_roster</c> array on
+        /// each contest spawner. They agreed on the first five names and the
+        /// menu had a sixth, "Nick", that no roster has any prefab for — so a
+        /// player who picked Nick in a slot sent a roster index the receiving
+        /// scene could not resolve and the slot came up empty, silently. Two
+        /// lists of one thing is the defect; this is the list.
+        ///
+        /// The order must match the order the ships' scenes are laid out in, so
+        /// that the default line-up lands on the marks the fighters are already
+        /// standing on. See Systems_ContestSpawner.SpawnAndBegin, which adopts
+        /// an author-placed fighter for a slot rather than spawning a duplicate.
+        ///
+        /// BOT IS FOURTH ON PURPOSE. The walk race fields the first four of this
+        /// list, because four abreast is what its camera can hold on a phone (see
+        /// Systems_RaceCamera), and every app in this line ships one code-driven
+        /// bot — so the bot has to be in the default four rather than the sixth
+        /// name that misses the cut. On the ring, which fields all six, the only
+        /// effect is that the bot and the raptor swap two marks in a 2x4 grid.
+        /// </summary>
+        public static readonly string[] PickableNames =
+        {
+            "Standard", "Grandma", "Grandpa", "Bot", "Raptor", "Nick"
+        };
+
+        /// <summary>The menu's "leave this slot empty" choice. Never a fighter name.</summary>
+        public const string EmptyPick = "Empty";
+
         [SerializeField] private string _displayName;
         [SerializeField] private Color _plateColor = Color.white;
         [SerializeField] private int _rosterIndex = -1;

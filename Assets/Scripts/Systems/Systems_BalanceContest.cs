@@ -210,11 +210,19 @@ namespace PoBox
                 // Also ground-relative: at ring altitude a fully collapsed
                 // fighter scored 1.0 / 2.6 = 0.385 on this rather than ~0, and
                 // this sum is what ranks the round.
+                //
+                // The divisor is floored, like every other use of a start head
+                // height in this codebase. startHeadHeight is measured once, right
+                // after ResetRigForRound -- but a fighter whose head is already at
+                // its own ground level there would divide this term by zero, and
+                // an infinite uprightnessSum makes Beats() compare infinities and
+                // then NaNs, which decides the round by accident rather than by who
+                // balanced better.
                 contestant.uprightnessSum +=
                     (contestant.external != null
                         ? contestant.external.HeadHeightAboveGround
                         : contestant.rig.Head.position.y - contestant.rig.GroundY)
-                    / contestant.startHeadHeight * Time.fixedDeltaTime;
+                    / Mathf.Max(0.01f, contestant.startHeadHeight) * Time.fixedDeltaTime;
                 aliveCount++;
             }
 

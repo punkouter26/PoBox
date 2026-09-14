@@ -16,6 +16,14 @@ namespace PoBox
         private const float POP_SECONDS = 0.45f;
         private const float SLOWMO_SCALE = 0.5f;
         private const float SLOWMO_SECONDS = 1.0f;
+        /// <summary>
+        /// Name this beat is held under. The banner asks Systems_GameClock for
+        /// a slow-motion rate instead of writing timeScale, so the beat ending
+        /// can only ever cancel the banner's own request — it used to restore a
+        /// flat 1 and would have un-frozen a round countdown that had started
+        /// inside the beat.
+        /// </summary>
+        private const string SlowmoOwner = "WinnerBanner";
 
         [SerializeField] private ParticleSystem _confetti;
         [SerializeField] private AudioSource _audioSource;
@@ -63,7 +71,7 @@ namespace PoBox
                 _contest.RoundEnded -= OnRoundEnded;
                 _contest.RoundStarted -= OnRoundStarted;
             }
-            Time.timeScale = 1f;
+            Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
         }
 
         private void OnRoundEnded(string winnerName)
@@ -79,7 +87,7 @@ namespace PoBox
             _banner.style.display = DisplayStyle.Flex;
             _popTimer = 0f;
             _slowmoTimer = 0f;
-            Time.timeScale = SLOWMO_SCALE;
+            Systems_GameClock.RequestSlowmo(SlowmoOwner, SLOWMO_SCALE);
             if (_confetti != null)
             {
                 _confetti.Play();
@@ -120,7 +128,7 @@ namespace PoBox
                 if (_slowmoTimer >= SLOWMO_SECONDS)
                 {
                     _slowmoTimer = -1f;
-                    Time.timeScale = 1f;
+                    Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
                 }
             }
         }

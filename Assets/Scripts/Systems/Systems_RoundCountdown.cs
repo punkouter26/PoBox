@@ -15,6 +15,13 @@ namespace PoBox
     {
         private const float SECONDS_PER_TICK = 0.8f;
         private const float GO_LINGER_SECONDS = 0.5f;
+        /// <summary>
+        /// Name this freeze is held under. See Systems_GameClock: the countdown
+        /// asks the clock for a freeze rather than writing timeScale itself, so
+        /// the winner banner's slow-motion beat cannot un-freeze a round that is
+        /// still counting down.
+        /// </summary>
+        private const string FreezeOwner = "RoundCountdown";
 
         private Systems_ContestReferee _contest;
         private Label _label;
@@ -49,7 +56,7 @@ namespace PoBox
             {
                 _contest.RoundStarted -= OnRoundStarted;
             }
-            Time.timeScale = 1f;
+            Systems_GameClock.ReleaseFreeze(FreezeOwner);
         }
 
         private void OnRoundStarted(int round)
@@ -61,7 +68,7 @@ namespace PoBox
         {
             _timer = 0f;
             _lastShown = -1;
-            Time.timeScale = 0f;
+            Systems_GameClock.HoldFreeze(FreezeOwner);
             _label.style.display = DisplayStyle.Flex;
         }
 
@@ -88,7 +95,7 @@ namespace PoBox
             {
                 _lastShown = 0;
                 _label.text = "GO!";
-                Time.timeScale = 1f;
+                Systems_GameClock.ReleaseFreeze(FreezeOwner);
             }
             if (_timer >= total + GO_LINGER_SECONDS)
             {

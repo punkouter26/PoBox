@@ -202,9 +202,11 @@ namespace PoBox
             // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
             // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
             // standing until its head was practically on the floor and this never
-            // fired in the contest at all.
-                float headFraction =
-                    (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY) / _startHeadHeights[rigIndex];
+            // fired in the contest at all. The divisor is floored because a rig
+            // sampled before the referee resets it can measure near its own ground
+            // level, and the infinity that follows poisons the dip test below.
+            float headFraction = (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY)
+                / Mathf.Max(0.01f, _startHeadHeights[rigIndex]);
                 if (!_inDip[rigIndex] && headFraction < NEAR_FALL_DIP_FRACTION && headFraction > 0.5f)
                 {
                     _inDip[rigIndex] = true;

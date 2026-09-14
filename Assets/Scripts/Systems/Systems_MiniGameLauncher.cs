@@ -9,6 +9,23 @@ namespace PoBox
     /// it in the Editor — it falls back to a default line-up so the scene is
     /// always playable on its own.
     /// </summary>
+    /// <summary>
+    /// Starts a mini-game scene from the picks SCN_MENU recorded in
+    /// <see cref="Systems_MiniGameSelection"/>. When the scene is opened
+    /// directly with no selection — the normal case while building or testing
+    /// it in the Editor — it falls back to a default line-up so the scene is
+    /// always playable on its own.
+    ///
+    /// RUNS FIRST, BEFORE EVERYTHING ELSE IN THE SCENE. The line-up has to be
+    /// settled before anything looks at the ring: the referee discovers
+    /// contestants in its Start, both cameras bind to the fighters they can
+    /// find, and the device HUD counts them. Any of those reading the ring
+    /// halfway through this would see the authored bodies that are about to be
+    /// adopted or stood down, and bind to a cast that is not the one that
+    /// fights. A negative order is the whole mechanism; without it the order
+    /// these run in is undefined and the scene works by luck.
+    /// </summary>
+    [DefaultExecutionOrder(-500)]
     public sealed class Systems_MiniGameLauncher : MonoBehaviour
     {
         [SerializeField] private Systems_ContestSpawner _spawner;
@@ -23,9 +40,19 @@ namespace PoBox
 
         private void Start()
         {
+            if (_spawner == null)
+            {
+                // Loud, because the alternative is a ring that silently keeps
+                // whatever the scene was authored with and looks like it worked.
+                Debug.LogError($"{name}: no Systems_ContestSpawner assigned, so the chosen " +
+                    "line-up cannot be fielded. Assign one, or disable this component to play " +
+                    "the line-up the scene was authored with.");
+                return;
+            }
+
             if (_selection != null && _selection.HasSelection)
             {
-                int[] picks = _selection.Picks;
+                string[] picks = _selection.Picks;
                 // Consumed so re-running this scene directly does not silently
                 // reuse a stale line-up.
                 _selection.Clear();
@@ -43,23 +70,36 @@ namespace PoBox
                 return;
             }
 
-            // ONE of each roster entry, in slot order -- which is what this
-            // comment always claimed and the code did not do. `slotIndex %
-            // rosterLength` filled every one of the 8 slots by wrapping, so a
-            // 5-entry roster spawned 8 fighters: Standard, Grandma, Grandpa,
-            // Raptor, Bot, and then Standard2, Grandma2, Grandpa2 as copies.
-            // Duplicates make the contest unreadable -- two fighters with the
-            // same brain on the same body are not a match-up -- and the round
-            // log had to disambiguate them with a suffix. Unused slots take -1
-            // and stay empty.
+            // ONE of each, in slot order -- which is what this comment always
+            // claimed and the code did not do. It filled every slot by wrapping
+            // (`slotIndex % rosterLength`), so a 5-entry roster spawned 8
+            // fighters: Standard, Grandma, Grandpa, Raptor, Bot, and then
+            // Standard2, Grandma2, Grandpa2 as copies. Duplicates make the
+            // contest unreadable -- two fighters with the same brain on the same
+            // body are not a match-up -- and the round log had to disambiguate
+            // them with a suffix. Unused slots stay empty.
+            _spawner.SpawnAndBegin(DefaultLineUp());
+        }
+
+        /// <summary>
+        /// One of each name the game offers, earliest first, filling the scene's
+        /// slots and leaving the rest empty. The order is
+        /// <see cref="Systems_FighterIdentity.PickableNames"/>, which is also the
+        /// order the ships' scenes are laid out in, so the default line-up stands
+        /// exactly where the authored fighters already are.
+        /// </summary>
+        private string[] DefaultLineUp()
+        {
+            string[] names = Systems_FighterIdentity.PickableNames;
             int slotCount = _spawner.SlotCount;
-            var defaults = new int[slotCount];
-            int rosterLength = _spawner.Roster.Length;
+            var defaults = new string[slotCount];
             for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
             {
-                defaults[slotIndex] = slotIndex < rosterLength ? slotIndex : -1;
+                defaults[slotIndex] = slotIndex < names.Length
+                    ? names[slotIndex]
+                    : Systems_FighterIdentity.EmptyPick;
             }
-            _spawner.SpawnAndBegin(defaults);
+            return defaults;
         }
     }
 }

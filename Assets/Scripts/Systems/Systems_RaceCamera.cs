@@ -30,9 +30,15 @@ namespace PoBox
         [SerializeField] private Vector3 _goalDirection = Vector3.forward;
         /// <summary>
         /// Where the finish line sits, as a projection along
-        /// <see cref="_goalDirection"/>. Recorded for diagnostics and for
-        /// anything that wants to reason about the lane; the shot itself is
-        /// framed on the pack, not on the tape.
+        /// <see cref="_goalDirection"/>, measured from the start line. MUST EQUAL
+        /// the referee's <c>Systems_WalkContest._goalDistance</c>; it is recorded
+        /// for diagnostics and for anything that wants to reason about the lane.
+        ///
+        /// The shot itself is framed on the pack, not on the tape, and nothing
+        /// reads this at runtime — which is why it sat at 2.8 while the race ran
+        /// 5.6 m, a stale number any future reasoning about the lane would have
+        /// trusted. It is 5.6 now, and the warning above is the thing that
+        /// notices when the layout and the shot disagree.
         ///
         /// Pinning the camera AT the tape was tried and reverted. It does put
         /// the finish line on screen, but only by sitting closer to the pack
@@ -45,12 +51,24 @@ namespace PoBox
         /// racers are cut off is worse than one whose tape is off-camera, and
         /// the plates carry the distance to the metre either way.
         /// </summary>
-        [SerializeField] private float _goalProjection = 2.8f;
+        [SerializeField] private float _goalProjection = 5.6f;
         // What the shot must hold across the lane, at its widest: the field is
-        // four racers at 1.1 m spacing = 3.3 m centre to centre, plus a body
+        // FOUR racers at 1.1 m spacing = 3.3 m centre to centre, plus a body
         // width of margin each side. Anything tighter loses the outside lanes
         // the moment a racer strays; anything wider throws away frame on empty
         // ground.
+        //
+        // THIS NUMBER IS A CONSTRAINT ON THE START LINE, NOT JUST A CAMERA
+        // SETTING. It is what decides how many racers can stand abreast, and on
+        // a portrait phone it is the binding limit on the whole race: at 9:16 a
+        // 60 degree vertical FOV is ~36 degrees across, so 4.4 m of frame needs
+        // about 6.8 m of standoff and 6.6 m of frame would need 10.2 m — at which
+        // point a 1.7 m fighter is a seventh of the picture and the race is
+        // unwatchable, which is exactly what the shot this file replaced did
+        // wrong. So the line is four, and Systems_FighterIdentity.PickableNames
+        // is ordered to put the coded bot inside those four. Widen the line and
+        // the warning fires rather than shipping a race with half the field
+        // outside the frame.
         [SerializeField] private float _maxFrameWidth = 4.4f;
         /// <summary>
         /// Floor on the frame width, which is what the shot tightens to once the
@@ -119,7 +137,14 @@ namespace PoBox
         /// </summary>
         private void Bind()
         {
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            // Active fighters only, which is not a detail: the launcher settles
+            // the line-up by standing down the author-placed bodies nobody picked,
+            // and a camera that bound to those would frame and follow fighters
+            // that are not in the race. The default FindObjectsByType overload
+            // already excludes inactive objects; what matters is that the running
+            // order is defined (Systems_MiniGameLauncher is -500) so this reads a
+            // settled ring rather than half of one.
+            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Exclude);
             if (_rigs.Length == 0)
             {
                 return;
@@ -134,12 +159,75 @@ namespace PoBox
             _lookPoint = PackCentroid() + Vector3.up * _lookHeight;
             transform.position = SolvePosition(PackCentroid());
             _ready = true;
+            WarnIfStartLineTooWide();
+        }
+
+        /// <summary>
+        /// Says so, loudly, when the start line is wider than the shot can hold.
+        ///
+        /// THIS IS THE CHECK THAT WAS MISSING when the race shipped six abreast
+        /// against a camera solved for four. Nothing failed: the camera did
+        /// exactly what it was told, clamped its frame to <see cref="_maxFrameWidth"/>
+        /// and the two outermost racers were simply never in the picture. A
+        /// layout that cannot fit the camera pointed at it is worth a line in the
+        /// log, because the alternative is finding it by eye on a phone — which is
+        /// how this one was found.
+        ///
+        /// Measured at bind time, on the start marks, before anyone has moved.
+        /// </summary>
+        private void WarnIfStartLineTooWide()
+        {
+            if (_rigs.Length == 0)
+            {
+                return;
+            }
+            Vector3 lateral = Vector3.Cross(Vector3.up, _goalDirection).normalized;
+            float min = float.MaxValue;
+            float max = float.MinValue;
+            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            {
+                float offset = Vector3.Dot(_rigs[rigIndex].Pelvis.position, lateral);
+                min = Mathf.Min(min, offset);
+                max = Mathf.Max(max, offset);
+            }
+            float lineWidth = max - min + _frameSideMargin * 2f;
+            if (lineWidth <= _maxFrameWidth + 0.01f)
+            {
+                return;
+            }
+            Debug.LogWarning($"Systems_RaceCamera: the start line is {lineWidth:F2} m across but this " +
+                $"shot holds {_maxFrameWidth:F2} m, so the outermost racers are outside the frame. " +
+                "Narrow the line (Systems_ContestSpawner's slot override) or raise _maxFrameWidth — " +
+                "and raising it trades the racers' size on a phone for the extra width.");
+        }
+
+        /// <summary>
+        /// True once any racer it bound to has gone — the line-up was rebuilt
+        /// under it, which is what a scene reload or a re-entered contest does.
+        /// Checked every frame so the camera re-binds instead of aiming at a
+        /// destroyed body.
+        /// </summary>
+        private bool AnyRacerLost()
+        {
+            if (_rigs == null)
+            {
+                return true;
+            }
+            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            {
+                if (_rigs[rigIndex] == null || !_rigs[rigIndex].gameObject.activeInHierarchy)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void LateUpdate()
         {
-            if (!_ready)
+            if (!_ready || AnyRacerLost())
             {
+                _ready = false;
                 Bind();
                 return;
             }

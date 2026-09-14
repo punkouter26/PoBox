@@ -18,6 +18,13 @@ namespace PoBox
         private const float PULSE_INTENSITY = 0.45f;
         private const float SLOWMO_SCALE = 0.35f;
         private const float SLOWMO_REAL_SECONDS = 1.4f;
+        /// <summary>
+        /// Name this beat is held under. See Systems_GameClock. This class used
+        /// to be the only one of four timeScale writers that checked the clock
+        /// still held its own value before restoring — correct, but a check that
+        /// belongs in one place rather than in whichever caller remembered it.
+        /// </summary>
+        private const string SlowmoOwner = "KnockoutFx";
 
         [SerializeField] private Volume _volume;
 
@@ -55,7 +62,7 @@ namespace PoBox
 
         private void OnDestroy()
         {
-            Time.timeScale = 1f;
+            Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
             if (_contest != null)
             {
                 _contest.RoundEnded -= OnRoundEnded;
@@ -69,7 +76,7 @@ namespace PoBox
 
         private void OnDisable()
         {
-            Time.timeScale = 1f;
+            Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
         }
 
         private void OnFighterFell(Vector3 position)
@@ -80,15 +87,16 @@ namespace PoBox
         private void OnRoundEnded(string winnerName)
         {
             _slowmoRemaining = SLOWMO_REAL_SECONDS;
-            Time.timeScale = SLOWMO_SCALE;
+            Systems_GameClock.RequestSlowmo(SlowmoOwner, SLOWMO_SCALE);
             _pulseRemaining = PULSE_SECONDS * 2f;
         }
 
         private void OnRoundStarted(int round)
         {
-            // Cancel a pending slow-mo but do NOT touch timeScale here — the
-            // round countdown freezes time at round start and owns the clock.
+            // Cancel a pending slow-mo but do NOT touch the clock here — the
+            // round countdown freezes time at round start and owns that freeze.
             _slowmoRemaining = 0f;
+            Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
         }
 
         private void Update()
@@ -98,11 +106,11 @@ namespace PoBox
             if (_slowmoRemaining > 0f)
             {
                 _slowmoRemaining -= dt;
-                // Restore only from our own slow-mo — never overwrite the
-                // countdown's freeze (timeScale 0).
-                if (_slowmoRemaining <= 0f && Mathf.Approximately(Time.timeScale, SLOWMO_SCALE))
+                // Only ever gives up ITS OWN request. The countdown's freeze is
+                // a separate request the clock resolves, so it survives this.
+                if (_slowmoRemaining <= 0f)
                 {
-                    Time.timeScale = 1f;
+                    Systems_GameClock.ReleaseSlowmo(SlowmoOwner);
                 }
             }
 

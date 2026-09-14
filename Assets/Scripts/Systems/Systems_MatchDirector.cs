@@ -20,6 +20,15 @@ namespace PoBox
 
         public event System.Action<string> ChampionCrowned;
 
+        /// <summary>True once the match is decided and the celebration is running.</summary>
+        public bool MatchDecided => _matchOver;
+
+        /// <summary>Who won the match, or "" while it is undecided.</summary>
+        public string Champion { get; private set; } = string.Empty;
+
+        /// <summary>Rounds each fighter has won, for the smoke test's flow check.</summary>
+        public System.Collections.Generic.IReadOnlyDictionary<string, int> Wins => _wins;
+
         private Systems_ContestReferee _contest;
         private readonly System.Collections.Generic.Dictionary<string, int> _wins = new();
         private readonly System.Collections.Generic.Dictionary<string, Color> _colors = new();
@@ -33,6 +42,33 @@ namespace PoBox
             if (_contest == null)
             {
                 return;
+            }
+
+            // A MATCH NEEDS MORE THAN ONE ROUND, SO THIS IS A CONTRADICTION.
+            //
+            // This component exists to crown the fighter that wins
+            // ROUNDS_TO_WIN rounds, and it does that by counting them. If the
+            // referee is configured not to start a second round, the count can
+            // never pass one: no champion is ever crowned, this component's
+            // celebration never runs and the scene is never reloaded — the match
+            // ends in the frozen aftermath of round one and the only way out is
+            // the menu button.
+            //
+            // That is not hypothetical, it is what both shipping scenes did from
+            // 2026-09-08: the commit that introduced the two-referee base class
+            // also serialized `_restartRoundsAutomatically: 0` into them, which
+            // makes Systems_ContestReferee.HoldRestarts permanently true. Nothing
+            // failed — the rounds simply stopped, in silence. Reported rather than
+            // corrected, because which of the two is wrong is a design decision:
+            // either the match wants several rounds, or the contest is one round
+            // and does not want a match director.
+            if (_contest.HoldRestarts)
+            {
+                Debug.LogError("Systems_MatchDirector: the referee is set not to start another round, " +
+                    "so a " + ROUNDS_TO_WIN + "-round match can never be decided — no champion will be " +
+                    "crowned and this scene will never reload. Either enable " +
+                    "'Restart Rounds Automatically' on the referee, or remove this component if the " +
+                    "contest is meant to be a single round.");
             }
             // Share the referee's HUD document instead of owning a panel.
             var root = _contest.GetComponent<UIDocument>().rootVisualElement;
@@ -81,6 +117,7 @@ namespace PoBox
             if (wins >= ROUNDS_TO_WIN)
             {
                 _matchOver = true;
+                Champion = winnerName;
                 _contest.HoldRestarts = true;
                 _celebrationRemaining = CELEBRATION_SECONDS;
                 ChampionCrowned?.Invoke(winnerName);
@@ -118,7 +155,12 @@ namespace PoBox
             _celebrationRemaining -= Time.unscaledDeltaTime;
             if (_celebrationRemaining <= 0f)
             {
-                Time.timeScale = 1f;
+                // The celebration may be running under the banner's slow-motion
+                // beat, and this scene is about to be destroyed along with every
+                // request in it. Clearing the whole clock here rather than
+                // flattening it to 1 is what stops a freeze held by the outgoing
+                // scene from following the reload in.
+                Systems_GameClock.RestoreAll("match decided — rematch reload");
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }

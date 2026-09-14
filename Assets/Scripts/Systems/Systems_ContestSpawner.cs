@@ -147,6 +147,10 @@ namespace PoBox
         /// </summary>
         private void Awake()
         {
+            // Reset per scene. This is static state read by another scene's HUD, so
+            // a value left over from a contest would be reported over a scene that
+            // has not fielded anyone yet.
+            LastFieldedCount = 0;
             Unity.MLAgents.CommunicatorFactory.Enabled = false;
 
             // HERE AS WELL AS IN SpawnAndBegin, BECAUSE HALF THE CONTEST SCENES
@@ -171,13 +175,63 @@ namespace PoBox
             EnsureSpectatorSystems(_systemsRoot);
         }
 
-        /// <summary>Spawns one fighter per slot (roster index, -1 = empty slot), then starts the contest.</summary>
-        public void SpawnAndBegin(int[] slotRosterIndices)
+        /// <summary>
+        /// How many fighters the last line-up actually fielded, or 0 in a scene
+        /// that has not spawned anyone.
+        ///
+        /// Published for the device HUD, which worked this out for itself by
+        /// sweeping every MonoBehaviour in the scene looking for IContestFighter
+        /// implementations — twice a second, allocating the whole component array
+        /// each time, in every scene including the menu, in the build whose open
+        /// item is frame rate. The spawner already knows the number exactly, at the
+        /// moment it knows it.
+        /// </summary>
+        public static int LastFieldedCount { get; private set; }
+
+        /// <summary>
+        /// Fields the line-up the menu chose — one NAME per slot, with
+        /// <see cref="Systems_FighterIdentity.EmptyPick"/> leaving a slot empty
+        /// — and then starts the contest.
+        ///
+        /// ADOPTS BEFORE IT SPAWNS. Both ships' scenes already contain one of
+        /// every fighter, standing on the marks the default line-up would put
+        /// them on, because they were authored that way before this path was
+        /// reachable. Spawning the line-up on top of them would double the ring:
+        /// six authored bodies plus six built ones, two of each name, and a
+        /// referee that discovers twelve contestants. So a slot is filled by the
+        /// author-placed fighter of that name when one is spare, and only
+        /// instantiated from the roster when there is none — which is the case
+        /// for a repeat of a name already adopted, and for a name the scene does
+        /// not place by hand.
+        ///
+        /// Unused author-placed fighters are STOOD DOWN, not destroyed. They
+        /// stay in the scene, inert and selectable in the Inspector, so the
+        /// authored cast can be inspected or restored by hand; destroying them
+        /// would also invalidate every reference the cameras and spectator
+        /// systems took to them when the scene loaded.
+        ///
+        /// A fighter that is adopted is MOVED to its slot, and that is safe for
+        /// a PhysX rig precisely because <c>ResetToStartPose</c> works in LOCAL
+        /// space — the captured start pose describes the body's own hierarchy, so
+        /// it stays valid wherever the root is put.
+        /// </summary>
+        public void SpawnAndBegin(string[] pickNames)
         {
+            pickNames = pickNames ?? System.Array.Empty<string>();
             int spawned = 0;
+            int adopted = 0;
+            bool requestedAnyFighter = false;
+            var unfilled = new List<string>();
             Vector3[] slots = ActiveSlots;
             Quaternion spawnRotation = Quaternion.Euler(_spawnEuler);
             var nameCounts = new int[_roster.Length];
+            List<PlacedFighter> placed = CollectPlacedFighters();
+            // Captured before the fallback below runs, because the fallback is
+            // what makes the "nothing was fielded" test unreachable if it is asked
+            // afterwards: it always leaves at least one fighter standing, so the
+            // condition that is supposed to warn about an empty ring could never be
+            // true. See the diagnostics after the spawn loop.
+            bool nothingFielded;
             // Fighters are built under an INACTIVE holder so Awake and OnEnable are
             // deferred until Configure has run. Instantiating straight into the scene
             // runs the Agent's LazyInitialize on the spot, which snapshots
@@ -192,13 +246,37 @@ namespace PoBox
             holder.SetActive(false);
             try
             {
-                for (int slotIndex = 0; slotIndex < slots.Length && slotIndex < slotRosterIndices.Length; slotIndex++)
+                for (int slotIndex = 0; slotIndex < slots.Length; slotIndex++)
                 {
-                    int rosterIndex = slotRosterIndices[slotIndex];
-                    if (rosterIndex < 0 || rosterIndex >= _roster.Length)
+                    string pick = slotIndex < pickNames.Length
+                        ? pickNames[slotIndex]
+                        : Systems_FighterIdentity.EmptyPick;
+                    if (string.IsNullOrEmpty(pick) || pick == Systems_FighterIdentity.EmptyPick)
                     {
                         continue;
                     }
+                    requestedAnyFighter = true;
+
+                    PlacedFighter standing = TakePlacedFighter(placed, pick);
+                    if (standing != null)
+                    {
+                        standing.host.SetActive(true);
+                        standing.host.transform.SetPositionAndRotation(slots[slotIndex], spawnRotation);
+                        adopted++;
+                        continue;
+                    }
+
+                    int rosterIndex = SpawnableRosterIndex(pick);
+                    if (rosterIndex < 0)
+                    {
+                        // A name with neither a body in the scene nor a prefab to
+                        // build one from. Reported rather than skipped quietly:
+                        // this is the failure the old index-based picks produced
+                        // with no message at all.
+                        unfilled.Add($"{pick} (slot {slotIndex + 1})");
+                        continue;
+                    }
+
                     ContestRosterEntry entry = _roster[rosterIndex];
                     nameCounts[rosterIndex]++;
                     string instanceName = nameCounts[rosterIndex] > 1
@@ -208,11 +286,26 @@ namespace PoBox
                         nameCounts[rosterIndex] - 1, rosterIndex);
                     spawned++;
                 }
-                if (spawned == 0 && _roster.Length > 0)
+
+                nothingFielded = spawned == 0 && adopted == 0;
+                if (nothingFielded && _roster.Length > 0
+                    && _roster[0] != null && _roster[0].prefab != null)
                 {
                     // Never start an empty ring — fall back to one default fighter.
+                    //
+                    // This also covers a line-up of nothing but EMPTY choices.
+                    // Honouring that literally would leave a ring with no
+                    // contestants, and the contest has no way out of one: no
+                    // round can end, so no champion is crowned and the scene is
+                    // never reloaded. One fighter on the mat is a worse match than
+                    // the player asked for and a far better one than a dead scene.
+                    //
+                    // Guarded on the prefab because Instantiate(null) throws, and a
+                    // throw here would land inside the spawn holder's try block and
+                    // take the whole line-up with it.
                     Spawn(_roster[0], holder.transform, slots[0], spawnRotation,
                         $"Contest_{_roster[0].displayName}", 0, 0);
+                    spawned++;
                 }
             }
             finally
@@ -220,6 +313,34 @@ namespace PoBox
                 // Without this a throw inside Configure strands the inactive holder
                 // — and the half-built fighter inside it — in the scene for good.
                 Destroy(holder);
+            }
+
+            int stoodDown = StandDownUnused(placed);
+            LastFieldedCount = adopted + spawned;
+
+            // One greppable line per contest, in the same spirit as CONTEST_ROUND
+            // and WALK_RESULT: "did the line-up I chose actually take the mat" was
+            // otherwise only answerable by watching the screen.
+            Debug.Log($"CONTEST_LINEUP | fielded={adopted + spawned} " +
+                $"(adopted={adopted} spawned={spawned} stoodDown={stoodDown}) | slots={slots.Length}");
+
+            if (unfilled.Count > 0)
+            {
+                Debug.LogError($"Systems_ContestSpawner: the line-up asks for {unfilled.Count} " +
+                    $"fighter(s) this scene cannot field — {string.Join(", ", unfilled)}. " +
+                    "Give that name a roster entry with a prefab, or place it in the scene. " +
+                    "(The menu's list is Systems_FighterIdentity.PickableNames; the scene's is " +
+                    "this spawner's roster.)");
+            }
+            if (nothingFielded)
+            {
+                Debug.LogError(requestedAnyFighter
+                    ? "Systems_ContestSpawner: a line-up was requested and nothing could be fielded for it, " +
+                      "so the ring is holding a stand-in. Check that the roster's prefabs are assigned and " +
+                      "that the fighters it names are in the scene."
+                    : "Systems_ContestSpawner: every slot was left empty, so the ring is holding a stand-in " +
+                      "rather than nothing at all — see the comment on that fallback for why an empty ring " +
+                      "is not an option.");
             }
 
             if (_systemsRoot != null)
@@ -238,6 +359,101 @@ namespace PoBox
             {
                 _dramaCamera.enabled = true;
             }
+        }
+
+        /// <summary>
+        /// One fighter that was standing in the scene when the contest began,
+        /// with the name it is known by.
+        /// </summary>
+        private sealed class PlacedFighter
+        {
+            public string name;
+            public GameObject host;
+        }
+
+        /// <summary>
+        /// Every fighter already in the scene, by display name: the PhysX rigs,
+        /// and anything answering <see cref="IContestFighter"/> — which is how
+        /// Nick gets into this list at all, having no prefab to be spawned from
+        /// and existing only as an authored object.
+        /// </summary>
+        private static List<PlacedFighter> CollectPlacedFighters()
+        {
+            var placed = new List<PlacedFighter>();
+            foreach (Systems_FighterRig rig in FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Include))
+            {
+                Systems_FighterIdentity.Resolve(rig, out string name, out _);
+                placed.Add(new PlacedFighter { name = name, host = rig.gameObject });
+            }
+            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
+            {
+                if (behaviour is IContestFighter fighter)
+                {
+                    placed.Add(new PlacedFighter { name = fighter.DisplayName, host = behaviour.gameObject });
+                }
+            }
+            return placed;
+        }
+
+        /// <summary>
+        /// Claims the first spare fighter of this name, REMOVING it from the
+        /// list so a second pick of the same name finds none and is built
+        /// instead. That is what makes a line-up of two of a kind work: the
+        /// first is the body already on the mat, the second is a new one.
+        /// </summary>
+        private static PlacedFighter TakePlacedFighter(List<PlacedFighter> placed, string name)
+        {
+            for (int index = 0; index < placed.Count; index++)
+            {
+                PlacedFighter candidate = placed[index];
+                if (candidate.host == null || !string.Equals(candidate.name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                placed.RemoveAt(index);
+                return candidate;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Stands down every fighter the line-up did not claim. Called after the
+        /// slots are filled, so what is left in the list is exactly what nobody
+        /// asked to fight.
+        /// </summary>
+        private static int StandDownUnused(List<PlacedFighter> placed)
+        {
+            int stoodDown = 0;
+            for (int index = 0; index < placed.Count; index++)
+            {
+                GameObject host = placed[index].host;
+                if (host == null || !host.activeSelf)
+                {
+                    continue;
+                }
+                host.SetActive(false);
+                stoodDown++;
+            }
+            return stoodDown;
+        }
+
+        /// <summary>
+        /// Roster index that can BUILD a fighter of this name, or -1 for a name
+        /// the roster cannot produce — which is every name the scene must supply
+        /// itself, Nick among them.
+        /// </summary>
+        private int SpawnableRosterIndex(string name)
+        {
+            for (int rosterIndex = 0; rosterIndex < _roster.Length; rosterIndex++)
+            {
+                ContestRosterEntry entry = _roster[rosterIndex];
+                if (entry != null && entry.prefab != null
+                    && string.Equals(entry.displayName, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return rosterIndex;
+                }
+            }
+            return -1;
         }
 
         // Called by the editor scene tool.
@@ -374,8 +590,22 @@ namespace PoBox
             var rig = instance.GetComponent<Systems_FighterRig>();
             var agent = instance.GetComponent<Agent_FighterBoxing>();
             var stamina = instance.GetComponent<Systems_Stamina>();
-            agent.MaxStep = 0; // the referee owns the round lifecycle
-            stamina.enabled = false;
+            if (agent != null) { agent.MaxStep = 0; }      // the referee owns the round lifecycle
+            if (stamina != null) { stamina.enabled = false; }
+
+            // A fighter that is NOT a PhysX rig — the MuJoCo creature answers
+            // IContestFighter instead — has no rig to hang fall sensors on and no
+            // agent to size. The ring referees it through that interface instead,
+            // so there is nothing here for it. Returning is the whole of its
+            // configuration, and it has to happen BEFORE the first unguarded
+            // dereference: `agent.MaxStep` on a null used to throw inside the
+            // inactive spawn holder, which takes the entire line-up down with it
+            // and leaves the ring empty. This is what makes such a fighter
+            // spawnable from a roster entry at all.
+            if (rig == null || agent == null)
+            {
+                return;
+            }
 
             // Fall sensors by role, not by joint index: the raptor's joint
             // list is a different shape than the humanoids', and gloves exist
@@ -419,6 +649,13 @@ namespace PoBox
             }
 
             var behavior = instance.GetComponent<BehaviorParameters>();
+            if (behavior == null)
+            {
+                // Same reasoning as the rig guard above: an agent with no
+                // BehaviorParameters cannot be given a brain or a sensor size,
+                // and the null dereference would land inside the spawn holder.
+                return;
+            }
             if (entry.locomotionBrain)
             {
                 agent.SetObserveLocomotionCommand(true);

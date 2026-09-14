@@ -24,15 +24,27 @@ namespace PoBox
     public sealed class Systems_MiniGameSelection : ScriptableObject
     {
         [SerializeField] private MiniGameKind _game;
-        [SerializeField] private int[] _picks = System.Array.Empty<int>();
+        [SerializeField] private string[] _picks = System.Array.Empty<string>();
         [SerializeField] private bool _hasSelection;
         // Survives Clear so a rematch can field the same line-up. See LastPicks.
-        [SerializeField] private int[] _lastPicks = System.Array.Empty<int>();
+        [SerializeField] private string[] _lastPicks = System.Array.Empty<string>();
 
         public MiniGameKind Game => _game;
 
-        /// <summary>Roster index per slot; -1 leaves that slot empty.</summary>
-        public int[] Picks => _picks;
+        /// <summary>
+        /// One fighter NAME per slot, or <see cref="Systems_FighterIdentity.EmptyPick"/>
+        /// to leave that slot empty.
+        ///
+        /// NAMES, NOT ROSTER INDICES, and that is the fix rather than a
+        /// preference. A pick used to travel as an index into the menu's own
+        /// fighter list, which the receiving scene read as an index into ITS
+        /// roster. The two lists were written down separately, agreed on five
+        /// names and disagreed on the sixth, so picking the sixth silently
+        /// emptied that slot. A name is either something the scene can field or
+        /// it is not; an index is only meaningful beside the list it came from,
+        /// and the list did not travel with it.
+        /// </summary>
+        public string[] Picks => _picks;
 
         /// <summary>False on a cold start, so a mini-game scene run directly still shows its own menu.</summary>
         public bool HasSelection => _hasSelection;
@@ -50,12 +62,12 @@ namespace PoBox
         /// a stale pick skipping the menu on a cold start); forgetting the picks
         /// themselves was not.
         /// </summary>
-        public int[] LastPicks => _lastPicks;
+        public string[] LastPicks => _lastPicks;
 
-        public void Set(MiniGameKind game, int[] picks)
+        public void Set(MiniGameKind game, string[] picks)
         {
             _game = game;
-            _picks = picks ?? System.Array.Empty<int>();
+            _picks = picks ?? System.Array.Empty<string>();
             _lastPicks = _picks;
             _hasSelection = true;
         }
@@ -63,7 +75,7 @@ namespace PoBox
         /// <summary>Consumed by the receiving scene so the selection is used exactly once.</summary>
         public void Clear()
         {
-            _picks = System.Array.Empty<int>();
+            _picks = System.Array.Empty<string>();
             _hasSelection = false;
         }
 
@@ -71,8 +83,8 @@ namespace PoBox
         {
             // Runtime state must not persist across sessions.
             _hasSelection = false;
-            _picks = System.Array.Empty<int>();
-            _lastPicks = System.Array.Empty<int>();
+            _picks = System.Array.Empty<string>();
+            _lastPicks = System.Array.Empty<string>();
         }
     }
 }

@@ -1,14 +1,24 @@
-﻿using Unity.Cinemachine;
+﻿using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
 namespace PoBox
 {
     /// <summary>
     /// Cinemachine winner shot: when a round ends, a virtual camera slowly
-    /// orbits the winner while the drama camera stands down; when the next
-    /// round starts, control returns to the drama camera. The Cinemachine
-    /// brain only drives the camera while the virtual camera is live.
+    /// orbits the winner while the ordinary spectator camera stands down; when
+    /// the next round starts, control returns to it. The Cinemachine brain only
+    /// drives the camera while the virtual camera is live.
     /// Test-scene harness only.
+    ///
+    /// IT WORKS IN BOTH CONTESTS, and had to be taught one thing to do so. The
+    /// ring assigns it a virtual camera and a drama camera in the scene; the walk
+    /// race has neither, so it builds its own rig and stands down whichever
+    /// spectator camera it finds — the race camera in the lane, the drama camera
+    /// in the ring. The one genuinely ring-specific thing it did was clamp its
+    /// orbit to stay inside the ropes, which in a lane would have dragged the
+    /// shot back to the START LINE, five metres behind the racer it is supposed
+    /// to be celebrating. The clamp is rope clearance; no ropes, no clamp.
     /// </summary>
     public sealed class Systems_WinnerCamera : MonoBehaviour
     {
@@ -88,6 +98,15 @@ namespace PoBox
         private Vector3 _ringCentre;
         private float _groundY;
         private bool _active;
+        /// <summary>
+        /// True when this arena has ropes to stay inside. False in the walk lane,
+        /// where the clamp would pull the shot back down the track.
+        /// </summary>
+        private bool _clampInsideRopes;
+        /// <summary>Spectator cameras this shot stood down, and what it owes them.</summary>
+        private List<Behaviour> _suspended;
+        /// <summary>The camera it drives, when it had to build its own rig.</summary>
+        private Camera _drivenCamera;
 
         // Called by the editor scene tool.
         public void EditorInitialize(CinemachineCamera virtualCamera, Systems_DramaCamera dramaCamera)
@@ -98,21 +117,108 @@ namespace PoBox
 
         private void Start()
         {
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Exclude);
             // Both sampled while everyone is still on their spawn mark and
             // upright — see RingCentre.
             _ringCentre = RingCentre();
             _groundY = _rigs.Length > 0 ? _rigs[0].GroundY : 0f;
-            _contest = FindFirstObjectByType<Systems_ContestReferee>();
+            // Ropes are the only reason to clamp the orbit at all. Asked of the
+            // scene rather than assumed, so the same shot works in the lane.
+            _clampInsideRopes = FindAnyObjectByType<Systems_RingRopes>() != null;
+            _contest = FindAnyObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundEnded += OnRoundEnded;
                 _contest.RoundStarted += OnRoundStarted;
             }
+            EnsureVirtualCamera();
             if (_virtualCamera != null)
             {
                 _virtualCamera.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>
+        /// Builds the rig when the scene did not provide one, which is the walk
+        /// race: no virtual camera, no brain, no drama camera — the race camera
+        /// writes the transform directly. Built in code for the same reason
+        /// <see cref="Systems_DramaCamera"/> builds its own, that a scene needing
+        /// a new component is a scene that has to be regenerated, and these
+        /// scenes are hand-authored (CLAUDE.md).
+        /// </summary>
+        private void EnsureVirtualCamera()
+        {
+            if (_virtualCamera != null)
+            {
+                return;
+            }
+            _drivenCamera = GetComponent<Camera>() != null ? GetComponent<Camera>() : Camera.main;
+            if (_drivenCamera == null)
+            {
+                Debug.LogWarning($"{name}: no virtual camera assigned and no camera to drive — " +
+                    "winners will be crowned with nothing to watch.");
+                return;
+            }
+            if (_drivenCamera.GetComponent<CinemachineBrain>() == null)
+            {
+                _drivenCamera.gameObject.AddComponent<CinemachineBrain>();
+            }
+            var host = new GameObject("CM_WinnerCamera_Runtime");
+            host.transform.SetParent(transform, false);
+            _virtualCamera = host.AddComponent<CinemachineCamera>();
+            _virtualCamera.Lens = LensSettings.Default;
+            _virtualCamera.Lens.FieldOfView = ORBIT_FOV;
+            // Above 0: the spectator cameras sit at -10 and -20 so this one
+            // outranks them simply by being enabled, which is how the ring's
+            // scene assigns it too.
+            _virtualCamera.Priority = 0;
+            host.AddComponent<CinemachineImpulseListener>();
+        }
+
+        /// <summary>
+        /// Stands the ordinary spectator camera down for the winner shot and puts
+        /// it back afterwards — WHICHEVER ONE THE SCENE HAS. The ring has a
+        /// <see cref="Systems_DramaCamera"/> and the lane has a
+        /// <see cref="Systems_RaceCamera"/>, and both write the transform of the
+        /// camera the brain is driving. Two things steering one camera is a fight
+        /// the winner shot loses on the frames it matters most.
+        /// </summary>
+        private void SuspendSpectators(bool suspend)
+        {
+            if (suspend)
+            {
+                if (_suspended != null)
+                {
+                    return;
+                }
+                _suspended = new List<Behaviour>();
+                foreach (Systems_DramaCamera drama in FindObjectsByType<Systems_DramaCamera>(FindObjectsInactive.Exclude))
+                {
+                    if (drama.enabled && drama != _dramaCamera) { _suspended.Add(drama); }
+                }
+                foreach (Systems_RaceCamera race in FindObjectsByType<Systems_RaceCamera>(FindObjectsInactive.Exclude))
+                {
+                    if (race.enabled) { _suspended.Add(race); }
+                }
+                if (_dramaCamera != null && _dramaCamera.enabled)
+                {
+                    _suspended.Add(_dramaCamera);
+                }
+                for (int index = 0; index < _suspended.Count; index++)
+                {
+                    _suspended[index].enabled = false;
+                }
+                return;
+            }
+            if (_suspended == null)
+            {
+                return;
+            }
+            for (int index = 0; index < _suspended.Count; index++)
+            {
+                if (_suspended[index] != null) { _suspended[index].enabled = true; }
+            }
+            _suspended = null;
         }
 
         private void OnDestroy()
@@ -121,6 +227,12 @@ namespace PoBox
             {
                 _contest.RoundEnded -= OnRoundEnded;
                 _contest.RoundStarted -= OnRoundStarted;
+            }
+            SuspendSpectators(false);
+            if (_drivenCamera != null && _virtualCamera != null)
+            {
+                // Only the rig this built; an assigned camera belongs to the scene.
+                Destroy(_virtualCamera.gameObject);
             }
         }
 
@@ -139,6 +251,22 @@ namespace PoBox
                     break;
                 }
             }
+            if (_focus == null)
+            {
+                // A fighter that is not a PhysX rig cannot be found by a rig
+                // sweep, and it can still win — the creature races in the lane.
+                // Without this a round it won was crowned with no winner shot at
+                // all, which reads as the camera having lost interest.
+                foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude))
+                {
+                    if (behaviour is IContestFighter fighter
+                        && string.Equals(fighter.DisplayName, winnerName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        _focus = behaviour.transform;
+                        break;
+                    }
+                }
+            }
             if (_focus == null || _virtualCamera == null)
             {
                 return;
@@ -146,10 +274,7 @@ namespace PoBox
             _active = true;
             _angleDegrees = ORBIT_START_DEGREES;
             _virtualCamera.Lens.FieldOfView = ORBIT_FOV;
-            if (_dramaCamera != null)
-            {
-                _dramaCamera.enabled = false;
-            }
+            SuspendSpectators(true);
             // Assigned for the inspector's benefit and in case an aim component
             // is ever added; LateUpdate is what actually points the camera.
             _virtualCamera.LookAt = _focus;
@@ -163,10 +288,7 @@ namespace PoBox
             {
                 _virtualCamera.gameObject.SetActive(false);
             }
-            if (_dramaCamera != null)
-            {
-                _dramaCamera.enabled = true;
-            }
+            SuspendSpectators(false);
         }
 
         private void LateUpdate()
@@ -186,13 +308,21 @@ namespace PoBox
             // through the ropes. Clamping the RADIUS rather than refusing to move
             // keeps the shot going round — it just tightens on the near side
             // instead of stepping outside.
-            Vector3 fromCentre = position - _ringCentre;
-            fromCentre.y = 0f;
-            float distance = fromCentre.magnitude;
-            if (distance > MAX_ORBIT_DISTANCE_FROM_CENTRE)
+            //
+            // ONLY WHERE THERE ARE ROPES. This clamp is rope clearance and
+            // nothing else, and in the walk lane the "centre" it pulls toward is
+            // the start line — so applying it there dragged the camera five
+            // metres back down the track, away from the racer it was celebrating.
+            if (_clampInsideRopes)
             {
-                Vector3 pulled = _ringCentre + fromCentre * (MAX_ORBIT_DISTANCE_FROM_CENTRE / distance);
-                position = new Vector3(pulled.x, position.y, pulled.z);
+                Vector3 fromCentre = position - _ringCentre;
+                fromCentre.y = 0f;
+                float distance = fromCentre.magnitude;
+                if (distance > MAX_ORBIT_DISTANCE_FROM_CENTRE)
+                {
+                    Vector3 pulled = _ringCentre + fromCentre * (MAX_ORBIT_DISTANCE_FROM_CENTRE / distance);
+                    position = new Vector3(pulled.x, position.y, pulled.z);
+                }
             }
 
             // Rotation is driven here, not left to LookAt.

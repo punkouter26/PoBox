@@ -74,8 +74,10 @@ namespace PoBox
             // nothing, so there is no reason to withhold it from the menu.
             go.AddComponent<Systems_PerfTelemetry>();
             // Frame-cost attribution rides along in the scenes that have a
-            // creature to attribute. Diagnostic, and temporary.
-            if (SceneManager.GetActiveScene().name != MENU_SCENE)
+            // creature to attribute, and ONLY when it was asked for. It is a
+            // measurement that switches the creature's brain and physics off in
+            // turn, so it must not run in a session nobody opted into.
+            if (SceneManager.GetActiveScene().name != MENU_SCENE && Systems_MuJoCoProfile.Enabled)
             {
                 go.AddComponent<Systems_MuJoCoProfile>();
             }
@@ -337,11 +339,11 @@ namespace PoBox
 
             int noBrain = 0;
             int down = 0;
-            int total = 0;
+            int rigsFound = 0;
             foreach (Systems_FighterRig rig in FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.None))
             {
                 if (rig == null) { continue; }
-                total++;
+                rigsFound++;
                 if (rig.transform.position.y < 0.35f) { down++; }
 
                 // A fighter on HeuristicOnly in a contest scene is one whose
@@ -360,11 +362,16 @@ namespace PoBox
                 }
             }
 
-            foreach (MonoBehaviour component in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
-            {
-                if (component is IContestFighter) { total++; }
-            }
-
+            // Everything that took the mat, including a contestant that is NOT a
+            // Systems_FighterRig — the creature is refereed through IContestFighter
+            // from another assembly and no rig sweep can see him. Read from the
+            // spawner because working it out here meant sweeping every MonoBehaviour
+            // in the scene twice a second, allocating the whole component array each
+            // time, in every scene including the menu. Falls back to the rig count
+            // for a scene that fields its fighters by hand and so never spawns.
+            int total = Systems_ContestSpawner.LastFieldedCount > 0
+                ? Systems_ContestSpawner.LastFieldedCount
+                : rigsFound;
             // Worst first: a fighter with no brain is a broken build; a fighter
             // on the floor may just be losing.
             if (noBrain > 0) { lines.Add($"{noBrain} fighter(s) fell back to the coded bot — brain refused"); }
@@ -399,6 +406,14 @@ namespace PoBox
         private static void GoToMenu()
         {
             if (SceneManager.GetActiveScene().name == MENU_SCENE) { return; }
+            // THE ESCAPE HATCH HAS TO RESET THE CLOCK, and it is the one route
+            // out of a scene that does not go through the referee. Pressed during
+            // a round countdown — when a freeze is being held — loading the menu
+            // without this put the player on a menu with physics stopped and no
+            // countdown left alive to release it. The contest's own "‹ MENU"
+            // button always did this; this button did not, which is exactly the
+            // asymmetry a shared escape hatch is supposed to remove.
+            Systems_GameClock.RestoreAll("device HUD MENU");
             SceneManager.LoadScene(0);   // Build_Android.SHIP_SCENES puts SCN_MENU at 0
         }
     }

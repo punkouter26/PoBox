@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 namespace PoBox
 {
@@ -103,10 +104,40 @@ namespace PoBox
         /// object dragged into each by hand is three chances for them to drift
         /// apart — and the training scenes, which are regenerated wholesale,
         /// would lose theirs on the next regeneration without anyone noticing.
+        ///
+        /// AND, LIKE THE HUD, IT HAS TO RE-INSTALL ITSELF. This is the one thing
+        /// the first version of this class got wrong, in exactly the way
+        /// Systems_DeviceHud's own comment records having got it wrong before:
+        /// RuntimeInitializeOnLoadMethod fires ONCE PER APPLICATION START, not
+        /// once per scene load. The object it made was not DontDestroyOnLoad (no
+        /// singletons, project rule), so it belonged to SCN_MENU and was
+        /// destroyed the moment the player pressed START — and nothing ever made
+        /// another one. The result was a mix that existed only on the menu, where
+        /// there is no crowd to duck and no bell to duck it for: every contest
+        /// ran with no busses, no master volume and no ducking, and the persisted
+        /// volume settings drove nothing at all. Nothing threw, because
+        /// <see cref="Route"/> is null-safe by design — a missing mix is a
+        /// supported configuration, which is precisely why its absence was
+        /// invisible.
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
+            Spawn();
+            // Static subscription, per-scene objects: the handler outlives every
+            // mix it makes, and each scene load needs its own.
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) => Spawn();
+
+        private static void Spawn()
+        {
+            // An additive load, or a re-entered scene, must not get a second mix:
+            // two would both write Time-scaled gains to the same sources and
+            // fight over the mixer's parameters.
+            if (FindFirstObjectByType<Systems_AudioMix>() != null) { return; }
             var host = new GameObject("AudioMix");
             host.AddComponent<Systems_AudioMix>();
         }

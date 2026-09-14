@@ -491,8 +491,18 @@ namespace PoBox
             // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
             // standing until its head was practically on the floor and this never
             // fired in the contest at all.
-                float headFraction =
-                    (rig.Head.position.y - rig.GroundY) / _startHeadHeights[rigIndex];
+            //
+            // AND THE DIVISOR IS FLOORED, for the same reason and in the same
+            // form Systems_ColourCommentary already uses for this exact
+            // expression. _startHeadHeights is captured in Discover() without
+            // waiting for the referee to put the fighters back on their marks, so
+            // a rig sampled mid-drop can be measured at close to its own ground
+            // level. Dividing by that gives an infinity, the infinity becomes a
+            // NaN the first time it is Lerped, and a NaN wobble never recovers:
+            // every comparison against it is false, so the camera stops choosing
+            // a subject at all and holds whatever shot it had.
+            float headFraction = (rig.Head.position.y - rig.GroundY)
+                / Mathf.Max(0.01f, _startHeadHeights[rigIndex]);
                 bool standing = headFraction > STANDING_HEAD_FRACTION;
                 float wobble = 1f - Mathf.Clamp01(headFraction)
                     + rig.Pelvis.angularVelocity.magnitude * ANGULAR_VELOCITY_DRAMA_SCALE;

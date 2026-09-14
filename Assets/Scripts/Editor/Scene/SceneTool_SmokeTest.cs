@@ -275,7 +275,18 @@ namespace PoBox.Editor
 
             var rigs = UnityEngine.Object.FindObjectsByType<Systems_FighterRig>(
                 FindObjectsInactive.Include);
-            sb.AppendLine($"fighters\t{rigs.Length}");
+            int standingRigs = rigs.Count(r => r.gameObject.activeInHierarchy);
+            sb.AppendLine($"fighters\t{standingRigs}");
+            if (standingRigs != rigs.Length)
+            {
+                // The difference is the line-up the launcher declined to field.
+                // Reported separately because "the ring holds six" and "the ring
+                // holds six and races four" are different facts, and the second is
+                // what the player sees.
+                sb.AppendLine($"stoodDown\t{rigs.Length - standingRigs}");
+            }
+
+            AppendFlow(sb);
 
             foreach (var rig in rigs.OrderBy(r => r.name, StringComparer.Ordinal))
             {
@@ -340,6 +351,64 @@ namespace PoBox.Editor
         private static string Fmt(float value) =>
             value.ToString("0.###", CultureInfo.InvariantCulture);
 
+        /// <summary>Where the flow verdict for a scene is parked between scenes.</summary>
+        private static string FlowKey(int index) => $"PoBox.Smoke.Flow.{index}";
+
+        /// <summary>
+        /// The state flow, ASSERTED rather than described: can a round end, does
+        /// another begin, can the match be decided, will the scene come back.
+        ///
+        /// A SMOKE TEST THAT ONLY COUNTS EXCEPTIONS CANNOT SEE THIS, and that is
+        /// not hypothetical. Both shipping scenes ran a clean 20 s with zero
+        /// errors while their match was impossible to win: the referee was
+        /// configured never to start a second round, so the three-round match could
+        /// never be decided, no champion was ever crowned and the scene was never
+        /// reloaded for a rematch. Nothing threw. The loop was simply dead, and the
+        /// only symptom was a player looking at the aftermath of round one with no
+        /// way forward but the menu button.
+        ///
+        /// The decisive check is therefore STRUCTURAL and instant — a referee that
+        /// will not restart paired with a match director that needs three rounds is
+        /// a contradiction, and it can be read off in the first frame rather than
+        /// waited for. The round counters are reported beside it as telemetry
+        /// without being asserted, because a 20 s window is not long enough to
+        /// promise a round has FINISHED: the ring allows a round to run 30 s.
+        /// </summary>
+        private static void AppendFlow(StringBuilder sb)
+        {
+            var referee = UnityEngine.Object.FindAnyObjectByType<Systems_ContestReferee>();
+            var director = UnityEngine.Object.FindAnyObjectByType<Systems_MatchDirector>();
+
+            if (referee == null)
+            {
+                sb.AppendLine("flow\tno-referee");
+                return;
+            }
+
+            bool cannotFinish = director != null && !referee.RestartsAutomatically;
+            sb.AppendLine(string.Join("\t",
+                "flow",
+                $"restartsAutomatically={referee.RestartsAutomatically}",
+                $"roundsStarted={referee.RoundsStarted}",
+                $"roundsEnded={referee.RoundsEnded}",
+                $"matchDirector={(director != null ? "yes" : "no")}",
+                $"matchDecided={director != null && director.MatchDecided}",
+                $"champion={(director != null && director.Champion.Length > 0 ? director.Champion : "(none)")}",
+                $"verdict={(cannotFinish ? "BROKEN" : "ok")}"));
+
+            if (cannotFinish)
+            {
+                Debug.LogError("SceneTool_SmokeTest: state flow BROKEN — the referee will not start " +
+                    "another round and a match director needs three, so no champion can be crowned and " +
+                    "this scene will never reload.");
+            }
+            else if (referee.RoundsEnded == 0)
+            {
+                // Not a failure: a balance round may legitimately still be running.
+                Debug.Log($"SceneTool_SmokeTest: no round had ended after {SecondsPerScene:0} s.");
+            }
+        }
+
         // ------------------------------------------------------------------
         // Report
         // ------------------------------------------------------------------
@@ -384,8 +453,24 @@ namespace PoBox.Editor
 
                 if (File.Exists(DataPath(i)))
                 {
+                    string data = File.ReadAllText(DataPath(i));
+                    // Lifted out of the block below as well as left in it: the flow
+                    // verdict is the one line a reader should not have to scan a
+                    // snapshot for, and it is the only line here that can say the
+                    // game is unshippable while every error count is zero.
+                    string flow = data
+                        .Split('\n')
+                        .FirstOrDefault(line => line.StartsWith("flow\t", StringComparison.Ordinal));
+                    if (!string.IsNullOrEmpty(flow))
+                    {
+                        bool broken = flow.Contains("verdict=BROKEN");
+                        sb.AppendLine(broken
+                            ? $"**State flow: BROKEN.** `{flow.Trim()}`"
+                            : $"State flow: OK. `{flow.Trim()}`");
+                        sb.AppendLine();
+                    }
                     sb.AppendLine("```");
-                    sb.AppendLine(File.ReadAllText(DataPath(i)).TrimEnd());
+                    sb.AppendLine(data.TrimEnd());
                     sb.AppendLine("```");
                 }
                 else

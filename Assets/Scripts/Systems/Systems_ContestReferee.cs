@@ -64,9 +64,30 @@ namespace PoBox
         /// <summary>Editor-time setup: see <see cref="_restartRoundsAutomatically"/>.</summary>
         public void EditorSetAutomaticRestarts(bool restart) => _restartRoundsAutomatically = restart;
 
-        protected void RaiseRoundEnded(string winnerName) => RoundEnded?.Invoke(winnerName);
+        /// <summary>
+        /// Whether the referee starts a fresh round when one ends. False is a
+        /// legal configuration and a fatal one to pair with a match director —
+        /// see Systems_MatchDirector's startup check.
+        /// </summary>
+        public bool RestartsAutomatically => _restartRoundsAutomatically;
 
-        protected void RaiseRoundStarted(int round) => RoundStarted?.Invoke(round);
+        /// <summary>Rounds this referee has begun, for the smoke test's flow check.</summary>
+        public int RoundsStarted { get; private set; }
+
+        /// <summary>Rounds this referee has resolved, for the smoke test's flow check.</summary>
+        public int RoundsEnded { get; private set; }
+
+        protected void RaiseRoundEnded(string winnerName)
+        {
+            RoundsEnded++;
+            RoundEnded?.Invoke(winnerName);
+        }
+
+        protected void RaiseRoundStarted(int round)
+        {
+            RoundsStarted++;
+            RoundStarted?.Invoke(round);
+        }
 
         protected void RaiseFighterFell(string fighterName) => FighterFell?.Invoke(fighterName);
 
@@ -121,7 +142,11 @@ namespace PoBox
         /// </summary>
         private static void LoadMenuScene()
         {
-            Time.timeScale = 1f;
+            // The round countdown parks the clock at 0 and the knockout FX at
+            // 0.35, and either would carry into the menu and freeze it. Clearing
+            // every outstanding request is what makes that true for the request
+            // nobody remembered to release as well as the two we know about.
+            Systems_GameClock.RestoreAll("‹ MENU from the contest");
             if (SceneManager.sceneCountInBuildSettings > 0)
             {
                 SceneManager.LoadScene(0);

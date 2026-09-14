@@ -19,22 +19,37 @@ namespace PoBox
     [RequireComponent(typeof(UIDocument))]
     public sealed class Systems_MiniGameMenu : MonoBehaviour
     {
-        private const string EMPTY_CHOICE = "Empty";
+        private const string EMPTY_CHOICE = Systems_FighterIdentity.EmptyPick;
         private const int BALANCE_SLOTS = 8;
-        // The walk race fields the same six as the ring. This was 4, so the
-        // start line advertised four racers and six ran.
-        private const int WALK_SLOTS = 6;
+        // The walk race fields FOUR, and that is a camera constraint rather than
+        // a taste one. A portrait 9:16 frame is 0.5625 as wide as it is tall, so
+        // a 60 degree vertical FOV is about 36 degrees across: Systems_RaceCamera
+        // can hold 4.4 m of lane width and no more, which is four racers at the
+        // 1.1 m spacing this line keeps. This was raised to 6 to match a start
+        // line that had been widened to six abreast, and the camera was never
+        // widened with it — so the two outermost racers stood outside the shot
+        // and the outer two were clipped in half at the gun. It is 4 again, and
+        // the start line is authored to hold 4.
+        private const int WALK_SLOTS = 4;
 
         [SerializeField] private Systems_MiniGameSelection _selection;
         // Names offered per slot, in the same order as the receiving scene's
-        // spawner roster — the pick is sent across as that roster index.
-        // MUST MATCH THE FIGHTERS THE CONTEST SCENES ACTUALLY FIELD. Both
-        // SCN_TEST_*_CONTEST place five Systems_FighterRig plus Nick, who is
-        // refereed through IContestFighter from another assembly -- so a sweep
-        // that only looks at rigs does not see him, and this list did not
-        // either. The menu offered five fighters for a six-fighter ring and
-        // Nick appeared on the scoreboard having never been listed.
-        [SerializeField] private string[] _fighterNames = { "Standard", "Grandma", "Grandpa", "Raptor", "Bot", "Nick" };
+        // spawner roster — the pick is sent across as that NAME.
+        //
+        // THE LIST IS NOT HERE. It was, as a serialized `_fighterNames`, and it
+        // drifted from the roster it claimed to mirror: both were written down
+        // by hand, both agreed on five names, and this one had a sixth the ring
+        // had no prefab for. The shared list is
+        // Systems_FighterIdentity.PickableNames, so the menu and the scene it
+        // feeds cannot disagree about what exists.
+        //
+        // A sweep that only looks at rigs also does not see Nick: both contest
+        // scenes place five Systems_FighterRig plus Nick, who is refereed
+        // through IContestFighter from another assembly. The served list did not
+        // include him either, and he appeared on the scoreboard having never
+        // been listed.
+        private static string[] FighterNames => Systems_FighterIdentity.PickableNames;
+
         [SerializeField] private string _balanceScene = "SCN_TEST_BALANCE_CONTEST";
         [SerializeField] private string _walkScene = "SCN_TEST_WALK_CONTEST";
 
@@ -172,7 +187,7 @@ namespace PoBox
             // Grandma, Grandpa -- three duplicates nobody asked for. Two
             // fighters with the same brain on the same body are not a match-up.
             int capacity = game == MiniGameKind.Balance ? BALANCE_SLOTS : WALK_SLOTS;
-            int slotCount = Mathf.Min(capacity, _fighterNames.Length);
+            int slotCount = Mathf.Min(capacity, FighterNames.Length);
             _slotsHeading.text = game == MiniGameKind.Balance
                 ? $"RING  ·  {slotCount} FIGHTERS"
                 : $"START LINE  ·  {slotCount} RACERS";
@@ -198,10 +213,10 @@ namespace PoBox
             _slotsPanel.Clear();
             _slotDropdowns.Clear();
 
-            var choices = new List<string>(_fighterNames.Length + 1);
-            for (int nameIndex = 0; nameIndex < _fighterNames.Length; nameIndex++)
+            var choices = new List<string>(FighterNames.Length + 1);
+            for (int nameIndex = 0; nameIndex < FighterNames.Length; nameIndex++)
             {
-                choices.Add(_fighterNames[nameIndex]);
+                choices.Add(FighterNames[nameIndex]);
             }
             choices.Add(EMPTY_CHOICE);
 
@@ -230,7 +245,7 @@ namespace PoBox
                 // One of each, in roster order. Anything past the roster opens
                 // EMPTY rather than wrapping back to the first fighter.
                 var dropdown = new DropdownField(string.Empty, choices,
-                    slotIndex < _fighterNames.Length ? slotIndex : choices.Count - 1);
+                    slotIndex < FighterNames.Length ? slotIndex : choices.Count - 1);
                 dropdown.style.flexGrow = 1f;
                 dropdown.style.marginLeft = 0f;
                 dropdown.style.marginRight = 0f;
@@ -248,25 +263,32 @@ namespace PoBox
             {
                 return;
             }
+
+            string scene = _game == MiniGameKind.Balance ? _balanceScene : _walkScene;
+            // Checked BEFORE the pick is recorded and the button is latched. A
+            // scene that is not in Build Settings fails its load, and with
+            // `_started` already true the menu then ignores every further press
+            // of START — a dead button with the reason only in the log.
+            if (!Application.CanStreamedLevelBeLoaded(scene))
+            {
+                Debug.LogError($"Systems_MiniGameMenu: '{scene}' is not in Build Settings, so " +
+                    $"START cannot load it. Add it (Build_Android.SHIP_SCENES / Build_WebGL) and retry.");
+                return;
+            }
             _started = true;
 
-            var picks = new int[_slotDropdowns.Count];
+            // The dropdown VALUE is the pick. It used to be resolved to an index
+            // into this screen's own name list, which the receiving scene read as
+            // an index into a different list — see Systems_MiniGameSelection.Picks.
+            var picks = new string[_slotDropdowns.Count];
             for (int slotIndex = 0; slotIndex < _slotDropdowns.Count; slotIndex++)
             {
-                picks[slotIndex] = -1; // EMPTY_CHOICE and anything unmatched
                 string value = _slotDropdowns[slotIndex].value;
-                for (int nameIndex = 0; nameIndex < _fighterNames.Length; nameIndex++)
-                {
-                    if (_fighterNames[nameIndex] == value)
-                    {
-                        picks[slotIndex] = nameIndex;
-                        break;
-                    }
-                }
+                picks[slotIndex] = string.IsNullOrEmpty(value) ? Systems_FighterIdentity.EmptyPick : value;
             }
 
             _selection.Set(_game, picks);
-            SceneManager.LoadScene(_game == MiniGameKind.Balance ? _balanceScene : _walkScene);
+            SceneManager.LoadScene(scene);
         }
     }
 }
