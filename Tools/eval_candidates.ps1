@@ -37,7 +37,19 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.6f1\Editor\Unity.exe'
+# Resolve the Editor from the project itself, the way publish.ps1 does. A
+# literal version here goes stale the moment Unity upgrades the project on
+# open -- and it fails at the BUILD step, after the Editor has already been
+# closed to make room for it, which is the most expensive place to find out.
+$ver = (Select-String -Path (Join-Path $root 'ProjectSettings\ProjectVersion.txt') `
+        -Pattern 'm_EditorVersion: (.+)').Matches[0].Groups[1].Value.Trim()
+$unity = "C:\Program Files\Unity\Hub\Editor\$ver\Editor\Unity.exe"
+if (-not (Test-Path $unity)) {
+    $latest = Get-ChildItem 'C:\Program Files\Unity\Hub\Editor' -Directory |
+        Sort-Object Name | Select-Object -Last 1
+    Write-Warning "Unity $ver not installed; falling back to $($latest.Name)"
+    $unity = Join-Path $latest.FullName 'Editor\Unity.exe'
+}
 $staging = Join-Path $root 'Assets\Agents\_Candidates'
 $evalDir = Join-Path $root 'eval'
 New-Item -ItemType Directory -Force $evalDir | Out-Null

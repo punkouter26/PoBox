@@ -1,6 +1,6 @@
 # Non-training scene smoke test
 
-Generated 2026-09-09 07:47 by `SceneTool_SmokeTest.RunAll`,
+Generated 2026-09-14 10:14 by `SceneTool_SmokeTest.RunAll`,
 20 s of play mode per scene in the open Editor.
 
 `sensor` is the width the VectorSensor was built at, `expected` is what
@@ -31,15 +31,15 @@ Errors and exceptions: **0**. Warnings: 1.
 scene	Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity
 timeScale	1
 fixedDeltaTime	0.02
-gravity	(-0.12, -9.8, 0.41)
+gravity	(0, -9.81, 0)
 fighters	5
-fighter	Contest_Bot	Bot	joints=14	sensor=121	expected=121	model=(none)	behavior=HeuristicOnly	pelvisHeight=0.134	upright=0.037
-fighter	Contest_Grandma	Grandma	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=0.258	upright=0.295
-fighter	Contest_Grandpa	Grandpa	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=0.174	upright=-0.651
-fighter	Contest_Raptor	Raptor	joints=13	sensor=114	expected=114	model=RaptorBalance01	behavior=InferenceOnly	pelvisHeight=0.133	upright=-0.115
-fighter	Contest_Standard	Standard	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=0.149	upright=-0.076
+fighter	Contest_Bot	Bot	joints=14	sensor=121	expected=121	model=(none)	behavior=HeuristicOnly	pelvisHeight=1.026	upright=1
+fighter	Contest_Grandma	Grandma	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=0.944	upright=0.918
+fighter	Contest_Grandpa	Grandpa	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=0.843	upright=-0.326
+fighter	Contest_Raptor	Raptor	joints=13	sensor=114	expected=114	model=RaptorBalance01	behavior=InferenceOnly	pelvisHeight=0.689	upright=1
+fighter	Contest_Standard	Standard	joints=14	sensor=127	expected=127	model=Locomotion_gen25	behavior=InferenceOnly	pelvisHeight=1.026	upright=1
 contestants	1
-contestant	Systems_NickContestant	Nick	headAboveGround=1.168	reportsDown=False	position=(0.2, 1.13, -0.79)
+contestant	Systems_NickContestant	Nick	headAboveGround=2.389	reportsDown=False	position=(0.76, 1.93, -0.72)
 ```
 
 ## SCN_TEST_WALK_CONTEST
@@ -56,12 +56,12 @@ timeScale	1
 fixedDeltaTime	0.02
 gravity	(0, -9.81, 0)
 fighters	5
-fighter	Contest_Bot	Bot	joints=14	sensor=121	expected=121	model=(none)	behavior=HeuristicOnly	pelvisHeight=0.14	upright=0.001
-fighter	Contest_Grandma	Grandma	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.139	upright=-0.3
-fighter	Contest_Grandpa	Grandpa	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.133	upright=0.795
-fighter	Contest_Raptor	Raptor	joints=13	sensor=114	expected=114	model=(none)	behavior=HeuristicOnly	pelvisHeight=0.102	upright=-0.413
-fighter	Contest_Standard	Standard	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.195	upright=-0.268
+fighter	Contest_Bot	Bot	joints=14	sensor=121	expected=121	model=(none)	behavior=HeuristicOnly	pelvisHeight=0.139	upright=0.001
+fighter	Contest_Grandma	Grandma	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.132	upright=-0.319
+fighter	Contest_Grandpa	Grandpa	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.134	upright=0.824
+fighter	Contest_Raptor	Raptor	joints=13	sensor=114	expected=114	model=(none)	behavior=HeuristicOnly	pelvisHeight=0.099	upright=-0.427
+fighter	Contest_Standard	Standard	joints=14	sensor=127	expected=127	model=Locomotion_gen18_34M	behavior=InferenceOnly	pelvisHeight=0.161	upright=-0.141
 contestants	1
-contestant	Systems_NickContestant	Nick	headAboveGround=0.148	reportsDown=False	position=(2.77, 0.13, -3.64)
+contestant	Systems_NickContestant	Nick	headAboveGround=1.419	reportsDown=False	position=(2.64, 0.15, -1.8)
 ```
 

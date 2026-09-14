@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-PoBox is a Unity 6000.5.6f1 (URP, portrait 9:16) active-ragdoll boxing game whose
+PoBox is a Unity 6000.6.0f1 (URP, portrait 9:16) active-ragdoll boxing game whose
 fighters are driven by ML-Agents policies. Most of the work here is not gameplay
 code — it is training brains that can stand and walk, and building the harness
 scenes used to evaluate them.

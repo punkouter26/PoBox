@@ -67,7 +67,7 @@ jobs:
           # Pinned to the same version the developers use locally. Bumping
           # this without checking all your packages is a great way to find
           # new build failures at 3 a.m.
-          unityVersion: 6000.5.6f1
+          unityVersion: 6000.6.0f1
           targetPlatform: WebGL
           # Our Editor entry point. Reads -buildOutput WEB from env and
           # exits non-zero on failure so the step fails cleanly.
