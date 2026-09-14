@@ -92,6 +92,35 @@ namespace PoBox
         protected void RaiseFighterFell(string fighterName) => FighterFell?.Invoke(fighterName);
 
         /// <summary>
+        /// MuJoCo binds on its first physics tick, after Start. Sampling before
+        /// then records a standing height of zero and makes a fallen body win.
+        /// Wait for actual readiness; a missing simulator must fail visibly.
+        /// </summary>
+        protected System.Collections.IEnumerator WaitForContestants()
+        {
+            var fighters = new System.Collections.Generic.List<IContestFighter>();
+            foreach (var behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.InstanceID))
+            {
+                if (behaviour is IContestFighter fighter) { fighters.Add(fighter); }
+            }
+            float deadline = Time.realtimeSinceStartup + 10f;
+            // Let all Start methods (including presentation subscriptions) run.
+            yield return null;
+            while (true)
+            {
+                IContestFighter pending = fighters.Find(fighter => !fighter.IsReady);
+                if (pending == null) { yield break; }
+                if (Time.realtimeSinceStartup >= deadline)
+                {
+                    Debug.LogError($"Contest cannot start: {pending.DisplayName}'s simulator is not ready.", this);
+                    enabled = false;
+                    yield break;
+                }
+                yield return null;
+            }
+        }
+
+        /// <summary>
         /// Adds the "‹ MENU" escape hatch to a referee HUD. Until this existed
         /// the only two LoadScene calls in the project were menu -> contest and
         /// contest -> itself, so pressing START locked the player into that

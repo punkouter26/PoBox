@@ -1,4 +1,5 @@
 using UnityEngine;
+using Mujoco;
 
 namespace PoBox.MuJoCoCreature
 {
@@ -39,6 +40,8 @@ namespace PoBox.MuJoCoCreature
 
         public string DisplayName => _displayName;
 
+        public bool IsReady => _controller != null && _controller.IsBound;
+
         public void ResetForRound()
         {
             if (_controller == null) { return; }
@@ -60,13 +63,10 @@ namespace PoBox.MuJoCoCreature
         public void CommandWalk(float metresPerSecond, Vector3 directionWorld)
         {
             if (_controller == null) { return; }
-            // Unity is Y-up and LEFT-handed; MuJoCo is Z-up and right-handed, so
-            // one axis flips. REST_FORWARD is (0,-1,0) in the pelvis frame, i.e.
-            // the creature's forward is MuJoCo -Y, so Unity +Z maps to -Y.
-            // Getting this sign wrong is not subtle and is not loud either: he
-            // walked 2.35 m BACKWARD down the track while the scoreboard, which
-            // floors travel at zero, reported 0.04 m.
-            var inCreatureFrame = new Vector3(directionWorld.x, -directionWorld.z, directionWorld.y);
+            // Use the plugin's exact conversion, also used to place the bodies.
+            // Swapping Y/Z already changes handedness. An additional minus sign
+            // sends the creature toward the wrong end of the walking course.
+            var inCreatureFrame = MjEngineTool.MjVector3(directionWorld);
             _controller.SetCommand(metresPerSecond, inCreatureFrame);
         }
 
@@ -75,17 +75,17 @@ namespace PoBox.MuJoCoCreature
         {
             get
             {
+                if (IsReady) { return MjEngineTool.UnityVector3(_controller.DebugPelvisPosition); }
                 Transform pelvis = _controller != null ? _controller.PelvisTransform : null;
                 return pelvis != null ? pelvis.position : transform.position;
             }
         }
 
         /// <summary>
-        /// MuJoCo is Z-up, so the head's height is DebugHeadZ -- not a Unity
-        /// transform's y. It is already measured from the creature's own floor,
-        /// which is what the ring wants: height above the floor, never world Y.
+        /// MuJoCo reports world Z. Subtract the authored floor's elevation;
+        /// otherwise a collapsed body on the raised ring still counts as tall.
         /// </summary>
-        public float HeadHeightAboveGround => _controller != null ? _controller.DebugHeadZ : 0f;
+        public float HeadHeightAboveGround => IsReady ? _controller.DebugHeadZ - _controller.GroundHeight : 0f;
 
         /// <summary>
         /// The controller auto-resets the creature when it judges it fallen, so

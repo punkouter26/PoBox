@@ -100,3 +100,29 @@ reads actual referee scores and model assignments without editing the scene.
 - This machine has an RTX 2060 with 6 GB, not the training machine documented
   in older notes. The MuJoCo Python environment and local training checkpoints
   are absent. Restore a compatible environment before starting training.
+
+## Measurement repairs verified
+
+Both referees now wait for the external controller to bind, reset it before
+sampling height, and issue the initial round-start event. A 10-second readiness
+timeout reports a simulator failure instead of awarding a win. Updates do not
+score an uninitialized round.
+
+The balance floor is raised by 1 m. Nick's previous head measurement included
+that metre, allowing a collapsed head at world height 1.157 m to count as
+upright. Ground references were assigned directly in both scenes through Unity
+Pipeline. Head, pelvis observation, foot-height observations and auto-fall
+thresholds now use floor-relative heights. World travel uses current MuJoCo
+state rather than a transform that may lag behind a reset. Walking directions
+use the plugin's own coordinate conversion; the previous extra minus sign
+commanded movement toward the wrong end of the ring.
+
+Fresh regression trials: standing head height **1.38933 m in both scenes**;
+roundsStarted=1; Nick correctly marked fallen in both. Walking reached 0.109 m;
+balance survived 2.22 s. These are failures requiring further work, not passes.
+Grandma also survived one 30-second legacy balance trial under a different
+random hazard, but its self-collision defect remains and walking still fails.
+
+Unity compilation: no errors. Shippable scene reference audit: all clear.
+Scene saves regenerate MuJoCo display mesh IDs; serialized mesh references were
+checked separately from code diffs. No character hierarchy was removed.

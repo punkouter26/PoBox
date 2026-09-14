@@ -64,8 +64,12 @@ namespace PoBox
         private string _hazard = "none";
         private float _roundTime;
 
-        private void Start()
+        private bool _initialized;
+
+        private System.Collections.IEnumerator Start()
         {
+            yield return WaitForContestants();
+            if (!enabled) { yield break; }
             var root = GetComponent<UIDocument>().rootVisualElement;
             if (_styleSheet != null)
             {
@@ -172,10 +176,13 @@ namespace PoBox
                 _contestants.Add(extContestant);
                 CommandStand(extContestant);
             }
+            _initialized = true;
+            RaiseRoundStarted(_round);
         }
 
         private void FixedUpdate()
         {
+            if (!_initialized) { return; }
             if (_restartTimer >= 0f)
             {
                 if (HoldRestarts)
@@ -272,6 +279,7 @@ namespace PoBox
 
         private void Update()
         {
+            if (!_initialized) { return; }
             bool roundOver = _restartTimer >= 0f;
             Contestant leader = FindLeader();
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)

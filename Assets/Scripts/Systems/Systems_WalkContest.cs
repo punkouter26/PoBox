@@ -103,6 +103,8 @@ namespace PoBox
         private float _bestTravelled;
         private float _lastProgressTime;
 
+        private bool _initialized;
+
         // Called by the walk contest scene builder.
         public void EditorInitialize(Vector3 goalDirection, float goalDistance, StyleSheet styleSheet)
         {
@@ -111,8 +113,10 @@ namespace PoBox
             _styleSheet = styleSheet;
         }
 
-        private void Start()
+        private System.Collections.IEnumerator Start()
         {
+            yield return WaitForContestants();
+            if (!enabled) { yield break; }
             _goalDirection = _goalDirection.normalized;
 
             var root = GetComponent<UIDocument>().rootVisualElement;
@@ -205,10 +209,13 @@ namespace PoBox
                 _racers.Add(extRacer);
                 CommandRace(extRacer);
             }
+            _initialized = true;
+            RaiseRoundStarted(_round);
         }
 
         private void FixedUpdate()
         {
+            if (!_initialized) { return; }
             if (_restartTimer >= 0f)
             {
                 if (HoldRestarts)
@@ -299,6 +306,7 @@ namespace PoBox
 
         private void Update()
         {
+            if (!_initialized) { return; }
             bool roundOver = _restartTimer >= 0f;
             // Only a leader who actually earned the round wears the winner
             // plate; in a no contest nobody does.

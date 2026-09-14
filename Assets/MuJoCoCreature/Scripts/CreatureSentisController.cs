@@ -72,6 +72,11 @@ namespace PoBox.MuJoCoCreature
         [SerializeField] private ModelAsset _onnxModelAsset;
         [SerializeField] private MjScene _mjScene;
 
+        [Tooltip("Transform on the supporting floor surface. Policy heights are relative to this surface.")]
+        [SerializeField] private Transform _groundReference;
+
+        public float GroundHeight => _groundReference != null ? _groundReference.position.y : 0f;
+
         [Header("Bodies")]
         [SerializeField] private MjBody _pelvis;
         [SerializeField] private MjBody _footLeft;
@@ -470,7 +475,7 @@ namespace PoBox.MuJoCoCreature
 
             // Height read from the pelvis BODY, not qpos[2]: in a shared
             // MjScene qpos[2] belongs to whichever creature compiled first.
-            if (d->xpos[3 * _pelvisId + 2] < _fallHeight)
+            if (d->xpos[3 * _pelvisId + 2] - GroundHeight < _fallHeight)
             {
                 ResetCreature();
                 return;
@@ -585,7 +590,7 @@ namespace PoBox.MuJoCoCreature
             Quaternion pelvisRot = BodyQuat(d, _pelvisId);
             Quaternion inv = Quaternion.Inverse(pelvisRot);
 
-            _observations[c++] = pelvisPos.z;                       // MuJoCo Z is up
+            _observations[c++] = pelvisPos.z - GroundHeight;
             Vector3 lin = inv * BodyLinVel(d, _pelvisId);
             _observations[c++] = lin.x; _observations[c++] = lin.y; _observations[c++] = lin.z;
             Vector3 ang = (inv * BodyAngVel(d, _pelvisId)) / ANGULAR_VELOCITY_SCALE;
@@ -622,8 +627,8 @@ namespace PoBox.MuJoCoCreature
             _observations[c++] = 0f; _observations[c++] = 0f; _observations[c++] = rGround;
 
             // --- foot height (2) ---
-            _observations[c++] = Mathf.Clamp01(lz / FOOT_RAY_MAX);
-            _observations[c++] = Mathf.Clamp01(rz / FOOT_RAY_MAX);
+            _observations[c++] = Mathf.Clamp01((lz - GroundHeight) / FOOT_RAY_MAX);
+            _observations[c++] = Mathf.Clamp01((rz - GroundHeight) / FOOT_RAY_MAX);
 
             // --- locomotion command (6), optional ---
             if (_observeLocomotionCommand)

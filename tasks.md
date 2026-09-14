@@ -25,7 +25,7 @@ request or `git sync`. Preserve pre-existing edits.
 - [x] 4. Record actual round duration, hazards, crossing distance, scoring and controls.
 - [x] 5. Test each current character in both contests and record the active brain and outcomes.
 - [x] 6. Check body proportions, joint limits, floor contact, self-collision and cross-engine contestant collisions.
-- [ ] 6a. Repair zero-height startup measurements and verify real fall detection before training decisions.
+- [x] 6a. Repair zero-height startup measurements and verify real fall detection before training decisions.
 
 Repeat steps 7-12 per character needing work, finishing that character before
 moving to the next. Track the individual status in the results table below.

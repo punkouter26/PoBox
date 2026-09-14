@@ -26,6 +26,9 @@ namespace PoBox
         /// <summary>Name on the scoreboard and in the CONTEST_ROUND line.</summary>
         string DisplayName { get; }
 
+        /// <summary>True once reset, pose and height measurements are available.</summary>
+        bool IsReady { get; }
+
         /// <summary>
         /// Canonical pose, velocities zeroed, contacts cleared -- the state
         /// every round must start from. Round one starting from anything else
