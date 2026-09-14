@@ -147,3 +147,20 @@ collisions and equal hazard exposure remain unresolved.
 The local Python 3.11 environment now loads MuJoCo/Warp 3.12.0, Newton 1.6.0,
 PyTorch 2.8.0 CUDA 12.8 and rsl-rl 2.3.3. CUDA detects the RTX 2060. Newton can
 import Nick's 15-body MJCF. No new training run has started.
+
+## Visible Newton replay verified
+
+Newton's OpenGL window now displays all 15 actual MuJoCo bodies and 16 shapes
+at 50 frames/second, with the camera following walking motion. The mapping
+converts MuJoCo wxyz quaternions into Newton's xyzw transforms; no second
+physics solver changes the motion. The visible two-phase trial ran without
+errors: 10 s balance with 150 N shoves, zero falls; 10 s walk, 8.967 m and
+0.899 m/s, zero falls. Diagnostic logs now report per-joint peak effort and
+speed, which exposed **965.6 Nm knee torque and 27.6 rad/s knee speed** in the
+unlimited body. These are not accepted as realistic human motion.
+
+Training viewers inherit the run's saved model, timestep and solver parameters.
+TensorBoard cleanup now retains every directory containing policy checkpoints,
+even when its event log is small or missing. Python syntax checks and installed
+package compatibility checks pass. No training has started; Newton visualization
+has been verified for the current body and must be rechecked for any new body.

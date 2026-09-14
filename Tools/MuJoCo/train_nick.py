@@ -68,6 +68,8 @@ def prune_stale_runs(root: Path, keep: str) -> None:
     for d in sorted(root.iterdir()):
         if not d.is_dir() or d.name == keep:
             continue
+        if any(d.rglob("*.pt")) or any(d.rglob("*.onnx")):
+            continue  # A checkpoint is valuable even if its event log is absent.
         events = list(d.rglob("events.out.tfevents.*"))
         biggest = max((e.stat().st_size for e in events), default=0)
         if biggest < 2048:
@@ -89,8 +91,9 @@ def start_tensorboard(root: Path, port: int) -> subprocess.Popen | None:
 
 
 def start_viewer(run_dir: Path) -> subprocess.Popen | None:
-    """MuJoCo viewer following the run's newest checkpoint (AGENTS.md: show the UI)."""
-    cmd = [sys.executable, str(HERE / "watch_nick.py"), "--run", run_dir.name, "--follow"]
+    """Newton displays the actual MuJoCo states, using this run's saved config."""
+    cmd = [sys.executable, str(HERE / "watch_nick.py"), "--run", run_dir.name,
+           "--follow", "--viewer", "newton"]
     try:
         proc = subprocess.Popen(cmd, cwd=str(REPO))
         print("  MuJoCo viewer started, following %s (pid %d)" % (run_dir, proc.pid))

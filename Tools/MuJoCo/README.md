@@ -21,6 +21,33 @@ on the same engine and the same model file in both places.
 
 ## What ships, as of 2026-09-09
 
+### Local verification, 2026-09-14
+
+The current machine has an RTX 2060 with 6 GB. Its restored Python 3.11
+environment uses PyTorch 2.8.0 CUDA 12.8, MuJoCo/Warp 3.12.0 and Newton 1.6.0.
+Install the CUDA wheels with
+`uv pip install --python Tools/MuJoCo/.venv/Scripts/python.exe torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128`,
+then install `Tools/MuJoCo/requirements.txt` with the same Python environment.
+
+`watch_nick.py` now defaults to Newton's visible viewer, rendering the actual
+MuJoCo body states. Newton does not integrate a second copy of the physics.
+The viewer follows the pelvis and supports orbit, zoom and pause/step. Use
+`--viewer mujoco` for the original MuJoCo viewer. Following a training run loads
+its saved MJCF, timestep, decimation and solver settings. For a standalone ONNX,
+specify its settings explicitly:
+
+```powershell
+Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/watch_nick.py --onnx Assets/Agents/Nick_Balance002/nick_balance_002.onnx --timestep 0.02 --decimation 1 --viewer newton --phases 2
+```
+
+Fresh Unity trials after fixing control timing and heading: Nick completed a
+balance round and the full 5.6 m crossing in 6.34 s. **Provisional only:** the
+body's actuators still have unlimited force. Newton replay measured knee peaks
+around 966 Nm and 27.6 rad/s during walking. Finite strength and speed limits,
+collision/hazard parity and the other skinned characters remain unfinished.
+See `Tools/cleanup/AGENT_VALIDATION.md`; the historical statistics below are not
+fresh acceptance evidence for those unfinished requirements.
+
 `Assets/Agents/Nick_Balance002/nick_balance_002.onnx` = `results/nick/nick12/model_3700.pt`,
 and **both contest scenes load it** -- `SCN_TEST_BALANCE_CONTEST` and
 `SCN_TEST_WALK_CONTEST` carry the same guid at 0.02 s x decimation 1. Ten

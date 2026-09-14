@@ -25,6 +25,7 @@ as NICK_DEMO and Systems_MattDemo logs as MATT_DEMO:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import re
 import sys
@@ -52,12 +53,28 @@ parser.add_argument("--headless", action="store_true")
 parser.add_argument("--phases", type=int, default=0, help="stop after this many phases (0 = forever)")
 parser.add_argument("--phase-seconds", type=float, default=10.0)
 parser.add_argument("--walk-speed", type=float, default=1.0)
-parser.add_argument("--decimation", type=int, default=4)
+parser.add_argument("--decimation", type=int, default=None)
+parser.add_argument("--timestep", type=float, default=None)
+parser.add_argument("--model", default=None, help="MJCF matching the policy's supplied rig")
+parser.add_argument("--viewer", choices=("mujoco", "newton"), default="newton")
 parser.add_argument("--shove-newtons", type=float, default=150.0)
 parser.add_argument("--shove-seconds", type=float, default=0.2)
 parser.add_argument("--shove-interval", type=float, default=4.0)
 parser.add_argument("--seed", type=int, default=0)
 args = parser.parse_args()
+
+# A following viewer must use the run's actual body and control rate. In
+# particular, a 0.02 x 1 policy must never silently replay at 0.005 x 4.
+saved_env = {}
+config_path = LOG_ROOT / args.run / "config.json"
+if not args.onnx and config_path.exists():
+    saved_env = json.loads(config_path.read_text())["env"]
+args.model = args.model or saved_env.get("model_path") or preferred_model_path()
+args.decimation = saved_env.get("decimation", 4) if args.decimation is None else args.decimation
+saved_physics = saved_env.get("physics", {})
+args.timestep = saved_physics.get("timestep", PHYSICS_TIMESTEP) if args.timestep is None else args.timestep
+if args.decimation < 1 or args.timestep <= 0 or args.phase_seconds <= 0:
+    parser.error("timestep, decimation and phase duration must be positive")
 
 OBS_DIM = OBS_BASE + OBS_COMMAND
 TARGET_SWITCHES_PER_STEP = 1.0 / 35.0
@@ -111,8 +128,18 @@ def load_policy(current=None):
 
 
 # ------------------------------------------------------------------ sim
-model = mujoco.MjModel.from_xml_path(preferred_model_path())
-model.opt.timestep = PHYSICS_TIMESTEP
+model = mujoco.MjModel.from_xml_path(args.model)
+model.opt.timestep = args.timestep
+if saved_physics:
+    integrator_name = saved_physics.get("integrator")
+    if integrator_name:
+        model.opt.integrator = getattr(mujoco.mjtIntegrator, integrator_name.split(".")[-1])
+    model.opt.iterations = saved_physics.get("solver_iterations", model.opt.iterations)
+    model.dof_armature[:] *= saved_physics.get("armature_scale", 1.0)
+    solref = saved_physics.get("solref_timeconst", 0.0)
+    if solref > 0.0:
+        model.geom_solref[:, 0] = solref
+        model.opt.o_solref[0] = solref
 data = mujoco.MjData(model)
 by_stem = {}
 for i in range(model.nbody):
@@ -124,7 +151,7 @@ joint_body_ids = [by_stem[b] for b in JOINT_BODIES]
 joint_parent_ids = [int(model.body_parentid[i]) for i in joint_body_ids]
 ctrl_low = model.actuator_ctrlrange[:, 0]
 ctrl_high = model.actuator_ctrlrange[:, 1]
-control_dt = PHYSICS_TIMESTEP * args.decimation
+control_dt = args.timestep * args.decimation
 
 mujoco.mj_forward(model, data)
 rest_foot_z = [float(data.xpos[i, 2]) for i in foot_ids]
@@ -170,7 +197,7 @@ def run_phase(policy, walking: bool, viewer) -> dict:
 
     steps = int(round(args.phase_seconds / control_dt))
     shove_every = int(round(args.shove_interval / control_dt)) if args.shove_interval > 0 else 0
-    shove_steps = max(1, int(round(args.shove_seconds / PHYSICS_TIMESTEP)))
+    shove_steps = max(1, int(round(args.shove_seconds / args.timestep)))
     shove_left = 0
     speed_sum = 0.0
     switches = 0
@@ -178,8 +205,17 @@ def run_phase(policy, walking: bool, viewer) -> dict:
     clearance_sum = 0.0
     down = 0
     falls = 0
+    max_torque = np.zeros(model.nu)
+    max_joint_speed = np.zeros(model.nu)
+    actuator_dofs = model.jnt_dofadr[model.actuator_trnid[:, 0]]
     wall = time.time()
     for step in range(steps):
+        if viewer is not None and hasattr(viewer, "wait_for_step"):
+            paused_at = time.time()
+            viewer.wait_for_step()
+            wall += time.time() - paused_at
+            if not viewer.is_running():
+                break
         obs = gather(commands, step)
         action = np.clip(policy(obs), -1.0, 1.0)
         data.ctrl[:] = np.where(action >= 0.0, action * ctrl_high, -action * ctrl_low)
@@ -188,11 +224,13 @@ def run_phase(policy, walking: bool, viewer) -> dict:
             data.xfrc_applied[pelvis_id, :3] = np.array([math.cos(angle), math.sin(angle), 0.0]) * args.shove_newtons
             shove_left = shove_steps
         for _ in range(args.decimation):
+            mujoco.mj_step(model, data)
             if shove_left > 0:
                 shove_left -= 1
                 if shove_left == 0:
                     data.xfrc_applied[pelvis_id, :] = 0.0
-            mujoco.mj_step(model, data)
+            max_torque = np.maximum(max_torque, np.abs(data.actuator_force))
+            max_joint_speed = np.maximum(max_joint_speed, np.abs(data.qvel[actuator_dofs]))
 
         v = data.cvel[pelvis_id, 3:5]
         speed_sum += float(np.dot(v, direction))
@@ -224,20 +262,16 @@ def run_phase(policy, walking: bool, viewer) -> dict:
         "mode": "WALK" if walking else "BALANCE", "cmd": speed, "measured": speed_sum / n,
         "distance": distance, "alternation": min(1.0, (switches / n) / TARGET_SWITCHES_PER_STEP),
         "switches": switches, "clearance": clearance_sum / n, "down": down, "steps": n, "falls": falls,
+        "max_torque": max_torque.tolist(), "max_joint_speed": max_joint_speed.tolist(),
     }
 
 
 def main():
-    policy = load_policy()
-    if policy is None:
-        print("no checkpoint yet under %s; waiting..." % (LOG_ROOT / args.run))
-        while policy is None:
-            time.sleep(10)
-            policy = load_policy()
-    print("policy: %s" % policy.name)
-
     viewer = None
-    if not args.headless:
+    if not args.headless and args.viewer == "newton":
+        from newton_viewer import NewtonMujocoViewer
+        viewer = NewtonMujocoViewer(args.model, model, data, pelvis_id)
+    elif not args.headless:
         import mujoco.viewer
         viewer = mujoco.viewer.launch_passive(model, data)
         viewer.cam.distance = 6.0
@@ -251,6 +285,21 @@ def main():
         # nobody could see.
         viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
         viewer.cam.trackbodyid = pelvis_id
+
+    policy = load_policy()
+    if policy is None:
+        print("no checkpoint yet under %s; waiting..." % (LOG_ROOT / args.run), flush=True)
+        while policy is None:
+            for _ in range(100):
+                if viewer is not None:
+                    if not viewer.is_running():
+                        viewer.close()
+                        return
+                    viewer.sync()
+                time.sleep(0.1)
+            policy = load_policy()
+    print("policy: %s | model=%s | timestep=%.6f decimation=%d" %
+          (policy.name, args.model, args.timestep, args.decimation), flush=True)
 
     walking = False
     phase = 0
@@ -267,6 +316,10 @@ def main():
               "switches=%d clearance=%.3f m down=%d/%d steps falls=%d"
               % (phase, r["mode"], r["cmd"], r["measured"], r["distance"], r["alternation"],
                  r["switches"], r["clearance"], r["down"], r["steps"], r["falls"]), flush=True)
+        print("NICK_PHYSICS " + json.dumps({
+            "mode": r["mode"], "actuators": [model.actuator(i).name for i in range(model.nu)],
+            "max_torque_nm": r["max_torque"], "max_joint_speed_rad_s": r["max_joint_speed"],
+        }), flush=True)
         walking = not walking
         phase += 1
     if viewer is not None:
