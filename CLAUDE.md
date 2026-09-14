@@ -21,6 +21,42 @@ servers are available, fighter colours, physical realism including joint
 speed/force limits and full collision, and how to write an answer.
 `DOCS/` holds the project's own summary of itself; read it for orientation.
 
+## User-requested operating rules
+
+- Train new policies in MuJoCo or Newton, not in the legacy ML-Agents/PhysX
+  pipeline.
+- Keep work on `master` unless the user explicitly requests another branch.
+- Read the root `DOCS/` folder first for project context and summary material.
+- Start TensorBoard with each training run and remove stale TensorBoard runs that
+  are no longer useful.
+- Ask for the skinned mesh before training begins, then derive the rig
+  structure from that model for MuJoCo/Newton.
+- Focus first on the current model and the behaviours it needs, then expand to
+  additional creatures or humans later.
+- Use the MuJoCo Android build approach from
+  https://github.com/joanllobera/mujoco-bin/.
+- When training in MuJoCo or Isaac Lab, keep the simulator UI visible so the
+  motion can be observed during and after training; use Newton’s viewer if that
+  is the better viewing option.
+- Keep the motion realistic with Earth gravity, realistic mass, and a joint
+  speed and force that resemble a real human's when the agent is a human.
+- Create as many prefabs, objects and static scene elements with Unity MCP as
+  possible, so the user can adjust their positions in the Inspector instead of
+  changing code.
+- For MuJoCo RL runs expected to last 30+ minutes, save and close the Unity
+  Editor first and tell the user when training is over and it can be reopened.
+- Keep collision handling correct across all body parts and prevent
+  interpenetration with creatures and the environment.
+- When using `git sync`, commit every outstanding change first.
+- Use the Unity CLI and the Unity MCP tools as needed to get the best result:
+  the CLI command bridge, and whichever of
+  https://github.com/AnkleBreaker-Studio/unity-mcp-plugin,
+  https://github.com/CoplayDev/unity-mcp or
+  https://github.com/IvanMurzak/Unity-MCP suits it best.
+- Use non-technical, plain-language answers that explain the practical next
+  steps clearly.
+- Add a TLDR of about 20 words to any answer longer than about 100 words.
+
 ## Commands
 
 ### Scenes: authored, not generated

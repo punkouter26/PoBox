@@ -51,6 +51,45 @@ already in the commit you are merging.
 starting work to get the overall picture, rather than reconstructing it from
 the source every time.
 
+## User-requested operating rules
+
+- Use MuJoCo or Newton for all new training, and keep the legacy ML-Agents/
+  PhysX line working only as a measured fallback.
+- Use only the `master` branch for work unless the user explicitly asks for
+  another branch.
+- Start TensorBoard whenever training starts, and prune obsolete runs from the
+  log directory before launching a new one.
+- Ask for a skinned mesh before training begins, and derive the rig structure
+  from that model for MuJoCo/Newton training.
+- Focus on the current creature or human model and teach it the behaviours it
+  needs before broadening the cast.
+- Use the MuJoCo Android build method from
+  https://github.com/joanllobera/mujoco-bin/ when preparing Android phone builds.
+- For MuJoCo or Isaac Lab runs, show the simulator UI so the motion can be
+  observed during and after training; use Newton’s viewer if that is the better
+  option.
+- Keep motion realistic: Earth gravity, sensible joint ranges, realistic mass,
+  and a joint speed and force that resemble a real human's when the agent is a
+  human.
+- Create as many prefabs, objects and static scene elements with Unity MCP as
+  possible, so the user can adjust their positions in the Inspector instead of
+  editing code.
+- For MuJoCo RL runs expected to take 30+ minutes, save and close the Unity
+  Editor first, then tell the user when training is over and the Editor can be
+  reopened.
+- Keep all body parts colliding correctly and prevent creatures from passing
+  through each other or the environment.
+- When using `git sync`, commit every outstanding change first.
+- Keep answers plain-language and non-technical so the user can decide the next
+  step quickly.
+- Use the Unity CLI and the available Unity MCP tools as needed to get the best
+  result for each task: the CLI command bridge, and whichever of
+  https://github.com/AnkleBreaker-Studio/unity-mcp-plugin,
+  https://github.com/CoplayDev/unity-mcp or
+  https://github.com/IvanMurzak/Unity-MCP suits it best.
+- Add a brief TLDR of about 20 words at the end of any answer longer than about
+  100 words.
+
 ## Training: MuJoCo / Newton only
 
 **All new training happens in MuJoCo or Newton.** Not Unity ML-Agents / PhysX.
