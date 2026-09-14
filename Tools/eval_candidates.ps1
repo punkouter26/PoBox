@@ -123,4 +123,15 @@ foreach ($speed in $Speeds) {
 }
 
 if ($reports.Count -eq 0) { throw 'no reports produced' }
-& (Join-Path $root '.venv\Scripts\python.exe') (Join-Path $root 'Tools\eval_compare.py') @reports
+$python = Join-Path $root '.venv\Scripts\python.exe'
+& $python (Join-Path $root 'Tools\eval_compare.py') @reports
+
+# The side-by-side table above answers "does this beat the brain it would
+# replace", and then it is gone -- eval/ is gitignored and the next run
+# overwrites the reports it was built from. The ladder keeps the comparison:
+# these reports are turned into per-body metric duels, appended to
+# Tools/ladder/duels.jsonl, and every rating is recomputed from the whole log.
+# So a checkpoint measured today is still ranked against gen18 next spring
+# without gen18 having to be re-measured. Ingesting the same reports twice is a
+# no-op (duel ids are content-hashed), so this is safe to re-run.
+& $python (Join-Path $root 'Tools\ladder.py') @reports

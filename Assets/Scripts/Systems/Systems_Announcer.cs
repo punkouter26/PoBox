@@ -42,6 +42,19 @@ namespace PoBox
         private Label _hazardChip;
         private float _calloutRemaining;
 
+        /// <summary>
+        /// True while a big centre callout is on screen.
+        ///
+        /// Read by <see cref="Systems_ColourCommentary"/>, which is the second
+        /// voice in the booth and has to stay out of the play-by-play's way.
+        /// This is the same problem the winner banner already solved once —
+        /// two systems shouting the same beat in two fonts at the same instant
+        /// — except that the colour line is a band lower down and so does not
+        /// literally overlap, which is exactly what makes it easy to ship two
+        /// voices talking over each other and not notice.
+        /// </summary>
+        public bool CalloutActive => _calloutRemaining > 0f;
+
         private void Awake()
         {
             _audioSource = GetComponent<AudioSource>();

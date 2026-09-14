@@ -11,11 +11,12 @@ namespace PoBox
     ///
     /// This is the one piece of spectator furniture that no other physics
     /// fighting game could put up, because in this one the contestants have
-    /// real provenance. "Locomotion_gen25 · 4.5M steps · 127 obs · 167.9 steps
-    /// between falls" against "Heuristic PD bot · hand-written · no brain" is a
-    /// tale of the tape in the boxing sense, and it is also the whole argument
-    /// of the project: the red bot is the floor every policy has to clear, and
-    /// it is not a soft one.
+    /// real provenance. "Locomotion_gen25 · 4.5M steps · 127 obs · Elo 1579 ·
+    /// 1st of 3" against "heuristic PD bot · 0 steps · hand-written" is a tale
+    /// of the tape in the boxing sense, and it is also the whole argument of
+    /// the project: the red bot is the floor every policy has to clear, and it
+    /// is not a soft one — on the ladder it currently sits within two points of
+    /// the shipping walk brain.
     ///
     /// IT REPORTS WHAT THE FIGHTER GOT, NOT WHAT THE ROSTER ASKED FOR. A brain
     /// whose obs_0 is a different width than the fighter emits is REFUSED by
@@ -312,7 +313,24 @@ namespace PoBox
             {
                 parts.Add(observations + " obs");
             }
-            if (dossier != null && !string.IsNullOrEmpty(dossier.headlineStat))
+            // THE LADDER STANDING DISPLACES THE HEADLINE RATHER THAN JOINING
+            // IT, for two reasons. The first is the project's own ordering of
+            // evidence: headlineStat is a sentence somebody typed once and it
+            // goes stale the moment the next generation is measured, while the
+            // rating is recomputed from every eval report ever ingested
+            // (Tools/ladder.py) and imported by Editor_LadderImport. The second
+            // is width. This label is right-aligned with flexShrink 0 against a
+            // name that shrinks, so every character added here is taken off the
+            // fighter's name: the longest existing spec already measures about
+            // 700 px of a 996 px card, and appending both would have left the
+            // name of an eight-fighter ring's contestants with nothing.
+            // "Elo 1579 · 1st of 3" is SHORTER than the sentence it replaces.
+            string standing = dossier != null ? dossier.LadderDisplay : string.Empty;
+            if (!string.IsNullOrEmpty(standing))
+            {
+                parts.Add(standing);
+            }
+            else if (dossier != null && !string.IsNullOrEmpty(dossier.headlineStat))
             {
                 parts.Add(dossier.headlineStat);
             }

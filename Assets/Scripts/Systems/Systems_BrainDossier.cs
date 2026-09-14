@@ -55,6 +55,57 @@ namespace PoBox
         /// <summary>One line on why this brain ships. Optional.</summary>
         [TextArea(2, 4)] public string note;
 
+        /// <summary>
+        /// Where this brain sits on the generation ladder, and how many brains
+        /// it was ranked against. 0 entrants means unrated.
+        ///
+        /// FILLED FROM Tools/ladder/ladder.json BY <c>Editor_LadderImport</c>,
+        /// never typed in — for the same reason <see cref="observationCount"/>
+        /// is read from the model's own input shape. A rating is the one field
+        /// here that changes every time anything else in the field is measured,
+        /// so a hand-written one is stale the moment the next run finishes.
+        ///
+        /// The rating comes from METRIC DUELS between eval-harness reports, not
+        /// from fights: see the header of <c>Tools/ladder.py</c>. The card says
+        /// so, because "Elo 1579" invites exactly the wrong reading.
+        /// </summary>
+        public float eloRating;
+
+        /// <summary>1-based place on the ladder. 0 = unrated.</summary>
+        public int ladderRank;
+
+        /// <summary>How many brains the ladder held when this was written. 0 = unrated.</summary>
+        public int ladderEntrants;
+
+        /// <summary>Ladder standing as the tale of the tape reads it: "Elo 1579 · 1st of 3".</summary>
+        public string LadderDisplay
+        {
+            get
+            {
+                if (ladderEntrants <= 0 || ladderRank <= 0)
+                {
+                    return string.Empty;
+                }
+                return $"Elo {eloRating:0} · {Ordinal(ladderRank)} of {ladderEntrants}";
+            }
+        }
+
+        private static string Ordinal(int value)
+        {
+            int lastTwo = value % 100;
+            if (lastTwo >= 11 && lastTwo <= 13)
+            {
+                return value + "th";
+            }
+            return (value % 10) switch
+            {
+                1 => value + "st",
+                2 => value + "nd",
+                3 => value + "rd",
+                _ => value + "th"
+            };
+        }
+
         /// <summary>Steps rendered the way a tale of the tape reads them: "34.0M", "4.5M", "—".</summary>
         public string StepsDisplay
         {

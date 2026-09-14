@@ -1,0 +1,67 @@
+{
+  "generated": "2026-09-14",
+  "duels": 99,
+  "note": "metric duels from Systems_EvalHarness reports, not ring fights",
+  "brains": [
+    {
+      "brain": "Locomotion_gen25",
+      "elo": 1578.8,
+      "wins": 43,
+      "losses": 22,
+      "draws": 1,
+      "duels": 66,
+      "bodies": [
+        "Capsule",
+        "Grandma",
+        "Grandpa"
+      ],
+      "conditions": [
+        "SCN_TRAIN_LOCOMOTION@speed0+shove",
+        "SCN_TRAIN_LOCOMOTION@speed1"
+      ],
+      "observationWidth": 127,
+      "rank": 1,
+      "entrants": 3
+    },
+    {
+      "brain": "Locomotion_gen18_34M",
+      "elo": 1461.4,
+      "wins": 27,
+      "losses": 39,
+      "draws": 0,
+      "duels": 66,
+      "bodies": [
+        "Capsule",
+        "Grandma",
+        "Grandpa"
+      ],
+      "conditions": [
+        "SCN_TRAIN_LOCOMOTION@speed0+shove",
+        "SCN_TRAIN_LOCOMOTION@speed1"
+      ],
+      "observationWidth": 127,
+      "rank": 2,
+      "entrants": 3
+    },
+    {
+      "brain": "heuristic",
+      "elo": 1459.8,
+      "wins": 28,
+      "losses": 37,
+      "draws": 1,
+      "duels": 66,
+      "bodies": [
+        "Capsule",
+        "Grandma",
+        "Grandpa"
+      ],
+      "conditions": [
+        "SCN_TRAIN_LOCOMOTION@speed0+shove",
+        "SCN_TRAIN_LOCOMOTION@speed1"
+      ],
+      "observationWidth": 127,
+      "rank": 3,
+      "entrants": 3
+    }
+  ]
+}

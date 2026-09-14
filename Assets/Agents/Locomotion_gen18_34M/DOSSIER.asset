@@ -19,3 +19,6 @@ MonoBehaviour:
   observationCount: 127
   headlineStat: alternation 0.601
   note: 'The walk brain: still the only one that actually WALKS.'
+  eloRating: 1461.4
+  ladderRank: 2
+  ladderEntrants: 3

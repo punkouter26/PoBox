@@ -248,8 +248,8 @@ namespace PoBox
 
         /// <summary>
         /// Attaches the spectator systems that carry no scene state of their
-        /// own: the joint-stress heatmap, the impulse-scaled impact FX and the
-        /// pre-round tale of the tape.
+        /// own: the joint-stress heatmap, the impulse-scaled impact FX, the
+        /// pre-round tale of the tape and the colour-commentary band.
         ///
         /// WIRED AT RUNTIME RATHER THAN PLACED IN THE SCENE, ON PURPOSE. The
         /// contest scenes are generated artifacts and the tool that generates
@@ -258,7 +258,7 @@ namespace PoBox
         /// bail while it logs success anyway (CLAUDE.md). Anything that has to
         /// be dragged into SCN_TEST_BALANCE_CONTEST by hand is therefore one
         /// regeneration away from being silently absent, with a scene that still
-        /// runs and simply shows less. These three need no serialized
+        /// runs and simply shows less. These four need no serialized
         /// references — they discover fighters themselves and load their assets
         /// from <see cref="Systems_SpectatorKit"/> — so there is nothing to be
         /// gained by putting them in the scene and a whole failure mode to be
@@ -292,6 +292,16 @@ namespace PoBox
             if (systemsRoot.GetComponentInChildren<Systems_TaleOfTheTape>(true) == null)
             {
                 AddSpectatorSystem<Systems_TaleOfTheTape>(systemsRoot, "TaleOfTheTape");
+                added++;
+            }
+            // Added AFTER the tale of the tape so its Start runs after the card
+            // exists. Nothing depends on that ordering today — the commentary
+            // borrows the referee's document, not the card's — but the two share
+            // a band of screen and the one that builds last is the one drawn on
+            // top, which is the behaviour wanted if they ever do overlap.
+            if (systemsRoot.GetComponentInChildren<Systems_ColourCommentary>(true) == null)
+            {
+                AddSpectatorSystem<Systems_ColourCommentary>(systemsRoot, "ColourCommentary");
                 added++;
             }
             if (added > 0)

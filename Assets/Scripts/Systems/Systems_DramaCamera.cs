@@ -215,6 +215,12 @@ namespace PoBox
 
         private Systems_ContestReferee _contest;
         private Systems_FighterRig _winnerFocus;
+        /// <summary>
+        /// A fighter the booth has asked the camera to look at, and how much
+        /// longer the request stands. See <see cref="RequestFocus"/>.
+        /// </summary>
+        private Systems_FighterRig _cueFocus;
+        private float _cueRemaining;
         private Systems_FighterRig[] _rigs;
         private float[] _smoothedWobble;
         private float[] _startHeadHeights;
@@ -384,6 +390,32 @@ namespace PoBox
         }
 
         /// <summary>
+        /// The booth has something to say about <paramref name="rig"/>: put it
+        /// on air for <paramref name="seconds"/>.
+        ///
+        /// A NOMINATION, NOT A COMMAND, and the distinction is what keeps the
+        /// edit sane. The winner shot still outranks it, a fighter that has
+        /// gone down is refused outright, and a standing request is dropped at
+        /// every round boundary. What it buys is the oldest rule in sports
+        /// broadcast: the camera goes where the story is. Without it the
+        /// director picks by wobble and the commentary picks by strain, and the
+        /// two routinely disagree — so the line "watch Grandma's left ankle"
+        /// used to appear over a close-up of somebody else.
+        ///
+        /// Honouring it changes the shot SUBJECT, which the director already
+        /// treats as an edit, so this arrives as a cut rather than a slide.
+        /// </summary>
+        public void RequestFocus(Systems_FighterRig rig, float seconds)
+        {
+            if (rig == null || seconds <= 0f)
+            {
+                return;
+            }
+            _cueFocus = rig;
+            _cueRemaining = seconds;
+        }
+
+        /// <summary>
         /// Holds the round winner. Matched on the identity the spawner recorded
         /// rather than on GameObject.name.Contains(winnerName), which is what
         /// this used to do: "Standard" is a substring of "Contest_Standard2", so
@@ -393,6 +425,7 @@ namespace PoBox
         private void OnRoundEnded(string winnerName)
         {
             _winnerFocus = null;
+            ClearCue();
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
                 Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
@@ -407,6 +440,18 @@ namespace PoBox
         private void OnRoundStarted(int round)
         {
             _winnerFocus = null;
+            ClearCue();
+        }
+
+        /// <summary>
+        /// Drops any standing commentary cue. A request is about the round it
+        /// was made in; carrying one over a boundary would open the next round
+        /// on a close-up chosen by a sentence nobody can still read.
+        /// </summary>
+        private void ClearCue()
+        {
+            _cueFocus = null;
+            _cueRemaining = 0f;
         }
 
         private void LateUpdate()
@@ -466,6 +511,26 @@ namespace PoBox
                 }
             }
 
+            // Resolved before the shot chain so the cue can expire on the same
+            // frame it becomes invalid. A cue is refused once its fighter is on
+            // the mat: the booth's line was about a standing body, and holding a
+            // close-up on a prone one while the rest of the ring is still live
+            // is the worst shot available.
+            int cueIndex = -1;
+            if (_cueRemaining > 0f)
+            {
+                _cueRemaining -= dt;
+                // Guarded rather than left to IndexOf: Unity's == treats two
+                // destroyed objects as equal, so a null cue would match a
+                // destroyed rig and put the camera on a slot index.
+                cueIndex = _cueFocus != null ? IndexOf(_cueFocus) : -1;
+                if (cueIndex < 0 || !_wasStanding[cueIndex])
+                {
+                    ClearCue();
+                    cueIndex = -1;
+                }
+            }
+
             Vector3 target;
             float drama;
             bool closeShot;
@@ -482,6 +547,18 @@ namespace PoBox
                 drama = 0.85f;
                 closeShot = true;
                 subject = IndexOf(_winnerFocus);
+            }
+            else if (cueIndex >= 0)
+            {
+                // The booth has the floor. Drama is floored rather than read
+                // from wobble: the cue was raised because something measurable
+                // is wrong with this fighter, which is not always something the
+                // wobble estimate can see — a pinned ankle holds a body very
+                // still right up until it does not.
+                target = _rigs[cueIndex].Pelvis.position;
+                drama = Mathf.Max(0.65f, Mathf.Clamp01(_smoothedWobble[cueIndex]));
+                closeShot = true;
+                subject = cueIndex;
             }
             else if (standingCount >= GROUP_SHOT_MIN_STANDING)
             {

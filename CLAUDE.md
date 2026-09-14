@@ -147,13 +147,14 @@ throughput rather than matrix multiplies.
 Mean reward is not the shipping criterion for either mini-game, and the criteria
 that are -- steps between falls, upright fraction, alternation, distance reached
 before falling -- reach only TensorBoard, which only records while a trainer is
-attached. Three tools close that gap:
+attached. Four tools close that gap:
 
 | Tool | Answers |
 |---|---|
 | `python Tools/train_report.py <run-id>` | how a **live run** is doing, per body |
 | `pwsh -Command "& ./Tools/eval_candidates.ps1 -Runs @('<run-id>')"` | how a **finished brain** compares to the ones that ship |
 | `python Tools/verify_train_scene.py` | whether a regenerated scene has a hole in its fall detector |
+| `python Tools/ladder.py eval/*.json` | how a brain ranks against **every brain ever measured** |
 
 `eval_candidates.ps1` stages a run's latest checkpoint under `Assets/Agents`,
 rebuilds `EvalBuild/` and runs the matrix; it is safe to run while training
@@ -164,6 +165,41 @@ named `a,b` and the script measures only the baselines.
 **Every measurement includes the heuristic PD bot.** It is the floor a policy has
 to clear, and it is not a soft one: measured 2026-09-07, it out-stands the
 shipping balance brain on the capsule by 40%.
+
+**The ladder remembers what the comparison table forgets.** `eval_compare.py`
+prints two reports side by side and then it is gone -- `eval/` is gitignored and
+the next run overwrites the files it was built from, so every promotion in this
+project's history has been argued from a table nobody can reproduce.
+`Tools/ladder.py` turns those same reports into **metric duels** and keeps them:
+one duel is one metric, on one body, in one condition, resolved between two
+brains, appended to `Tools/ladder/duels.jsonl`. Ratings are recomputed from the
+whole log every time, so `gen18` is still on the board months after anyone last
+ran it and a new checkpoint arrives into a field rather than into an empty room.
+`eval_candidates.ps1` ingests automatically at the end of a run; re-ingesting the
+same reports is a no-op, because a duel's id is a hash of the two reports'
+CONTENT rather than their filenames.
+
+Three things about it are deliberate and load-bearing:
+
+- **They are not fights.** Two brains never meet -- `Systems_EvalHarness`
+  measures each alone. A rating gap says how CONSISTENTLY one brain outmeasures
+  another across bodies and criteria, not who would win a round. The tale of
+  the tape says "Elo 1579 - 1st of 3" for exactly that reason and no stronger.
+- **The `ALL` row never duels.** An aggregate cannot see "improved the
+  characters by wrecking the capsule", which is the one outcome this project
+  has already ruled unshippable. Every duel is per body.
+- **A duel needs matching observation widths.** The width comes from the model's
+  own `obs_0` input, and a brain of a different width was measured on fighters
+  configured with a different sensor -- so the two reports are not like-for-like
+  however identical their scene and episode count look. Mismatched pairs are
+  skipped with a line on stderr.
+
+`PoBox/Brains/Import Ladder Ratings` (`Editor_LadderImport`) copies the ratings
+into the brain dossiers, where the tale of the tape shows them. It **refuses** a
+rating whose ladder width disagrees with the `.onnx` now sitting in
+`Assets/Agents/<name>/`: brain folder names here have historically lied about
+which generation they hold, and a rating written past that check would put a
+measured number beside a brain that never earned it.
 
 **Statistics are written per body** (`Locomotion/Grandma/StepsBetweenFalls`) as
 well as in aggregate. Sixteen fighters train one shared brain across three rigs,
@@ -329,11 +365,43 @@ ML-Agents Academy stepper.
   only". Nothing is placed at author time: `Systems_ContestSpawner.SpawnAndBegin`
   instantiates from a serialized roster of `ContestRosterEntry` (prefab + brain +
   tint + `locomotionBrain` flag), then wakes a sleeping systems root holding the
-  referee, drama camera, hazards, announcer and FX, which self-discover fighters in
-  their own `Start`.
+  referee, drama camera, hazards, announcer, colour commentary and FX, which
+  self-discover fighters in their own `Start`.
 - **`SCN_MENU`** — build index 0. Picks a mini-game and roster, stashes them in a
   `Systems_MiniGameSelection` asset, and loads the contest scene, which skips its own
   setup menu when a selection is present.
+
+**The booth has two voices.** `Systems_Announcer` is play-by-play and purely
+event-driven -- round start, a fall, a hazard, a save -- and those are the
+moments a spectator can already see. `Systems_ColourCommentary` is the second
+voice, a lower third driven by *rolling telemetry*, and it says the thing that
+is otherwise invisible: which ankle has been pinned at its force ceiling for
+three seconds, how many degrees a torso is off vertical and not correcting, how
+long since a fighter last lifted a foot. Every detector is a STREAK rather than
+an instant, because a threshold crossed for one frame at 50 Hz is noise.
+
+Four things it does on purpose:
+
+- **Strain is `Systems_Stamina.JointLoad01`**, the same number the heatmap draws
+  and stamina drains from -- never the action vector, which is a request rather
+  than a force and reads as full effort from a policy pinned against a limit.
+- **Sides come from geometry, not names.** Left and right are the sign of the
+  part's x in pelvis space. The capsule's parts are `ShinL`/`ShinR` and the
+  imported characters' are not; `Sensor_GroundContact`'s header records what
+  that asymmetry already cost once. Only the joint WORD (hip, knee, ankle)
+  comes from the name, and an unrecognised part is called "joint".
+- **Two clocks.** Streaks accumulate on SCALED time so the countdown's
+  `timeScale` 0 cannot manufacture a six-second strain out of a frozen ring; the
+  label fades on UNSCALED time so it keeps living through slow-mo.
+- **It yields to the play-by-play** via `Systems_Announcer.CalloutActive`, and
+  it *nominates* a camera subject rather than commanding one --
+  `Systems_DramaCamera.RequestFocus`, which the winner shot still outranks and
+  which is dropped at every round boundary. Honouring a cue changes the shot
+  subject, which the director already treats as an edit, so it arrives as a cut.
+
+Every line is also logged as `COLOUR_COMMENTARY | <tell> | <text>`, for the same
+reason `TALE_OF_THE_TAPE` is: the band is on screen for 4.5 s and an offline
+capture cannot reliably sample it.
 
 **Spawner subtlety:** fighters are instantiated under an *inactive* holder object,
 configured, then reparented to the scene root. Reparenting is what fires `Awake`/

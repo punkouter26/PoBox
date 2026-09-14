@@ -19,3 +19,6 @@ MonoBehaviour:
   observationCount: 127
   headlineStat: 167.9 steps between falls
   note: 'Balance brain: trained with commanded speed pinned at 0. Cannot walk.'
+  eloRating: 1578.8
+  ladderRank: 1
+  ladderEntrants: 3
