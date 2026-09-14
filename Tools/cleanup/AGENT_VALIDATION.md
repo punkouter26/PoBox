@@ -33,8 +33,29 @@ containing Balance is not evidence that this policy cannot walk.
 
 ## Measurement status
 
-Pending fresh complete-round measurements. The earlier smoke test is only
-historical context and was recorded before the preserved capsule removal.
+Fresh baseline on 2026-09-14, before repairs, with the full current roster:
+
+| Character | Balance trial | Walking trial (5.6 m required) | Verdict |
+|---|---|---|---|
+| Grandma | Fell at 5.4 s | 0.84 m, fell | Fails both |
+| Grandpa | Fell at 6.9 s | 0.64 m, fell | Fails both |
+| Nick | Declared winner at 6.9 s | 0.00 m, incorrectly reported upright | Invalid fall detection; no pass |
+
+Balance used Locomotion_gen25 for Grandma/Grandpa; walking used
+Locomotion_gen18_34M with 127 observations, confirmed against the running agents
+by SceneTool_AgentProbe. Nick successfully bound Nick_Balance002 with 127
+observations and 30 actuators at decimation 1. Raptor remains legacy, with
+RaptorBalance01 in balance and a heuristic (no brain) in walking.
+
+The runtime probe reproduced Nick's **startHeadHeight=0** while his controller
+was later bound and his head was only 0.173 m high. His reset count stayed zero
+because contest auto-reset is disabled. Comparing head height against 40% of
+zero can never detect an ordinary collapse. Both referees sample before the
+controller's first FixedUpdate. Fix readiness and retest before accepting wins.
+
+Reproduction: play either contest, then run the Unity menu
+`PoBox/Scene/Probe Active Contest`. Read Temp/agent-probes/<scene>.txt. The probe
+reads actual referee scores and model assignments without editing the scene.
 
 ## Actual contest rules
 
@@ -57,3 +78,25 @@ historical context and was recorded before the preserved capsule removal.
   both referees. Record these as flow defects, not training failures.
 - Existing menu/contest UI and input remain the presentation baseline. No new
   shove, start, pause or reset controls are requested.
+
+## Physics audit
+
+- Grandma/Grandpa each have 15 collision shapes and 75 kg total mass, but the
+  live probe reports **all 105 internal collision pairs ignored**. This comes
+  from Systems_FighterRig.DisableIntraRigCollisions. Their current legacy bodies
+  do not satisfy the approved self-collision requirement.
+- Those rigs allow 50 rad/s angular velocity; this is not a validated human
+  movement limit. Keep legacy bodies for comparison while preparing realistic
+  MuJoCo bodies for the skinned cast.
+- Nick has zero PhysX colliders. The PhysX hazards and other contestants cannot
+  physically contact his MuJoCo-only body through those components. Shared
+  collision geometry and hazard exposure must be implemented and tested.
+- The saved Nick MJCF enables contact and carries a geometry for every segment,
+  with parent filtering enabled. All 30 position actuators are force-unlimited.
+  Finite human-scale force limits and measured movement speeds are prerequisites
+  for a realistic new body; changing them requires reevaluating the policy.
+- Embedded clips in the three GLBs contain only one timestamp (0.0333 seconds).
+  They supply a pose, not walking motion capture.
+- This machine has an RTX 2060 with 6 GB, not the training machine documented
+  in older notes. The MuJoCo Python environment and local training checkpoints
+  are absent. Restore a compatible environment before starting training.
