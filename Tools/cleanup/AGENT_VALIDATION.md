@@ -164,3 +164,22 @@ TensorBoard cleanup now retains every directory containing policy checkpoints,
 even when its event log is small or missing. Python syntax checks and installed
 package compatibility checks pass. No training has started; Newton visualization
 has been verified for the current body and must be rechecked for any new body.
+
+## Bounded Nick body, 2026-09-14 23:35 UTC
+
+All 30 actuators in both contest scenes now have finite torque budgets and a
+bounded driven-speed envelope, applied through Unity Pipeline. Details and
+limitations: `Tools/MuJoCo/HUMAN_LIMITS.md`. The rig's proportions, 75 kg mass,
+collision geometry, joint ranges and armature are unchanged. Exported balance
+scene vs `nick_human.xml`: all compared physical arrays match, with only up to
+0.000012 rounding in velocity feedback coefficients. Unity timestep is 0.02 s.
+
+The old brain does **not** pass on the new body: visible Newton replay recorded
+four falls in 10 s balance and seven falls in 10 s walking. Unity independently
+recorded a balance fall at 2.30 s. Previous passing trials used the unlimited
+body and must not be presented as current acceptance.
+
+Warm-start recovery copies the exported actor and normalization into PPO, with
+a new critic/optimizer. Sixteen varied observations match ONNX outputs within
+0.00000095. Checkpoints are saved atomically, so the live viewer cannot read a
+partially written policy. Training is the next step; not yet a successful agent.

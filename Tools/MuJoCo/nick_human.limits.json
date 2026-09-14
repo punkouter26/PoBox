@@ -1,0 +1,307 @@
+{
+  "source": "C:\\Users\\punko\\Downloads\\PoBox\\Tools\\MuJoCo\\nick_unity.xml",
+  "source_sha256": "7afae3e97aad0ff79a2ffe5224d923c5e71bb171017916df940a36d98065a119",
+  "body": "RIGGED_Nick.glb, 75 kg, unchanged exported proportions",
+  "actuators": [
+    {
+      "name": "a_Torso_pitch",
+      "force_range_nm": [
+        -150,
+        150
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 104.71981246641494
+    },
+    {
+      "name": "a_Torso_roll",
+      "force_range_nm": [
+        -100,
+        100
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 89.81155
+    },
+    {
+      "name": "a_Torso_yaw",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 122.1729889132165
+    },
+    {
+      "name": "a_Head_pitch",
+      "force_range_nm": [
+        -15,
+        15
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 20.94396074795373
+    },
+    {
+      "name": "a_Head_roll",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 15.70797186996224
+    },
+    {
+      "name": "a_Head_yaw",
+      "force_range_nm": [
+        -8,
+        8
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 23.561939832967845
+    },
+    {
+      "name": "a_ThighL_pitch",
+      "force_range_nm": [
+        -140,
+        200
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 189.07720265537588
+    },
+    {
+      "name": "a_ThighL_roll",
+      "force_range_nm": [
+        -80,
+        80
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 94.53866874431594
+    },
+    {
+      "name": "a_ThighL_yaw",
+      "force_range_nm": [
+        -40,
+        40
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 87.2665103886791
+    },
+    {
+      "name": "a_ShinL_pitch",
+      "force_range_nm": [
+        -200,
+        100
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 400.0,
+      "kv": 113.4465
+    },
+    {
+      "name": "a_FootL_pitch",
+      "force_range_nm": [
+        -45,
+        120
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 200.0,
+      "kv": 37.815468328786075
+    },
+    {
+      "name": "a_FootL_roll",
+      "force_range_nm": [
+        -20,
+        20
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 200.0,
+      "kv": 34.90660124658955
+    },
+    {
+      "name": "a_ThighR_pitch",
+      "force_range_nm": [
+        -140,
+        200
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 189.07720265537588
+    },
+    {
+      "name": "a_ThighR_roll",
+      "force_range_nm": [
+        -80,
+        80
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 94.53866874431594
+    },
+    {
+      "name": "a_ThighR_yaw",
+      "force_range_nm": [
+        -40,
+        40
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 87.2665103886791
+    },
+    {
+      "name": "a_ShinR_pitch",
+      "force_range_nm": [
+        -200,
+        100
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 400.0,
+      "kv": 113.4465
+    },
+    {
+      "name": "a_FootR_pitch",
+      "force_range_nm": [
+        -45,
+        120
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 200.0,
+      "kv": 37.815468328786075
+    },
+    {
+      "name": "a_FootR_roll",
+      "force_range_nm": [
+        -20,
+        20
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 200.0,
+      "kv": 34.90660124658955
+    },
+    {
+      "name": "a_UpperArmL_pitch",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 39.27000422976189
+    },
+    {
+      "name": "a_UpperArmL_roll",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 23.99832531164739
+    },
+    {
+      "name": "a_UpperArmL_yaw",
+      "force_range_nm": [
+        -25,
+        25
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 100.0,
+      "kv": 34.906666577625835
+    },
+    {
+      "name": "a_ForearmL_pitch",
+      "force_range_nm": [
+        -40,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 60.0,
+      "kv": 18.32595
+    },
+    {
+      "name": "a_GloveL_pitch",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 6.981333315525167
+    },
+    {
+      "name": "a_GloveL_yaw",
+      "force_range_nm": [
+        -5,
+        5
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 2.9088798797757733
+    },
+    {
+      "name": "a_UpperArmR_pitch",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 39.27000422976189
+    },
+    {
+      "name": "a_UpperArmR_roll",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 23.99832531164739
+    },
+    {
+      "name": "a_UpperArmR_yaw",
+      "force_range_nm": [
+        -25,
+        25
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 100.0,
+      "kv": 34.906666577625835
+    },
+    {
+      "name": "a_ForearmR_pitch",
+      "force_range_nm": [
+        -40,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 60.0,
+      "kv": 18.32595
+    },
+    {
+      "name": "a_GloveR_pitch",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 6.981333315525167
+    },
+    {
+      "name": "a_GloveR_yaw",
+      "force_range_nm": [
+        -5,
+        5
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 2.9088798797757733
+    }
+  ]
+}

@@ -36,6 +36,7 @@ parser.add_argument("--num-envs", type=int, default=4096)
 parser.add_argument("--max-iterations", type=int, default=3000)
 parser.add_argument("--run-name", default="nick01")
 parser.add_argument("--resume", default=None, help="checkpoint path to continue from")
+parser.add_argument("--warm-start-onnx", default=None, help="recover actor from an exported policy; new critic/optimizer")
 parser.add_argument("--resume-latest", action="store_true",
                     help="continue from the newest model_*.pt in this run's own directory, if any (crash recovery)")
 parser.add_argument("--until-iteration", type=int, default=None,
@@ -65,8 +66,11 @@ def prune_stale_runs(root: Path, keep: str) -> None:
     """
     if not root.exists():
         return
+    resolved_root = root.resolve()
     for d in sorted(root.iterdir()):
         if not d.is_dir() or d.name == keep:
+            continue
+        if d.is_symlink() or d.resolve().parent != resolved_root:
             continue
         if any(d.rglob("*.pt")) or any(d.rglob("*.onnx")):
             continue  # A checkpoint is valuable even if its event log is absent.
@@ -166,6 +170,13 @@ print("ENV READY  num_envs=%d  obs=%d  act=%d  control_dt=%.3f  model=%s"
 
 from rsl_rl.runners import OnPolicyRunner   # noqa: E402
 
+
+class AtomicRunner(OnPolicyRunner):
+    def save(self, path, infos=None):
+        temporary = str(path) + ".writing"
+        super().save(temporary, infos)
+        os.replace(temporary, path)
+
 train_cfg = {
     "seed": args.seed,
     "num_steps_per_env": 24,
@@ -210,7 +221,7 @@ for item in args.train:
 
 log_dir.mkdir(parents=True, exist_ok=True)
 json.dump({"env": env.config_dict(), "train": train_cfg}, open(log_dir / "config.json", "w"), indent=2, default=str)
-runner = OnPolicyRunner(env, train_cfg, log_dir=str(log_dir), device=str(env.device))
+runner = AtomicRunner(env, train_cfg, log_dir=str(log_dir), device=str(env.device))
 resume_path = args.resume
 if args.resume_latest:
     import re
@@ -220,6 +231,9 @@ if args.resume_latest:
 if resume_path:
     runner.load(resume_path)
     print("  resumed from %s (iteration %d)" % (resume_path, runner.current_learning_iteration))
+elif args.warm_start_onnx:
+    from warm_start import initialize_from_onnx
+    initialize_from_onnx(runner, args.warm_start_onnx)
 iterations = args.max_iterations
 if args.until_iteration is not None:
     iterations = args.until_iteration - runner.current_learning_iteration
@@ -228,13 +242,16 @@ if args.until_iteration is not None:
         sys.stdout.flush()
         os._exit(0)
 
+runner.save(str(log_dir / ("model_%d.pt" % runner.current_learning_iteration)))
 viewer = None if args.no_ui else start_viewer(log_dir)
 print("TRAINING  logs -> %s" % log_dir)
 try:
     runner.learn(num_learning_iterations=iterations, init_at_random_ep_len=True)
 finally:
+    # The user needs to inspect the final policy after training as well.
+    # The viewer owns no training state and can be closed independently.
     if viewer is not None and viewer.poll() is None:
-        viewer.terminate()
+        print("Viewer remains open for inspection (pid %d)" % viewer.pid)
 print("TRAINING_DONE")
 # os._exit skips the atexit flush, and with stdout redirected to a log the
 # final line is still sitting in a block buffer. Flush before leaving, or a
