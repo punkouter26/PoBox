@@ -88,30 +88,30 @@
     <position joint="Head_pitch_24" ctrllimited="true" forcelimited="true" ctrlrange="-0.654985 0.741278" forcerange="-15 15" lengthrange="0 0" gear="1" kp="60" kv="20.95125" name="a_Head_pitch_65" />
     <position joint="Head_roll_25" ctrllimited="true" forcelimited="true" ctrlrange="-0.597032 0.450166" forcerange="-10 10" lengthrange="0 0" gear="1" kp="60" kv="15.7099" name="a_Head_roll_66" />
     <position joint="Head_yaw_26" ctrllimited="true" forcelimited="true" ctrlrange="-0.785398 0.785398" forcerange="-8 8" lengthrange="0 0" gear="1" kp="60" kv="23.56194" name="a_Head_yaw_67" />
-    <position joint="UpperArmL_pitch_28" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 2.0944" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="39.27" name="a_UpperArmL_pitch_68" />
-    <position joint="UpperArmL_roll_29" ctrllimited="true" forcelimited="true" ctrlrange="-2.64186 0.349066" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="37.3937" name="a_UpperArmL_roll_69" />
-    <position joint="UpperArmL_yaw_30" ctrllimited="true" forcelimited="true" ctrlrange="-1.01069 1.08371" forcerange="-25 25" lengthrange="0 0" gear="1" kp="100" kv="34.909" name="a_UpperArmL_yaw_70" />
-    <position joint="ForearmL_pitch_44" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.44346" forcerange="-40 60" lengthrange="0 0" gear="1" kp="60" kv="20.94394" name="a_ForearmL_pitch_71" />
-    <position joint="GloveL_pitch_56" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 1.0472" forcerange="-10 10" lengthrange="0 0" gear="1" kp="20" kv="6.981333" name="a_GloveL_pitch_72" />
-    <position joint="GloveL_yaw_57" ctrllimited="true" forcelimited="true" ctrlrange="-0.436332 0.436332" forcerange="-5 5" lengthrange="0 0" gear="1" kp="20" kv="4.00827" name="a_GloveL_yaw_73" />
-    <position joint="UpperArmR_pitch_33" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 2.0944" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="39.27" name="a_UpperArmR_pitch_74" />
-    <position joint="UpperArmR_roll_34" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.56451" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="36.4197" name="a_UpperArmR_roll_75" />
-    <position joint="UpperArmR_yaw_35" ctrllimited="true" forcelimited="true" ctrlrange="-1.10417 0.990222" forcerange="-25 25" lengthrange="0 0" gear="1" kp="100" kv="34.91687" name="a_UpperArmR_yaw_76" />
-    <position joint="ForearmR_pitch_47" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.44346" forcerange="-40 60" lengthrange="0 0" gear="1" kp="60" kv="20.94394" name="a_ForearmR_pitch_77" />
-    <position joint="GloveR_pitch_59" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 1.0472" forcerange="-10 10" lengthrange="0 0" gear="1" kp="20" kv="6.981333" name="a_GloveR_pitch_78" />
-    <position joint="GloveR_yaw_60" ctrllimited="true" forcelimited="true" ctrlrange="-0.436332 0.436332" forcerange="-5 5" lengthrange="0 0" gear="1" kp="20" kv="4.00827" name="a_GloveR_yaw_79" />
-    <position joint="ThighL_pitch_14" ctrllimited="true" forcelimited="true" ctrlrange="-1.91986 0.349066" forcerange="-140 200" lengthrange="0 0" gear="1" kp="500" kv="189.0772" name="a_ThighL_pitch_80" />
-    <position joint="ThighL_roll_15" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 0.785398" forcerange="-80 80" lengthrange="0 0" gear="1" kp="500" kv="94.53867" name="a_ThighL_roll_81" />
-    <position joint="ThighL_yaw_16" ctrllimited="true" forcelimited="true" ctrlrange="-0.523599 0.523599" forcerange="-40 40" lengthrange="0 0" gear="1" kp="500" kv="87.26651" name="a_ThighL_yaw_82" />
-    <position joint="ShinL_pitch_38" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 2.31157" forcerange="-200 100" lengthrange="0 0" gear="1" kp="400" kv="124.3051" name="a_ShinL_pitch_83" />
-    <position joint="FootL_pitch_50" ctrllimited="true" forcelimited="true" ctrlrange="-0.285266 0.849198" forcerange="-45 120" lengthrange="0 0" gear="1" kp="200" kv="37.84137" name="a_FootL_pitch_84" />
-    <position joint="FootL_roll_51" ctrllimited="true" forcelimited="true" ctrlrange="-0.739292 0.174533" forcerange="-20 20" lengthrange="0 0" gear="1" kp="200" kv="45.72765" name="a_FootL_roll_85" />
-    <position joint="ThighR_pitch_19" ctrllimited="true" forcelimited="true" ctrlrange="-2.00632 0.262606" forcerange="-140 200" lengthrange="0 0" gear="1" kp="500" kv="189.1447" name="a_ThighR_pitch_86" />
-    <position joint="ThighR_roll_20" ctrllimited="true" forcelimited="true" ctrlrange="-0.872354 0.26211" forcerange="-80 80" lengthrange="0 0" gear="1" kp="500" kv="94.56458" name="a_ThighR_roll_87" />
-    <position joint="ThighR_yaw_21" ctrllimited="true" forcelimited="true" ctrlrange="-0.523599 0.523599" forcerange="-40 40" lengthrange="0 0" gear="1" kp="500" kv="87.26651" name="a_ThighR_yaw_88" />
-    <position joint="ShinR_pitch_41" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 2.18834" forcerange="-200 100" lengthrange="0 0" gear="1" kp="400" kv="118.1586" name="a_ShinR_pitch_89" />
-    <position joint="FootR_pitch_53" ctrllimited="true" forcelimited="true" ctrlrange="-0.523851 0.610613" forcerange="-45 120" lengthrange="0 0" gear="1" kp="200" kv="37.82386" name="a_FootR_pitch_90" />
-    <position joint="FootR_roll_54" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 0.54419" forcerange="-20 20" lengthrange="0 0" gear="1" kp="200" kv="35.9538" name="a_FootR_roll_91" />
+    <position joint="ThighL_pitch_14" ctrllimited="true" forcelimited="true" ctrlrange="-1.91986 0.349066" forcerange="-140 200" lengthrange="0 0" gear="1" kp="500" kv="189.0772" name="a_ThighL_pitch_68" />
+    <position joint="ThighL_roll_15" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 0.785398" forcerange="-80 80" lengthrange="0 0" gear="1" kp="500" kv="94.53867" name="a_ThighL_roll_69" />
+    <position joint="ThighL_yaw_16" ctrllimited="true" forcelimited="true" ctrlrange="-0.523599 0.523599" forcerange="-40 40" lengthrange="0 0" gear="1" kp="500" kv="87.26651" name="a_ThighL_yaw_70" />
+    <position joint="ShinL_pitch_38" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 2.31157" forcerange="-200 100" lengthrange="0 0" gear="1" kp="400" kv="124.3051" name="a_ShinL_pitch_71" />
+    <position joint="FootL_pitch_50" ctrllimited="true" forcelimited="true" ctrlrange="-0.285266 0.849198" forcerange="-45 120" lengthrange="0 0" gear="1" kp="200" kv="37.84137" name="a_FootL_pitch_72" />
+    <position joint="FootL_roll_51" ctrllimited="true" forcelimited="true" ctrlrange="-0.739292 0.174533" forcerange="-20 20" lengthrange="0 0" gear="1" kp="200" kv="45.72765" name="a_FootL_roll_73" />
+    <position joint="ThighR_pitch_19" ctrllimited="true" forcelimited="true" ctrlrange="-2.00632 0.262606" forcerange="-140 200" lengthrange="0 0" gear="1" kp="500" kv="189.1447" name="a_ThighR_pitch_74" />
+    <position joint="ThighR_roll_20" ctrllimited="true" forcelimited="true" ctrlrange="-0.872354 0.26211" forcerange="-80 80" lengthrange="0 0" gear="1" kp="500" kv="94.56458" name="a_ThighR_roll_75" />
+    <position joint="ThighR_yaw_21" ctrllimited="true" forcelimited="true" ctrlrange="-0.523599 0.523599" forcerange="-40 40" lengthrange="0 0" gear="1" kp="500" kv="87.26651" name="a_ThighR_yaw_76" />
+    <position joint="ShinR_pitch_41" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 2.18834" forcerange="-200 100" lengthrange="0 0" gear="1" kp="400" kv="118.1586" name="a_ShinR_pitch_77" />
+    <position joint="FootR_pitch_53" ctrllimited="true" forcelimited="true" ctrlrange="-0.523851 0.610613" forcerange="-45 120" lengthrange="0 0" gear="1" kp="200" kv="37.82386" name="a_FootR_pitch_78" />
+    <position joint="FootR_roll_54" ctrllimited="true" forcelimited="true" ctrlrange="-0.174533 0.54419" forcerange="-20 20" lengthrange="0 0" gear="1" kp="200" kv="35.9538" name="a_FootR_roll_79" />
+    <position joint="UpperArmL_pitch_28" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 2.0944" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="39.27" name="a_UpperArmL_pitch_80" />
+    <position joint="UpperArmL_roll_29" ctrllimited="true" forcelimited="true" ctrlrange="-2.64186 0.349066" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="37.3937" name="a_UpperArmL_roll_81" />
+    <position joint="UpperArmL_yaw_30" ctrllimited="true" forcelimited="true" ctrlrange="-1.01069 1.08371" forcerange="-25 25" lengthrange="0 0" gear="1" kp="100" kv="34.909" name="a_UpperArmL_yaw_82" />
+    <position joint="ForearmL_pitch_44" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.44346" forcerange="-40 60" lengthrange="0 0" gear="1" kp="60" kv="20.94394" name="a_ForearmL_pitch_83" />
+    <position joint="GloveL_pitch_56" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 1.0472" forcerange="-10 10" lengthrange="0 0" gear="1" kp="20" kv="6.981333" name="a_GloveL_pitch_84" />
+    <position joint="GloveL_yaw_57" ctrllimited="true" forcelimited="true" ctrlrange="-0.436332 0.436332" forcerange="-5 5" lengthrange="0 0" gear="1" kp="20" kv="4.00827" name="a_GloveL_yaw_85" />
+    <position joint="UpperArmR_pitch_33" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 2.0944" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="39.27" name="a_UpperArmR_pitch_86" />
+    <position joint="UpperArmR_roll_34" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.56451" forcerange="-60 60" lengthrange="0 0" gear="1" kp="100" kv="36.4197" name="a_UpperArmR_roll_87" />
+    <position joint="UpperArmR_yaw_35" ctrllimited="true" forcelimited="true" ctrlrange="-1.10417 0.990222" forcerange="-25 25" lengthrange="0 0" gear="1" kp="100" kv="34.91687" name="a_UpperArmR_yaw_88" />
+    <position joint="ForearmR_pitch_47" ctrllimited="true" forcelimited="true" ctrlrange="-0.349066 2.44346" forcerange="-40 60" lengthrange="0 0" gear="1" kp="60" kv="20.94394" name="a_ForearmR_pitch_89" />
+    <position joint="GloveR_pitch_59" ctrllimited="true" forcelimited="true" ctrlrange="-1.0472 1.0472" forcerange="-10 10" lengthrange="0 0" gear="1" kp="20" kv="6.981333" name="a_GloveR_pitch_90" />
+    <position joint="GloveR_yaw_60" ctrllimited="true" forcelimited="true" ctrlrange="-0.436332 0.436332" forcerange="-5 5" lengthrange="0 0" gear="1" kp="20" kv="4.00827" name="a_GloveR_yaw_91" />
   </actuator>
   <sensor>
     <framepos objtype="xbody" objname="FootL_40" cutoff="0" name="s_FootL_pos_92" />

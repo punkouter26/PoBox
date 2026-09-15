@@ -143,8 +143,9 @@ def parse_template():
             }
             walk(b)
     walk(root.find("worldbody"))
-    actuators = {a.get("joint"): {"kp": a.get("kp"), "name": a.get("name")}
-                 for a in root.find("actuator")}
+    # In file order: Nick's actuator order IS the canonical PoBox action
+    # order (legs before arms), and the policy's action vector is indexed by it.
+    actuators = [(a.get("joint"), a.get("name"), a.get("kp")) for a in root.find("actuator")]
     return root, bodies, actuators
 
 
@@ -314,12 +315,11 @@ def build(glb_path: Path, name: str, out: Path, check: bool):
     body_lines = body_xml("Pelvis", 2)
 
     act_lines = []
-    for bname, info in nick_bodies.items():
-        for jname, _, _ in info["joints"]:
-            a = nick_actuators[jname]
-            lo, hi = info["new_ranges"][jname]
-            act_lines.append(f'    <position name="{a["name"]}" joint="{jname}" kp="{a["kp"]}" '
-                             f'ctrlrange="{math.radians(lo):.6f} {math.radians(hi):.6f}"/>')
+    for jname, aname, kp in nick_actuators:
+        bname = jname.rsplit("_", 1)[0]
+        lo, hi = nick_bodies[bname]["new_ranges"][jname]
+        act_lines.append(f'    <position name="{aname}" joint="{jname}" kp="{kp}" '
+                         f'ctrlrange="{math.radians(lo):.6f} {math.radians(hi):.6f}"/>')
 
     xml = f'''<?xml version="1.0" ?>
 <mujoco model="{name}">

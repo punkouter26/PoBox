@@ -98,18 +98,6 @@
     <position name="a_Head_pitch" joint="Head_pitch" kp="60" ctrlrange="-0.654985 0.741278"/>
     <position name="a_Head_roll" joint="Head_roll" kp="60" ctrlrange="-0.597032 0.450166"/>
     <position name="a_Head_yaw" joint="Head_yaw" kp="60" ctrlrange="-0.785398 0.785398"/>
-    <position name="a_UpperArmL_pitch" joint="UpperArmL_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
-    <position name="a_UpperArmL_roll" joint="UpperArmL_roll" kp="100" ctrlrange="-2.641864 0.349066"/>
-    <position name="a_UpperArmL_yaw" joint="UpperArmL_yaw" kp="100" ctrlrange="-1.010688 1.083707"/>
-    <position name="a_ForearmL_pitch" joint="ForearmL_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
-    <position name="a_GloveL_pitch" joint="GloveL_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
-    <position name="a_GloveL_yaw" joint="GloveL_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
-    <position name="a_UpperArmR_pitch" joint="UpperArmR_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
-    <position name="a_UpperArmR_roll" joint="UpperArmR_roll" kp="100" ctrlrange="-0.349066 2.564505"/>
-    <position name="a_UpperArmR_yaw" joint="UpperArmR_yaw" kp="100" ctrlrange="-1.104173 0.990222"/>
-    <position name="a_ForearmR_pitch" joint="ForearmR_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
-    <position name="a_GloveR_pitch" joint="GloveR_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
-    <position name="a_GloveR_yaw" joint="GloveR_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
     <position name="a_ThighL_pitch" joint="ThighL_pitch" kp="500" ctrlrange="-1.919862 0.349066"/>
     <position name="a_ThighL_roll" joint="ThighL_roll" kp="500" ctrlrange="-0.349066 0.785398"/>
     <position name="a_ThighL_yaw" joint="ThighL_yaw" kp="500" ctrlrange="-0.523599 0.523599"/>
@@ -122,6 +110,18 @@
     <position name="a_ShinR_pitch" joint="ShinR_pitch" kp="400" ctrlrange="-0.174533 2.188338"/>
     <position name="a_FootR_pitch" joint="FootR_pitch" kp="200" ctrlrange="-0.523851 0.610613"/>
     <position name="a_FootR_roll" joint="FootR_roll" kp="200" ctrlrange="-0.174533 0.544190"/>
+    <position name="a_UpperArmL_pitch" joint="UpperArmL_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
+    <position name="a_UpperArmL_roll" joint="UpperArmL_roll" kp="100" ctrlrange="-2.641864 0.349066"/>
+    <position name="a_UpperArmL_yaw" joint="UpperArmL_yaw" kp="100" ctrlrange="-1.010688 1.083707"/>
+    <position name="a_ForearmL_pitch" joint="ForearmL_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
+    <position name="a_GloveL_pitch" joint="GloveL_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
+    <position name="a_GloveL_yaw" joint="GloveL_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
+    <position name="a_UpperArmR_pitch" joint="UpperArmR_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
+    <position name="a_UpperArmR_roll" joint="UpperArmR_roll" kp="100" ctrlrange="-0.349066 2.564505"/>
+    <position name="a_UpperArmR_yaw" joint="UpperArmR_yaw" kp="100" ctrlrange="-1.104173 0.990222"/>
+    <position name="a_ForearmR_pitch" joint="ForearmR_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
+    <position name="a_GloveR_pitch" joint="GloveR_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
+    <position name="a_GloveR_yaw" joint="GloveR_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
   </actuator>
   <sensor>
     <framepos name="s_FootL_pos" objtype="body" objname="FootL"/>
