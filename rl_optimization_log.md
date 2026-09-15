@@ -1269,7 +1269,36 @@ Round C to the end (every 100–150 iterations; the curriculum keeps paying for 
 
 ### 2.6 Round D — both skills: resume the round-C ends with `stand_still_fraction=0.7`, lr 5e-4, 800 iterations, checkpoints every 50, evaluated every 200
 
-### 2.7 Unity observation of the candidate (2026-09-15, commit 86bf962)
+### 2.7 AUDIT 2026-09-15: the round C/D Grandma and Grandpa numbers do NOT reproduce — no promotable checkpoint exists
+
+Re-measured at the TRAINED step (`NICK_TIMESTEP=0.02 NICK_DECIMATION=1`,
+verified by the printed `control_dt 0.020 s`) and at the default 0.005×4, on
+the same bodies the runs trained on:
+
+| checkpoint | BALANCE median / full-cap | WALK median | RING median |
+|---|---|---|---|
+| `gma_lD` 850 | 1.64 s / **0 %** | 1.40 s | 1.60 s |
+| `gma_lC` 799 / 650 / 550 | 1.50 s / **0 %** | 1.42 s | 1.50 s |
+| `gpa_lD` 750 | 0.85 s / **0 %** | 0.78 s | 0.84 s |
+| `gpa_lC` 749 | 0.86 s / **0 %** | 0.80 s | 0.84 s |
+| passive baseline | 1.48 s / 0 % | — | — |
+
+Grandma stands like a ragdoll (≈ the passive baseline) and Grandpa is
+**worse** than one — his policy actively destabilises the rest pose. The
+section 2.5/2.6 tables claiming 22–24 % full-cap at 13.6–17.2 s median do not
+reproduce at any step, on any checkpoint measured (550, 650, 749, 750, 799,
+850); those numbers were bad measurements and should not be trusted. The
+"was 0 % / 1.8 s" figure for `lB/300` DOES match today's band, which is
+consistent with round C/D having never learned standing at all.
+
+**Consequence: Grandma and Grandpa cannot be fielded.** `Add To Contests`
+refuses without a brain folder, and promoting any measured checkpoint would
+put a ragdoll-strength contestant in the ring. Their placement waits on
+training that actually clears the bar — the first open question is why the
+curriculum that "learned standing" in training metrics left eval at the
+baseline (Finding 2's lesson again: training metrics are not evidence).
+
+### 2.8 Unity observation of the candidate (2026-09-15, commit 86bf962)
 
 Nick_Torque001 placed in BOTH contest scenes on the torque-limited body:
 `nick_torque.limits.json` applied to the source scene and both contests, the
