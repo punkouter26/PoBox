@@ -1,13 +1,14 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace PoBox
 {
     /// <summary>
     /// Presentation feedback for falls in the contest test scene: when a
-    /// fighter's head drops below the fall threshold, plays a dust burst and a
-    /// soft body thud at the impact point, and raises FighterFell for other
-    /// presentation systems (crowd, camera). Re-arms when the fighter is
-    /// reset upright. Self-discovers contestants at Start.
+    /// contestant's head drops below the fall threshold, plays a dust burst
+    /// and a soft body thud at the impact point, kicks the drama camera, and
+    /// raises FighterFell for other presentation systems (crowd, knockout FX).
+    /// Re-arms when the contestant is reset upright. Self-discovers
+    /// contestants through <see cref="IContestFighter"/>.
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     public sealed class Systems_FallImpactFx : MonoBehaviour
@@ -21,53 +22,63 @@ namespace PoBox
 
         public event System.Action<Vector3> FighterFell;
 
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _fighters;
         private float[] _startHeadHeights;
         private bool[] _armed;
+        private Systems_DramaCamera _dramaCamera;
 
         private void Start()
         {
-            // The thud is a body sound, so it rides the foley bus with the
-            // scuffs and the footsteps and ducks under a callout with them.
+            // The thud is a body sound, so it rides the foley bus and ducks
+            // under a callout with the rest of them.
             Systems_AudioMix.Route(_audioSource, AudioBus.Foley);
+            _dramaCamera = FindFirstObjectByType<Systems_DramaCamera>();
+        }
 
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            _startHeadHeights = new float[_rigs.Length];
-            _armed = new bool[_rigs.Length];
-            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+        /// <summary>
+        /// Bound late rather than in Start: a MuJoCo contestant reports a head
+        /// height of 0 until its simulator has bound on its first physics tick,
+        /// and a standing height captured then would arm this on a body that
+        /// is perfectly upright.
+        /// </summary>
+        private bool Bind()
+        {
+            if (_fighters != null) { return true; }
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            if (fighters.Length == 0) { return false; }
+            for (int index = 0; index < fighters.Length; index++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
-                _armed[rigIndex] = true;
+                if (!fighters[index].IsReady) { return false; }
             }
+            _fighters = fighters;
+            _startHeadHeights = new float[fighters.Length];
+            _armed = new bool[fighters.Length];
+            for (int index = 0; index < fighters.Length; index++)
+            {
+                _startHeadHeights[index] = fighters[index].HeadHeightAboveGround;
+                _armed[index] = true;
+            }
+            return true;
         }
 
         private void FixedUpdate()
         {
-            if (_rigs == null)
+            if (!Bind())
             {
                 return;
             }
-            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            for (int index = 0; index < _fighters.Length; index++)
             {
-                Systems_FighterRig rig = _rigs[rigIndex];
-            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
-            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
-            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
-            // standing until its head was practically on the floor and this never
-            // fired in the contest at all. The divisor is floored because a rig
-            // sampled before the referee resets it can measure near its own ground
-            // level, and an infinite fraction would both fire the impact and skip
-            // the re-arm that is supposed to follow it.
-            float headFraction = (rig.Head.position.y - rig.GroundY)
-                / Mathf.Max(0.01f, _startHeadHeights[rigIndex]);
-                if (_armed[rigIndex] && headFraction < FALL_HEAD_FRACTION)
+                IContestFighter fighter = _fighters[index];
+                float headFraction = Systems_Contestants.HeadFraction(fighter, _startHeadHeights[index]);
+                if (_armed[index] && (headFraction < FALL_HEAD_FRACTION || fighter.ReportsDown))
                 {
-                    _armed[rigIndex] = false;
-                    PlayImpact(rig.Pelvis.position);
+                    _armed[index] = false;
+                    PlayImpact(fighter.WorldPosition);
                 }
-                else if (!_armed[rigIndex] && headFraction > REARM_HEAD_FRACTION)
+                else if (!_armed[index] && headFraction > REARM_HEAD_FRACTION && !fighter.ReportsDown)
                 {
-                    _armed[rigIndex] = true;
+                    _armed[index] = true;
                 }
             }
         }
@@ -83,6 +94,10 @@ namespace PoBox
             {
                 _audioSource.transform.position = position;
                 _audioSource.PlayOneShot(_thudClips[Random.Range(0, _thudClips.Length)]);
+            }
+            if (_dramaCamera != null)
+            {
+                _dramaCamera.ShakeAt(position, 0.6f);
             }
             FighterFell?.Invoke(position);
         }

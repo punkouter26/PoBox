@@ -43,11 +43,6 @@ namespace PoBox
         // Systems_FighterIdentity.PickableNames, so the menu and the scene it
         // feeds cannot disagree about what exists.
         //
-        // A sweep that only looks at rigs also does not see Nick: both contest
-        // scenes place their contestants at author time; Nick is refereed
-        // through IContestFighter from another assembly. The served list did not
-        // include him either, and he appeared on the scoreboard having never
-        // been listed.
         private static string[] FighterNames => Systems_FighterIdentity.PickableNames;
 
         [SerializeField] private string _balanceScene = "SCN_TEST_BALANCE_CONTEST";

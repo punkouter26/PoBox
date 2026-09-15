@@ -1,23 +1,20 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
 {
     /// <summary>
-    /// Referee for the walk contest test scene: every fighter starts on one
+    /// Referee for the walk contest test scene: every contestant starts on one
     /// edge of the ring and races straight to the far edge. First across wins;
     /// a fall parks that racer where it dropped and its distance stands as its
     /// score, so a round always resolves even when nobody finishes. Mirrors
     /// <see cref="Systems_BalanceContest"/> — self-discovers contestants at
-    /// Start, drives the same USS_Contest scoreboard, and raises the same
-    /// RoundEnded/RoundStarted events through the shared
-    /// <see cref="Systems_ContestReferee"/> base, so the banner, crowd, match
-    /// director and FX systems bind to it exactly as they do to the balance
-    /// referee. They could not before: each of them named
-    /// Systems_BalanceContest outright, so this scene ran with no announcer,
-    /// no winner banner and - lacking a match director to set HoldRestarts -
-    /// no end at all.
+    /// Start through <see cref="IContestFighter"/>, drives the same USS_Contest
+    /// scoreboard, and raises the same RoundEnded/RoundStarted events through
+    /// the shared <see cref="Systems_ContestReferee"/> base, so the banner,
+    /// crowd, match director and FX systems bind to it exactly as they do to
+    /// the balance referee.
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -26,9 +23,8 @@ namespace PoBox
         private const float HEAD_COLLAPSE_FRACTION = 0.4f;
         // Was 4 s, set when a round was expected to last most of its 60 s limit.
         // It does not: measured 2026-08-22, rounds ended at roundTime 2.3 s with
-        // the whole field down, so the race spent nearly twice as long showing a
-        // frozen scoreboard as it did racing. The banner and the crowd cheer
-        // still need room to land, which is what the remaining 2.5 s is for.
+        // the whole field down. The banner and the crowd cheer still need room
+        // to land, which is what the remaining 2.5 s is for.
         private const float ROUND_RESTART_DELAY = 2.5f;
         private const float ROUND_TIME_LIMIT = 60f;
         // Commanded pace for the race. 1 m/s is a normal human walk.
@@ -36,31 +32,21 @@ namespace PoBox
 
         /// <summary>
         /// How far the leader must have actually walked for the round to be
-        /// awarded to anybody.
-        ///
-        /// Without it the race declares a winner no matter what happens, and
-        /// what happens is nothing: measured 2026-08-22 over five rounds, the
-        /// winning distances toward a 5.6 m goal were 0.5 m, 0.2 m and 0.2 m,
-        /// and the rest of the field scored NEGATIVE — round 5 went to Grandpa
-        /// for falling forward 20 cm while the other three fell backward. A
-        /// scoreboard that crowns a champion out of that is lying to the player
-        /// about what it just showed them. Under this bar the round is a no
-        /// contest, no star is awarded, and the match keeps going until somebody
-        /// earns one.
-        ///
-        /// 0.75 m is a bit over one step. It is deliberately low: the point is
-        /// to reject topple noise, not to set a competitive standard.
+        /// awarded to anybody. Without it the race declared a winner no matter
+        /// what happened: measured 2026-08-22, rounds went to a racer for
+        /// falling forward 20 cm while the rest of the field fell backward.
+        /// Under this bar the round is a no contest, no star is awarded, and
+        /// the match keeps going until somebody earns one. 0.75 m is a bit
+        /// over one step -- deliberately low: the point is to reject topple
+        /// noise, not to set a competitive standard.
         /// </summary>
         private const float MIN_WIN_DISTANCE = 0.75f;
 
         /// <summary>
-        /// A round also ends when the field stops making progress for this long.
-        ///
-        /// The fall rule alone cannot end a round in which somebody simply
-        /// stands still — the heuristic bot is very good at not falling over and
-        /// commanding it to walk does not oblige it to — so a stalled race would
-        /// hold the scene for the full 60 s limit showing nothing at all. Ending
-        /// on a stall keeps the worst case at about a quarter of that.
+        /// A round also ends when the field stops making progress for this
+        /// long. The fall rule alone cannot end a round in which somebody
+        /// simply stands still, so a stalled race would hold the scene for the
+        /// full 60 s limit showing nothing at all.
         /// </summary>
         private const float STALL_SECONDS = 12f;
 
@@ -76,11 +62,7 @@ namespace PoBox
         private sealed class Racer
         {
             public string displayName;
-            /// <summary>Null for a non-PhysX racer (see external).</summary>
-            public Systems_FighterRig rig;
-            /// <summary>Set instead of rig for e.g. the MuJoCo creature.</summary>
-            public IContestFighter external;
-            public Sensor_GroundContact[] fallSensors;
+            public IContestFighter fighter;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
             public float startHeadHeight;
             public float startProjection;
@@ -131,8 +113,7 @@ namespace PoBox
                 // SCN_TEST_WALK_CONTEST until 2026-08-20. Fail loudly rather than
                 // render a HUD nobody can read.
                 Debug.LogError($"{name}: no StyleSheet assigned, so the walk scoreboard will " +
-                    "render unstyled and effectively invisible. Assign USS_Contest, or rebuild " +
-                    "the scene with the walk contest scene tool.");
+                    "render unstyled and effectively invisible. Assign USS_Contest.");
             }
             Systems_UiTheme.ApplyDefaultFont(root);
 
@@ -158,54 +139,24 @@ namespace PoBox
             platesRow.pickingMode = PickingMode.Ignore;
             hudRoot.Add(platesRow);
 
-            Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            for (int index = 0; index < fighters.Length; index++)
             {
-                Systems_FighterRig rig = rigs[rigIndex];
-                var fallSensors = new List<Sensor_GroundContact>();
-                foreach (Sensor_GroundContact sensor in rig.GetComponentsInChildren<Sensor_GroundContact>(true))
-                {
-                    if (sensor != rig.FootLeftSensor && sensor != rig.FootRightSensor)
-                    {
-                        fallSensors.Add(sensor);
-                    }
-                }
-                Systems_FighterIdentity.Resolve(rig, out string displayName, out Color plateColor);
-                VisualElement plate = Systems_UiTheme.BuildPlate(plateColor, out Label plateLabel);
+                IContestFighter fighter = fighters[index];
+                VisualElement plate = Systems_UiTheme.BuildPlate(fighter.PlateColor, out Label plateLabel);
                 platesRow.Add(plate);
+                fighter.ResetForRound();
                 var racer = new Racer
                 {
-                    displayName = displayName,
-                    rig = rig,
-                    fallSensors = fallSensors.ToArray(),
-                    startHeadHeight = rig.Head.position.y - rig.GroundY,
-                    startProjection = Vector3.Dot(rig.Pelvis.position, _goalDirection),
+                    displayName = fighter.DisplayName,
+                    fighter = fighter,
+                    startHeadHeight = fighter.HeadHeightAboveGround,
+                    startProjection = Vector3.Dot(fighter.WorldPosition, _goalDirection),
                     plate = plate,
                     label = plateLabel
                 };
                 _racers.Add(racer);
                 CommandRace(racer);
-            }
-
-            // Racers that are not PhysX rigs -- currently the MuJoCo creature.
-            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.InstanceID))
-            {
-                if (behaviour is not IContestFighter fighter) { continue; }
-                VisualElement extPlate = Systems_UiTheme.BuildPlate(Color.cyan, out Label extLabel);
-                platesRow.Add(extPlate);
-                fighter.ResetForRound();
-                var extRacer = new Racer
-                {
-                    displayName = fighter.DisplayName,
-                    external = fighter,
-                    fallSensors = System.Array.Empty<Sensor_GroundContact>(),
-                    startHeadHeight = fighter.HeadHeightAboveGround,
-                    startProjection = Vector3.Dot(fighter.WorldPosition, _goalDirection),
-                    plate = extPlate,
-                    label = extLabel
-                };
-                _racers.Add(extRacer);
-                CommandRace(extRacer);
             }
             _initialized = true;
             RaiseRoundStarted(_round);
@@ -253,11 +204,8 @@ namespace PoBox
                 // pelvis flies forward as the body goes down, so the reward for
                 // falling over was the same 20-30 cm that was winning rounds.
                 // The floor is what stops a backward faceplant scoring -0.6 m
-                // and still placing, which is a number no scoreboard should
-                // ever have shown a player.
-                float projected = Vector3.Dot(
-                    racer.external != null ? racer.external.WorldPosition : racer.rig.Pelvis.position,
-                    _goalDirection) - racer.startProjection;
+                // and still placing.
+                float projected = Vector3.Dot(racer.fighter.WorldPosition, _goalDirection) - racer.startProjection;
                 racer.travelled = Mathf.Max(racer.travelled, Mathf.Max(0f, projected));
                 if (racer.travelled > _bestTravelled + STALL_EPSILON)
                 {
@@ -329,15 +277,11 @@ namespace PoBox
             _title.text = $"Walk Contest — Round {_round}  {Mathf.Max(0f, ROUND_TIME_LIMIT - _roundTime):F0}s";
         }
 
-        // Ranking: anyone who finished beats anyone who did not, earliest
-        // finish first; among the unfinished, furthest travelled wins.
         /// <summary>
         /// One greppable line per race, the counterpart of
-        /// Systems_BalanceContest's CONTEST_ROUND. The walk race had NO
-        /// logging at all -- one Debug.LogError about a missing StyleSheet --
-        /// so "did anyone actually walk" was unanswerable without a human
-        /// watching a screen, which is the question a shipping decision on a
-        /// locomotion brain turns on.
+        /// Systems_BalanceContest's CONTEST_ROUND: "did anyone actually walk"
+        /// is the question a shipping decision on a locomotion brain turns on,
+        /// and it must be answerable without a human watching a screen.
         /// </summary>
         private void LogRaceResult(Racer leader, string reason)
         {
@@ -368,6 +312,8 @@ namespace PoBox
             return leader;
         }
 
+        // Ranking: anyone who finished beats anyone who did not, earliest
+        // finish first; among the unfinished, furthest travelled wins.
         private static bool Beats(Racer candidate, Racer incumbent)
         {
             if (candidate.finished != incumbent.finished)
@@ -381,41 +327,25 @@ namespace PoBox
             return candidate.travelled > incumbent.travelled;
         }
 
-        // Tells the fighter to walk. A trained brain reads this as an
-        // observation; without it the racer would just stand on the start line.
-        // Only a contestant answering IContestFighter can be told: a PhysX rig
-        // has no brain to command any more. (This used to return early when
-        // the racer was not a PhysX agent, which left the MuJoCo creature
-        // standing on the start line while the plates reported its distance.)
+        /// <summary>
+        /// Tells the racer to walk. A trained brain reads this as an
+        /// observation; without it the racer would just stand on the start
+        /// line while the plates reported its distance.
+        /// </summary>
         private void CommandRace(Racer racer)
         {
-            if (racer.external != null) { racer.external.CommandWalk(RACE_SPEED, _goalDirection); }
+            racer.fighter.CommandWalk(RACE_SPEED, _goalDirection);
         }
 
-        private bool HasFallen(Racer racer)
+        /// <summary>
+        /// Down by the racer's own reckoning, or head under 40% of its standing
+        /// height -- GROUND-RELATIVE, never raw world Y, for the reason
+        /// Systems_BalanceContest.HasFallen records.
+        /// </summary>
+        private static bool HasFallen(Racer racer)
         {
-            for (int sensorIndex = 0; sensorIndex < racer.fallSensors.Length; sensorIndex++)
-            {
-                if (racer.fallSensors[sensorIndex].IsGrounded)
-                {
-                    return true;
-                }
-            }
-            // GROUND-RELATIVE, never raw world Y. The ring canvas sits at
-            // Systems_ContestSpawner.RING_FLOOR_Y = 1 m, so comparing an
-            // absolute head height against a FRACTION of an absolute head
-            // height silently rescales with altitude: 40% of a 2.6 m head is
-            // 1.04 m, which on a 1 m canvas means the fighter has to sink to
-            // FOUR CENTIMETRES above the floor to count as collapsed instead of
-            // the intended ~64 cm. The locomotion reward once documented having
-            // hit exactly this; the two contests still had the original form.
-            if (racer.external != null)
-            {
-                return racer.external.ReportsDown
-                    || racer.external.HeadHeightAboveGround < racer.startHeadHeight * HEAD_COLLAPSE_FRACTION;
-            }
-            return racer.rig.Head.position.y - racer.rig.GroundY
-                < racer.startHeadHeight * HEAD_COLLAPSE_FRACTION;
+            return racer.fighter.ReportsDown
+                || racer.fighter.HeadHeightAboveGround < racer.startHeadHeight * HEAD_COLLAPSE_FRACTION;
         }
 
         private void StartNextRound()
@@ -428,19 +358,8 @@ namespace PoBox
             for (int racerIndex = 0; racerIndex < _racers.Count; racerIndex++)
             {
                 Racer racer = _racers[racerIndex];
-                if (racer.external != null) { racer.external.ResetForRound(); }
-                else { racer.rig.ResetToStartPose(); }
-                // A non-PhysX racer has no ground sensors to clear.
-                if (racer.rig != null)
-                {
-                    foreach (Sensor_GroundContact sensor in racer.rig.GetComponentsInChildren<Sensor_GroundContact>(true))
-                    {
-                        sensor.ResetContacts();
-                    }
-                }
-                racer.startProjection = Vector3.Dot(
-                    racer.external != null ? racer.external.WorldPosition : racer.rig.Pelvis.position,
-                    _goalDirection);
+                racer.fighter.ResetForRound();
+                racer.startProjection = Vector3.Dot(racer.fighter.WorldPosition, _goalDirection);
                 CommandRace(racer);
                 racer.travelled = 0f;
                 racer.finishTime = 0f;

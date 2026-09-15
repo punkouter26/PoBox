@@ -3,35 +3,37 @@ using UnityEngine;
 namespace PoBox
 {
     /// <summary>
-    /// Rolls one random hazard per round and runs it: wind gusts (one fighter
-    /// per gust), gravity lean (world gravity tilts gently and circles —
-    /// restored on round end and teardown), or ball rain (pooled bouncy
-    /// spheres dropping into the ring). Announced via HazardChosen.
-    /// Lives under the contest systems root. Test-scene harness only.
+    /// Rolls one random hazard per round and runs it: wind gusts (one
+    /// contestant per gust) or gravity lean (world gravity tilts gently and
+    /// circles — restored on round end and teardown). Announced via
+    /// HazardChosen. Lives under the contest systems root. Test-scene harness
+    /// only.
+    ///
+    /// BALL RAIN WENT WITH THE PHYSX CAST (2026-09-14). It dropped PhysX
+    /// spheres into the ring, and a PhysX sphere passes straight through a
+    /// body that MuJoCo simulates: the hazard could be announced and could not
+    /// touch anyone. Both hazards left reach every contestant through
+    /// <see cref="IContestFighter"/> — a gust is a shove on the pelvis, a lean
+    /// is handed to each contestant's own simulator.
     /// </summary>
     public sealed class Systems_HazardDirector : MonoBehaviour
     {
-        private const int HAZARD_COUNT = 3;
-        // One fighter per gust and modest forces: hazards should pick fighters
-        // off one at a time, not flatten the whole roster in a single wave.
+        private const int HAZARD_COUNT = 2;
+        // One contestant per gust and modest forces: hazards should pick
+        // fighters off one at a time, not flatten the whole roster in a wave.
         private const float WIND_MIN_INTERVAL = 2.5f;
         private const float WIND_MAX_INTERVAL = 5f;
         private const float WIND_GUST_SECONDS = 2f;
         private const float WIND_FORCE_NEWTONS = 55f;
         private const float GRAVITY_LEAN_DEGREES = 2.5f;
         private const float GRAVITY_LEAN_CYCLE_SECONDS = 13f;
-        private const int BALL_POOL_SIZE = 10;
-        private const float BALL_MIN_INTERVAL = 1.2f;
-        private const float BALL_MAX_INTERVAL = 2.4f;
-        private const float BALL_DROP_HEIGHT = 6f;
-        private const float BALL_LIFE_SECONDS = 8f;
 
-        private static readonly string[] HazardNames = { "WIND GUSTS", "GRAVITY LEAN", "BALL RAIN" };
+        private static readonly string[] HazardNames = { "WIND GUSTS", "GRAVITY LEAN" };
 
         public event System.Action<string> HazardChosen;
 
         private Systems_ContestReferee _contest;
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _fighters;
         private System.Random _random;
         private Vector3 _baseGravity;
         private int _activeHazard = -1;
@@ -40,9 +42,6 @@ namespace PoBox
         private float _gustRemaining;
         private Vector3 _gustDirection;
         private int _gustTargetIndex;
-        private Rigidbody[] _balls;
-        private float[] _ballAges;
-        private float _ballTimer;
 
         private void Start()
         {
@@ -51,25 +50,24 @@ namespace PoBox
             // It was new System.Random(4241), which makes the entire hazard
             // sequence of the entire game byte-identical on every launch, for
             // every player, forever: measured 2026-08-22, a fresh session rolled
-            // BALL RAIN for round 1 and every round after it. A fixed seed is the
-            // right call in a training scene, where a run has to be reproducible.
-            // This is the shipping contest, where the whole value of a hazard is
-            // that you do not know which one is coming.
+            // the same hazard for round 1 and every round after it. A fixed seed
+            // is the right call in a training scene, where a run has to be
+            // reproducible. This is the shipping contest, where the whole value
+            // of a hazard is that you do not know which one is coming.
             _random = new System.Random(System.Environment.TickCount);
             _baseGravity = Physics.gravity;
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            _fighters = Systems_Contestants.FindAll();
             _contest = FindFirstObjectByType<Systems_ContestReferee>();
             if (_contest != null)
             {
                 _contest.RoundStarted += OnRoundStarted;
             }
-            BuildBallPool();
             PickHazard();
         }
 
         private void OnDestroy()
         {
-            Physics.gravity = _baseGravity;
+            RestoreGravity();
             if (_contest != null)
             {
                 _contest.RoundStarted -= OnRoundStarted;
@@ -78,7 +76,7 @@ namespace PoBox
 
         private void OnDisable()
         {
-            Physics.gravity = _baseGravity;
+            RestoreGravity();
         }
 
         private void OnRoundStarted(int round)
@@ -89,22 +87,15 @@ namespace PoBox
 
         private void ResetActiveHazard()
         {
-            Physics.gravity = _baseGravity;
-            for (int ballIndex = 0; ballIndex < _balls.Length; ballIndex++)
-            {
-                _balls[ballIndex].gameObject.SetActive(false);
-            }
+            RestoreGravity();
             _gustRemaining = 0f;
         }
 
         /// <summary>
-        /// Rolls the next hazard, never the one just played.
-        ///
-        /// With three hazards and an independent roll each round, a third of all
-        /// round transitions repeat — and a repeat reads as the game being stuck
-        /// rather than as chance, because the announcer chip says the same words
-        /// twice in a row. Drawing from the other two costs one line and makes
-        /// every round visibly change something.
+        /// Rolls the next hazard, never the one just played, so every round
+        /// visibly changes something: a repeat reads as the game being stuck
+        /// rather than as chance, because the announcer chip says the same
+        /// words twice in a row.
         /// </summary>
         private void PickHazard()
         {
@@ -114,13 +105,10 @@ namespace PoBox
             }
             else
             {
-                // Offset by 1..HAZARD_COUNT-1 so the result can be anything
-                // except where it started.
                 _activeHazard = (_activeHazard + 1 + _random.Next(HAZARD_COUNT - 1)) % HAZARD_COUNT;
             }
             _hazardClock = 0f;
             _windTimer = WIND_MIN_INTERVAL;
-            _ballTimer = BALL_MIN_INTERVAL;
             HazardChosen?.Invoke(HazardNames[_activeHazard]);
         }
 
@@ -137,21 +125,26 @@ namespace PoBox
             {
                 case 0: TickWind(dt); break;
                 case 1: TickGravityLean(); break;
-                case 2: TickBallRain(dt); break;
             }
         }
 
         private void TickWind(float dt)
         {
+            if (_fighters == null || _fighters.Length == 0)
+            {
+                return;
+            }
             if (_gustRemaining > 0f)
             {
                 _gustRemaining -= dt;
                 // Half-sine envelope: gusts swell and fade instead of slamming.
-                // Each gust hits ONE fighter — no synchronized mass knockdowns.
+                // Each gust hits ONE contestant — no synchronized mass knockdowns.
+                // Re-issued every physics step for one step, so the envelope is
+                // followed rather than the peak being held.
                 float envelope = Mathf.Sin(Mathf.Clamp01(1f - _gustRemaining / WIND_GUST_SECONDS) * Mathf.PI);
-                if (_gustTargetIndex < _rigs.Length)
+                if (_gustTargetIndex < _fighters.Length)
                 {
-                    _rigs[_gustTargetIndex].Torso.AddForce(_gustDirection * (WIND_FORCE_NEWTONS * envelope), ForceMode.Force);
+                    _fighters[_gustTargetIndex].Shove(_gustDirection * (WIND_FORCE_NEWTONS * envelope), dt);
                 }
                 return;
             }
@@ -160,7 +153,7 @@ namespace PoBox
             {
                 float angle = (float)(_random.NextDouble() * Mathf.PI * 2.0);
                 _gustDirection = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                _gustTargetIndex = _random.Next(_rigs.Length);
+                _gustTargetIndex = _random.Next(_fighters.Length);
                 _gustRemaining = WIND_GUST_SECONDS;
                 float range = WIND_MAX_INTERVAL - WIND_MIN_INTERVAL;
                 _windTimer = WIND_MIN_INTERVAL + (float)_random.NextDouble() * range;
@@ -173,78 +166,27 @@ namespace PoBox
             float ramp = Mathf.Clamp01(_hazardClock / 6f); // ease in over 6 s
             float lean = GRAVITY_LEAN_DEGREES * ramp;
             Quaternion tilt = Quaternion.Euler(Mathf.Sin(phase) * lean, 0f, Mathf.Cos(phase) * lean);
-            Physics.gravity = tilt * _baseGravity;
+            ApplyGravity(tilt * _baseGravity);
         }
 
-        private void TickBallRain(float dt)
+        /// <summary>
+        /// Sets world gravity for PhysX (the ring dressing, any ball or prop)
+        /// AND tells every contestant, whose body may be simulated elsewhere.
+        /// </summary>
+        private void ApplyGravity(Vector3 gravity)
         {
-            for (int ballIndex = 0; ballIndex < _balls.Length; ballIndex++)
+            Physics.gravity = gravity;
+            if (_fighters == null) { return; }
+            for (int index = 0; index < _fighters.Length; index++)
             {
-                if (_balls[ballIndex].gameObject.activeSelf)
-                {
-                    _ballAges[ballIndex] += dt;
-                    if (_ballAges[ballIndex] >= BALL_LIFE_SECONDS)
-                    {
-                        _balls[ballIndex].gameObject.SetActive(false);
-                    }
-                }
-            }
-            _ballTimer -= dt;
-            if (_ballTimer > 0f)
-            {
-                return;
-            }
-            float range = BALL_MAX_INTERVAL - BALL_MIN_INTERVAL;
-            _ballTimer = BALL_MIN_INTERVAL + (float)_random.NextDouble() * range;
-            DropBall();
-        }
-
-        private void DropBall()
-        {
-            for (int ballIndex = 0; ballIndex < _balls.Length; ballIndex++)
-            {
-                if (_balls[ballIndex].gameObject.activeSelf)
-                {
-                    continue;
-                }
-                Rigidbody ball = _balls[ballIndex];
-                float x = ((float)_random.NextDouble() * 2f - 1f) * 2.4f;
-                float z = ((float)_random.NextDouble() * 2f - 1f) * 2.4f;
-                ball.transform.position = new Vector3(x, BALL_DROP_HEIGHT, z);
-                ball.gameObject.SetActive(true);
-                ball.linearVelocity = Vector3.zero;
-                ball.angularVelocity = Vector3.zero;
-                _ballAges[ballIndex] = 0f;
-                return;
+                _fighters[index].SetGravity(gravity);
             }
         }
 
-        private void BuildBallPool()
+        private void RestoreGravity()
         {
-            var bounceMaterial = new PhysicsMaterial("PM_HazardBall")
-            {
-                bounciness = 0.85f,
-                bounceCombine = PhysicsMaterialCombine.Maximum
-            };
-            var ballMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            ballMaterial.SetColor("_BaseColor", new Color(0.2f, 0.8f, 0.9f, 1f));
-
-            _balls = new Rigidbody[BALL_POOL_SIZE];
-            _ballAges = new float[BALL_POOL_SIZE];
-            for (int ballIndex = 0; ballIndex < BALL_POOL_SIZE; ballIndex++)
-            {
-                GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                ball.name = "HazardBall" + ballIndex;
-                ball.transform.SetParent(transform, false);
-                ball.transform.localScale = Vector3.one * 0.35f;
-                ball.GetComponent<Renderer>().sharedMaterial = ballMaterial;
-                ball.GetComponent<Collider>().sharedMaterial = bounceMaterial;
-                var body = ball.AddComponent<Rigidbody>();
-                body.mass = 2f;
-                body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-                ball.SetActive(false);
-                _balls[ballIndex] = body;
-            }
+            if (_random == null) { return; } // never started, nothing to restore
+            ApplyGravity(_baseGravity);
         }
     }
 }

@@ -1,10 +1,9 @@
 # Non-training scene smoke test
 
-Generated 2026-09-14 21:47 by `SceneTool_SmokeTest.RunAll`,
+Generated 2026-09-14 22:05 by `SceneTool_SmokeTest.RunAll`,
 20 s of play mode per scene in the open Editor.
 
-`fighter` rows are PhysX rigs (none since the cast was removed on 2026-09-14);
-`contestant` rows are IContestFighter implementers such as Nick.
+One `contestant` row per IContestFighter implementer (active or stood down).
 
 ## SCN_MENU
 
@@ -17,7 +16,6 @@ scene	Assets/Scenes/SCN_MENU.unity
 timeScale	1
 fixedDeltaTime	0.02
 gravity	(0, -9.81, 0)
-fighters	0
 flow	no-referee
 contestants	0
 ```
@@ -34,13 +32,12 @@ State flow: OK. `flow	restartsAutomatically=True	roundsStarted=2	roundsEnded=1	m
 
 ```
 scene	Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity
-timeScale	0
+timeScale	1
 fixedDeltaTime	0.02
 gravity	(0, -9.81, 0)
-fighters	0
 flow	restartsAutomatically=True	roundsStarted=2	roundsEnded=1	matchDirector=yes	matchDecided=False	champion=(none)	verdict=ok
 contestants	1
-contestant	Systems_NickContestant	Nick	headAboveGround=1.389	reportsDown=False	position=(0.76, 1.93, -0.72)
+contestant	Systems_NickContestant	Nick	active=True	headAboveGround=1.332	reportsDown=False	position=(0.77, 1.89, -0.71)
 ```
 
 ## SCN_TEST_WALK_CONTEST
@@ -58,9 +55,8 @@ scene	Assets/Scenes/SCN_TEST_WALK_CONTEST.unity
 timeScale	1
 fixedDeltaTime	0.02
 gravity	(0, -9.81, 0)
-fighters	0
 flow	restartsAutomatically=True	roundsStarted=2	roundsEnded=2	matchDirector=yes	matchDecided=False	champion=(none)	verdict=ok
 contestants	1
-contestant	Systems_NickContestant	Nick	headAboveGround=0.129	reportsDown=True	position=(2.67, 0.13, -1.73)
+contestant	Systems_NickContestant	Nick	active=True	headAboveGround=0.129	reportsDown=True	position=(2.67, 0.13, -1.73)
 ```
 

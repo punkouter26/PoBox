@@ -11,10 +11,8 @@ namespace PoBox.Editor
     internal static class Editor_ProjectSettings
     {
 /// <summary>
-        /// EXPERIMENT: drop the whole scene to MuJoCo's 0.005 s step, which is
-        /// what a shared PhysX + MuJoCo contest scene would have to run at.
-        /// Systems_ContestSpawner compensates DecisionPeriod so the PhysX
-        /// brains still decide at 50 Hz. Undo with Apply().
+        /// EXPERIMENT: drop the whole scene to MuJoCo's 0.005 s step. Undo
+        /// with Apply(). The contest brains are trained at 0.02 s.
         /// </summary>
         public static void ApplyFineTimestep()
         {

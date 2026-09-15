@@ -34,7 +34,7 @@ namespace PoBox
         /// carries its canvas 1 m above the model origin, so a ring placed at y = 0
         /// puts its floor here and reads as the raised ring a real bout is fought in.
         /// Ground colliders, spawns and cameras all follow this number. Safe to change
-        /// only because height observations are ground-relative (Systems_FighterRig.GroundY).
+        /// only because every height a contestant reports is ground-relative.
         /// </summary>
         public const float RING_FLOOR_Y = 1f;
 
@@ -147,9 +147,6 @@ namespace PoBox
             // here and the fighters do not exist yet, so this adds them and the
             // call in SpawnAndBegin is the no-op — but that call is what
             // guarantees the ordering when the root reference is only resolved
-            // by then. EnsureSpectatorSystems is idempotent, so running twice
-            // costs one GetComponentInChildren each.
-            EnsureSpectatorSystems(_systemsRoot);
         }
 
         /// <summary>
@@ -187,10 +184,8 @@ namespace PoBox
         /// would also invalidate every reference the cameras and spectator
         /// systems took to them when the scene loaded.
         ///
-        /// A fighter that is adopted is MOVED to its slot, and that is safe for
-        /// a PhysX rig precisely because <c>ResetToStartPose</c> works in LOCAL
-        /// space — the captured start pose describes the body's own hierarchy, so
-        /// it stays valid wherever the root is put.
+        /// A fighter that is adopted is MOVED to its slot before the referee
+        /// resets it for round one, so the reset pose is taken where it stands.
         /// </summary>
         public void SpawnAndBegin(string[] pickNames)
         {
@@ -325,8 +320,7 @@ namespace PoBox
                 // Added while the root is still asleep, so their Start runs when
                 // it wakes — with a full ring to discover, exactly like the
                 // announcer and the hazard director beside them.
-                EnsureSpectatorSystems(_systemsRoot);
-                _systemsRoot.SetActive(true);
+                    _systemsRoot.SetActive(true);
             }
             if (_menuOrbit != null)
             {
@@ -349,25 +343,17 @@ namespace PoBox
         }
 
         /// <summary>
-        /// Every fighter already in the scene, by display name: the PhysX rigs,
-        /// and anything answering <see cref="IContestFighter"/> — which is how
-        /// Nick gets into this list at all, having no prefab to be spawned from
-        /// and existing only as an authored object.
+        /// Every contestant already in the scene, by display name -- which is
+        /// how Nick gets into this list at all, having no prefab to be spawned
+        /// from and existing only as an authored object.
         /// </summary>
         private static List<PlacedFighter> CollectPlacedFighters()
         {
             var placed = new List<PlacedFighter>();
-            foreach (Systems_FighterRig rig in FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Include))
+            IContestFighter[] fighters = Systems_Contestants.FindAll(includeInactive: true);
+            for (int index = 0; index < fighters.Length; index++)
             {
-                Systems_FighterIdentity.Resolve(rig, out string name, out _);
-                placed.Add(new PlacedFighter { name = name, host = rig.gameObject });
-            }
-            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
-            {
-                if (behaviour is IContestFighter fighter)
-                {
-                    placed.Add(new PlacedFighter { name = fighter.DisplayName, host = behaviour.gameObject });
-                }
+                placed.Add(new PlacedFighter { name = fighters[index].DisplayName, host = fighters[index].Root.gameObject });
             }
             return placed;
         }
@@ -439,97 +425,6 @@ namespace PoBox
             _menuOrbit = menuOrbit;
         }
 
-        /// <summary>
-        /// Attaches the spectator systems that carry no scene state of their
-        /// own: the joint-stress heatmap, the impulse-scaled impact FX, the
-        /// pre-round tale of the tape and the colour-commentary band.
-        ///
-        /// WIRED AT RUNTIME RATHER THAN PLACED IN THE SCENE, ON PURPOSE. The
-        /// contest scenes are generated artifacts and the tool that generates
-        /// this one is the documented way to destroy it — `BuildAll` opens an
-        /// empty scene and never re-adds the spawner, so six of its nine steps
-        /// bail while it logs success anyway (CLAUDE.md). Anything that has to
-        /// be dragged into SCN_TEST_BALANCE_CONTEST by hand is therefore one
-        /// regeneration away from being silently absent, with a scene that still
-        /// runs and simply shows less. These four need no serialized
-        /// references — they discover fighters themselves and load their assets
-        /// from <see cref="Systems_SpectatorKit"/> — so there is nothing to be
-        /// gained by putting them in the scene and a whole failure mode to be
-        /// avoided by not.
-        ///
-        /// Idempotent: adding a second copy would double every thud and every
-        /// glow, and this runs once per contest start.
-        /// </summary>
-        private static void EnsureSpectatorSystems(GameObject systemsRoot)
-        {
-            if (systemsRoot == null)
-            {
-                // Worth a line rather than a silent return: with no systems root
-                // the entire spectator layer is absent, and its absence looks
-                // exactly like it working badly.
-                Debug.LogWarning("Systems_ContestSpawner: no systems root — joint stress, impact FX " +
-                                 "and the tale of the tape will not be attached.");
-                return;
-            }
-            int added = 0;
-            if (systemsRoot.GetComponentInChildren<Systems_ImpactFx>(true) == null)
-            {
-                AddSpectatorSystem<Systems_ImpactFx>(systemsRoot, "ImpactFx");
-                added++;
-            }
-            if (systemsRoot.GetComponentInChildren<Systems_JointStressView>(true) == null)
-            {
-                AddSpectatorSystem<Systems_JointStressView>(systemsRoot, "JointStressView");
-                added++;
-            }
-            // Contact shadows, footfalls and the strain tint. Same contract as
-            // the four above: they discover fighters themselves, load what they
-            // need from Systems_SpectatorKit, and hold no scene state — so they
-            // are attached here rather than dragged into a hand-authored scene
-            // that a regeneration could silently drop them from.
-            if (systemsRoot.GetComponentInChildren<Systems_BlobShadow>(true) == null)
-            {
-                AddSpectatorSystem<Systems_BlobShadow>(systemsRoot, "BlobShadow");
-                added++;
-            }
-            if (systemsRoot.GetComponentInChildren<Systems_Footsteps>(true) == null)
-            {
-                AddSpectatorSystem<Systems_Footsteps>(systemsRoot, "Footsteps");
-                added++;
-            }
-            if (systemsRoot.GetComponentInChildren<Systems_FighterShading>(true) == null)
-            {
-                AddSpectatorSystem<Systems_FighterShading>(systemsRoot, "FighterShading");
-                added++;
-            }
-            // Added AFTER the tale of the tape so its Start runs after the card
-            // exists. Nothing depends on that ordering today — the commentary
-            // borrows the referee's document, not the card's — but the two share
-            // a band of screen and the one that builds last is the one drawn on
-            // top, which is the behaviour wanted if they ever do overlap.
-            if (systemsRoot.GetComponentInChildren<Systems_ColourCommentary>(true) == null)
-            {
-                AddSpectatorSystem<Systems_ColourCommentary>(systemsRoot, "ColourCommentary");
-                added++;
-            }
-            if (added > 0)
-            {
-                // One line, once per contest. These systems are created rather
-                // than placed, so this is the only way to tell from a log
-                // whether they exist at all — which is the question that took a
-                // play session to answer the first time.
-                Debug.Log($"Systems_ContestSpawner: attached {added} spectator system(s) to " +
-                          $"{systemsRoot.name}.");
-            }
-        }
-
-        private static void AddSpectatorSystem<T>(GameObject systemsRoot, string objectName)
-            where T : Component
-        {
-            var host = new GameObject(objectName);
-            host.transform.SetParent(systemsRoot.transform, false);
-            host.AddComponent<T>();
-        }
 
         /// <summary>
         /// Instantiates one fighter under <paramref name="holder"/> — which the caller
@@ -555,39 +450,8 @@ namespace PoBox
         public static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex,
             int rosterIndex)
         {
-            var rig = instance.GetComponent<Systems_FighterRig>();
-            var stamina = instance.GetComponent<Systems_Stamina>();
-            if (stamina != null) { stamina.enabled = false; }
-
-            // A fighter that is NOT a PhysX rig -- a MuJoCo creature answers
-            // IContestFighter instead -- has no rig to hang fall sensors on. The
-            // ring referees it through that interface, so only the tint and the
-            // identity below apply to it.
-            if (rig != null)
-            {
-                // Fall sensors by role, not by joint index: shins are found by
-                // name, and gloves exist only on rigs with arms.
-                rig.Torso.gameObject.AddComponent<Sensor_GroundContact>();
-                rig.Head.gameObject.AddComponent<Sensor_GroundContact>();
-                for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
-                {
-                    var jointBody = rig.Joints[jointIndex].body;
-                    if (jointBody != null &&
-                        jointBody.name.IndexOf("shin", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        jointBody.gameObject.AddComponent<Sensor_GroundContact>();
-                    }
-                }
-                if (rig.GloveLeft != null)
-                {
-                    rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
-                }
-                if (rig.GloveRight != null)
-                {
-                    rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
-                }
-            }
-
+            // The contestant referees itself through IContestFighter; the
+            // spawner's job is only the tint and the identity below.
             if (entry.tint != null)
             {
                 var renderers = instance.GetComponentsInChildren<Renderer>(true);

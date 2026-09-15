@@ -264,49 +264,9 @@ namespace PoBox.Editor
             sb.AppendLine($"fixedDeltaTime\t{Fmt(Time.fixedDeltaTime)}");
             sb.AppendLine($"gravity\t{Physics.gravity.ToString("0.##")}");
 
-            var rigs = UnityEngine.Object.FindObjectsByType<Systems_FighterRig>(
-                FindObjectsInactive.Include);
-            int standingRigs = rigs.Count(r => r.gameObject.activeInHierarchy);
-            sb.AppendLine($"fighters\t{standingRigs}");
-            if (standingRigs != rigs.Length)
-            {
-                // The difference is the line-up the launcher declined to field.
-                // Reported separately because "the ring holds six" and "the ring
-                // holds six and races four" are different facts, and the second is
-                // what the player sees.
-                sb.AppendLine($"stoodDown\t{rigs.Length - standingRigs}");
-            }
-
             AppendFlow(sb);
 
-            foreach (var rig in rigs.OrderBy(r => r.name, StringComparer.Ordinal))
-            {
-                var id = rig.GetComponentInParent<Systems_FighterIdentity>();
-                string identity = id != null ? id.DisplayName : "(none)";
-
-                float height = float.NaN;
-                float upright = float.NaN;
-                if (rig.Pelvis != null)
-                {
-                    height = rig.Pelvis.position.y - rig.GroundY;
-                    upright = Vector3.Dot(rig.Pelvis.transform.up, Vector3.up);
-                }
-
-                sb.AppendLine(string.Join("\t",
-                    "fighter",
-                    rig.name,
-                    identity,
-                    $"joints={rig.JointCount}",
-                    $"pelvisHeight={Fmt(height)}",
-                    $"upright={Fmt(upright)}"));
-            }
-
-            // Nick is a contestant the ring referees through IContestFighter,
-            // NOT a Systems_FighterRig -- he is a MuJoCo creature in another
-            // assembly. The loop above cannot see him, and an earlier run of
-            // this report listed five fighters in a scene that fields six.
-            // Anything the referee accepts has to appear here or the report
-            // repeats the very blind spot it exists to catch.
+            // Every contestant the referee can see, active or stood down.
             var contestants = UnityEngine.Object
                 .FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include)
                 .OfType<IContestFighter>()
@@ -318,6 +278,7 @@ namespace PoBox.Editor
                     "contestant",
                     c.GetType().Name,
                     c.DisplayName,
+                    $"active={(c.Root != null && c.Root.gameObject.activeInHierarchy)}",
                     $"headAboveGround={Fmt(c.HeadHeightAboveGround)}",
                     $"reportsDown={c.ReportsDown}",
                     $"position={c.WorldPosition.ToString("0.##")}"));
@@ -399,8 +360,7 @@ namespace PoBox.Editor
             sb.AppendLine($"Generated {DateTime.Now:yyyy-MM-dd HH:mm} by `SceneTool_SmokeTest.RunAll`,");
             sb.AppendLine($"{SecondsPerScene:0} s of play mode per scene in the open Editor.");
             sb.AppendLine();
-            sb.AppendLine("`fighter` rows are PhysX rigs (none since the cast was removed on 2026-09-14);");
-            sb.AppendLine("`contestant` rows are IContestFighter implementers such as Nick.");
+            sb.AppendLine("One `contestant` row per IContestFighter implementer (active or stood down).");
             sb.AppendLine();
 
             for (int i = 0; i < Scenes.Length; i++)

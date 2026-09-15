@@ -272,12 +272,18 @@ startup when it is not, because the alternative was a match that froze after
 round one in silence (which both scenes shipped with from 2026-09-08 to
 2026-09-14).
 
-**The PhysX rig layer is still in the tree with nothing to act on.**
-`Systems_FighterRig`, `Sensor_GroundContact`, `Systems_Stamina` and the
-spectator systems written against them (impact FX, footsteps, joint-stress
-heatmap, colour commentary's strain tells, blob shadows) find zero rigs in
-every shipping scene since the PhysX cast was removed. They compile, they do
-nothing, and they are the next thing to port to MuJoCo bodies — or delete.
+**Every spectator system talks to `IContestFighter` and nothing else.** The
+drama, race and winner cameras, the announcer's near-fall saves, the match
+tally, the device HUD, the fall FX and the hazards were ported off
+`Systems_FighterRig` on 2026-09-14, and the interface grew what they need:
+`Root`, `PlateColor`, `GroundY`, `PelvisAngularVelocity`, `Shove` and
+`SetGravity`. `Systems_Contestants.FindAll` is the one way to enumerate the
+field. What could not be ported without a MuJoCo-side equivalent was deleted
+rather than left dead: the joint-stress heatmap, stamina, footsteps, impact
+sparks, blob shadows, colour commentary, the ground/impact sensors and the
+rig itself. BALL RAIN went with them — a PhysX sphere passes through a MuJoCo
+body — so the hazards are WIND GUSTS (a pelvis shove) and GRAVITY LEAN
+(mirrored into `mjModel.opt.gravity`).
 
 **The booth has two voices.** `Systems_Announcer` is play-by-play and purely
 event-driven -- round start, a fall, a hazard, a save. `Systems_ColourCommentary`

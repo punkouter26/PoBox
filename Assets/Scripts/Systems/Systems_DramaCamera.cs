@@ -214,14 +214,14 @@ namespace PoBox
         private bool _shotInitialized;
 
         private Systems_ContestReferee _contest;
-        private Systems_FighterRig _winnerFocus;
+        private IContestFighter _winnerFocus;
         /// <summary>
         /// A fighter the booth has asked the camera to look at, and how much
         /// longer the request stands. See <see cref="RequestFocus"/>.
         /// </summary>
-        private Systems_FighterRig _cueFocus;
+        private IContestFighter _cueFocus;
         private float _cueRemaining;
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _rigs;
         private float[] _smoothedWobble;
         private float[] _startHeadHeights;
         private bool[] _wasStanding;
@@ -260,10 +260,17 @@ namespace PoBox
             {
                 return;
             }
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
+            _rigs = Systems_Contestants.FindAll();
             if (_rigs.Length == 0)
             {
                 return;
+            }
+            // A MuJoCo contestant reports a head height of 0 until its
+            // simulator has bound on its first physics tick; a standing height
+            // latched then would read every later frame as a collapse.
+            for (int fighterIndex = 0; fighterIndex < _rigs.Length; fighterIndex++)
+            {
+                if (!_rigs[fighterIndex].IsReady) { _rigs = null; return; }
             }
             _discovered = true;
 
@@ -272,12 +279,12 @@ namespace PoBox
             _wasStanding = new bool[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].HeadHeightAboveGround;
                 _wasStanding[rigIndex] = true;
             }
-            // Every fighter probes the floor it spawned on; they all share one,
-            // so the first is the ring floor (or the walk lane).
-            _groundY = _rigs.Length > 0 ? _rigs[0].GroundY : 0f;
+            // Every contestant stands on the same floor, so the first is the
+            // ring floor (or the walk lane).
+            _groundY = _rigs[0].GroundY;
             _lookPoint = RingCenter() + Vector3.up;
             _fov = _baseFov;
 
@@ -371,13 +378,9 @@ namespace PoBox
         /// <summary>
         /// A body just landed: kick the camera, scaled by how hard.
         ///
-        /// Called by <see cref="Systems_ImpactFx"/> from the contact itself,
-        /// which is why this director no longer generates its own shake when it
-        /// notices a fighter's head drop below the fall line. That test fired
-        /// on a HEIGHT crossing — some tens of milliseconds after or before the
-        /// body actually arrived, and at the same strength for a topple as for
-        /// a faceplant. Both systems shaking would also have double-counted
-        /// every fall.
+        /// Called by <see cref="Systems_FallImpactFx"/> when a contestant goes
+        /// down, so the director does not generate a shake of its own and
+        /// double-count every fall.
         /// </summary>
         public void ShakeAt(Vector3 position, float strength01)
         {
@@ -405,7 +408,7 @@ namespace PoBox
         /// Honouring it changes the shot SUBJECT, which the director already
         /// treats as an edit, so this arrives as a cut rather than a slide.
         /// </summary>
-        public void RequestFocus(Systems_FighterRig rig, float seconds)
+        public void RequestFocus(IContestFighter rig, float seconds)
         {
             if (rig == null || seconds <= 0f)
             {
@@ -426,15 +429,7 @@ namespace PoBox
         {
             _winnerFocus = null;
             ClearCue();
-            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
-            {
-                Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
-                if (displayName == winnerName)
-                {
-                    _winnerFocus = _rigs[rigIndex];
-                    return;
-                }
-            }
+            _winnerFocus = Systems_Contestants.FindByName(_rigs, winnerName);
         }
 
         private void OnRoundStarted(int round)
@@ -485,7 +480,7 @@ namespace PoBox
             int standingCount = 0;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                Systems_FighterRig rig = _rigs[rigIndex];
+                IContestFighter rig = _rigs[rigIndex];
             // Ground-relative. A fraction of an ABSOLUTE head height rescales with
             // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
             // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
@@ -493,19 +488,18 @@ namespace PoBox
             // fired in the contest at all.
             //
             // AND THE DIVISOR IS FLOORED, for the same reason and in the same
-            // form Systems_ColourCommentary already uses for this exact
-            // expression. _startHeadHeights is captured in Discover() without
+            // form every use of a start head height in this codebase takes.
+            // _startHeadHeights is captured in Discover() without
             // waiting for the referee to put the fighters back on their marks, so
             // a rig sampled mid-drop can be measured at close to its own ground
             // level. Dividing by that gives an infinity, the infinity becomes a
             // NaN the first time it is Lerped, and a NaN wobble never recovers:
             // every comparison against it is false, so the camera stops choosing
             // a subject at all and holds whatever shot it had.
-            float headFraction = (rig.Head.position.y - rig.GroundY)
-                / Mathf.Max(0.01f, _startHeadHeights[rigIndex]);
+            float headFraction = Systems_Contestants.HeadFraction(rig, _startHeadHeights[rigIndex]);
                 bool standing = headFraction > STANDING_HEAD_FRACTION;
                 float wobble = 1f - Mathf.Clamp01(headFraction)
-                    + rig.Pelvis.angularVelocity.magnitude * ANGULAR_VELOCITY_DRAMA_SCALE;
+                    + rig.PelvisAngularVelocity.magnitude * ANGULAR_VELOCITY_DRAMA_SCALE;
                 _smoothedWobble[rigIndex] = Mathf.Lerp(
                     _smoothedWobble[rigIndex], wobble, dt * WOBBLE_SMOOTH_RATE);
                 _wasStanding[rigIndex] = standing;
@@ -530,9 +524,6 @@ namespace PoBox
             if (_cueRemaining > 0f)
             {
                 _cueRemaining -= dt;
-                // Guarded rather than left to IndexOf: Unity's == treats two
-                // destroyed objects as equal, so a null cue would match a
-                // destroyed rig and put the camera on a slot index.
                 cueIndex = _cueFocus != null ? IndexOf(_cueFocus) : -1;
                 if (cueIndex < 0 || !_wasStanding[cueIndex])
                 {
@@ -553,7 +544,7 @@ namespace PoBox
             if (_winnerFocus != null)
             {
                 // Winner display: hold a close shot on the round's champion.
-                target = _winnerFocus.Pelvis.position;
+                target = _winnerFocus.WorldPosition;
                 drama = 0.85f;
                 closeShot = true;
                 subject = IndexOf(_winnerFocus);
@@ -565,7 +556,7 @@ namespace PoBox
                 // is wrong with this fighter, which is not always something the
                 // wobble estimate can see — a pinned ankle holds a body very
                 // still right up until it does not.
-                target = _rigs[cueIndex].Pelvis.position;
+                target = _rigs[cueIndex].WorldPosition;
                 drama = Mathf.Max(0.65f, Mathf.Clamp01(_smoothedWobble[cueIndex]));
                 closeShot = true;
                 subject = cueIndex;
@@ -589,14 +580,14 @@ namespace PoBox
                     _tourOrdinal++;
                 }
                 int focusIndex = FindStandingByOrdinal(_tourOrdinal % standingCount);
-                target = _rigs[focusIndex].Pelvis.position;
+                target = _rigs[focusIndex].WorldPosition;
                 drama = Mathf.Max(0.6f, Mathf.Clamp01(_smoothedWobble[focusIndex]));
                 closeShot = true;
                 subject = focusIndex;
             }
             else if (bestIndex >= 0)
             {
-                target = _rigs[bestIndex].Pelvis.position;
+                target = _rigs[bestIndex].WorldPosition;
                 drama = Mathf.Clamp01(bestWobble);
                 closeShot = true;
                 subject = bestIndex;
@@ -707,7 +698,7 @@ namespace PoBox
             return CutBlend;
         }
 
-        private int IndexOf(Systems_FighterRig rig)
+        private int IndexOf(IContestFighter rig)
         {
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
@@ -761,7 +752,7 @@ namespace PoBox
                 {
                     continue;
                 }
-                sum += _rigs[rigIndex].Pelvis.position;
+                sum += _rigs[rigIndex].WorldPosition;
                 count++;
             }
             return count == 0 ? RingCenter() : sum / count;
@@ -772,7 +763,7 @@ namespace PoBox
             Vector3 sum = Vector3.zero;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                sum += _rigs[rigIndex].Pelvis.position;
+                sum += _rigs[rigIndex].WorldPosition;
             }
             return sum / _rigs.Length;
         }

@@ -213,6 +213,21 @@ namespace PoBox.MuJoCoCreature
         }
 
         /// <summary>
+        /// World gravity for the shared MuJoCo model, MuJoCo axes (Z up). The
+        /// balance ring's GRAVITY LEAN hazard tilts Physics.gravity, which a
+        /// body simulated here would otherwise never feel; the contestant
+        /// mirrors it through this. Written straight into mjModel.opt, which
+        /// MuJoCo reads on every step, so no recompile is needed.
+        /// </summary>
+        public unsafe void SetGravity(Vector3 gravityMjWorld)
+        {
+            if (!_ready || _mjScene == null || _mjScene.Model == null) { return; }
+            _mjScene.Model->opt.gravity[0] = gravityMjWorld.x;
+            _mjScene.Model->opt.gravity[1] = gravityMjWorld.y;
+            _mjScene.Model->opt.gravity[2] = gravityMjWorld.z;
+        }
+
+        /// <summary>
         /// Forces a bind + observation gather and returns the raw observation
         /// vector. Exists for the parity harness: the ONLY way to know the C#
         /// and Python observation builders agree is to feed both the same
@@ -256,6 +271,9 @@ namespace PoBox.MuJoCoCreature
         public Vector3 DebugPelvisPosition { get; private set; }
         public Vector3 DebugPelvisForward { get; private set; } = new Vector3(0f, -1f, 0f);
         public Vector3 DebugPelvisLinVel { get; private set; }
+        // MuJoCo world frame, rad/s. Read by the contest's drama camera as a
+        // wobble estimate; only its magnitude matters there.
+        public Vector3 DebugPelvisAngVel { get; private set; }
         public float DebugHeadZ { get; private set; }
         public float DebugFootLeftZ { get; private set; }
         public float DebugFootRightZ { get; private set; }
@@ -580,6 +598,7 @@ namespace PoBox.MuJoCoCreature
             Quaternion pelvisRot = BodyQuat(d, _pelvisId);
             DebugPelvisForward = pelvisRot * new Vector3(0f, -1f, 0f);
             DebugPelvisLinVel = BodyLinVel(d, _pelvisId);
+            DebugPelvisAngVel = BodyAngVel(d, _pelvisId);
             DebugHeadZ = BodyPos(d, _jointBodyIds[HEAD_INDEX]).z;
             DebugFootLeftZ = BodyPos(d, _footLeftId).z;
             DebugFootRightZ = BodyPos(d, _footRightId).z;

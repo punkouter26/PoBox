@@ -338,20 +338,15 @@ namespace PoBox
 
             int down = 0;
             int rigsFound = 0;
-            foreach (Systems_FighterRig rig in FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.None))
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            for (int fighterIndex = 0; fighterIndex < fighters.Length; fighterIndex++)
             {
-                if (rig == null) { continue; }
                 rigsFound++;
-                if (rig.transform.position.y < 0.35f) { down++; }
+                if (fighters[fighterIndex].ReportsDown) { down++; }
             }
 
-            // Everything that took the mat, including a contestant that is NOT a
-            // Systems_FighterRig — the creature is refereed through IContestFighter
-            // from another assembly and no rig sweep can see him. Read from the
-            // spawner because working it out here meant sweeping every MonoBehaviour
-            // in the scene twice a second, allocating the whole component array each
-            // time, in every scene including the menu. Falls back to the rig count
-            // for a scene that fields its fighters by hand and so never spawns.
+            // Everything that took the mat, read from the spawner when it fielded
+            // a line-up and counted here otherwise.
             int total = Systems_ContestSpawner.LastFieldedCount > 0
                 ? Systems_ContestSpawner.LastFieldedCount
                 : rigsFound;

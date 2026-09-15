@@ -76,11 +76,10 @@ namespace PoBox
             // The referee reports a winner by name, so the tally needs its own
             // way back to that fighter's colour. Built once here: the roster
             // cannot change mid-match.
-            Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            for (int fighterIndex = 0; fighterIndex < fighters.Length; fighterIndex++)
             {
-                Systems_FighterIdentity.Resolve(rigs[rigIndex], out string name, out Color color);
-                _colors[name] = color;
+                _colors[fighters[fighterIndex].DisplayName] = fighters[fighterIndex].PlateColor;
             }
 
             _scoreboard = new VisualElement();

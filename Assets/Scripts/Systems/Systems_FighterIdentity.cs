@@ -51,7 +51,7 @@ namespace PoBox
         /// </summary>
         public static readonly string[] PickableNames =
         {
-            "Standard", "Grandma", "Grandpa", "Bot", "Raptor", "Nick"
+            "Nick"
         };
 
         /// <summary>The menu's "leave this slot empty" choice. Never a fighter name.</summary>

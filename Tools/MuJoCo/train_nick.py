@@ -13,9 +13,8 @@ launches watch_nick.py --follow, which opens the MuJoCo viewer on the CPU
 model and replays the newest checkpoint as they land, cycling BALANCE and
 WALK the way the Unity demo does. --no-ui skips it.
 
-PPO SETTINGS are the Isaac line's (Tools/Isaac/train_matt.py), on purpose:
-same network, same hyperparameters, same reward design, so the comparison
-between the two simulators is not confounded by the trainer.
+PPO SETTINGS: 3x512 actor/critic, rsl_rl defaults otherwise; change one
+thing at a time and say so in the run name.
 """
 from __future__ import annotations
 
@@ -112,6 +111,8 @@ import torch                                                  # noqa: E402
 from nick_env import ACT_DIM, NickEnv, NickEnvCfg, preferred_model_path   # noqa: E402
 
 log_dir = LOG_ROOT / args.run_name
+if log_dir.exists() and any(log_dir.glob("model_*.pt")) and not (args.resume or args.resume_latest):
+    raise SystemExit("Run already has checkpoints; use --resume-latest or a new run name")
 cfg = NickEnvCfg(num_envs=args.num_envs, seed=args.seed, model_path=preferred_model_path())
 if args.w_planted is not None:
     cfg.w_planted = args.w_planted
@@ -245,13 +246,18 @@ if args.until_iteration is not None:
 runner.save(str(log_dir / ("model_%d.pt" % runner.current_learning_iteration)))
 viewer = None if args.no_ui else start_viewer(log_dir)
 print("TRAINING  logs -> %s" % log_dir)
+completed = False
 try:
     runner.learn(num_learning_iterations=iterations, init_at_random_ep_len=True)
+    completed = True
 finally:
     # The user needs to inspect the final policy after training as well.
     # The viewer owns no training state and can be closed independently.
     if viewer is not None and viewer.poll() is None:
-        print("Viewer remains open for inspection (pid %d)" % viewer.pid)
+        if completed:
+            print("Viewer remains open for inspection (pid %d)" % viewer.pid)
+        else:
+            viewer.terminate()  # crash recovery will open one replacement viewer
 print("TRAINING_DONE")
 # os._exit skips the atexit flush, and with stdout redirected to a log the
 # final line is still sitting in a block buffer. Flush before leaving, or a

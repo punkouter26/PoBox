@@ -34,7 +34,7 @@ namespace PoBox
         private Systems_MatchDirector _match;
         private Systems_WinnerBanner _banner;
         private AudioSource _audioSource;
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _rigs;
         private float[] _startHeadHeights;
         private bool[] _inDip;
         private float[] _saveCooldowns;
@@ -45,13 +45,9 @@ namespace PoBox
         /// <summary>
         /// True while a big centre callout is on screen.
         ///
-        /// Read by <see cref="Systems_ColourCommentary"/>, which is the second
-        /// voice in the booth and has to stay out of the play-by-play's way.
-        /// This is the same problem the winner banner already solved once —
-        /// two systems shouting the same beat in two fonts at the same instant
-        /// — except that the colour line is a band lower down and so does not
-        /// literally overlap, which is exactly what makes it easy to ship two
-        /// voices talking over each other and not notice.
+        /// Anything else that wants the centre of the screen waits for this to
+        /// clear: two systems shouting the same beat in two fonts at the same
+        /// instant is the problem the winner banner already solved once.
         /// </summary>
         public bool CalloutActive => _calloutRemaining > 0f;
 
@@ -121,14 +117,6 @@ namespace PoBox
             _hazardChip.pickingMode = PickingMode.Ignore;
             Systems_UiTheme.HudHazardSlot(hudRoot).Add(_hazardChip);
 
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            _startHeadHeights = new float[_rigs.Length];
-            _inDip = new bool[_rigs.Length];
-            _saveCooldowns = new float[_rigs.Length];
-            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
-            {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
-            }
 
             if (_contest != null)
             {
@@ -192,21 +180,18 @@ namespace PoBox
                 }
             }
 
+            if (!BindContestants())
+            {
+                return;
+            }
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
                 if (_saveCooldowns[rigIndex] > 0f)
                 {
                     _saveCooldowns[rigIndex] -= dt;
                 }
-            // Ground-relative. A fraction of an ABSOLUTE head height rescales with
-            // altitude, and the ring canvas sits 1 m up: 45% of a 2.6 m head is
-            // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
-            // standing until its head was practically on the floor and this never
-            // fired in the contest at all. The divisor is floored because a rig
-            // sampled before the referee resets it can measure near its own ground
-            // level, and the infinity that follows poisons the dip test below.
-            float headFraction = (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY)
-                / Mathf.Max(0.01f, _startHeadHeights[rigIndex]);
+                // Ground-relative, floored divisor: see Systems_Contestants.HeadFraction.
+                float headFraction = Systems_Contestants.HeadFraction(_rigs[rigIndex], _startHeadHeights[rigIndex]);
                 if (!_inDip[rigIndex] && headFraction < NEAR_FALL_DIP_FRACTION && headFraction > 0.5f)
                 {
                     _inDip[rigIndex] = true;
@@ -223,10 +208,32 @@ namespace PoBox
             }
         }
 
-        private string DisplayName(int rigIndex)
+        private string DisplayName(int rigIndex) => _rigs[rigIndex].DisplayName;
+
+        /// <summary>
+        /// Latches the field once every contestant's simulator is bound. A
+        /// MuJoCo contestant reports a head height of 0 before its first
+        /// physics tick, and a standing height captured then would have the
+        /// near-fall detector announcing a save on every upright frame.
+        /// </summary>
+        private bool BindContestants()
         {
-            Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
-            return displayName;
+            if (_rigs != null) { return true; }
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            if (fighters.Length == 0) { return false; }
+            for (int index = 0; index < fighters.Length; index++)
+            {
+                if (!fighters[index].IsReady) { return false; }
+            }
+            _rigs = fighters;
+            _startHeadHeights = new float[_rigs.Length];
+            _inDip = new bool[_rigs.Length];
+            _saveCooldowns = new float[_rigs.Length];
+            for (int index = 0; index < _rigs.Length; index++)
+            {
+                _startHeadHeights[index] = _rigs[index].HeadHeightAboveGround;
+            }
+            return true;
         }
 
         private void OnRoundStarted(int round)

@@ -65,8 +65,7 @@ namespace PoBox
         // about 6.8 m of standoff and 6.6 m of frame would need 10.2 m — at which
         // point a 1.7 m fighter is a seventh of the picture and the race is
         // unwatchable, which is exactly what the shot this file replaced did
-        // wrong. So the line is four, and Systems_FighterIdentity.PickableNames
-        // is ordered to put the coded bot inside those four. Widen the line and
+        // wrong. So the line is four. Widen the line and
         // the warning fires rather than shipping a race with half the field
         // outside the frame.
         [SerializeField] private float _maxFrameWidth = 4.4f;
@@ -103,7 +102,7 @@ namespace PoBox
         [SerializeField] private float _lookSmoothTime = 0.3f;
 
         private Camera _camera;
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _rigs;
         private float[] _startHeadHeights;
         private float _groundY;
         private Vector3 _lookPoint;
@@ -144,16 +143,21 @@ namespace PoBox
             // already excludes inactive objects; what matters is that the running
             // order is defined (Systems_MiniGameLauncher is -500) so this reads a
             // settled ring rather than half of one.
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Exclude);
+            _rigs = Systems_Contestants.FindAll();
             if (_rigs.Length == 0)
             {
                 return;
+            }
+            for (int fighterIndex = 0; fighterIndex < _rigs.Length; fighterIndex++)
+            {
+                // Bound only once every simulator reports a real standing height.
+                if (!_rigs[fighterIndex].IsReady) { _rigs = null; return; }
             }
             _goalDirection = _goalDirection.normalized;
             _startHeadHeights = new float[_rigs.Length];
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                _startHeadHeights[rigIndex] = _rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY;
+                _startHeadHeights[rigIndex] = _rigs[rigIndex].HeadHeightAboveGround;
             }
             _groundY = _rigs[0].GroundY;
             _lookPoint = PackCentroid() + Vector3.up * _lookHeight;
@@ -186,7 +190,7 @@ namespace PoBox
             float max = float.MinValue;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                float offset = Vector3.Dot(_rigs[rigIndex].Pelvis.position, lateral);
+                float offset = Vector3.Dot(_rigs[rigIndex].WorldPosition, lateral);
                 min = Mathf.Min(min, offset);
                 max = Mathf.Max(max, offset);
             }
@@ -215,7 +219,7 @@ namespace PoBox
             }
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                if (_rigs[rigIndex] == null || !_rigs[rigIndex].gameObject.activeInHierarchy)
+                if (_rigs[rigIndex] == null || _rigs[rigIndex].Root == null || !_rigs[rigIndex].Root.gameObject.activeInHierarchy)
                 {
                     return true;
                 }
@@ -288,12 +292,12 @@ namespace PoBox
             // 1.17 m, which is 17 cm above the canvas, so a fighter counted as
             // standing until its head was practically on the floor and this never
             // fired in the contest at all.
-                if (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY
+                if (_rigs[rigIndex].HeadHeightAboveGround
                     <= _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
                 {
                     continue;
                 }
-                float offset = Vector3.Dot(_rigs[rigIndex].Pelvis.position, lateral);
+                float offset = Vector3.Dot(_rigs[rigIndex].WorldPosition, lateral);
                 min = Mathf.Min(min, offset);
                 max = Mathf.Max(max, offset);
                 counted++;
@@ -318,9 +322,9 @@ namespace PoBox
             int standingCount = 0;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                Vector3 pelvis = _rigs[rigIndex].Pelvis.position;
+                Vector3 pelvis = _rigs[rigIndex].WorldPosition;
                 allSum += pelvis;
-                if (_rigs[rigIndex].Head.position.y - _rigs[rigIndex].GroundY
+                if (_rigs[rigIndex].HeadHeightAboveGround
                     > _startHeadHeights[rigIndex] * STANDING_HEAD_FRACTION)
                 {
                     standingSum += pelvis;

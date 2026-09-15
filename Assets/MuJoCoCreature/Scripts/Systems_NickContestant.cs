@@ -4,42 +4,41 @@ using Mujoco;
 namespace PoBox.MuJoCoCreature
 {
     /// <summary>
-    /// Lets Nick stand in the PhysX balance ring.
+    /// Lets a MuJoCo creature stand in the contest scenes: the referees,
+    /// cameras, announcer and hazards talk to it through
+    /// <see cref="IContestFighter"/> and never see the MuJoCo plugin.
     ///
-    /// WHAT MADE THIS POSSIBLE. Nick used to be unable to share that scene at
-    /// all: Time.fixedDeltaTime is global, he needed 0.005 s, and the PhysX
-    /// fighters need 0.02 s. Measured 2026-09-08, both directions failed --
-    /// at 0.02 s his 0.005-trained brain scored a 1.06 s median against a
-    /// 1.08 s PASSIVE baseline, and at 0.005 s Standard fell from 30.0 s to
-    /// 2.9 s even with DecisionPeriod compensated.
+    /// WHAT MADE THIS POSSIBLE. Nick used to be unable to share the ring at
+    /// all: Time.fixedDeltaTime is global, he needed 0.005 s, and the ring
+    /// runs at 0.02 s. What broke the deadlock was not a solver setting but
+    /// the BODY: the position servos are kp=400, so at armature 0.02 omega*dt
+    /// is 2.83 at a 0.02 s step -- past the stability limit of 2, which is
+    /// why the policy had no authority. Armature 0.2 puts omega*dt at 0.89,
+    /// and a policy trained on that body at 0.02 s holds the ring. The
+    /// armature lives in the MJCF Unity generates, so the trainer and the game
+    /// share one body.
     ///
-    /// What broke the deadlock was not a solver setting but the BODY: the
-    /// position servos are kp=400, so at armature 0.02 omega*dt is 2.83 at a
-    /// 0.02 s step -- past the stability limit of 2, which is why the policy
-    /// had no authority. Armature 0.2 puts omega*dt at 0.89, and a policy
-    /// trained from scratch on that body (nick08) holds 30.0 s in 95% of
-    /// worlds under the ring's own 150 N shove. The armature lives in the
-    /// MJCF Unity generates, so the trainer and the game share one body.
-    ///
-    /// WHAT HE CANNOT DO. nick08 is a BALANCE-ONLY brain: 0% full-cap on the
-    /// walk test, 2.22 s median. He belongs in this ring and nowhere near the
-    /// walk race.
+    /// One of these per creature. The display name and plate colour are per
+    /// instance, so Grandma and Grandpa on their own MuJoCo bodies use this
+    /// same component.
     /// </summary>
     [RequireComponent(typeof(CreatureSentisController))]
     public sealed class Systems_NickContestant : MonoBehaviour, IContestFighter
     {
         [SerializeField] private CreatureSentisController _controller;
         [SerializeField] private string _displayName = "Nick";
+        [Tooltip("Swatch that identifies this contestant on its scoreboard plate and in the match tally.")]
+        [SerializeField] private Color _plateColor = new Color(0.25f, 0.85f, 1f, 1f);
 
         /// <summary>
-        /// Pelvis height above the floor below which Nick counts himself down.
-        /// 0.3 m is the controller's own default fall height; the contest
-        /// scenes set his _fallHeight to -1 so a fallen body STAYS fallen
+        /// Pelvis height above the floor below which the creature counts itself
+        /// down. 0.3 m is the controller's own default fall height; the contest
+        /// scenes set its _fallHeight to -1 so a fallen body STAYS fallen
         /// instead of snapping back to the rest pose, which also means the
         /// reset counter below never moves there. Without this second test
-        /// ReportsDown was false with his head 12 cm off the ring.
+        /// ReportsDown was false with Nick's head 12 cm off the ring.
         /// </summary>
-        [Tooltip("Pelvis height above the floor (m) below which Nick reports himself down.")]
+        [Tooltip("Pelvis height above the floor (m) below which the creature reports itself down.")]
         [SerializeField] private float _downPelvisHeight = 0.3f;
 
         private int _resetsAtRoundStart;
@@ -51,6 +50,10 @@ namespace PoBox.MuJoCoCreature
 
         public string DisplayName => _displayName;
 
+        public Color PlateColor => _plateColor;
+
+        public Transform Root => transform;
+
         public bool IsReady => _controller != null && _controller.IsBound;
 
         public void ResetForRound()
@@ -60,7 +63,7 @@ namespace PoBox.MuJoCoCreature
             _resetsAtRoundStart = _controller.DebugResetCount;
         }
 
-        /// <summary>The ring's only order, and the one nick08 was trained for.</summary>
+        /// <summary>The ring's only order: the 0 m/s end of the locomotion command.</summary>
         public void CommandStand()
         {
             if (_controller != null) { _controller.SetCommand(0f); }
@@ -81,7 +84,7 @@ namespace PoBox.MuJoCoCreature
             _controller.SetCommand(metresPerSecond, inCreatureFrame);
         }
 
-        /// <summary>Unity world position of the pelvis, for measuring travel.</summary>
+        /// <summary>Unity world position of the pelvis, for measuring travel and framing.</summary>
         public Vector3 WorldPosition
         {
             get
@@ -92,11 +95,18 @@ namespace PoBox.MuJoCoCreature
             }
         }
 
+        /// <summary>The authored floor's elevation, which every height here is measured from.</summary>
+        public float GroundY => _controller != null ? _controller.GroundHeight : transform.position.y;
+
         /// <summary>
         /// MuJoCo reports world Z. Subtract the authored floor's elevation;
         /// otherwise a collapsed body on the raised ring still counts as tall.
         /// </summary>
         public float HeadHeightAboveGround => IsReady ? _controller.DebugHeadZ - _controller.GroundHeight : 0f;
+
+        /// <summary>Only the magnitude is read, so the axis swap's handedness does not matter.</summary>
+        public Vector3 PelvisAngularVelocity =>
+            IsReady ? MjEngineTool.UnityVector3(_controller.DebugPelvisAngVel) : Vector3.zero;
 
         /// <summary>
         /// Down by either of two tells. A reset since the round began IS a
@@ -116,6 +126,22 @@ namespace PoBox.MuJoCoCreature
                 return IsReady
                     && _controller.DebugPelvisPosition.z - _controller.GroundHeight < _downPelvisHeight;
             }
+        }
+
+        /// <summary>The hazard director's wind gust, handed to MuJoCo as a pelvis force.</summary>
+        public void Shove(Vector3 forceWorldNewtons, float seconds)
+        {
+            if (_controller != null) { _controller.Shove(MjEngineTool.MjVector3(forceWorldNewtons), seconds); }
+        }
+
+        /// <summary>
+        /// The hazard director's gravity lean, mirrored into MuJoCo. The MjScene
+        /// is shared by every creature in the scene, so each one writing the
+        /// same vector is harmless.
+        /// </summary>
+        public void SetGravity(Vector3 gravityWorld)
+        {
+            if (_controller != null) { _controller.SetGravity(MjEngineTool.MjVector3(gravityWorld)); }
         }
     }
 }

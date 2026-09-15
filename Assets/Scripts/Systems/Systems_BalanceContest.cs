@@ -1,18 +1,18 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PoBox
 {
     /// <summary>
-    /// Referee for the balance contest test scene: every fighter stands until
-    /// a fall sensor touches ground or its head collapses; longest time wins.
-    /// Self-discovers contestants at Start, shows a UI Toolkit scoreboard
-    /// (styled by USS_Contest.uss: title chip up top, name plates at the
-    /// bottom so the ring stays unobstructed), announces the winner, then
-    /// resets everyone for the next round. Raises RoundEnded/RoundStarted for
-    /// presentation systems (banner, crowd, FX) through
-    /// <see cref="Systems_ContestReferee"/>, which is what they bind to.
+    /// Referee for the balance contest test scene: every contestant stands
+    /// until it reports itself down or its head collapses; longest time wins.
+    /// Self-discovers contestants at Start through <see cref="IContestFighter"/>,
+    /// shows a UI Toolkit scoreboard (styled by USS_Contest.uss: title chip up
+    /// top, name plates at the bottom so the ring stays unobstructed),
+    /// announces the winner, then resets everyone for the next round. Raises
+    /// RoundEnded/RoundStarted for presentation systems (banner, crowd, FX)
+    /// through <see cref="Systems_ContestReferee"/>, which is what they bind to.
     /// Test-scene harness only — not used in training or the game loop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -22,12 +22,11 @@ namespace PoBox
         private const float ROUND_RESTART_DELAY = 4f;
         /// <summary>
         /// Hard cap on a round, mirroring <see cref="Systems_WalkContest"/>.
-        /// Without one the round ended only when the last fighter fell, and the
-        /// code-driven PD bot does not fall: measured 2026-08-21, every trained
-        /// fighter in an eight-slot ring was down inside 3.0 s while the bot was
-        /// still standing at 109 s, so a ring containing a bot never advanced.
-        /// 30 s is long enough to settle a balance round on merit and short
-        /// enough that a lone unfallable survivor cannot stall the match.
+        /// Without one the round ended only when the last fighter fell, and a
+        /// contestant that never falls stalls the match for ever: measured
+        /// 2026-08-21, a coded bot was still standing at 109 s. 30 s is long
+        /// enough to settle a balance round on merit and short enough that a
+        /// lone unfallable survivor cannot stall the match.
         /// </summary>
         private const float ROUND_TIME_LIMIT = 30f;
 
@@ -36,11 +35,7 @@ namespace PoBox
         private sealed class Contestant
         {
             public string displayName;
-            /// <summary>Null for a fighter that is not a PhysX rig (see external).</summary>
-            public Systems_FighterRig rig;
-            /// <summary>Set instead of rig for a non-PhysX contestant, e.g. the MuJoCo creature.</summary>
-            public IContestFighter external;
-            public Sensor_GroundContact[] fallSensors;
+            public IContestFighter fighter;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
             public float startHeadHeight;
             public float aliveTime;
@@ -101,78 +96,32 @@ namespace PoBox
             var hazards = FindFirstObjectByType<Systems_HazardDirector>(FindObjectsInactive.Include);
             if (hazards != null) { hazards.HazardChosen += name => _hazard = name; }
 
-            Systems_FighterRig[] rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.InstanceID);
-            for (int rigIndex = 0; rigIndex < rigs.Length; rigIndex++)
+            // ROUND ONE STARTS FROM THE SAME POSE EVERY OTHER ROUND DOES. It used
+            // to start from whatever the scene load left behind, so round one
+            // asked the brain to catch a falling body it had never seen, and a
+            // player watching the FIRST round of a fresh contest saw the worst
+            // the game has to offer. Every round begins from ResetForRound --
+            // the canonical pose, velocities zeroed -- which is also the pose
+            // the policy trained on.
+            IContestFighter[] fighters = Systems_Contestants.FindAll();
+            for (int index = 0; index < fighters.Length; index++)
             {
-                Systems_FighterRig rig = rigs[rigIndex];
-                var fallSensors = new List<Sensor_GroundContact>();
-                foreach (Sensor_GroundContact sensor in rig.GetComponentsInChildren<Sensor_GroundContact>(true))
-                {
-                    if (sensor != rig.FootLeftSensor && sensor != rig.FootRightSensor)
-                    {
-                        fallSensors.Add(sensor);
-                    }
-                }
-                Systems_FighterIdentity.Resolve(rig, out string displayName, out Color plateColor);
-                VisualElement plate = Systems_UiTheme.BuildPlate(plateColor, out Label plateLabel);
+                IContestFighter fighter = fighters[index];
+                VisualElement plate = Systems_UiTheme.BuildPlate(fighter.PlateColor, out Label plateLabel);
                 platesRow.Add(plate);
-                // ROUND ONE STARTS FROM THE SAME POSE EVERY OTHER ROUND DOES.
-                //
-                // It used to start from whatever the spawner left behind: the
-                // fighter is instantiated under an inactive holder, reparented,
-                // and dropped from SPAWN_HEIGHT, so at this moment the ragdoll
-                // is unsettled and carrying whatever velocity the reparent gave
-                // it. Every LATER round begins from ResetToStartPose -- the
-                // canonical pose, velocities zeroed, contacts cleared -- which
-                // is also the pose the policy trained on.
-                //
-                // So round one asked the brain to catch a falling body it had
-                // never seen, and it showed. Measured over two runs of the
-                // scene with Locomotion_gen25, alive times:
-                //
-                //   round 1   everyone down inside 6.4 s
-                //   round 2   29.0 s, 29.0 s, 17.4 s ...
-                //   round 3   29.2 s, 29.2 s, 27.8 s, 26.2 s, 25.1 s ...
-                //
-                // A player watching the FIRST round of a fresh contest was
-                // seeing the worst the game has to offer.
-                ResetRigForRound(rig);
-
+                fighter.ResetForRound();
                 var contestant = new Contestant
                 {
-                    displayName = displayName,
-                    rig = rig,
-                    fallSensors = fallSensors.ToArray(),
+                    displayName = fighter.DisplayName,
+                    fighter = fighter,
                     // Measured AFTER the reset, so it describes the pose the
                     // fighter actually stands in rather than a mid-drop one.
-                    startHeadHeight = rig.Head.position.y - rig.GroundY,
+                    startHeadHeight = fighter.HeadHeightAboveGround,
                     plate = plate,
                     label = plateLabel
                 };
                 _contestants.Add(contestant);
-                CommandStand(contestant);
-            }
-
-            // Fighters that are not PhysX rigs -- currently the MuJoCo creature.
-            // Discovered the same way and refereed by the same rules; only the
-            // four IContestFighter calls differ. See Systems_ContestFighter.
-            foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.InstanceID))
-            {
-                if (behaviour is not IContestFighter fighter) { continue; }
-                VisualElement extPlate = Systems_UiTheme.BuildPlate(Color.cyan, out Label extLabel);
-                platesRow.Add(extPlate);
-                fighter.ResetForRound();
-                var extContestant = new Contestant
-                {
-                    displayName = fighter.DisplayName,
-                    external = fighter,
-                    fallSensors = System.Array.Empty<Sensor_GroundContact>(),
-                    startHeadHeight = fighter.HeadHeightAboveGround,
-                    plate = extPlate,
-                    label = extLabel
-                };
-                _contestants.Add(extContestant);
-                CommandStand(extContestant);
+                fighter.CommandStand();
             }
             _initialized = true;
             RaiseRoundStarted(_round);
@@ -212,22 +161,14 @@ namespace PoBox
                     continue;
                 }
                 contestant.aliveTime += Time.fixedDeltaTime;
-                // Also ground-relative: at ring altitude a fully collapsed
-                // fighter scored 1.0 / 2.6 = 0.385 on this rather than ~0, and
-                // this sum is what ranks the round.
-                //
-                // The divisor is floored, like every other use of a start head
-                // height in this codebase. startHeadHeight is measured once, right
-                // after ResetRigForRound -- but a fighter whose head is already at
-                // its own ground level there would divide this term by zero, and
-                // an infinite uprightnessSum makes Beats() compare infinities and
-                // then NaNs, which decides the round by accident rather than by who
-                // balanced better.
+                // Ground-relative, and the divisor is floored: a contestant
+                // whose head measured at its own ground level would otherwise
+                // divide this by zero, and an infinite uprightnessSum makes
+                // Beats() compare infinities and then NaNs, which decides the
+                // round by accident rather than by who balanced better.
                 contestant.uprightnessSum +=
-                    (contestant.external != null
-                        ? contestant.external.HeadHeightAboveGround
-                        : contestant.rig.Head.position.y - contestant.rig.GroundY)
-                    / Mathf.Max(0.01f, contestant.startHeadHeight) * Time.fixedDeltaTime;
+                    Systems_Contestants.HeadFraction(contestant.fighter, contestant.startHeadHeight)
+                    * Time.fixedDeltaTime;
                 aliveCount++;
             }
 
@@ -237,8 +178,8 @@ namespace PoBox
             // had seven of eight fighters down inside 5 s and then held on a mat
             // of bodies for another 25, which is the single longest stretch of
             // dead air in the game. Guarded on a field of more than one, because
-            // a single-fighter ring — the spawner's fallback when nothing is
-            // picked — would otherwise end every round on its first frame.
+            // a single-fighter ring would otherwise end every round on its first
+            // frame.
             bool lastStanding = aliveCount == 1 && _contestants.Count > 1;
             if ((aliveCount == 0 || lastStanding || timeUp) && _contestants.Count > 0)
             {
@@ -251,13 +192,9 @@ namespace PoBox
 
         /// <summary>
         /// One greppable line per round: who won, how, and how long every
-        /// fighter lasted.
-        ///
-        /// Round outcomes previously existed ONLY in the UI Toolkit HUD, which
-        /// means a headless run of this scene could be verified to start and not
-        /// throw, and nothing else. "Does the contest actually resolve rounds
-        /// correctly" was unanswerable without a human watching a screen, and
-        /// that is the question a shipping decision on a new brain turns on.
+        /// fighter lasted. Round outcomes used to exist ONLY in the UI Toolkit
+        /// HUD, so "does the contest actually resolve rounds correctly" was
+        /// unanswerable without a human watching a screen.
         /// </summary>
         private void LogRoundResult(Contestant leader, bool timeUp, bool lastStanding)
         {
@@ -310,21 +247,12 @@ namespace PoBox
         /// Longest upright wins; a tie on that goes to whoever stood straighter
         /// while doing it.
         ///
-        /// The tie-break is not a nicety. Comparing aliveTime alone with a
-        /// strict &gt; hands every tie to whichever fighter FindObjectsByType
-        /// happened to return first, and at the 30 s round limit ties are the
-        /// NORMAL case, not the edge one: every fighter still standing when time
-        /// runs out has been alive for exactly the round length. Measured
-        /// 2026-08-22, four of eight were sitting on an identical 4.0 s four
-        /// seconds into round 4. So the round — and, three rounds later, the
-        /// match — was being decided by scene hierarchy order.
-        ///
-        /// Mean uprightness is the natural decider because it is the thing the
-        /// contest is nominally about: of two fighters who both lasted the
-        /// distance, the one that spent it nearer its full standing height
-        /// balanced better. It is a float sum over fixed ticks, so an exact tie
-        /// on it is vanishingly unlikely; if one happens, order decides, and by
-        /// then the two really are indistinguishable.
+        /// The tie-break is not a nicety. At the 30 s round limit ties are the
+        /// NORMAL case: every fighter still standing when time runs out has been
+        /// alive for exactly the round length, so comparing aliveTime alone
+        /// handed the round to whichever fighter FindObjectsByType happened to
+        /// return first. Mean uprightness is the natural decider because it is
+        /// the thing the contest is nominally about.
         /// </summary>
         private static bool Beats(Contestant candidate, Contestant incumbent)
         {
@@ -342,57 +270,19 @@ namespace PoBox
         }
 
         /// <summary>
-        /// Puts a rig into the pose a round starts from: the captured start
-        /// pose, velocities zeroed, and every ground sensor cleared.
-        ///
-        /// Shared by round one and every restart so the two cannot drift apart
-        /// again -- they already had, and round one was the worse of the two.
+        /// Down by the contestant's own reckoning, or head under 40% of its
+        /// standing height. Both GROUND-RELATIVE, never raw world Y: the ring
+        /// canvas sits at Systems_ContestSpawner.RING_FLOOR_Y = 1 m, and an
+        /// absolute height compared against a fraction of an absolute height
+        /// silently rescales with altitude -- a fighter had to sink to four
+        /// centimetres above the floor to count as collapsed instead of the
+        /// intended ~64 cm.
         /// </summary>
-        private static void ResetRigForRound(Systems_FighterRig rig)
+        private static bool HasFallen(Contestant contestant)
         {
-            rig.ResetToStartPose();
-            foreach (Sensor_GroundContact sensor in rig.GetComponentsInChildren<Sensor_GroundContact>(true))
-            {
-                sensor.ResetContacts();
-            }
-        }
-
-        /// <summary>
-        /// Tells the fighter to hold station: the 0 m/s end of the locomotion
-        /// command a single brain serves both mini-games with. Re-asserted
-        /// after every round reset. A PhysX rig has no brain to command any
-        /// more, so only a contestant answering IContestFighter is told.
-        /// </summary>
-        private static void CommandStand(Contestant contestant)
-        {
-            if (contestant.external != null) { contestant.external.CommandStand(); }
-        }
-
-        private bool HasFallen(Contestant contestant)
-        {
-            if (contestant.external != null)
-            {
-                return contestant.external.ReportsDown
-                    || contestant.external.HeadHeightAboveGround
-                       < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
-            }
-            for (int sensorIndex = 0; sensorIndex < contestant.fallSensors.Length; sensorIndex++)
-            {
-                if (contestant.fallSensors[sensorIndex].IsGrounded)
-                {
-                    return true;
-                }
-            }
-            // GROUND-RELATIVE, never raw world Y. The ring canvas sits at
-            // Systems_ContestSpawner.RING_FLOOR_Y = 1 m, so comparing an
-            // absolute head height against a FRACTION of an absolute head
-            // height silently rescales with altitude: 40% of a 2.6 m head is
-            // 1.04 m, which on a 1 m canvas means the fighter has to sink to
-            // FOUR CENTIMETRES above the floor to count as collapsed instead of
-            // the intended ~64 cm. The locomotion reward once documented having
-            // hit exactly this; the two contests still had the original form.
-            return contestant.rig.Head.position.y - contestant.rig.GroundY
-                < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
+            return contestant.fighter.ReportsDown
+                || contestant.fighter.HeadHeightAboveGround
+                   < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;
         }
 
         private void StartNextRound()
@@ -403,9 +293,10 @@ namespace PoBox
             for (int contestantIndex = 0; contestantIndex < _contestants.Count; contestantIndex++)
             {
                 Contestant contestant = _contestants[contestantIndex];
-                if (contestant.external != null) { contestant.external.ResetForRound(); }
-                else { ResetRigForRound(contestant.rig); }
-                CommandStand(contestant);
+                contestant.fighter.ResetForRound();
+                // Re-asserted after every reset: the 0 m/s end of the locomotion
+                // command a single brain serves both mini-games with.
+                contestant.fighter.CommandStand();
                 contestant.aliveTime = 0f;
                 contestant.uprightnessSum = 0f;
                 contestant.fallen = false;

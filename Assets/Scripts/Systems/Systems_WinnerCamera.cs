@@ -92,7 +92,7 @@ namespace PoBox
         [SerializeField] private Systems_DramaCamera _dramaCamera;
 
         private Systems_ContestReferee _contest;
-        private Systems_FighterRig[] _rigs;
+        private IContestFighter[] _rigs;
         private Transform _focus;
         private float _angleDegrees;
         private Vector3 _ringCentre;
@@ -117,7 +117,7 @@ namespace PoBox
 
         private void Start()
         {
-            _rigs = FindObjectsByType<Systems_FighterRig>(FindObjectsInactive.Exclude);
+            _rigs = Systems_Contestants.FindAll();
             // Both sampled while everyone is still on their spawn mark and
             // upright — see RingCentre.
             _ringCentre = RingCentre();
@@ -239,33 +239,13 @@ namespace PoBox
         private void OnRoundEnded(string winnerName)
         {
             _focus = null;
-            for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
+            // Matched on the recorded identity, not on name.Contains: a ring
+            // holding "Nick" and "Nick2" made that test true for both and
+            // celebrated whichever came first in the array.
+            IContestFighter winner = Systems_Contestants.FindByName(_rigs, winnerName);
+            if (winner != null)
             {
-                // Matched on the recorded identity, not on name.Contains: a ring
-                // holding "Standard" and "Standard2" made that test true for both
-                // and celebrated whichever came first in the array.
-                Systems_FighterIdentity.Resolve(_rigs[rigIndex], out string displayName, out _);
-                if (displayName == winnerName)
-                {
-                    _focus = _rigs[rigIndex].Pelvis.transform;
-                    break;
-                }
-            }
-            if (_focus == null)
-            {
-                // A fighter that is not a PhysX rig cannot be found by a rig
-                // sweep, and it can still win — the creature races in the lane.
-                // Without this a round it won was crowned with no winner shot at
-                // all, which reads as the camera having lost interest.
-                foreach (MonoBehaviour behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude))
-                {
-                    if (behaviour is IContestFighter fighter
-                        && string.Equals(fighter.DisplayName, winnerName, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        _focus = behaviour.transform;
-                        break;
-                    }
-                }
+                _focus = winner.Root;
             }
             if (_focus == null || _virtualCamera == null)
             {
@@ -361,7 +341,7 @@ namespace PoBox
             Vector3 sum = Vector3.zero;
             for (int rigIndex = 0; rigIndex < _rigs.Length; rigIndex++)
             {
-                sum += _rigs[rigIndex].Pelvis.position;
+                sum += _rigs[rigIndex].WorldPosition;
             }
             return sum / _rigs.Length;
         }
