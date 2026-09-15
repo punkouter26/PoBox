@@ -1236,3 +1236,35 @@ standing world. Nick's candidate gets a K11 pass: `w_speed_cost=1.0` from
 | `gma_lC_torque` | `gma_lB/model_300` | `stand_still_fraction=0.9`, lr 5e-4, 500 it |
 | `gpa_lC_torque` | `gpa_lB/model_250` | same |
 | `nick_lC_torque` | `nick_lB/model_300` | `w_speed_cost=1.0`, lr 1e-4, 200 it |
+
+#### 2.5 result — the curriculum buys standing and sells the walk; the speed cost buys nothing
+
+| Run / checkpoint | BALANCE full-cap / median | WALK full-cap / median / speed | RING | knees peak |
+|---|---|---|---|---|
+| `gma_lC` 550 (from lB/300, 90 % standing) | **10 %** / **10.3 s** (was 0 % / 1.8 s) | 4 % / 4.9 s / 0.81 (was 89 %) | 7 % / 8.7 s | 21.4 |
+| `gpa_lC` 450 (from lB/250, 90 % standing) | **16 %** / **11.8 s** (was 0 % / 1.7 s) | 5 % / 4.8 s / 0.69 (was 62 %) | 9 % / 8.6 s | 21.5 |
+| `nick_lC` 499 (from lB/300, `w_speed_cost` 1.0) | 68 % (was 91 %) | 29 % (was 48 %) | 56 % (was 91 %) | **23.4** (was 25.2) |
+
+Finding 5's fix is confirmed in the direction that matters: given the data,
+both fresh bodies learn to stand (a six-fold longer stand in 250–300
+iterations, `fall_rate_standing` 0.0094 → 0.0001). The 90/10 mix then starves
+the walk exactly as the 50/50 mix starved standing — the two skills share one
+policy and the data share is the dial. Round D sets it in the middle.
+
+`w_speed_cost` at 1.0 is the wrong tool for K11: the knees dropped 25.2 →
+23.4 rad/s while every survival table lost 20–35 points. A joint-speed
+budget enforced only through the reward is fighting the objective's main
+term with a linear penalty on a quantity the swing leg needs; it would need a
+hard constraint (which Finding 3 rejected as damping) or a much longer
+schedule than this loop has. **K11 stays unmet and stays measured.** Nick's
+candidate is `nick_lB_torque/model_300`, exported to
+`Assets/Agents/Nick_Torque001/nick_torque_001.onnx`.
+
+Round C to the end (every 100–150 iterations; the curriculum keeps paying for standing):
+
+| checkpoint | BALANCE full-cap / median | WALK | RING |
+|---|---|---|---|
+| `gma_lC` 650 / 799 | 12 % / 11.6 s → **22 % / 13.6 s** | 0 % | 7 % → **20 %** |
+| `gpa_lC` 600 / 749 | 20 % / 14.2 s → **24 % / 17.2 s** | 0 % | 12 % → **17 %** |
+
+### 2.6 Round D — both skills: resume the round-C ends with `stand_still_fraction=0.7`, lr 5e-4, 800 iterations, checkpoints every 50, evaluated every 200

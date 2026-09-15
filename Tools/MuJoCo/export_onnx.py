@@ -145,8 +145,7 @@ if worst > 1e-4:
 source = out.parent / "SOURCE.txt"
 source.write_text(
     "%s\n%s\n\n"
-    "WHAT      Locomotion brain for %s,
-"
+    "WHAT      Locomotion brain for %s,\n"
     "          trained in MUJOCO WARP.\n"
     "CONTRACT  %d observations / %d continuous actions.\n"
     "          CreatureSentisController.GatherObservations with _observeLocomotionCommand\n"
@@ -159,10 +158,8 @@ source.write_text(
     "          one measures a creature that is not this one.\n"
     "          The observation normaliser is BAKED INTO THE GRAPH; feed raw.\n"
     "          input obs_0 [batch,%d], output continuous_actions [batch,%d].\n"
-    "MODEL     %s -- the MJCF MjScene generates, exported from Unity.
-"
-    "          NOT the authored creature file.
-"
+    "MODEL     %s -- the MJCF MjScene generates, exported from Unity.\n"
+    "          NOT the authored creature file.\n"
     "TRAINED   %s, results/nick/%s, %s (iteration %s), rsl_rl PPO on mujoco_warp.\n"
     "          Config: results/nick/%s/config.json.\n"
     "MEASURED  %s\n"
