@@ -204,7 +204,7 @@ in 2.1.
 | Configuration | Throughput |
 |---|---|
 | `nick_env.py` smoke, 4096 worlds, zero actions, no learning | **247,555 env-steps/s** (control steps; ×4 physics substeps) |
-| PPO, 4096 worlds, dt 0.02 × dec 1, 24 steps/env | **187,153 steps/s** at the start of a run, **139,474 steps/s** by iteration 700 |
+| PPO, 4096 worlds, dt 0.02 × decimation 1, 24 steps/env | **187,153 steps/s** at the start of a run, **139,474 steps/s** by iteration 700 |
 | `nick_env.py` smoke, **8192 worlds**, zero actions | **604,766 env-steps/s** — 2.44× the 4096 figure for 2× the worlds |
 
 **The 4096-world default leaves the GPU half idle.** Doubling the batch more
@@ -1268,3 +1268,30 @@ Round C to the end (every 100–150 iterations; the curriculum keeps paying for 
 | `gpa_lC` 600 / 749 | 20 % / 14.2 s → **24 % / 17.2 s** | 0 % | 12 % → **17 %** |
 
 ### 2.6 Round D — both skills: resume the round-C ends with `stand_still_fraction=0.7`, lr 5e-4, 800 iterations, checkpoints every 50, evaluated every 200
+
+### 2.7 Unity observation of the candidate (2026-09-15, commit 86bf962)
+
+Nick_Torque001 placed in BOTH contest scenes on the torque-limited body:
+`nick_torque.limits.json` applied to the source scene and both contests, the
+MJCF re-exported, `verify_body_parity.py` says **PARITY OK** (16 bodies, 30
+actuators, 75.0 kg). New rig-tool entry `PoBox/Nick/Add To Contests (Torque001)`
+plus `Play Balance Contest` / `Play Walk Contest` / `Stop Contest` watch
+entries; Nick's placement method takes a brain path and a heading now.
+
+| Contest | Result |
+|---|---|
+| Balance | **Nick won all three 30 s rounds** — `CONTEST_ROUND 1/2/3 \| time up \| winner=Nick \| 30.0s(up)`, including WIND GUSTS ×2 and GRAVITY LEAN |
+| Walk | **2.27 m of the 5.6 m goal, every round, then down** — deterministic, one world one outcome |
+
+The walk number is the candidate's honest ceiling, not a wiring bug: the race
+fixed a start pose the policy falls from at ~3 s (eval: 48 % of NOISY starts
+survive 10 s; the contest start has no noise). One wiring bug was found and
+fixed on the way: the walk race's committed Nick root carried a **180° Y
+heading**, which the placement clone had dropped — commands are pelvis-local,
+so without it he reads the goal backwards and falls at 0.00 m. The tool now
+applies the 180° itself.
+
+Implication for round D and beyond: standing transfers to the ring at full
+length; the walk leg needs a checkpoint that survives the race's own start —
+worth sweeping `nick_lB_torque` checkpoints past 300 through `eval_nick.py`
+with the race's exact start pose before more training rounds.

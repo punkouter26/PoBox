@@ -52,6 +52,12 @@ round and a complete 5.6 m crossing after runtime timing/heading fixes. This is
 provisional: force limits and shared collisions still require work. Grandma and
 Grandpa have not completed the crossing. No new training has started.
 
+Update 2026-09-15 (torque body, commit 86bf962): Nick's torque-body candidate
+Nick_Torque001 is placed in both contest scenes on the torque-limited body
+(parity OK). Observed in Unity: balance — won all three 30 s rounds incl.
+hazards; walk — a deterministic 2.27 m of the 5.6 m goal then down. The walk
+leg is the candidate's ceiling; see rl_optimization_log.md 2.7.
+
 ## Starting state
 
 - Branch: master. Existing Unity `.gitignore`; no existing tasks.md.
