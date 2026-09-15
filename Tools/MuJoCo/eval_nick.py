@@ -71,6 +71,7 @@ parser.add_argument("--repeats", type=int, default=1,
                     help="run the whole matrix this many times with different seeds; "
                          "the exit criterion wants 10 consecutive passing evaluations")
 parser.add_argument("--no-ring", action="store_true", help="skip the RING hazard table")
+parser.add_argument("--model", default=None, help="MJCF to evaluate on; default is Nick's Unity export")
 parser.add_argument("--tag", default="", help="printed on every row, for the log")
 parser.add_argument("--start-noise", type=float, default=1.0,
                     help="fraction of worlds that start from a perturbed pose rather than the "
@@ -251,9 +252,9 @@ def main():
     policy, name = load_policy()
     tag = (" [%s]" % args.tag) if args.tag else ""
     print("policy: %s   worlds: %d   repeats: %d   start-noise %.2f   model: %s"
-          % (name, args.worlds, args.repeats, args.start_noise, preferred_model_path()))
+          % (name, args.worlds, args.repeats, args.start_noise, (args.model or preferred_model_path())))
     for attempt in range(args.repeats):
-        cfg = NickEnvCfg(num_envs=args.worlds, model_path=preferred_model_path(),
+        cfg = NickEnvCfg(num_envs=args.worlds, model_path=(args.model or preferred_model_path()),
                          gain_scale_range=(1.0, 1.0), friction_scale_range=(1.0, 1.0),
                          exact_start_fraction=1.0 - args.start_noise,
                          push_probability=0.0, seed=1 + attempt)

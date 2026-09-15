@@ -41,6 +41,10 @@ parser.add_argument("--run", default="nick01")
 parser.add_argument("--checkpoint", default=None, help="model_N.pt; default is the highest N")
 parser.add_argument("--out", default=str(DEFAULT_OUT))
 parser.add_argument("--notes", default="", help="measured numbers to record in SOURCE")
+parser.add_argument("--creature", default="Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin)",
+                    help="who the brain is for, as written into SOURCE.txt")
+parser.add_argument("--model", default="Tools/MuJoCo/nick_unity.xml",
+                    help="the Unity-exported MJCF the run trained on, as written into SOURCE.txt")
 args = parser.parse_args()
 
 import torch                                   # noqa: E402
@@ -141,7 +145,8 @@ if worst > 1e-4:
 source = out.parent / "SOURCE.txt"
 source.write_text(
     "%s\n%s\n\n"
-    "WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),\n"
+    "WHAT      Locomotion brain for %s,
+"
     "          trained in MUJOCO WARP.\n"
     "CONTRACT  %d observations / %d continuous actions.\n"
     "          CreatureSentisController.GatherObservations with _observeLocomotionCommand\n"
@@ -154,15 +159,17 @@ source.write_text(
     "          one measures a creature that is not this one.\n"
     "          The observation normaliser is BAKED INTO THE GRAPH; feed raw.\n"
     "          input obs_0 [batch,%d], output continuous_actions [batch,%d].\n"
-    "MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported by\n"
-    "          RigTool_NickMuJoCo.ExportNickMjcf. NOT the authored creature.xml.\n"
+    "MODEL     %s -- the MJCF MjScene generates, exported from Unity.
+"
+    "          NOT the authored creature file.
+"
     "TRAINED   %s, results/nick/%s, %s (iteration %s), rsl_rl PPO on mujoco_warp.\n"
     "          Config: results/nick/%s/config.json.\n"
     "MEASURED  %s\n"
     "EXPORT    Tools/MuJoCo/export_onnx.py --run %s --checkpoint %s\n"
-    % (out.name, "=" * len(out.name), OBS_DIM, ACT_DIM,
+    % (out.name, "=" * len(out.name), args.creature, OBS_DIM, ACT_DIM,
        DECIMATION, PHYSICS_TIMESTEP, DECIMATION, 1.0 / CONTROL_DT, OBS_DIM, ACT_DIM,
-       datetime.date.today().isoformat(), args.run, ckpt_path.name, ckpt.get("iter", "?"),
+       args.model, datetime.date.today().isoformat(), args.run, ckpt_path.name, ckpt.get("iter", "?"),
        args.run, args.notes or "(run Tools/MuJoCo/eval_nick.py and record the table here)",
        args.run, ckpt_path.name))
 json.dump({"observations": OBS_DIM, "actions": ACT_DIM, "decimation": DECIMATION,

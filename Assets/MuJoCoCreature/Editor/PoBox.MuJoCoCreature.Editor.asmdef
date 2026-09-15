@@ -5,7 +5,8 @@
         "PoBox.MuJoCoCreature",
         "PoBox.Runtime",
         "Mujoco.Runtime",
-        "Unity.InferenceEngine"
+        "Unity.InferenceEngine",
+        "Mujoco.Editor"
     ],
     "includePlatforms": [
         "Editor"

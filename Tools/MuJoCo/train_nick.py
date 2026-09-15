@@ -174,6 +174,14 @@ from rsl_rl.runners import OnPolicyRunner   # noqa: E402
 
 class AtomicRunner(OnPolicyRunner):
     def save(self, path, infos=None):
+        # rsl_rl 2.3.3's save() reads logger_type/disable_logs, which its
+        # learn() sets up -- and the first checkpoint here is written BEFORE
+        # learn(), to snapshot the warm start. nick_human01 died five times on
+        # that AttributeError without training a step.
+        if not hasattr(self, "logger_type"):
+            self.logger_type = str(self.cfg.get("logger", "tensorboard")).lower()
+        if not hasattr(self, "disable_logs"):
+            self.disable_logs = False
         temporary = str(path) + ".writing"
         super().save(temporary, infos)
         os.replace(temporary, path)

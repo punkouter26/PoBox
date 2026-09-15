@@ -1,0 +1,133 @@
+<?xml version="1.0" ?>
+<mujoco model="grandpa">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.005" iterations="20" solver="Newton" integrator="implicitfast"/>
+  <default>
+    <geom type="capsule" condim="3" friction="1.0 0.05 0.05" rgba="0.72 0.60 0.52 1" density="0"/>
+    <joint type="hinge" damping="2" stiffness="0" armature="0.2" limited="true"/>
+    <position ctrllimited="true" dampratio="1"/>
+  </default>
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.24 0.26 0.28" rgb2="0.20 0.22 0.24" width="512" height="512"/>
+    <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.05"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 4" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="20 20 0.1" material="grid" condim="3" friction="1.0 0.05 0.05"/>
+    <body name="Pelvis" pos="0.00507 -0.02870 0.83110">
+      <freejoint name="root"/>
+      <geom name="g_Pelvis" fromto="0.00000 0.00000 0.00000 -0.00376 0.01104 0.13171" size="0.0979" mass="9.8710"/>
+      <body name="Torso" pos="-0.00376 0.01104 0.13171">
+        <geom name="g_Torso" fromto="0.00000 0.00000 0.00000 -0.01449 0.03084 0.36795" size="0.1077" mass="23.2674"/>
+        <joint name="Torso_pitch" axis="1 0 0" range="-26.4 33.6"/>
+        <joint name="Torso_roll" axis="0 1 0" range="-20.0 20.0"/>
+        <joint name="Torso_yaw" axis="0 0 1" range="-35.0 35.0"/>
+        <body name="Head" pos="-0.01449 0.03084 0.36795">
+          <geom name="g_Head" fromto="0.00000 0.00000 0.00000 -0.01642 -0.04430 0.29508" size="0.0832" mass="4.9355"/>
+          <joint name="Head_pitch" axis="1 0 0" range="-46.5 33.5"/>
+          <joint name="Head_roll" axis="0 1 0" range="-30.0 30.0"/>
+          <joint name="Head_yaw" axis="0 0 1" range="-45.0 45.0"/>
+        </body>
+        <body name="UpperArmL" pos="0.18740 0.02632 0.35727">
+          <geom name="g_UpperArmL" fromto="0.00000 0.00000 0.00000 0.19922 -0.02323 -0.07690" size="0.0411" mass="2.1152"/>
+          <joint name="UpperArmL_pitch" axis="1 0 0" range="-60.0 120.0"/>
+          <joint name="UpperArmL_roll" axis="0 1 0" range="-103.8 20.0"/>
+          <joint name="UpperArmL_yaw" axis="0 0 1" range="-46.6 73.4"/>
+          <body name="ForearmL" pos="0.19922 -0.02323 -0.07690">
+            <geom name="g_ForearmL" fromto="0.00000 0.00000 0.00000 0.22017 -0.06136 -0.03494" size="0.0343" mass="1.4102"/>
+            <joint name="ForearmL_pitch" axis="1 0 0" range="-20.0 140.0"/>
+            <body name="GloveL" pos="0.22017 -0.06136 -0.03494">
+              <geom name="g_GloveL" type="sphere" pos="0 0 0" size="0.0490" mass="0.7051"/>
+              <joint name="GloveL_pitch" axis="1 0 0" range="-60.0 60.0"/>
+              <joint name="GloveL_yaw" axis="0 0 1" range="-25.0 25.0"/>
+            </body>
+          </body>
+        </body>
+        <body name="UpperArmR" pos="-0.22849 0.03014 0.37475">
+          <geom name="g_UpperArmR" fromto="0.00000 0.00000 0.00000 -0.18523 -0.01432 -0.05939" size="0.0411" mass="2.1152"/>
+          <joint name="UpperArmR_pitch" axis="1 0 0" range="-60.0 120.0"/>
+          <joint name="UpperArmR_roll" axis="0 1 0" range="-20.0 94.3"/>
+          <joint name="UpperArmR_yaw" axis="0 0 1" range="-72.1 47.9"/>
+          <body name="ForearmR" pos="-0.18523 -0.01432 -0.05939">
+            <geom name="g_ForearmR" fromto="0.00000 0.00000 0.00000 -0.21319 -0.06050 -0.00351" size="0.0343" mass="1.4102"/>
+            <joint name="ForearmR_pitch" axis="1 0 0" range="-20.0 140.0"/>
+            <body name="GloveR" pos="-0.21319 -0.06050 -0.00351">
+              <geom name="g_GloveR" type="sphere" pos="0 0 0" size="0.0490" mass="0.7051"/>
+              <joint name="GloveR_pitch" axis="1 0 0" range="-60.0 60.0"/>
+              <joint name="GloveR_yaw" axis="0 0 1" range="-25.0 25.0"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="ThighL" pos="0.10138 -0.00434 -0.06924">
+        <geom name="g_ThighL" fromto="0.00000 0.00000 0.00000 0.04147 -0.01734 -0.27696" size="0.0588" mass="8.1083"/>
+        <joint name="ThighL_pitch" axis="1 0 0" range="-98.0 32.0"/>
+        <joint name="ThighL_roll" axis="0 1 0" range="-20.0 45.0"/>
+        <joint name="ThighL_yaw" axis="0 0 1" range="-30.0 30.0"/>
+        <body name="ShinL" pos="0.04147 -0.01734 -0.27696">
+          <geom name="g_ShinL" fromto="0.00000 0.00000 0.00000 0.03760 0.05063 -0.36838" size="0.0470" mass="3.5254"/>
+          <joint name="ShinL_pitch" axis="1 0 0" range="-10.0 134.1"/>
+          <body name="FootL" pos="0.03760 0.05063 -0.36838">
+            <geom name="g_FootL" fromto="0.00000 0.00000 0.00000 0.02672 -0.09170 -0.08225" size="0.0343" mass="1.0576"/>
+            <joint name="FootL_pitch" axis="1 0 0" range="-18.5 46.5"/>
+            <joint name="FootL_roll" axis="0 1 0" range="-35.8 10.0"/>
+          </body>
+        </body>
+      </body>
+      <body name="ThighR" pos="-0.10876 0.00949 -0.06924">
+        <geom name="g_ThighR" fromto="0.00000 0.00000 0.00000 -0.04425 0.03796 -0.27696" size="0.0588" mass="8.1083"/>
+        <joint name="ThighR_pitch" axis="1 0 0" range="-117.1 12.9"/>
+        <joint name="ThighR_roll" axis="0 1 0" range="-49.3 15.7"/>
+        <joint name="ThighR_yaw" axis="0 0 1" range="-30.0 30.0"/>
+        <body name="ShinR" pos="-0.04425 0.03796 -0.27696">
+          <geom name="g_ShinR" fromto="0.00000 0.00000 0.00000 -0.03760 0.04603 -0.36838" size="0.0470" mass="3.5254"/>
+          <joint name="ShinR_pitch" axis="1 0 0" range="-10.0 130.0"/>
+          <body name="FootR" pos="-0.03760 0.04603 -0.36838">
+            <geom name="g_FootR" fromto="0.00000 0.00000 0.00000 -0.02471 -0.08098 -0.06084" size="0.0343" mass="1.0576"/>
+            <joint name="FootR_pitch" axis="1 0 0" range="-25.6 39.4"/>
+            <joint name="FootR_roll" axis="0 1 0" range="-17.7 22.3"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="a_Torso_pitch" joint="Torso_pitch" kp="400" ctrlrange="-0.461437 0.585760"/>
+    <position name="a_Torso_roll" joint="Torso_roll" kp="400" ctrlrange="-0.349066 0.349066"/>
+    <position name="a_Torso_yaw" joint="Torso_yaw" kp="400" ctrlrange="-0.610865 0.610865"/>
+    <position name="a_Head_pitch" joint="Head_pitch" kp="60" ctrlrange="-0.811622 0.584642"/>
+    <position name="a_Head_roll" joint="Head_roll" kp="60" ctrlrange="-0.523599 0.523599"/>
+    <position name="a_Head_yaw" joint="Head_yaw" kp="60" ctrlrange="-0.785398 0.785398"/>
+    <position name="a_UpperArmL_pitch" joint="UpperArmL_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
+    <position name="a_UpperArmL_roll" joint="UpperArmL_roll" kp="100" ctrlrange="-1.811620 0.349066"/>
+    <position name="a_UpperArmL_yaw" joint="UpperArmL_yaw" kp="100" ctrlrange="-0.812783 1.281613"/>
+    <position name="a_ForearmL_pitch" joint="ForearmL_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
+    <position name="a_GloveL_pitch" joint="GloveL_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
+    <position name="a_GloveL_yaw" joint="GloveL_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
+    <position name="a_UpperArmR_pitch" joint="UpperArmR_pitch" kp="100" ctrlrange="-1.047198 2.094395"/>
+    <position name="a_UpperArmR_roll" joint="UpperArmR_roll" kp="100" ctrlrange="-0.349066 1.645114"/>
+    <position name="a_UpperArmR_yaw" joint="UpperArmR_yaw" kp="100" ctrlrange="-1.259134 0.835261"/>
+    <position name="a_ForearmR_pitch" joint="ForearmR_pitch" kp="60" ctrlrange="-0.349066 2.443461"/>
+    <position name="a_GloveR_pitch" joint="GloveR_pitch" kp="20" ctrlrange="-1.047198 1.047198"/>
+    <position name="a_GloveR_yaw" joint="GloveR_yaw" kp="20" ctrlrange="-0.436332 0.436332"/>
+    <position name="a_ThighL_pitch" joint="ThighL_pitch" kp="500" ctrlrange="-1.710334 0.558594"/>
+    <position name="a_ThighL_roll" joint="ThighL_roll" kp="500" ctrlrange="-0.349066 0.785398"/>
+    <position name="a_ThighL_yaw" joint="ThighL_yaw" kp="500" ctrlrange="-0.523599 0.523599"/>
+    <position name="a_ShinL_pitch" joint="ShinL_pitch" kp="400" ctrlrange="-0.174533 2.340055"/>
+    <position name="a_FootL_pitch" joint="FootL_pitch" kp="200" ctrlrange="-0.322247 0.812217"/>
+    <position name="a_FootL_roll" joint="FootL_roll" kp="200" ctrlrange="-0.625602 0.174533"/>
+    <position name="a_ThighR_pitch" joint="ThighR_pitch" kp="500" ctrlrange="-2.044190 0.224738"/>
+    <position name="a_ThighR_roll" joint="ThighR_roll" kp="500" ctrlrange="-0.860161 0.274303"/>
+    <position name="a_ThighR_yaw" joint="ThighR_yaw" kp="500" ctrlrange="-0.523599 0.523599"/>
+    <position name="a_ShinR_pitch" joint="ShinR_pitch" kp="400" ctrlrange="-0.174533 2.268928"/>
+    <position name="a_FootR_pitch" joint="FootR_pitch" kp="200" ctrlrange="-0.446743 0.687721"/>
+    <position name="a_FootR_roll" joint="FootR_roll" kp="200" ctrlrange="-0.309741 0.388391"/>
+  </actuator>
+  <sensor>
+    <framepos name="s_FootL_pos" objtype="body" objname="FootL"/>
+    <framepos name="s_FootR_pos" objtype="body" objname="FootR"/>
+    <framepos name="s_Head_pos" objtype="body" objname="Head"/>
+    <framezaxis name="s_Pelvis_up" objtype="body" objname="Pelvis"/>
+    <subtreecom name="s_com" body="Pelvis"/>
+  </sensor>
+</mujoco>

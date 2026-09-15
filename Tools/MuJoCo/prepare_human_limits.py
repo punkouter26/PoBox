@@ -27,8 +27,11 @@ BUDGETS = {
 
 def prepare(source: Path, output: Path):
     model = mujoco.MjModel.from_xml_path(str(source.resolve()))
-    if model.nu != 30 or not np.isclose(model.body_mass.sum(), 75, atol=0.01):
-        raise ValueError("These budgets are for the supplied 75 kg Nick rig only")
+    if model.nu != 30:
+        raise ValueError("These budgets are for the 30-actuator PoBox humanoid layout")
+    total_mass = float(model.body_mass.sum())
+    if not 50 <= total_mass <= 110:
+        raise ValueError("Body mass %.1f kg is outside the human range these budgets assume" % total_mass)
     tree = ET.parse(source)
     edits = []
     for actuator in tree.getroot().find("actuator"):
@@ -58,7 +61,7 @@ def prepare(source: Path, output: Path):
     output.parent.mkdir(parents=True, exist_ok=True)
     tree.write(output, encoding="utf-8", xml_declaration=True)
     manifest = {"source": str(source), "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-                "body": "RIGGED_Nick.glb, 75 kg, unchanged exported proportions", "actuators": edits}
+                "body": "%s, %.1f kg, unchanged exported proportions" % (source.stem, total_mass), "actuators": edits}
     output.with_suffix(".limits.json").write_text(json.dumps(manifest, indent=2) + "\n")
     candidate = mujoco.MjModel.from_xml_path(str(output.resolve()))
     for attr in ("body_pos", "body_quat", "body_mass", "body_inertia", "jnt_range", "jnt_axis",
