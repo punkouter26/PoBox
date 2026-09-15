@@ -660,6 +660,13 @@ class NickEnv:
             "Metrics/foot_clearance": swing_height.max(dim=1)[0].mean(),
             "Metrics/height": s["pelvis_z"].mean(),
             "Metrics/fall_rate": self.fell.float().mean(),
+            # Per-command falls and the population split (loop 2, Finding 5):
+            # a standing world that dies in 2 s is re-sampled and is ~6 % of
+            # the batch at any moment, so the pooled fall rate reads 0.0004
+            # while NO standing world survives. These are the honest numbers.
+            "Metrics/standing_world_fraction": standing_f.mean(),
+            "Metrics/fall_rate_standing": torch.sum(self.fell.float() * standing_f) / n_standing,
+            "Metrics/fall_rate_moving": torch.sum(self.fell.float() * moving) / n_moving,
             # --- physical stability / effort KPIs -------------------------
             # Torso tilt in degrees, the readable form of `upright`: 0 is
             # perfectly vertical, 90 is on its side.

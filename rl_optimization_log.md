@@ -1118,3 +1118,121 @@ not optional on this line; it is the only signal.**
 | 1500 iterations (Nick 600), checkpoints every 50/25, evaluated as they land | pick the peak, not the end |
 
 ### 2.4 Round B: `gma_lB_torque`, `gpa_lB_torque` (fresh), `nick_lB_torque` (resumed), 2048 worlds, concurrent, headless
+
+#### 2.3b Nick's round A peak, with the ring table and the head-height rule in the evaluator
+
+| checkpoint | BALANCE | WALK / speed | RING | knees peak (WALK) |
+|---|---|---|---|---|
+| 200 | 46 % | 63 % / 0.67 m/s | 45 % | 27.8 rad/s |
+| **250** | **85 %** | **58 %** / 0.74 m/s | **80 %** | 26.8 |
+| 350 | 85 % | 28 % / 0.85 | 81 % | 24.4 |
+| 400 | 74 % | 31 % / 0.87 | — | 23.6 |
+| 500 | 64 % | 21 % / 0.87 | — | 22.8 |
+| 750 | 55 % | 7 % / 0.79 | 48 % | — |
+
+The walk peaks at 200–250 and halves by 350 while balance holds to 350 and
+then follows; walking speed *rises* (0.67 → 0.87 m/s) as walk survival
+falls — the policy trades survival for tracking, which is the reward doing
+what it is shaped to do once survival stops paying. `nick_lA/model_250` is
+the interim champion for Nick's torque body (85 / 58 / 80 against the
+shipping brain's 0 / 0 / 0 on this body). Knees stay at 23–28 rad/s: without
+a speed term nothing asks otherwise.
+
+#### 2.4 interim — Nick under the aligned objective
+
+`nick_lB_torque` (resumed from `nick_lA/250`, lr 1e-4, head-height and 45°
+termination, upright 0.5 / height 0.4, speed cost 0.1):
+
+| checkpoint | BALANCE | WALK / speed | RING | knees peak |
+|---|---|---|---|---|
+| **300** | **91 %** | 48 % / 0.72 m/s | **91 %** | 25.2 rad/s |
+| 350 | 76 % | 32 % / 0.81 | 78 % | 23.6 |
+
+K1 and K2 clear 90 % at 300 (256 worlds; the 10-consecutive validation is
+still to come) and the decay follows fifty iterations later at a fifth of the
+learning rate and under the aligned objective — so neither the learning rate
+nor the crouch slack is the mechanism. What is left is the objective's own
+gradient after survival saturates (loop 1, Finding 13), and the practical
+answer this loop takes is procedural: checkpoints every 25 iterations,
+evaluated fresh-start, and the peak is the product. `w_speed_cost=0.1`
+moved the knees from 26.8 to 25.2 rad/s: at that weight the term is ~0.01 of
+a step's reward and is not felt. Round C raises it.
+
+Grandma and Grandpa under the same objective, in training at iterations
+313 / 253: episode length 930 / 1000 and **tilt 8.9° / 9.6°** — the crouch is
+gone (round A's Grandpa sat at 30° in training and 50° in evaluation).
+
+#### 2.4 result — Nick's peak, and two fresh bodies that walk before they stand
+
+Nick, `nick_lB_torque` (25-iteration checkpoints, 256 worlds):
+
+| checkpoint | BALANCE | WALK / speed | RING |
+|---|---|---|---|
+| 275 | **94 %** | 46 % / 0.72 | 84 % |
+| **300** | 91 % | **48 %** / 0.72 | **91 %** |
+| 325 | 83 % | 46 % / 0.71 | 80 % |
+| 350 | 76 % | 32 % / 0.81 | 78 % |
+
+`model_300` is the loop's Nick candidate (K1 91 %, K2 91 %, K3 48 %); the
+600-iteration run beyond it is by construction worse (2.3b's decay, at a
+fifth of the learning rate). Nick's warm start is what makes standing his
+first skill: the shipping brain already stood.
+
+Grandma and Grandpa, fresh under the aligned objective:
+
+| Run / checkpoint | BALANCE | WALK full-cap / median / speed | RING | training tilt |
+|---|---|---|---|---|
+| `gma_lB` 300 | 0 % (1.76 s) | **89 %** / 20.0 s / 0.76 m/s | 0 % | 7.5° |
+| `gpa_lB` 250 | 0 % (1.73 s) | **62 %** / 20.0 s / 0.70 m/s | 0 % | 9.7° |
+
+Both learned a walk that survives the 20 s cap — Grandma at 89 % from
+scratch in 300 iterations, the highest WALK figure this project has recorded
+on any body — and neither stands: at a zero command they are down at 1.7 s,
+before the first shove, at the passive baseline. Training says the standing
+episodes survive (fall rate 0.0004/step, `planted_when_standing` 0.98,
+`drift_when_standing` 0.25–0.34 m/s — both feet "down" and the body moving a
+quarter of a metre a second, i.e. a skate). The crouch is gone (Finding 4's
+fix held: tilt 7–10°), so the remaining gap is standing itself, and the
+training/evaluation disagreement about it is the next thing measured.
+
+#### Finding 5 — the standing episodes were 6 % of the batch, and the pooled metrics could not see them fail
+
+Two tests on `gma_lB/model_300`:
+
+| test | standing survival |
+|---|---|
+| `eval_nick.py` BALANCE, exact rest pose, no shoves for 4 s | 0 %, median **1.56 s** (passive: 1.58 s) |
+| the policy rolled inside the *training* `NickEnv` (domain randomisation on, training resets), command 0, 512 worlds | 0 %, median **1.94 s** |
+
+So the failure is not an evaluation mismatch — the policy cannot stand in
+its own training environment either. The in-training numbers that said it
+could (`fall_rate` 0.0004/step, `planted_when_standing` 0.98) are population
+means over the worlds alive at each step: a standing world falls in ~95
+steps and is re-sampled, half the time into a walking episode that lives
+1500 steps, so at any moment the batch is ≈ 6 % standing worlds and 94 %
+walkers. `0.06 / 95 ≈ 0.0006` is exactly the pooled fall rate reported.
+`planted` is 0.98 because a toppling body has both feet on the floor.
+Standing got 6 % of the gradient and lost; the same skew is why both fresh
+runs "learned to walk before they learned to stand" — they never had a
+chance to learn to stand.
+
+Nick did not hit this because his warm start already stood.
+
+**Instrumented** (`nick_env.py`): `Metrics/standing_world_fraction`,
+`Metrics/fall_rate_standing`, `Metrics/fall_rate_moving`. Had the second
+existed, round A would have read ≈ 0.01/step for standing worlds against
+≈ 0 for walkers on the first log line.
+
+**Round C.** Standing has to be the majority of the data until it exists:
+resume the walking checkpoints with `stand_still_fraction=0.9`, so a
+standing world that dies is nine times out of ten re-sampled as another
+standing world. Nick's candidate gets a K11 pass: `w_speed_cost=1.0` from
+`nick_lB/300` at lr 1e-4, 200 iterations, checkpoints every 25.
+
+### 2.5 Round C
+
+| Run | from | change |
+|---|---|---|
+| `gma_lC_torque` | `gma_lB/model_300` | `stand_still_fraction=0.9`, lr 5e-4, 500 it |
+| `gpa_lC_torque` | `gpa_lB/model_250` | same |
+| `nick_lC_torque` | `nick_lB/model_300` | `w_speed_cost=1.0`, lr 1e-4, 200 it |
