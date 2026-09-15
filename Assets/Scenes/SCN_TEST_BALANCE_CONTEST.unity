@@ -17418,7 +17418,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e12f948fd0792084a9ff5e9bc2c4d6b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_BalanceContest
-  _restartRoundsAutomatically: 0
+  _restartRoundsAutomatically: 1
   _styleSheet: {fileID: 7433441132597879392, guid: b37d78d67ea539c42b9afb8431c5fc2e, type: 3}
 --- !u!114 &1911328672
 MonoBehaviour:

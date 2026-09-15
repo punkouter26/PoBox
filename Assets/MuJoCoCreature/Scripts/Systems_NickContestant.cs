@@ -31,6 +31,17 @@ namespace PoBox.MuJoCoCreature
         [SerializeField] private CreatureSentisController _controller;
         [SerializeField] private string _displayName = "Nick";
 
+        /// <summary>
+        /// Pelvis height above the floor below which Nick counts himself down.
+        /// 0.3 m is the controller's own default fall height; the contest
+        /// scenes set his _fallHeight to -1 so a fallen body STAYS fallen
+        /// instead of snapping back to the rest pose, which also means the
+        /// reset counter below never moves there. Without this second test
+        /// ReportsDown was false with his head 12 cm off the ring.
+        /// </summary>
+        [Tooltip("Pelvis height above the floor (m) below which Nick reports himself down.")]
+        [SerializeField] private float _downPelvisHeight = 0.3f;
+
         private int _resetsAtRoundStart;
 
         private void Awake()
@@ -88,13 +99,23 @@ namespace PoBox.MuJoCoCreature
         public float HeadHeightAboveGround => IsReady ? _controller.DebugHeadZ - _controller.GroundHeight : 0f;
 
         /// <summary>
-        /// The controller auto-resets the creature when it judges it fallen, so
-        /// a reset since the round began IS a fall. Without this the ring could
-        /// miss a collapse entirely: the creature would drop, snap back to the
-        /// rest pose, and its head height would look healthy again by the time
-        /// the referee next looked.
+        /// Down by either of two tells. A reset since the round began IS a
+        /// fall: where the controller auto-resets a fallen creature, the body
+        /// would drop, snap back to the rest pose, and read as healthy again by
+        /// the time the referee next looked. And a pelvis under
+        /// <see cref="_downPelvisHeight"/> is a fall in the scenes that disable
+        /// that reset so the fallen body stays where it landed. MuJoCo is Z-up,
+        /// so the pelvis height is its world Z above the authored floor.
         /// </summary>
-        public bool ReportsDown =>
-            _controller != null && _controller.DebugResetCount > _resetsAtRoundStart;
+        public bool ReportsDown
+        {
+            get
+            {
+                if (_controller == null) { return false; }
+                if (_controller.DebugResetCount > _resetsAtRoundStart) { return true; }
+                return IsReady
+                    && _controller.DebugPelvisPosition.z - _controller.GroundHeight < _downPelvisHeight;
+            }
+        }
     }
 }

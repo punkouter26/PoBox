@@ -784,8 +784,8 @@ MonoBehaviour:
     locomotionBrain: 1
   - displayName: Raptor
     prefab: {fileID: 4040652973315965141, guid: 21063ba21c7f0b1428daca7926749402, type: 3}
-    model: {fileID: 0}
-    forceHeuristic: 1
+    model: {fileID: 5022602860645237092, guid: 78b29a94cb7c1c74e929eb8786f9578b, type: 3}
+    forceHeuristic: 0
     tint: {fileID: 0}
     locomotionBrain: 0
   _systemsRoot: {fileID: 1280493464}
@@ -7575,7 +7575,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cf52f0728648046a612c716f762598, type: 3}
   m_Name: 
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.Systems_WalkContest
-  _restartRoundsAutomatically: 0
+  _restartRoundsAutomatically: 1
   _styleSheet: {fileID: 7433441132597879392, guid: b37d78d67ea539c42b9afb8431c5fc2e, type: 3}
   _goalDirection: {x: 0, y: 0, z: 1}
   _goalDistance: 5.6
@@ -22111,9 +22111,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
+  m_Model: {fileID: 5022602860645237092, guid: 78b29a94cb7c1c74e929eb8786f9578b, type: 3}
   m_InferenceDevice: 0
-  m_BehaviorType: 1
+  m_BehaviorType: 2
   m_BehaviorName: Boxer
   TeamId: 0
   m_UseChildSensors: 1
