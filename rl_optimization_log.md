@@ -1069,3 +1069,52 @@ discontinuity, not the term — loop 1's note).
 γ 0.995, 30 s episodes, half standing, walk 0.5–1.0 m/s, shoves 50–150 N in
 standing episodes only, over-lift 0.2, headless, three concurrent on the
 2060. Judged at every 250th checkpoint on the three tables, not at the end.
+
+#### 2.3 result — round A stopped at ~900 iterations; every run peaks early and decays
+
+Fresh-start evaluation, 256 worlds, at 0.02 × 1 (checkpoints in parentheses):
+
+| Run | BALANCE full-cap | WALK full-cap / speed | RING full-cap | note |
+|---|---|---|---|---|
+| `nick_lA_torque` (250) | **86 %** | **59 %** / 0.74 m/s | (see 2.3b) | the peak |
+| `nick_lA_torque` (400) | 74 % | 31 % / 0.87 | | |
+| `nick_lA_torque` (500) | 64 % | 21 % / 0.87 | | |
+| `nick_lA_torque` (750) | 55 % | 7 % / 0.79 | 48 % | training ep. length 1500 throughout |
+| `gma_lA_torque` (750) | 0 % (5.4 s) | 0 % (3.5 s) / 0.69 | 0 % (4.0 s) | worse than the 400-it screen (walk 25 %) |
+| `gpa_lA_torque` (700) | "81 %" at **tilt 49.7°**, upright fraction 0.14 | 4 % (5.4 s) | "77 %" at 48.8° | a lean-crouch, not standing |
+
+#### Finding 4 — the objective is satisfiable by a crouch, and the referee would not count it
+
+Grandpa "survives" 30 s of 150 N shoves leaning 50° with his head far below
+standing height. The env's fall rule is pelvis < 55 % of rest **or** pelvis
+up-axis z < 0.4 (a 66° tilt); a 50° lean-crouch passes both, and the reward's
+posture factors are too weak to argue: `upright^0.15` at 50° is 0.94 and
+`height^0.15` for a 20 cm crouch is 0.74, against a termination penalty of −2
+and the loss of every later step. Under torque limits a low, tilted stance
+is genuinely the most robust one, so that is what PPO finds. The ring's
+referee (`Systems_BalanceContest`) counts a head below 40 % of standing
+height as down, and would score that Grandpa a fall.
+
+Nick's warm-started fine-tune shows the other face of the same slack: once
+every training episode reaches the cap the survival gradient is gone, the
+gait and tracking factors take over, and the fresh-start numbers decay
+monotonically from iteration 250 — loop 1's Finding 13, again, and now on a
+body where it starts inside 300 iterations. Grandma's fresh run never found
+a standing gait and drifted too.
+
+The in-training curves said "solved" (episode length 1400–1500) for all three
+while this was happening. **Fresh-start evaluation every 50–100 iterations is
+not optional on this line; it is the only signal.**
+
+**Changes for round B** (all `--env`, default-inert in code):
+
+| Change | Why |
+|---|---|
+| `fall_head_fraction=0.4` — head below 40 % of standing height terminates (new, also applied unconditionally in `eval_nick.py`) | the referee's own rule; makes the crouch a fall in training as it is in the ring |
+| `fall_up_z=0.7` (45°, was 66°) | aligns termination with the `upright_fraction` KPI's own definition and K8 |
+| `w_upright=0.5`, `w_height=0.4` (were 0.15 / 0.15) | posture has to outweigh the survival slack it competes with |
+| `w_speed_cost=0.1` | K11: knees were peaking at 21–25 rad/s against an 8 rad/s budget |
+| lr 5e-4 (fresh), 1e-4 (Nick, resumed from `nick_lA/model_250`) | the decay starts within a few hundred iterations at 1e-3 / 2e-4 |
+| 1500 iterations (Nick 600), checkpoints every 50/25, evaluated as they land | pick the peak, not the end |
+
+### 2.4 Round B: `gma_lB_torque`, `gpa_lB_torque` (fresh), `nick_lB_torque` (resumed), 2048 worlds, concurrent, headless

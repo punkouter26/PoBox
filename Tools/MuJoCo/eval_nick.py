@@ -193,6 +193,9 @@ def rollout(env: NickEnv, policy, speed: float, seconds: float, shove: bool,
 
         s = env._state()
         fell = (s["pelvis_z"] < env.cfg.fall_pelvis_fraction * env.rest_pelvis_z) | (s["up"][:, 2] < env.cfg.fall_up_z)
+        # The referee's rule, always on in evaluation whatever the run trained
+        # with: a crouch that keeps the pelvis up is still a fall in the ring.
+        fell = fell | (s["head_z"] < 0.4 * env.rest_head_z)
         newly = fell & alive
         survival[newly] = (step + 1) * env.control_dt
         alive &= ~fell

@@ -167,6 +167,12 @@ class NickEnvCfg:
     # --- termination --------------------------------------------------------
     fall_pelvis_fraction: float = 0.55   # of rest pelvis height
     fall_up_z: float = 0.4               # pelvis up axis z below this = over
+    # The contest referee's own rule (Systems_BalanceContest.HEAD_COLLAPSE_FRACTION
+    # = 0.4): head below this fraction of its standing height is down. 0 = off,
+    # which keeps every earlier run's termination bit-identical. Loop 2 found
+    # Grandpa "surviving" 30 s in a 50-degree lean-crouch that the pelvis and
+    # up-axis rules never catch and the referee would.
+    fall_head_fraction: float = 0.0
 
     # --- perturbations ------------------------------------------------------
     push_probability: float = 1.0 / 150.0   # per control step, after push_start
@@ -540,6 +546,7 @@ class NickEnv:
         return {
             "xquat": xquat, "q": q, "qc": qc, "up": up, "fwd": fwd,
             "pelvis_z": self.xpos[:, self.pelvis_id, 2].float(),
+            "head_z": self.xpos[:, self.head_id, 2].float(),
             "lin_w": lin_w,
             "foot_z": foot_z,
             "foot_down": torch.stack([foot_z[:, 0] < self.foot_contact_z[0],
@@ -631,6 +638,8 @@ class NickEnv:
                                      - cfg.w_speed_cost * speed_cost) * self.control_dt
 
         self.fell = (s["pelvis_z"] < cfg.fall_pelvis_fraction * self.rest_pelvis_z) | (s["up"][:, 2] < cfg.fall_up_z)
+        if cfg.fall_head_fraction > 0.0:
+            self.fell = self.fell | (s["head_z"] < cfg.fall_head_fraction * self.rest_head_z)
         reward = reward + cfg.pen_termination * self.fell.float()
 
         # Masked means, never boolean indexing: every `x[mask]` and every
