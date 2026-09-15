@@ -1367,3 +1367,90 @@ Implication for round D and beyond: standing transfers to the ring at full
 length; the walk leg needs a checkpoint that survives the race's own start —
 worth sweeping `nick_lB_torque` checkpoints past 300 through `eval_nick.py`
 with the race's exact start pose before more training rounds.
+
+### 2.10 Round E refuted the recipe hypothesis, and the reason is a warm-start confound
+
+Round E retrained both fresh with **Nick's PPO hyperparameters**
+(`init_noise_std` 0.3, lr 1e-4, `stand_still_fraction` 0.5), on the theory that
+the settings, not the bodies, explained why Nick's runs looked so much faster.
+It does not hold up. Measured at 0.02 x 1 on each creature's own body:
+
+| run | iterations | BALANCE median | full-cap |
+|---|---|---|---|
+| `gma_lC` (old recipe, resumed from its own `lB`) | ~1100 total | **14.47 s** | 21 % |
+| `gma_lE` (Nick's recipe, fresh) | 1250 | **2.08 s** | 0 % |
+| `gpa_lD` (old recipe) | ~1500 total | **14.16 s** | 20 % |
+| `gpa_lE` (Nick's recipe, fresh) | 1300 | **3.36 s** | 0 % |
+
+Nick's settings are not merely no better for a cold start — they are worse.
+
+**Why the original comparison was wrong.** Every Nick run that "learned to
+stand in 250 iterations" was a fine-tune, not a cold start: section 2.2's line
+for `nick_lA_torque` reads *warm from `nick_balance_002`*, a brain that already
+balanced in the shipped contests. Grandma's and Grandpa's round A/B runs were
+from scratch. The 250-iteration figure measured a policy that started already
+standing.
+
+**And it is not the bodies either.** `Tools/MuJoCo/standing_difficulty.py`
+(added here) compares the physical difficulty of the three torque bodies:
+
+| body | mass | CoM height | longest foot | CoM/foot | ankle Nm/kg | passive stand |
+|---|---|---|---|---|---|---|
+| Nick | 75.0 kg | 0.966 m | 0.230 m | 4.20 | 2.67 | 1.46 s |
+| Grandma | 79.6 kg | 0.936 m | 0.223 m | 4.19 | 2.51 | 1.45 s |
+| Grandpa | 71.9 kg | 0.918 m | 0.195 m | 4.71 | 2.78 | 1.36 s |
+
+They are equivalent within measurement noise — Grandma is indistinguishable
+from Nick, and the passive baselines (no policy) agree to 0.1 s. The actuator
+order is validated by `nick_env` against `ACTUATOR_STEMS` and would raise, so
+that cannot differ silently either.
+
+**What is actually going on:** a cold start on this task needs roughly 800
+iterations to reach a 14-17 s stand, and that is where both creatures are.
+Neither the settings nor the bodies explain a slower curve, because no cold
+start has ever been benchmarked against a Nick cold start — his never was one.
+
+Round E also produced a clean repeat of the standing lesson: at iteration 1547
+its in-training metrics read `fall_rate 0.0000`, `episode length 990`,
+`upright 0.991` — the best-looking numbers in the log — while evaluation of the
+same checkpoint measured a **2.08 s** median stand. Training metrics still
+cannot judge a policy.
+
+### 2.11 Round F: continue from their best, with the recipe that produced it
+
+Both creatures resumed from their strongest checkpoint with the settings that
+got them there (`stand_still_fraction` 0.7, lr 5e-4, 2048 worlds, checkpoints
+every 25):
+
+| run | resumed from | budget |
+|---|---|---|
+| `gma_lF_torque` | `gma_lD/model_850` (14.31 s) | 2500 further iterations |
+| `gpa_lF_torque` | `gpa_lD/model_750` (14.16 s) | 2500 further iterations |
+
+Success is a move off the ~20 % full-cap plateau towards Nick's 82-91 %; the
+plateau itself is the thing to break, not the 14-16 s median.
+
+### 2.12 Open: the race falls at 5.33 m, but the same brain does not fall from that pose
+
+`Nick_Torque002` crosses 5.33 m of the race's 5.6 m and falls, deterministically,
+every round. Reproducing the race offline — the race places him in the exact
+rest pose, so `--start-noise 0` is that condition — the same ONNX at the same
+commanded speed walks **9.6 m in 15 s without falling**, at every speed from
+0.6 to 1.1 m/s:
+
+| commanded | distance in 15 s |
+|---|---|
+| 0.6 | 7.41 m |
+| 0.75 | 8.34 m |
+| 1.0 (the race's `RACE_SPEED`) | 9.61 m |
+| 1.1 | 10.65 m |
+
+Slow walking is therefore not the cause, and the race is not asking for more
+than he can do. Ruled out in the scene: no hazards (no `Systems_HazardDirector`),
+no `Systems_MuJoCoProfile`, the floor is an infinite `plane` of the same
+20 x 20 extents and the same solver settings as the training floor,
+`_goalDirection` is a fixed normalised direction (so no end-of-race turning),
+and the finish line carries no collider. Something in the race's start state
+still differs from the MJCF rest pose and has not been identified; the next
+step is to watch the race with the Editor open and log the pelvis state
+through the fall.
