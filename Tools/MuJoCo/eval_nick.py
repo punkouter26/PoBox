@@ -141,6 +141,9 @@ def rollout(env: NickEnv, policy, speed: float, seconds: float, shove: bool,
     accel_sum = torch.zeros(n, device=dev)
     rate_sum = torch.zeros(n, device=dev)
     tracked = torch.zeros(n, device=dev)
+    # K11: peak hinge speed per dof while alive -- the human speed budget is
+    # measured here, not enforced by servo damping (rl_optimization_log.md, loop 2).
+    speed_peak = torch.zeros(n, env.qvel.shape[1] - 6, device=dev)
     prev_action = torch.zeros(n, ACT_DIM, device=dev)
 
     # RING HAZARDS, the shapes Systems_HazardDirector runs and the ones
@@ -198,6 +201,7 @@ def rollout(env: NickEnv, policy, speed: float, seconds: float, shove: bool,
         tilt_sum += torch.rad2deg(torch.acos(torch.clamp(s["up"][:, 2], -1.0, 1.0))) * a
         force_sum += env.actuator_force.abs().float().mean(dim=1) * a
         accel_sum += env.qacc[:, 6:].abs().float().mean(dim=1) * a
+        speed_peak = torch.maximum(speed_peak, env.qvel[:, 6:].abs().float() * a.unsqueeze(1))
         rate_sum += ((action - prev_action) ** 2).mean(dim=1) * a
         prev_action = action
         v = s["lin_w"][:, :2]
@@ -227,6 +231,7 @@ def rollout(env: NickEnv, policy, speed: float, seconds: float, shove: bool,
         "accel": float((accel_sum / lived).mean()),
         "action_rate": float((rate_sum / lived).mean()),
         "within10": float((tracked / lived).mean()),
+        "speed_peak_per_dof": speed_peak.mean(dim=0).cpu().numpy(),
         "by_mode": [float((survival * (mode == k).float()).sum()
                           / max(1.0, float((mode == k).sum())))
                     for k in range(3)],
@@ -241,6 +246,27 @@ def row(label, r, tag):
     return "%-8s%s median %5.2fs  mean %5.2fs  p25 %5.2fs  full-cap %4.0f%%  upright %.3f  speed %6.3f m/s  alternation %.3f  distance %6.2f m" % (
         label, tag, float(np.median(s)), float(s.mean()), float(np.percentile(s, 25)), 100.0 * r["survived_all"],
         r["upright"], r["speed"], r["alternation"], r["distance"])
+
+
+FAMILIES = [("torso", "Torso"), ("head", "Head"), ("hips", "Thigh"), ("knees", "Shin"), ("ankles", "Foot"),
+            ("shoulders", "UpperArm"), ("elbows", "Forearm"), ("wrists", "Glove")]
+
+
+def speed_line(label, r, tag, env):
+    """K11: per-family peak hinge speed (rad/s), mean over worlds of each world's peak."""
+    import mujoco
+    m = env.mjm
+    per_dof = r["speed_peak_per_dof"]
+    fam_peak = {}
+    for j in range(m.njnt):
+        if m.jnt_type[j] != mujoco.mjtJoint.mjJNT_HINGE:
+            continue
+        name = m.joint(j).name
+        dof = int(m.jnt_dofadr[j]) - 6
+        for fam, stem_ in FAMILIES:
+            if stem_ in name:
+                fam_peak[fam] = max(fam_peak.get(fam, 0.0), float(per_dof[dof]))
+    return "%-8s%s peak |qvel| rad/s: " % (label, tag) + "  ".join("%s %.1f" % (f, fam_peak.get(f, 0.0)) for f, _ in FAMILIES)
 
 
 def kpi(label, r, tag):
@@ -273,9 +299,11 @@ def main():
         print("NICK_EVAL " + row("BALANCE", b, suffix) + "   (shoved %g N every %g s, cap %g s)"
               % (args.shove_newtons, args.shove_interval, args.balance_seconds))
         print("NICK_KPI  " + kpi("BALANCE", b, suffix))
+        print("NICK_SPEED " + speed_line("BALANCE", b, suffix, env))
         print("NICK_EVAL " + row("WALK", w, suffix) + "   (command %g m/s, cap %g s)"
               % (args.walk_speed, args.walk_seconds))
         print("NICK_KPI  " + kpi("WALK", w, suffix))
+        print("NICK_SPEED " + speed_line("WALK", w, suffix, env))
         if r is not None:
             print("NICK_EVAL " + row("RING", r, suffix) + "   (shoves + %g N gusts + %g deg lean, cap %g s)"
                   % (cfg.hazard_wind_newtons, cfg.hazard_lean_degrees, args.balance_seconds))

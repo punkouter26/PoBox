@@ -1,0 +1,307 @@
+{
+  "source": "Tools\\MuJoCo\\nick_unity.xml",
+  "source_sha256": "7afae3e97aad0ff79a2ffe5224d923c5e71bb171017916df940a36d98065a119",
+  "body": "nick_unity, 75.0 kg, unchanged exported proportions",
+  "actuators": [
+    {
+      "name": "a_Torso_pitch",
+      "force_range_nm": [
+        -150,
+        150
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 70.16545
+    },
+    {
+      "name": "a_Torso_roll",
+      "force_range_nm": [
+        -100,
+        100
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 89.81155
+    },
+    {
+      "name": "a_Torso_yaw",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 400.0,
+      "kv": 59.15623
+    },
+    {
+      "name": "a_Head_pitch",
+      "force_range_nm": [
+        -15,
+        15
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 6.686625
+    },
+    {
+      "name": "a_Head_roll",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 6.697671
+    },
+    {
+      "name": "a_Head_yaw",
+      "force_range_nm": [
+        -8,
+        8
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 60.0,
+      "kv": 3.039165
+    },
+    {
+      "name": "a_ThighL_pitch",
+      "force_range_nm": [
+        -140,
+        200
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 66.79657
+    },
+    {
+      "name": "a_ThighL_roll",
+      "force_range_nm": [
+        -80,
+        80
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 66.69353
+    },
+    {
+      "name": "a_ThighL_yaw",
+      "force_range_nm": [
+        -40,
+        40
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 15.98742
+    },
+    {
+      "name": "a_ShinL_pitch",
+      "force_range_nm": [
+        -200,
+        100
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 400.0,
+      "kv": 20.09548
+    },
+    {
+      "name": "a_FootL_pitch",
+      "force_range_nm": [
+        -45,
+        120
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 200.0,
+      "kv": 4.838298
+    },
+    {
+      "name": "a_FootL_roll",
+      "force_range_nm": [
+        -20,
+        20
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 200.0,
+      "kv": 4.842537
+    },
+    {
+      "name": "a_ThighR_pitch",
+      "force_range_nm": [
+        -140,
+        200
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 67.18878
+    },
+    {
+      "name": "a_ThighR_roll",
+      "force_range_nm": [
+        -80,
+        80
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 67.32513
+    },
+    {
+      "name": "a_ThighR_yaw",
+      "force_range_nm": [
+        -40,
+        40
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 500.0,
+      "kv": 10.63666
+    },
+    {
+      "name": "a_ShinR_pitch",
+      "force_range_nm": [
+        -200,
+        100
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 400.0,
+      "kv": 20.97411
+    },
+    {
+      "name": "a_FootR_pitch",
+      "force_range_nm": [
+        -45,
+        120
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 200.0,
+      "kv": 4.840398
+    },
+    {
+      "name": "a_FootR_roll",
+      "force_range_nm": [
+        -20,
+        20
+      ],
+      "max_driven_speed_rad_s": 4,
+      "kp": 200.0,
+      "kv": 4.605991
+    },
+    {
+      "name": "a_UpperArmL_pitch",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 3.416545
+    },
+    {
+      "name": "a_UpperArmL_roll",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 14.60121
+    },
+    {
+      "name": "a_UpperArmL_yaw",
+      "force_range_nm": [
+        -25,
+        25
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 100.0,
+      "kv": 14.5964
+    },
+    {
+      "name": "a_ForearmL_pitch",
+      "force_range_nm": [
+        -40,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 60.0,
+      "kv": 2.286285
+    },
+    {
+      "name": "a_GloveL_pitch",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 1.287953
+    },
+    {
+      "name": "a_GloveL_yaw",
+      "force_range_nm": [
+        -5,
+        5
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 1.287953
+    },
+    {
+      "name": "a_UpperArmR_pitch",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 3.981454
+    },
+    {
+      "name": "a_UpperArmR_roll",
+      "force_range_nm": [
+        -60,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 100.0,
+      "kv": 13.7216
+    },
+    {
+      "name": "a_UpperArmR_yaw",
+      "force_range_nm": [
+        -25,
+        25
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 100.0,
+      "kv": 13.56774
+    },
+    {
+      "name": "a_ForearmR_pitch",
+      "force_range_nm": [
+        -40,
+        60
+      ],
+      "max_driven_speed_rad_s": 8,
+      "kp": 60.0,
+      "kv": 2.291231
+    },
+    {
+      "name": "a_GloveR_pitch",
+      "force_range_nm": [
+        -10,
+        10
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 1.287953
+    },
+    {
+      "name": "a_GloveR_yaw",
+      "force_range_nm": [
+        -5,
+        5
+      ],
+      "max_driven_speed_rad_s": 6,
+      "kp": 20.0,
+      "kv": 1.287953
+    }
+  ]
+}

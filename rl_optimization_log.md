@@ -777,3 +777,246 @@ term. They belong to a fresh run.
 Fixed three measurement errors in the MuJoCo evaluator, then trained a Nick
 brain that beats the shipping one on all three tables -- ring 76 to 96 %,
 balance 84 to 98 %, walk 64 to 87 % -- and exported it.
+
+---
+---
+
+# Loop 2 — three bounded bodies on an RTX 2060
+
+Second autonomous run, started **2026-09-14 23:10**, budget 8 h (ends by 07:10). Different
+machine from loop 1: **RTX 2060 6 GB**, 12 threads, torch 2.8.0+cu128,
+mujoco/mujoco-warp 3.12.0, rsl-rl-lib 2.3.3, Python 3.11. Everything loop 1
+built — the K1–K10 thresholds (1.5), the RING table, the stability KPIs in
+`extras["log"]` — is reused unchanged; this loop adds nothing to the
+instrumentation unless a KPI turns out to be missing.
+
+What changed since loop 1, and why the baseline has to be taken again:
+
+- **The bodies are new.** Nick's actuators now carry finite torque budgets and
+  a driven-speed envelope (`HUMAN_LIMITS.md`, `nick_human.xml`); the shipping
+  `nick_balance_002` was trained on the unlimited body and loop 1's champion
+  numbers do not transfer. Two more humanoids, **Grandma (1.70 m, 79.6 kg)**
+  and **Grandpa (1.62 m, 71.9 kg)**, were derived from their skinned meshes
+  today (`make_creature_mjcf.py`) with the same budgets.
+- **The ML-Agents / PhysX line is gone.** The contest scenes field MuJoCo
+  contestants only, so every KPI here is the number the game produces.
+- **The GPU is a quarter of loop 1's.** Batch sizes and wall-clock figures are
+  re-measured; iterations stay the unit of comparison.
+
+## Phase 1 — audit, baseline
+
+### 1.1 Audit of the three bounded MJCFs
+
+`grandma_human.xml`, `grandpa_human.xml`, `nick_human.xml` — each the MJCF
+Unity's `MjScene` generates, with `prepare_human_limits.py` applied, and
+`verify_body_parity.py` says PARITY OK against the Unity actuators for all
+three (the game body is the training body, to 1e-4).
+
+| Check | Result (all three) |
+|---|---|
+| Parent/child contact exclusion | `filterparent="enable"` — MuJoCo's own form of `<contact><exclude>` for every adjacent pair; no hand excludes needed |
+| Self / creature-vs-creature collision | all 16 geoms `contype=1 conaffinity=1`; no `<exclude>` |
+| Joint limits | 30/30 hinges `limited="true"`, anatomical ranges; narrowest span 40° (Torso roll) |
+| Damping / armature | `damping=2`, `armature=0.2` on all 30 (loop 1's stability fix, ω·dt 0.89 at 0.02 s) |
+| Actuation | 30/30 `forcelimited`, ±200 N·m max (knee), kp 20–500, kv ≥ speed envelope |
+| Solver | Newton, 20 iterations, implicitfast, pyramidal cone; timestep stamped 0.005 and run at `NICK_TIMESTEP=0.02 × 1` (the contest step) |
+| Grandma/Grandpa rest pose | the mesh bind pose (arms hanging, elbows slightly bent); joint ranges re-centred on it, so the same absolute arcs as Nick's |
+
+Nothing to change in the MJCF for stability: the loop 1 findings on armature
+and the foot-capsule support line still hold, and the new bodies inherit both.
+
+### 1.2 Environment, observations, reward
+
+Unchanged from loop 1 (`nick_env.py`): 127 observations (121 + 6-term
+command), 30 zero-centred position targets, geometric-mean reward over
+upright / height / speed-match / facing / support / clearance / alternation /
+planted / over-lift with subtractive action-rate and control-cost terms. KPIs
+already logged per step: fall rate, upright fraction, speed ratio, tracking
+error and the ±10 % band, delivered actuator force (mean and max), action cost
+and rate, hinge |qacc|, torso tilt. **No missing KPI** for the exit criteria:
+survival = full-cap survival in `eval_nick.py`, velocity error = `within10` /
+`speed`, control effort = delivered |f|, jerk = hinge |qacc|, torso deviation
+= tilt.
+
+### 1.3 Throughput baseline
+
+Two PPO runs side by side, 256 worlds each, 24 steps/env, 0.02 s × 1, with a
+Newton viewer following each (the UI AGENTS.md asks for):
+
+| Run | Iteration time | Steps | Wall | Throughput |
+|---|---|---|---|---|
+| `grandma_human01` | 1.04 s | 11.53 M | 34 min 23 s | **5,590 steps/s** |
+| `grandpa_human01` | 1.03 s | 10.80 M | 34 min 38 s | **5,200 steps/s** |
+
+≈ 10,800 steps/s aggregate on the 2060 at 96 % utilisation — 17× below loop
+1's 187 k on the 5070 Ti at 4096 worlds. Whether the 2060 has headroom at
+larger batches is measured in 2.x once the evaluation sweeps are off the GPU.
+
+### 1.4 First training runs (the baseline policies)
+
+Both runs: `start_creature_human.ps1` — 2000 iterations, 256 worlds, 30 s
+episodes, half the episodes standing, walk commands 0.5–1.0 m/s, shoves
+50–150 N in standing episodes only, `w_overlift 0.2`, `init_noise_std 0.3`,
+lr 2e-4, γ 0.995, **warm-started from `nick_balance_002`** (same 127/30
+contract; the actor and normaliser carry over, the critic starts fresh).
+`train_nick.py`'s pre-learn checkpoint crashed on rsl_rl's logger attributes
+(five attempts of `nick_human01` died there without a step) — fixed today.
+
+Final in-training readings (per-step means, not evaluations):
+
+| | mean reward | upright | fall/step | tilt | \|f\| | \|qacc\| | within10 |
+|---|---|---|---|---|---|---|---|
+| Grandma @1999 | 1.54 | 0.94 | 1.1 % | 19.3° | 33.1 N·m | 108 | 0.09 |
+| Grandpa @1999 | 1.48 | 0.87 | 1.3 % | 21.7° | 35.2 N·m | 123 | 0.11 |
+
+Baseline KPIs proper follow from the checkpoint sweeps (1000–2000, every
+250) in 1.5.
+
+### 1.5 Baseline KPIs — and the first finding
+
+`eval_nick.py --worlds 256`, at 0.02 s × 1, checkpoints 1000/1250/1500/1750/1999
+of both runs. Every number in the sweep is the same number:
+
+| Body / checkpoint | BALANCE full-cap (median) | WALK full-cap (median, speed) | RING full-cap (median) | ZERO (no policy) median |
+|---|---|---|---|---|
+| Grandma 1000 … 1999 | **0 %** (1.46 → 1.59 s) | **0 %** (1.00 → 1.22 s, 0.56 → 0.35 m/s) | **0 %** (1.44 → 1.51 s) | 1.44 s |
+| Grandpa 1000 … 1999 | **0 %** (1.38 → 1.57 s) | **0 %** (1.12 s, 0.27 → 0.21 m/s) | **0 %** (1.28 → 1.46 s) | 1.34 s |
+
+Stability/effort readings at 1999 — Grandma: tilt 17°, |f| 26 N·m, |qacc| 83,
+within10 0.07; Grandpa: tilt 20°, |f| 33 N·m, |qacc| 121, within10 0.05 — are
+all measured on bodies in the act of falling and mean nothing yet.
+
+#### Finding 1 — neither baseline learned to stand; the in-training metrics hid it
+
+Both runs report 0.87–0.94 "upright fraction" and a ~1 % per-step fall rate,
+and both rewards climbed from −0.5 to +1.5. All of it is consistent with
+episodes that end at ~1.4 s: mean episode length sat at **70 steps** (1.4 s at
+0.02 s) from iteration 750 to the end — a body is upright for the 70 steps it
+takes to hit the floor. The evaluation medians are 0.1–0.2 s *above* the
+passive baseline, i.e. the policies learned to fall a little more slowly.
+Loop 1's warning that in-training metrics cannot judge a checkpoint holds;
+**mean episode length is the one in-training number that could have said so,
+and it is the number to watch from here.**
+
+#### Finding 2 — the runs were 30× too small, and the batch was 16× too small
+
+| | loop 1 champion (`nick12/3700`) | these baselines |
+|---|---|---|
+| worlds | 4096 | 256 |
+| steps | ≈ 364 M | 11–12 M |
+| steps/s | 140–187 k | 5.2–5.6 k |
+
+At 256 worlds the step loop is Python-bound and the 2060 idles; measured with
+`nick_env.py --num-envs N` (zero actions, 200 control steps):
+
+| worlds | env-steps/s | scaling |
+|---|---|---|
+| 512 | 22,539 | — |
+| 1024 | 43,480 | 1.93× |
+| 2048 | 81,700 | 1.88× |
+| 4096 | **134,028** | 1.64× |
+
+Near-linear to 4096 (the 2060 is still not saturated at 2048). The baseline
+recipe (`start_nick_human.ps1`, 256 worlds) was copied from a run that had
+never trained a step, and its batch size was never measured on this card.
+**Phase 2 starts by fixing the batch, then asks whether the recipe learns at all.**
+
+## Phase 2 — optimisation
+
+### 2.1 Screening: batch size and the warm start (Grandma)
+
+Two 400-iteration runs, 2048 worlds each, side by side, headless
+(`--no-ui`, as the task asks; the viewers cost a GPU slice the screens need):
+
+| Run | start | lr / init noise | γ | everything else |
+|---|---|---|---|---|
+| `gma_v1_warm2048` | warm start from `nick_balance_002` | 2e-4 / 0.3 (the baseline recipe) | 0.995 | baseline env |
+| `gma_v2_fresh2048` | fresh | 1e-3 / 1.0 (rsl_rl and loop-1 defaults) | 0.995 | baseline env |
+
+Judged on **mean episode length** first (a standing policy shows as an episode
+that reaches the 30 s cap, 1500 steps), then `eval_nick.py` on the last
+checkpoint.
+
+#### Finding 3 — the speed envelope is damping, and damping is why nobody can stand
+
+`prepare_human_limits.py` enforces the human joint-speed budget by raising
+each position servo's `kv` until `kp·span/kv ≤ v_max`. That is extra damping,
+and damping throttles motion at **every** speed, not just the top one: the hip
+pitch servos end up with `kv/kp = 0.38 s` (torso 0.26 s, knees 0.28 s, arms
+0.31–0.39 s) — a joint asked to move 0.1 rad settles at 0.26 rad/s, and a
+balance reflex that needs 100 ms is not available.
+
+Measured, not argued: Nick's shipping brain (`nick_balance_002`, trained on
+the unlimited body) on three versions of the same body, 256 worlds, 0.02 × 1:
+
+| body | BALANCE full-cap / median | WALK full-cap / median / speed | tilt |
+|---|---|---|---|
+| `nick_unity.xml` (unlimited) | **98 %** / 30.0 s | 81 % / 20.0 s / 0.89 m/s | 6.5° |
+| torque budgets only (`nick_torque.xml`) | 0 % / **5.1 s** | 0 % / 2.1 s / 0.99 m/s | 11.4° |
+| torque + speed envelope (`nick_human.xml`) | 0 % / **1.7 s** | 0 % / 0.9 s | 11.1° |
+| no policy at all | 0 % / 1.5 s | | |
+
+Torque budgets alone take a proven policy from 30 s to 5 s — a real, physical
+constraint it was never trained for, and one a new run can learn under. The
+envelope takes it to the passive baseline: the policy retains no authority.
+Grandma's and Grandpa's baselines trained on envelope bodies and never left
+the floor (1.5); so would any Nick run on `nick_human.xml`.
+
+**Decision.** The torque budgets stay — they are the anatomical constraint
+AGENTS.md asks for and the realism anchor. The speed budget is kept as a
+budget, not as damping: `prepare_human_limits.py --no-speed-envelope` now
+writes `<name>_torque.xml` with the critical damping Unity's export resolved
+and the same force ranges, and hinge speed becomes a measured KPI (K11 below)
+that a policy has to respect rather than a property the body cannot violate.
+`HUMAN_LIMITS.md`'s own line applies in reverse: these limits are "not
+increased simply to rescue a failing policy" — nor is a damping model that
+no policy can act through kept simply because it was written down.
+
+| # | KPI (new) | Threshold |
+|---|---|---|
+| K11 | Hinge speed, 99th percentile of \|qvel\| over an evaluation, per joint family | ≤ the `HUMAN_LIMITS.md` budget (torso/neck 4, hips 6, knees 8, ankles 4–6, shoulders 6–8, elbows 8, wrists 6 rad/s) |
+
+Torque-only bodies: `nick_torque.xml` 75.0 kg, `grandma_torque.xml` 79.6 kg,
+`grandpa_torque.xml` 71.9 kg — `kv/kp` 0.03–0.17 s across the 30 servos.
+
+#### 2.1 result — batch size helps, the warm start does not matter, the body still wins
+
+| Run | steps | it/s | mean episode length @400 (steps) | curve (every 40 it) |
+|---|---|---|---|---|
+| baseline `grandma_human01` (256 worlds, 2000 it) | 11.5 M | 1.04 s | **70** (flat from it 750) | — |
+| `gma_v1_warm2048` | 19.7 M | 2.08 s (shared GPU) | **148** | 54 61 70 73 87 97 90 125 112 148 |
+| `gma_v2_fresh2048` | 19.7 M | 1.11 s | **139** | 60 66 69 76 79 86 93 101 113 139 |
+
+Both curves are still rising at 400 iterations and both are twice the
+baseline's plateau — the batch was the binding constraint, not the recipe.
+Warm start + low noise and fresh + default noise are within noise of each
+other at this horizon. Still, 148 steps is 3 s: nobody stands, which is what
+Finding 3 predicts for the envelope body. No further screens on
+`*_human.xml`.
+
+#### K11 measured on the unlimited body
+
+`nick_balance_002` on `nick_unity.xml`, per-family peak hinge speed (rad/s):
+
+| | torso | head | hips | knees | ankles | shoulders | elbows | wrists |
+|---|---|---|---|---|---|---|---|---|
+| BALANCE | 3.2 | 6.4 | 12.3 | 17.5 | 17.9 | 19.8 | 10.3 | 5.8 |
+| WALK | 5.5 | 6.0 | **20.4** | **28.5** | 20.5 | 22.6 | 21.0 | 8.5 |
+| budget (`HUMAN_LIMITS.md`) | 4 | 4 | 6 | 8 | 4–6 | 6–8 | 8 | 6 |
+
+The knee figure matches the 27.6 rad/s the Newton replay recorded — the
+shipping brain moves 2–4× faster than a human joint, which is exactly what the
+envelope was written to stop. The question for 2.2 is whether a policy
+trained under torque budgets alone stays inside the speed budget by itself,
+or needs a speed penalty in the reward.
+
+### 2.2 Screening on the torque-only bodies
+
+| Run | body | start | lr / noise | worlds / it |
+|---|---|---|---|---|
+| `gma_v3_torque` | `grandma_torque.xml` | fresh | 1e-3 / 1.0 | 2048 / 400 |
+| `nick_v4_torque` | `nick_torque.xml` | warm from `nick_balance_002` (5.1 s median on this body already) | 2e-4 / 0.3 | 2048 / 400 |
+
+Same env settings as 2.1 otherwise. Compared on mean episode length against
+the 2.1 curves (139/148 at 400), then `eval_nick.py` on the last checkpoint
+with the K11 line.

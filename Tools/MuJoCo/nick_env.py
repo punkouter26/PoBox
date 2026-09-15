@@ -150,6 +150,10 @@ class NickEnvCfg:
     # Subtractive, on the normalised action vector (actions are already [-1,1]),
     # so it is dimensionless and does not depend on the actuator gains.
     w_ctrl_cost: float = 0.0
+    # K11 (loop 2): subtractive penalty on hinge speed above the per-family
+    # human budget (HUMAN_LIMITS.md), as a fraction of the budget, so a joint
+    # at 2x its budget costs 1.0 before weighting. 0 = off (bit-identical).
+    w_speed_cost: float = 0.0
     product_floor: float = 0.01
     reward_scale: float = 5.0
     gait_blend_speed: float = 0.5
@@ -411,6 +415,17 @@ class NickEnv:
         self.joint_body_ids = [by_stem[b] for b in JOINT_BODIES]
         self.joint_parent_ids = [int(m.body_parentid[i]) for i in self.joint_body_ids]
 
+        # Per-dof human speed budget (rad/s) for the K11 penalty, by joint family.
+        budget = {"Torso": 4.0, "Head": 4.0, "Thigh": 6.0, "Shin": 8.0, "Foot": 5.0,
+                  "UpperArm": 7.0, "Forearm": 8.0, "Glove": 6.0}
+        per_dof = [0.0] * (m.nv - 6)
+        for j in range(m.njnt):
+            if m.jnt_type[j] != mujoco.mjtJoint.mjJNT_HINGE:
+                continue
+            name = m.joint(j).name
+            fam = next((v for k, v in budget.items() if k in name), 6.0)
+            per_dof[int(m.jnt_dofadr[j]) - 6] = fam
+        self.speed_budget = torch.tensor(per_dof, device=self.device)
         stems = [stem(m.actuator(i).name) for i in range(m.nu)]
         if stems != ACTUATOR_STEMS:
             raise RuntimeError("actuator order differs from the PoBox canonical order:\n  got %s" % stems)
@@ -608,9 +623,12 @@ class NickEnv:
         )
         smoothness = torch.mean((self.actions - self.prev_actions) ** 2, dim=1)
         action_cost = torch.mean(self.actions ** 2, dim=1)
+        over_speed = torch.clamp(self.qvel[:, 6:].abs().float() / self.speed_budget - 1.0, min=0.0)
+        speed_cost = over_speed.mean(dim=1)
         reward = cfg.reward_scale * (locomotion
                                      - cfg.w_smoothness * smoothness
-                                     - cfg.w_ctrl_cost * action_cost) * self.control_dt
+                                     - cfg.w_ctrl_cost * action_cost
+                                     - cfg.w_speed_cost * speed_cost) * self.control_dt
 
         self.fell = (s["pelvis_z"] < cfg.fall_pelvis_fraction * self.rest_pelvis_z) | (s["up"][:, 2] < cfg.fall_up_z)
         reward = reward + cfg.pen_termination * self.fell.float()
@@ -646,6 +664,11 @@ class NickEnv:
             "Metrics/action_rate": smoothness.mean(),
             # Joint acceleration on the hinge dofs: the jerk/chatter tell.
             "Metrics/joint_accel_abs": self.qacc[:, 6:].abs().float().mean(),
+            # K11 (loop 2): peak hinge speed this step, mean over worlds. The
+            # human speed budget is a measured KPI, not servo damping.
+            "Metrics/hinge_speed_max": self.qvel[:, 6:].abs().float().amax(dim=1).mean(),
+            # Fraction of hinge dofs over their human speed budget this step.
+            "Metrics/over_speed_fraction": (over_speed > 0.0).float().mean(),
             # Velocity tracking as an error rather than a ratio, plus the
             # fraction of moving worlds inside the +/-10% band.
             "Metrics/track_err_frac": torch.sum((measured - speed).abs()

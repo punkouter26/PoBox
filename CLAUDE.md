@@ -87,6 +87,20 @@ trainer reads:
 | `RigTool_NickMuJoCo.ExportNickMjcf` | writes the MJCF `MjScene` ACTUALLY generates to `Tools/MuJoCo/nick_unity.xml` |
 | `RigTool_NickMuJoCo.AddNickToContest` and the walk variant | places or refreshes Nick in the two contest scenes |
 
+**Every creature after Nick comes from its skinned mesh through
+`RigTool_CreatureMuJoCo` (`PoBox/Creatures/<Name>/...`)**, added 2026-09-14
+for Grandma and Grandpa. The pipeline, in order:
+
+| Step | Does |
+|---|---|
+| `Tools/MuJoCo/make_creature_mjcf.py --glb <mesh> --name <name>` | derives the authored MJCF from the GLB's bind pose: one body per bone, capsules bone to bone, joint ranges re-centred on that character's own rest pose, mass and radii scaled with stature. `--check` proves the rule by rebuilding Nick to 0.02 mm |
+| `RigTool_CreatureMuJoCo.Import<Name>` | imports it with the plugin's importer, turns the round-tripped actuators back into position servos, wires the controller and contestant, binds the skin. Saves `Assets/MuJoCoCreature/Scenes/<Name>_Source.unity` |
+| `RigTool_CreatureMuJoCo.Export<Name>Mjcf` | writes the MJCF `MjScene` ACTUALLY generates to `Tools/MuJoCo/<name>_unity.xml` |
+| `Tools/MuJoCo/prepare_human_limits.py --source <name>_unity.xml --output <name>_human.xml` | the torque and speed budgets (`HUMAN_LIMITS.md`) -- this is the body the trainer uses |
+| `RigTool_CreatureMuJoCo.Apply<Name>Limits`, then `Export<Name>Mjcf` again | the same budgets on the Unity actuators; `Tools/MuJoCo/verify_body_parity.py` must then say PARITY OK |
+| `Tools/MuJoCo/start_creature_human.ps1 -Creature <name>` | trains it (Editor closed) |
+| `RigTool_CreatureMuJoCo.Add<Name>ToContests` | places it in both contest scenes once `Assets/Agents/<Name>_Balance001/<name>_balance_001.onnx` exists; refuses without a brain, because a contestant that cannot bind stalls the referee for everyone |
+
 Drive any `PoBox.Editor` static method from the command bridge while the
 Editor is open:
 
