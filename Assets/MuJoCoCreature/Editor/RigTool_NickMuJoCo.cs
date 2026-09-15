@@ -40,6 +40,11 @@ namespace PoBox.Editor
         private const string CONTEST_SCENE_PATH = "Assets/Scenes/SCN_TEST_BALANCE_CONTEST.unity";
         private const string NICK_GLB_PATH = "Assets/MuJoCoCreature/Model/RIGGED_Nick.glb";
         private const string BALANCE_BRAIN_PATH = "Assets/Agents/Nick_Balance002/nick_balance_002.onnx";
+        // The torque-limited body's walker (loop 2): 127 obs / 30 actions,
+        // trained at 0.02 s x decimation 1 on the nick_torque.xml body. The
+        // scene's actuators must carry nick_torque.limits.json BEFORE this
+        // brain is placed, or the body and the brain disagree.
+        private const string TORQUE_BRAIN_PATH = "Assets/Agents/Nick_Torque001/nick_torque_001.onnx";
         private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";
@@ -181,6 +186,61 @@ namespace PoBox.Editor
             return links;
         }
 
+        /// <summary>
+        /// Places Nick in BOTH contest scenes on the torque-limited body with
+        /// the Nick_Torque001 walker. The body comes from the source scene, so
+        /// run PoBox/Nick/Apply Torque-Only Limits first — this entry refuses
+        /// to place a brain on a body it was not trained on.
+        /// </summary>
+        [MenuItem("PoBox/Nick/Add To Contests (Torque001)")]
+        public static void AddNickToContestsTorque001()
+        {
+            AddNickToContest(CONTEST_SCENE_PATH,
+                             new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f),
+                             TORQUE_BRAIN_PATH);
+            // 180 deg Y is the heading the walk race was validated with (the
+            // committed scene carried it, and the creatures' tool turns every
+            // walker the same way): the command is pelvis-local, so a clone
+            // straight out of the source scene reads the goal direction
+            // backwards and falls on the line.
+            AddNickToContest("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity",
+                             new Vector3(2.75f, 0.03f, -2.8f),
+                             TORQUE_BRAIN_PATH,
+                             Quaternion.Euler(0f, 180f, 0f));
+        }
+
+        /// <summary>
+        /// Opens a contest scene and enters play mode on it, so the placed
+        /// roster can be WATCHED — the motion is part of how a policy is
+        /// judged, and the referee logs CONTEST_ROUND lines while it runs.
+        /// </summary>
+        [MenuItem("PoBox/Nick/Play Balance Contest")]
+        public static void PlayBalanceContest() => PlayContest(CONTEST_SCENE_PATH);
+
+        /// <summary>Same, on the walk race.</summary>
+        [MenuItem("PoBox/Nick/Play Walk Contest")]
+        public static void PlayWalkContest() => PlayContest("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity");
+
+        /// <summary>Exits play mode from outside the Editor.</summary>
+        [MenuItem("PoBox/Nick/Stop Contest")]
+        public static void StopContest()
+        {
+            if (EditorApplication.isPlaying) { EditorApplication.ExitPlaymode(); }
+            Debug.Log("RigTool: exiting play mode.");
+        }
+
+        private static void PlayContest(string scenePath)
+        {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogError("RigTool: already in play mode; stop it first.");
+                return;
+            }
+            EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            Debug.Log($"RigTool: entering play mode on {Path.GetFileName(scenePath)}. Watch for CONTEST_ROUND lines.");
+            EditorApplication.EnterPlaymode();
+        }
+
                 [MenuItem("PoBox/Nick/Add To Balance Ring")]
         public static void AddNickToBalanceContest() =>
             AddNickToContest(CONTEST_SCENE_PATH, new Vector3(0.75f, Systems_ContestSpawner.RING_FLOOR_Y, -0.7f));
@@ -196,7 +256,16 @@ namespace PoBox.Editor
         public static void AddNickToWalkContest() =>
             AddNickToContest("Assets/Scenes/SCN_TEST_WALK_CONTEST.unity", new Vector3(2.75f, 0.03f, -2.8f));
 
-        private static void AddNickToContest(string scenePath, Vector3 position)
+        /// <summary>
+        /// Places or refreshes Nick in one contest scene. The brain is a
+        /// parameter because body and brain are a PAIR: Balance002 belongs on
+        /// the human-limits body, Nick_Torque001 on the torque-limited one.
+        /// Whichever brain is passed, it must have been trained at the ring's
+        /// 0.02 s x decimation 1 and on the body the source scene now carries.
+        /// </summary>
+        private static void AddNickToContest(string scenePath, Vector3 position,
+                                             string brainPath = BALANCE_BRAIN_PATH,
+                                             Quaternion rotation = default)
         {
             if (EditorApplication.isPlaying)
             {
@@ -215,13 +284,15 @@ namespace PoBox.Editor
             ConfigureController(nick, out CreatureSentisController controller);
 
             var serialized = new SerializedObject(controller);
-            // BALANCE-ONLY brain, trained at the ring's 0.02 s on the armature
-            // 0.2 body. nick_locomotion.onnx must NOT be used here: it is the
-            // 0.005 s walker and scores at the passive baseline at this step.
-            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(BALANCE_BRAIN_PATH);
+            // The brain must match the body the source scene carries AND the
+            // ring's 0.02 s step: Balance002 on the human-limits body,
+            // nick_torque_001 on the torque-limited one. nick_locomotion.onnx
+            // must NOT be placed here under either body: it is the 0.005 s
+            // walker and scores at the passive baseline at this step.
+            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(brainPath);
             if (brain == null)
             {
-                Debug.LogError($"RigTool: no brain at {BALANCE_BRAIN_PATH}; Nick not added.");
+                Debug.LogError($"RigTool: no brain at {brainPath}; Nick not added.");
                 return;
             }
             serialized.FindProperty("_onnxModelAsset").objectReferenceValue = brain;
@@ -249,14 +320,20 @@ namespace PoBox.Editor
             // first, which is on the floor but 1.5 m outside the widest slot --
             // standing beyond the ropes, simulating and scoring correctly while
             // being invisible.
+            // default(Quaternion) means "leave the clone's rotation alone";
+            // any explicit rotation replaces it (the walk race's 180 Y).
             nick.transform.position = position;
+            bool keepCloneRotation = rotation.x == 0f && rotation.y == 0f && rotation.z == 0f && rotation.w == 0f;
+            if (!keepCloneRotation) { nick.transform.rotation = rotation; }
+            Debug.Log($"RigTool: placed Nick at {nick.transform.position} rotation {nick.transform.rotation.eulerAngles} " +
+                      $"(requested {(keepCloneRotation ? "clone-default" : rotation.eulerAngles.ToString())}).");
 
             AttachNickSkin(nick);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("RigTool: Nick added to the balance ring (decimation 1, timestep pin off, " +
-                      $"brain {BALANCE_BRAIN_PATH}). Play and grep CONTEST_ROUND.");
+                      $"brain {brainPath}). Play and grep CONTEST_ROUND.");
         }
 
                 public static void BuildDemoScene()
