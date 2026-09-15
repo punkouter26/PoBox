@@ -44,7 +44,10 @@ namespace PoBox.Editor
         // trained at 0.02 s x decimation 1 on the nick_torque.xml body. The
         // scene's actuators must carry nick_torque.limits.json BEFORE this
         // brain is placed, or the body and the brain disagree.
-        private const string TORQUE_BRAIN_PATH = "Assets/Agents/Nick_Torque001/nick_torque_001.onnx";
+        // Torque002 is nick_lB_torque/model_250: the sweep found 250 beats
+        // 300 (Torque001) on every walk table — WALK 62% vs 48%, median 20 s
+        // (= the full cap) vs 17.7 s.
+        private const string TORQUE_BRAIN_PATH = "Assets/Agents/Nick_Torque002/nick_torque_002.onnx";
         private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";

@@ -1,0 +1,22 @@
+nick_torque_002.onnx
+====================
+
+WHAT      Locomotion brain for Nick,
+          trained in MUJOCO WARP.
+CONTRACT  127 observations / 30 continuous actions.
+          CreatureSentisController.GatherObservations with _observeLocomotionCommand
+          on: the 121-term balance vector plus commanded speed, pelvis-local
+          commanded direction (3) and the 1.4 Hz gait clock (sin, cos).
+          Foot contact is rest-relative (ankle within 0.03 m of rest).
+          Actions are zero-centred position targets in canonical order.
+          Control every 1 physics step(s) of 0.0200 s (decimation 1, 50 Hz).
+          EVALUATE AND RUN IT AT THIS STEP. A policy measured at another
+          one measures a creature that is not this one.
+          The observation normaliser is BAKED INTO THE GRAPH; feed raw.
+          input obs_0 [batch,127], output continuous_actions [batch,30].
+MODEL     nick_torque.xml -- the MJCF MjScene generates, exported from Unity.
+          NOT the authored creature file.
+TRAINED   2026-09-15, results/nick/nick_lB_torque, model_250.pt (iteration 250), rsl_rl PPO on mujoco_warp.
+          Config: results/nick/nick_lB_torque/config.json.
+MEASURED  256 worlds, 0.02 s x 1: BALANCE 88% full-cap, WALK 62% at 0.72 m/s (median 20.0 s = full cap, 10.7 m), RING 82%. Checkpoint sweep of nick_lB_torque found 250 > 300 on every walk table; 300 stays in Nick_Torque001.
+EXPORT    Tools/MuJoCo/export_onnx.py --run nick_lB_torque --checkpoint model_250.pt

@@ -42,6 +42,7 @@ Pass `--start-noise 0` for the old single-trajectory behaviour.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import re
 import sys
@@ -71,7 +72,9 @@ parser.add_argument("--repeats", type=int, default=1,
                     help="run the whole matrix this many times with different seeds; "
                          "the exit criterion wants 10 consecutive passing evaluations")
 parser.add_argument("--no-ring", action="store_true", help="skip the RING hazard table")
-parser.add_argument("--model", default=None, help="MJCF to evaluate on; default is Nick's Unity export")
+parser.add_argument("--model", default=None,
+                    help="MJCF to evaluate on; default is the body the RUN trained on "
+                         "(its config.json), then Nick's Unity export")
 parser.add_argument("--tag", default="", help="printed on every row, for the log")
 parser.add_argument("--start-noise", type=float, default=1.0,
                     help="fraction of worlds that start from a perturbed pose rather than the "
@@ -80,6 +83,45 @@ parser.add_argument("--start-noise", type=float, default=1.0,
 args = parser.parse_args()
 
 OBS_DIM = OBS_BASE + OBS_COMMAND
+
+
+def model_for_run(run_dir: Path) -> str | None:
+    """The body a run trained on, read from the run's own config.json.
+
+    `--run X` has to evaluate X on X's BODY. Every creature in this line shares
+    the 30-actuator layout, so a brain measured on a different body of the same
+    width loads, runs and produces confident nonsense -- the same trap the
+    observation contract has (CLAUDE.md, Brains). On 2026-09-15 Grandma's and
+    Grandpa's weights were measured on Nick's body because this was missing,
+    and read as "cannot stand, at or below the passive baseline"; on their own
+    bodies the same checkpoints stand for a 14 s median.
+    """
+    config = run_dir / "config.json"
+    if not config.exists():
+        return None
+    try:
+        return json.loads(config.read_text()).get("env", {}).get("model_path") or None
+    except (OSError, ValueError):
+        return None
+
+
+def resolve_model_path() -> str:
+    """--model wins; else the run's own body; else Nick's Unity export.
+
+    config.json records the body REPO-relative, so it is re-based on the repo
+    before use: this script runs from Tools/MuJoCo, not from the root.
+    """
+    if args.model:
+        return args.model
+    from_run = model_for_run(LOG_ROOT / args.run) if args.run else None
+    if from_run:
+        path = Path(from_run)
+        if not path.exists():
+            rebased = REPO / path
+            if rebased.exists():
+                return str(rebased)
+        return from_run
+    return preferred_model_path()
 
 
 def load_policy():
@@ -280,10 +322,11 @@ def kpi(label, r, tag):
 def main():
     policy, name = load_policy()
     tag = (" [%s]" % args.tag) if args.tag else ""
+    model_path = resolve_model_path()
     print("policy: %s   worlds: %d   repeats: %d   start-noise %.2f   model: %s"
-          % (name, args.worlds, args.repeats, args.start_noise, (args.model or preferred_model_path())))
+          % (name, args.worlds, args.repeats, args.start_noise, model_path))
     for attempt in range(args.repeats):
-        cfg = NickEnvCfg(num_envs=args.worlds, model_path=(args.model or preferred_model_path()),
+        cfg = NickEnvCfg(num_envs=args.worlds, model_path=model_path,
                          gain_scale_range=(1.0, 1.0), friction_scale_range=(1.0, 1.0),
                          exact_start_fraction=1.0 - args.start_noise,
                          push_probability=0.0, seed=1 + attempt)

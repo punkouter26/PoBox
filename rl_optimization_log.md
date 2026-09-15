@@ -1269,34 +1269,47 @@ Round C to the end (every 100–150 iterations; the curriculum keeps paying for 
 
 ### 2.6 Round D — both skills: resume the round-C ends with `stand_still_fraction=0.7`, lr 5e-4, 800 iterations, checkpoints every 50, evaluated every 200
 
-### 2.7 AUDIT 2026-09-15: the round C/D Grandma and Grandpa numbers do NOT reproduce — no promotable checkpoint exists
+### 2.7 AUDIT 2026-09-15 (corrected): a bad measurement of Grandma and Grandpa, and the tooling bug that caused it
 
-Re-measured at the TRAINED step (`NICK_TIMESTEP=0.02 NICK_DECIMATION=1`,
-verified by the printed `control_dt 0.020 s`) and at the default 0.005×4, on
-the same bodies the runs trained on:
+**First pass was wrong, and the reason matters.** `eval_nick.py --run X` loaded
+X's weights but ran them on **Nick's body**: the env was built from
+`args.model or preferred_model_path()`, and the run's own `config.json` — which
+records the body it trained on — was never read. Every creature in this line
+shares the 30-actuator layout, so a foreign body of the same width loads, runs
+and returns confident nonsense. Measured that way, Grandma and Grandpa read as
+ragdolls at or below the passive baseline, and a "no promotable checkpoint"
+conclusion was written here and committed. **It was an artefact.**
 
-| checkpoint | BALANCE median / full-cap | WALK median | RING median |
-|---|---|---|---|
-| `gma_lD` 850 | 1.64 s / **0 %** | 1.40 s | 1.60 s |
-| `gma_lC` 799 / 650 / 550 | 1.50 s / **0 %** | 1.42 s | 1.50 s |
-| `gpa_lD` 750 | 0.85 s / **0 %** | 0.78 s | 0.84 s |
-| `gpa_lC` 749 | 0.86 s / **0 %** | 0.80 s | 0.84 s |
-| passive baseline | 1.48 s / 0 % | — | — |
+**Fixed** (`eval_nick.py`): `--run X` now resolves X's body from its own
+`config.json`, re-based on the repo root, with `--model` still overriding.
 
-Grandma stands like a ragdoll (≈ the passive baseline) and Grandpa is
-**worse** than one — his policy actively destabilises the rest pose. The
-section 2.5/2.6 tables claiming 22–24 % full-cap at 13.6–17.2 s median do not
-reproduce at any step, on any checkpoint measured (550, 650, 749, 750, 799,
-850); those numbers were bad measurements and should not be trusted. The
-"was 0 % / 1.8 s" figure for `lB/300` DOES match today's band, which is
-consistent with round C/D having never learned standing at all.
+Corrected, on each creature's own body, at the trained step (0.02 × 1):
 
-**Consequence: Grandma and Grandpa cannot be fielded.** `Add To Contests`
-refuses without a brain folder, and promoting any measured checkpoint would
-put a ragdoll-strength contestant in the ring. Their placement waits on
-training that actually clears the bar — the first open question is why the
-curriculum that "learned standing" in training metrics left eval at the
-baseline (Finding 2's lesson again: training metrics are not evidence).
+| checkpoint | BALANCE median / full-cap | RING median / full-cap |
+|---|---|---|
+| `gma_lD` 850 | **14.31 s / 20 %** | 13.07 s / 16 % |
+| `gma_lC` 799 | **14.47 s / 21 %** | 13.40 s / 18 % |
+| `gpa_lD` 750 | **14.16 s / 20 %** | 11.79 s / 14 % |
+| `gpa_lC` 749 | **16.73 s / 21 %** | 10.06 s / 13 % |
+| passive baseline | 1.48 s / 0 % | — |
+
+So the section 2.5/2.6 figures were **right in kind** (a 14–17 s median is the
+same band those tables reported) and both creatures genuinely learned to stand:
+roughly ten times the ragdoll baseline, ~20 % of rounds survived to the 30 s
+cap. They are not ragdolls.
+
+Two real gaps remain, and they are what placement waits on:
+
+- **Balance is ~20 % full-cap against Nick's 90 %.** A round is 30 s, so four
+  rounds in five still end with them down.
+- **Walk is weak**: median 1.8–3.5 s and 0 % full-cap, though the walk leg is
+  real (Grandma 0.78 m/s at alternation 1.000, and 3.7–4.0 m of ground).
+
+The lesson is Finding 2's, one level up: **not only are training metrics not
+evidence, a measurement tool can be wrong in a way that looks like a result.**
+`eval_nick.py` needs the model line read on every run — the fix prints it, and
+`--run X` on a foreign body is now impossible by default.
+
 
 ### 2.8 Unity observation of the candidate (2026-09-15, commit 86bf962)
 
@@ -1311,6 +1324,36 @@ entries; Nick's placement method takes a brain path and a heading now.
 |---|---|
 | Balance | **Nick won all three 30 s rounds** — `CONTEST_ROUND 1/2/3 \| time up \| winner=Nick \| 30.0s(up)`, including WIND GUSTS ×2 and GRAVITY LEAN |
 | Walk | **2.27 m of the 5.6 m goal, every round, then down** — deterministic, one world one outcome |
+
+### 2.9 The last checkpoint was not the best one, again — `lB/250` beats `lB/300`
+
+`nick_lB_torque` was swept in full (250 → 599, every 25–50) at 0.02 × 1, and
+the run **peaks at its second checkpoint and decays from there**:
+
+| ckpt | BALANCE full-cap | WALK full-cap | WALK median | WALK speed | RING full-cap |
+|---|---|---|---|---|---|
+| **250** | 88 % | **62 %** | **20.0 s (the cap)** | 0.721 m/s | 82 % |
+| 275 | 92 % | 48 % | 17.7 s | 0.715 | 88 % |
+| 300 (was promoted) | 91 % | 48 % | 17.7 s | 0.72 | 91 % |
+| 400 | 82 % | 41 % | 11.1 s | 0.773 | 76 % |
+| 500 | 74 % | 38 % | 10.7 s | 0.745 | 66 % |
+| 599 | 71 % | 32 % | 2.6 s | 0.800 | 68 % |
+
+`250` is the only checkpoint in the run that reaches the 20 s walk cap in more
+than half the worlds. Promoted as **`Nick_Torque002`**
+(`Assets/Agents/Nick_Torque002/nick_torque_002.onnx`, SOURCE.txt records the
+provenance), placed in both contest scenes, and observed in the game:
+
+| Contest | `nick_lB/300` | `nick_lB/250` |
+|---|---|---|
+| Walk | 2.27 m of 5.6 m, then down | **5.33 m of 5.6 m, then down** |
+| Balance | 3/3 rounds won | 3/3 rounds won |
+
+So the replacement is worth 3.06 m of the crossing in the game — 95 % of the
+goal — and the balance sweep is unchanged. **The race's fixed start is still a
+start he falls from**, ~0.27 m short; the eval that says 62 % of NOISY starts
+reach the cap does not survive being given one particular start pose. Closing
+the last 0.27 m is a walk-quality problem, not a wiring one.
 
 The walk number is the candidate's honest ceiling, not a wiring bug: the race
 fixed a start pose the policy falls from at ~3 s (eval: 48 % of NOISY starts
