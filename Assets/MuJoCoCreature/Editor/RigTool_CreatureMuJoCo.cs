@@ -58,6 +58,10 @@ namespace PoBox.Editor
             public string AuthoredMjcf => $"Tools/MuJoCo/{key}.xml";
             public string ExportedMjcf => $"Tools/MuJoCo/{key}_unity.xml";
             public string LimitsJson => $"Tools/MuJoCo/{key}_human.limits.json";
+            // Torque budgets with the critical damping kept: the body loop 2 of
+            // rl_optimization_log.md trains on, after measuring that the speed
+            // envelope's damping leaves a policy no authority.
+            public string TorqueLimitsJson => $"Tools/MuJoCo/{key}_torque.limits.json";
             public string SourceScene => $"{SCENES_DIR}/{name}_Source.unity";
             public string BrainPath => $"Assets/Agents/{name}_Balance001/{key}_balance_001.onnx";
         }
@@ -81,11 +85,13 @@ namespace PoBox.Editor
         [MenuItem("PoBox/Creatures/Grandma/1 Import Body")] public static void ImportGrandma() => Import(Grandma);
         [MenuItem("PoBox/Creatures/Grandma/2 Export MJCF")] public static void ExportGrandmaMjcf() => ExportMjcf(Grandma);
         [MenuItem("PoBox/Creatures/Grandma/3 Apply Human Limits")] public static void ApplyGrandmaLimits() => ApplyLimits(Grandma);
+        [MenuItem("PoBox/Creatures/Grandma/3b Apply Torque-Only Limits")] public static void ApplyGrandmaTorqueLimits() => ApplyLimits(Grandma, torqueOnly: true);
         [MenuItem("PoBox/Creatures/Grandma/4 Add To Contests")] public static void AddGrandmaToContests() => AddToContests(Grandma);
 
         [MenuItem("PoBox/Creatures/Grandpa/1 Import Body")] public static void ImportGrandpa() => Import(Grandpa);
         [MenuItem("PoBox/Creatures/Grandpa/2 Export MJCF")] public static void ExportGrandpaMjcf() => ExportMjcf(Grandpa);
         [MenuItem("PoBox/Creatures/Grandpa/3 Apply Human Limits")] public static void ApplyGrandpaLimits() => ApplyLimits(Grandpa);
+        [MenuItem("PoBox/Creatures/Grandpa/3b Apply Torque-Only Limits")] public static void ApplyGrandpaTorqueLimits() => ApplyLimits(Grandpa, torqueOnly: true);
         [MenuItem("PoBox/Creatures/Grandpa/4 Add To Contests")] public static void AddGrandpaToContests() => AddToContests(Grandpa);
 
         // ------------------------------------------------------------ 1 import
@@ -245,14 +251,15 @@ namespace PoBox.Editor
         /// exported names: a_ThighL_pitch_68). After this a fresh ExportMjcf
         /// must reproduce &lt;name&gt;_human.xml's actuator arrays.
         /// </summary>
-        private static void ApplyLimits(Creature creature)
+        private static void ApplyLimits(Creature creature, bool torqueOnly = false)
         {
-            if (!File.Exists(creature.LimitsJson))
+            string json = torqueOnly ? creature.TorqueLimitsJson : creature.LimitsJson;
+            if (!File.Exists(json))
             {
-                Debug.LogError($"RigTool: {creature.LimitsJson} missing — run prepare_human_limits.py on {creature.ExportedMjcf} first.");
+                Debug.LogError($"RigTool: {json} missing — run prepare_human_limits.py on {creature.ExportedMjcf} first.");
                 return;
             }
-            var limits = JsonUtility.FromJson<LimitsFile>(File.ReadAllText(creature.LimitsJson));
+            var limits = JsonUtility.FromJson<LimitsFile>(File.ReadAllText(json));
             Scene scene = EditorSceneManager.OpenScene(creature.SourceScene, OpenSceneMode.Single);
             GameObject root = GameObject.Find(creature.name);
             if (root == null) { Debug.LogError($"RigTool: no root named {creature.name} in {creature.SourceScene}."); return; }
@@ -272,7 +279,48 @@ namespace PoBox.Editor
             }
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log($"RigTool: applied {applied} actuator limits to {creature.name} from {creature.LimitsJson}.");
+            Debug.Log($"RigTool: applied {applied} actuator limits to {creature.name} from {json}.");
+        }
+
+        /// <summary>
+        /// Nick's actuators live in three scenes (his source scene and both
+        /// contest scenes); this applies a limits JSON to the root named
+        /// "Nick" or "Creature" in each and re-saves.
+        /// </summary>
+        [MenuItem("PoBox/Nick/Apply Torque-Only Limits")]
+        public static void ApplyNickTorqueLimits()
+        {
+            const string json = "Tools/MuJoCo/nick_torque.limits.json";
+            if (!File.Exists(json)) { Debug.LogError($"RigTool: {json} missing."); return; }
+            var limits = JsonUtility.FromJson<LimitsFile>(File.ReadAllText(json));
+            string[] scenes = { "Assets/MuJoCoCreature/Scenes/MuJoCo_TestScene.unity", BALANCE_SCENE_PATH, WALK_SCENE_PATH };
+            foreach (string scenePath in scenes)
+            {
+                Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                int applied = 0;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    if (root.name != "Nick" && root.name != "Creature") { continue; }
+                    foreach (MjActuator actuator in root.GetComponentsInChildren<MjActuator>(true))
+                    {
+                        string stem = Regex.Replace(actuator.name, @"_\d+$", "");
+                        LimitEntry entry = Array.Find(limits.actuators, e => e.name == stem);
+                        if (entry == null) { continue; }
+                        actuator.CommonParams.ForceLimited = true;
+                        actuator.CommonParams.ForceRange = new Vector2(entry.force_range_nm[0], entry.force_range_nm[1]);
+                        actuator.CustomParams.Kp = entry.kp;
+                        actuator.CustomParams.Kvp = entry.kv;
+                        EditorUtility.SetDirty(actuator);
+                        applied++;
+                    }
+                }
+                if (applied > 0)
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    EditorSceneManager.SaveScene(scene);
+                }
+                Debug.Log($"RigTool: {applied} Nick actuators set from {json} in {Path.GetFileName(scenePath)}.");
+            }
         }
 
         // ------------------------------------------------------------ 4 contests

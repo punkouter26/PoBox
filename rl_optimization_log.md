@@ -1020,3 +1020,52 @@ or needs a speed penalty in the reward.
 Same env settings as 2.1 otherwise. Compared on mean episode length against
 the 2.1 curves (139/148 at 400), then `eval_nick.py` on the last checkpoint
 with the K11 line.
+
+#### 2.2 result — the torque-only body learns; Finding 3 confirmed in training
+
+Mean episode length, every 40 iterations (cap 1500 = 30 s):
+
+| Run | curve | @400 | it/s (shared) |
+|---|---|---|---|
+| `gma_v3_torque` (fresh) | 64 73 82 115 175 1016 614 883 738 **762** | 762 | 1.69 s |
+| `nick_v4_torque` (warm) | 89 128 247 548 1309 1479 1500 1500 1496 **1500** | 1500 | 0.81 s |
+| (2.1, envelope body, best) | … | 148 | |
+
+`eval_nick.py`, last checkpoint, 256 worlds, 0.02 × 1:
+
+| Run | BALANCE full-cap / median | WALK full-cap / median / speed / alternation | RING full-cap (shoves / gusts / lean) | tilt B/W | \|f\| B/W |
+|---|---|---|---|---|---|
+| `nick_v4_torque` | **83 %** / 30.0 s | **54 %** / 20.0 s / 0.73 m/s / 1.000 | **84 %** (82 / 80 / 90) | 9.1° / 8.7° | 29.9 / 34.4 N·m |
+| `gma_v3_torque` | 0 % / 1.64 s | **25 %** / 11.9 s / 0.68 m/s / 0.997 | 0 % | 14.4° / 10.1° | 31.9 / 42.6 N·m |
+
+Nick's shipping brain measured 0 % / 5.1 s on this same body before the run
+(Finding 3); 400 iterations of fine-tuning take it to 83–84 % standing and a
+walking policy, at *lower* delivered effort than the unlimited body's 34–53
+N·m. Grandma, from scratch, learned to walk before she learned to stand: her
+BALANCE median (1.64 s) is a fall before the first shove at 4 s, while a
+walking command keeps her up for 12 s. The training mix is half standing
+episodes, so this is an ordering of what is easy to learn, not a data gap;
+the long run is expected to close it.
+
+K11 on the torque bodies (peak |qvel| rad/s, WALK): Nick hips 10.8, knees
+**25.4**, ankles 17.1, elbows 18.0; Grandma hips 15.8, knees **21.1**. Torque
+budgets alone do not keep the knees inside the 8 rad/s budget — an unloaded
+swing leg is light and a 200 N·m knee can snap it. That is what the
+`w_speed_cost` term (2.3) is for.
+
+**Decision.** Long runs on the torque-only bodies; the speed budget is
+addressed as a reward term in a second round rather than folded into these
+(a reward term introduced into a warm-started fine-tune measures the
+discontinuity, not the term — loop 1's note).
+
+### 2.3 Long runs (round A): three bodies, 3000 iterations, 2048 worlds each
+
+| Run | body | start | lr / noise |
+|---|---|---|---|
+| `nick_lA_torque` | `nick_torque.xml` | warm from `nick_balance_002` | 2e-4 / 0.3 |
+| `gma_lA_torque` | `grandma_torque.xml` | fresh | 1e-3 / 1.0 |
+| `gpa_lA_torque` | `grandpa_torque.xml` | fresh | 1e-3 / 1.0 |
+
+γ 0.995, 30 s episodes, half standing, walk 0.5–1.0 m/s, shoves 50–150 N in
+standing episodes only, over-lift 0.2, headless, three concurrent on the
+2060. Judged at every 250th checkpoint on the three tables, not at the end.
