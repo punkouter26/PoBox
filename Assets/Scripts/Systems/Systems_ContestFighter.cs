@@ -7,7 +7,7 @@ namespace PoBox
     /// <see cref="Systems_FighterRig"/>.
     ///
     /// WHY THIS EXISTS. The ring was written around one body: a PhysX
-    /// ConfigurableJoint ragdoll with an Agent_FighterBoxing on it and
+    /// ConfigurableJoint ragdoll with a policy agent on it and
     /// Sensor_GroundContact on its head, shins and gloves. Nick is none of
     /// those -- he is a MuJoCo creature driven by CreatureSentisController,
     /// in a different assembly (PoBox.MuJoCoCreature), and the ring's

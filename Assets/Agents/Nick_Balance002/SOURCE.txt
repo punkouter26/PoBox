@@ -2,8 +2,7 @@ nick_balance_002.onnx
 =====================
 
 WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),
-          trained in MUJOCO WARP -- the second policy in this project not trained
-          by Unity ML-Agents, and the comparison point for the Isaac Lab line.
+          trained in MUJOCO WARP.
 CONTRACT  127 observations / 30 continuous actions.
           CreatureSentisController.GatherObservations with _observeLocomotionCommand
           on: the 121-term balance vector plus commanded speed, pelvis-local

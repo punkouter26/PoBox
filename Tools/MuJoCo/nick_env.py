@@ -1,6 +1,6 @@
 """MuJoCo Warp velocity-command locomotion environment for Nick.
 
-ONE POLICY, TWO MINI-GAMES, same decision as the Isaac line (Tools/Isaac):
+ONE POLICY, TWO MINI-GAMES:
 the commanded forward speed is an observation, so a single brain covers the
 balance ring (command 0 m/s) and the walk race (command ~1 m/s). A quarter of
 episodes command a dead stop, so standing cannot be traded away for walking.
@@ -14,8 +14,8 @@ into an explicit kv per actuator, and stamps its own solver options. Both
 files load; only one of them is the creature the game runs.
 
 THE OBSERVATION VECTOR IS CreatureSentisController.GatherObservations,
-term for term (see the layout at the top of that file). 121 terms shared with
-the ML-Agents balance line, plus the 6-term locomotion command:
+term for term (see the layout at the top of that file). 121 balance terms
+plus the 6-term locomotion command:
 
     commanded speed, pelvis-local commanded direction (3), gait clock sin/cos
 
@@ -32,8 +32,7 @@ and the controller both do. The policy decides every `decimation` physics
 steps and its targets are held in between -- the controller's decimation
 field must match.
 
-REWARD is the Isaac line's (Tools/Isaac/matt_env.py) weighted geometric mean
-so the two simulators are compared on the same objective: upright, height,
+REWARD is a weighted geometric mean: upright, height,
 speed match, facing, and -- fading in with the commanded speed -- single
 support, foot clearance and alternation. Falling ends the episode.
 """
@@ -131,7 +130,7 @@ class NickEnvCfg:
     # commands straight ahead; a spread here keeps the brain steerable.
     heading_range_deg: tuple = (-30.0, 30.0)
 
-    # --- reward (Tools/Isaac/matt_env.py, gen 8 weights) --------------------
+    # --- reward weights -------------------------------------------------------
     w_upright: float = 0.15
     w_height: float = 0.15
     w_speed_match: float = 0.5

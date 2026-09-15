@@ -457,8 +457,7 @@ namespace PoBox.MuJoCoCreature
 
             for (int i = 0; i < _actuatorIds.Length; i++)
             {
-                // [-1,1] -> target angle in radians, zero-centred exactly as
-                // Systems_FighterRig.MapZeroCentered:
+                // [-1,1] -> target angle in radians, zero-centred:
                 //   action >= 0 ? action * high : -action * low
                 //
                 // Written to the COMPONENT's Control field, never d->ctrl:

@@ -97,9 +97,8 @@ tbody tr:last-child td{border-bottom:0}
       <thead><tr><th>Scene</th><th>Build</th><th>Roots</th><th>Job</th></tr></thead>
       <tbody>
         <tr><td class="mono">SCN_MENU</td><td class="mono">0</td><td class="mono">2</td><td>Pick a mini-game and a roster. Writes both to a ScriptableObject and loads the contest.</td></tr>
-        <tr><td class="mono">SCN_TEST_BALANCE_CONTEST</td><td class="mono">1</td><td class="mono">13</td><td>Eight fighters in a lit ring. Last one standing wins. Hazards included.</td></tr>
-        <tr><td class="mono">SCN_TEST_WALK_CONTEST</td><td class="mono">2</td><td class="mono">8</td><td>Four racers, a 5.6 m course, first past the finish line.</td></tr>
-        <tr><td class="mono">SCN_TRAIN_LOCOMOTION</td><td class="mono">—</td><td class="mono">17</td><td>The gym. Sixteen fighters, no cameras, no HUD, no audio.</td></tr>
+        <tr><td class="mono">SCN_TEST_BALANCE_CONTEST</td><td class="mono">1</td><td class="mono">13</td><td>Nick in a lit ring. Last one standing wins. Hazards included.</td></tr>
+        <tr><td class="mono">SCN_TEST_WALK_CONTEST</td><td class="mono">2</td><td class="mono">8</td><td>A 5.6 m course, first past the finish line.</td></tr>
       </tbody>
     </table>
   </div>
@@ -109,8 +108,8 @@ tbody tr:last-child td{border-bottom:0}
   <div class="eyebrow">Tier 2 — Flow</div>
   <h2>How a contest starts</h2>
   <figure>
-    <div class="frame"><img src="assets/scene-flow.svg" alt="Scene flow from the menu through the spawner into either contest, and the separate training scene"></div>
-    <figcaption><b>Menu → selection → spawner → referee</b>The systems root is asleep at author time. Nothing is placed in the ring by hand — the spawner instantiates from a roster, then wakes the referee, camera, announcer and FX, which each discover the fighters in their own <code>Start</code>.</figcaption>
+    <div class="frame"><img src="assets/scene-flow.svg" alt="Scene flow from the menu through the spawner into either contest"></div>
+    <figcaption><b>Menu → selection → spawner → referee</b>The systems root is asleep at author time. The contestants stand in the scene already; the spawner adopts the ones the menu picked, stands down the rest, then wakes the referee, camera, announcer and FX, which each discover the contestants in their own <code>Start</code>.</figcaption>
   </figure>
 </section>
 
@@ -121,38 +120,26 @@ tbody tr:last-child td{border-bottom:0}
   <h2>Order of operations</h2>
   <div class="callout">
     <b>The inactive-holder trick</b>
-    <p>Fighters are instantiated under an <em>inactive</em> holder, configured, then reparented to the scene root. Reparenting is what fires <code>Awake</code>/<code>OnEnable</code>, so <code>Agent.LazyInitialize</code> — which snapshots <code>BrainParameters</code> to build the <code>VectorSensor</code> — runs <em>after</em> <code>Configure</code> has corrected the observation width. Instantiating straight into the scene initialises the agent against the prefab's stale value: 44,429 truncation warnings were measured in a single Editor session that way. <b>Anything that must be set before the sensor exists belongs in <code>Configure</code>.</b></p>
+    <p>A fighter spawned from a roster prefab is instantiated under an <em>inactive</em> holder, configured, then reparented to the scene root. Reparenting is what fires <code>Awake</code>/<code>OnEnable</code>, so every component initialises against the finished configuration rather than the prefab's. The shipping scenes spawn nothing today — their contestants are placed at author time and adopted — but the path is kept for a future MuJoCo creature prefab.</p>
   </div>
 
   <div class="tblwrap">
     <table>
       <thead><tr><th>Step</th><th>What happens</th><th>Why it is here and not elsewhere</th></tr></thead>
       <tbody>
-        <tr><td class="mono">Awake</td><td><code>CommunicatorFactory.Enabled = false</code></td><td>No fighter exists yet, so the Academy has had nothing to initialise. Stops a contest scene connecting to a live trainer on :5004.</td></tr>
+        <tr><td class="mono">Awake</td><td><code>LastFieldedCount = 0</code></td><td>Static line-up count read by the device HUD; reset before any contestant exists.</td></tr>
         <tr><td class="mono">Start</td><td><code>MiniGameLauncher</code> → <code>SpawnAndBegin(int[])</code></td><td>Roster picks arrive from the menu's ScriptableObject, or default when the scene is played directly.</td></tr>
-        <tr><td class="mono">1</td><td>Instantiate under inactive holder</td><td>Defers <code>Awake</code> until the width is right.</td></tr>
-        <tr><td class="mono">2</td><td><code>Configure()</code> — obs size, brain, tint, sensors, <code>MaxStep = 0</code></td><td><code>MaxStep 0</code> because the referee owns the round lifecycle, not the agent.</td></tr>
-        <tr><td class="mono">3</td><td>Reparent to scene root</td><td>Fires <code>Awake</code>/<code>OnEnable</code> → sensor built from corrected values.</td></tr>
+        <tr><td class="mono">1</td><td>Adopt a placed contestant, or instantiate a roster prefab under an inactive holder</td><td>Defers <code>Awake</code> until configuration is done.</td></tr>
+        <tr><td class="mono">2</td><td><code>Configure()</code> — tint, fall sensors on a PhysX rig, identity</td><td>The referee owns the round lifecycle; nothing here starts a round.</td></tr>
+        <tr><td class="mono">3</td><td>Reparent to scene root</td><td>Fires <code>Awake</code>/<code>OnEnable</code> against the finished configuration.</td></tr>
         <tr><td class="mono">4</td><td><code>_systemsRoot.SetActive(true)</code></td><td>Referee, drama camera, announcer and FX discover fighters in their own <code>Start</code>.</td></tr>
         <tr><td class="mono">finally</td><td><code>Destroy(holder)</code></td><td>A throw inside <code>Configure</code> would otherwise strand a half-built fighter in the scene forever.</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>Generated, not hand-authored</h3>
-  <p>The three shipping scenes (<code>SCN_MENU</code> and both contest scenes) are hand-authored and committed; their generators were deleted on 2026-09-08. The <code>SCN_TRAIN_*</code> scenes are still rebuilt from <code>SceneTool_*.cs</code>, which now have no menu items and are driven from the CLI or the command bridge. Re-running one overwrites that scene <b>wholesale</b>, including references edited by hand.</p>
-  <div class="tblwrap">
-    <table>
-      <thead><tr><th>Menu item</th><th>Builds</th><th>Constant to check first</th></tr></thead>
-      <tbody>
-        <tr><td class="mono">5 / 5b / 5c</td><td>SCN_TRAIN_BALANCE, _GRANDMA, _GRANDPA</td><td>—</td></tr>
-        <tr><td class="mono">6 · 9</td><td>SCN_TRAIN_WALK, SCN_TRAIN_LOCOMOTION</td><td><code>LOCOMOTION_MAX_STEP</code>, <code>GRID_SIZE</code></td></tr>
-        <tr><td class="mono">7a–7h</td><td>SCN_TEST_BALANCE_CONTEST</td><td><code>LOCOMOTION_BRAIN_PATH</code></td></tr>
-        <tr><td class="mono">8</td><td>SCN_TEST_WALK_CONTEST</td><td><code>LOCOMOTION_BRAIN_PATH</code>, line materials</td></tr>
-        <tr><td class="mono">1</td><td>SCN_MENU</td><td>—</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <h3>Hand-authored</h3>
+  <p>All three shipping scenes (<code>SCN_MENU</code> and both contest scenes) are hand-authored and committed; their generators were deleted on 2026-09-08, and the <code>SCN_TRAIN_*</code> training scenes went with the ML-Agents line on 2026-09-14. Nick is placed by <code>RigTool_NickMuJoCo</code>; everything else is edited in the Editor.</p>
   <p class="note">A stale constant silently downgrades a scene you just wired up. Both contest scenes pinned <code>Locomotion_gen7</code> through such a constant for five generations, and the walk contest's finish-line material was reverted this way after being fixed — caught by <code>SceneTool_Audit</code>.</p>
 </section>
 
@@ -181,7 +168,7 @@ const SCENES=[
    ["Directional Light","art","Key light.","Light, UniversalAdditionalLightData"],
    ["Main Camera","live","Carries both cameras: the menu orbit and the drama camera that follows the action. Cinemachine brain for blends.","Camera, Systems_DramaCamera, Systems_MenuOrbitCamera, CinemachineBrain, AudioListener"],
    ["CM_WinnerCamera","sleep","Cinemachine camera activated only for the winner beat.","CinemachineCamera"],
-   ["ContestSpawner","spawn","Holds the roster and spawn slots. Disables the ML-Agents communicator in Awake, then spawns and wakes the systems root.","Systems_ContestSpawner, Systems_MiniGameLauncher"],
+   ["ContestSpawner","spawn","Holds the roster and spawn slots. Adopts the contestants placed in the scene and wakes the systems root.","Systems_ContestSpawner, Systems_MiniGameLauncher"],
    ["ContestSystems","sleep","Starts inactive with 115 descendants. Woken by the spawner: BalanceContest referee, Announcer, WinnerBanner, HazardDirector, RoundCountdown, KnockoutFx, FallImpactFx, CrowdAudio, MatchDirector, DebugOverlay, WinnerCamera.","—"],
    ["HudChrome","live","Always-on UI layer: version stamp and FPS counter ride this document for the whole match.","UIDocument, Systems_VersionStamp, Systems_FpsCounter"]
   ]},
@@ -196,12 +183,6 @@ const SCENES=[
    ["MiniGameLauncher","spawn","Spawner plus launcher on one object. Auto-starts — this scene has no setup menu.","Systems_ContestSpawner, Systems_MiniGameLauncher"],
    ["ContestSystems","sleep","Inactive until spawn: WalkContest referee, Announcer, CrowdAudio, RoundCountdown, WinnerBanner, MatchDirector, FallImpactFx.","—"],
    ["HudChrome","live","Version stamp and FPS counter.","UIDocument, Systems_VersionStamp, Systems_FpsCounter"]
-  ]},
- {n:"SCN_TRAIN_LOCOMOTION",idx:"Not in build",roots:17,
-  role:"The gym. Headless by project rule — no cameras, no HUD, no audio. Sixteen fully-unpacked fighters so training components never become prefab overrides.",
-  objs:[
-   ["Ground","art","One shared 4×4 grid of spawn slots.","MeshFilter, BoxCollider, MeshRenderer"],
-   ["Fighter_00 … Fighter_15","spawn","Sixteen identical rigs, ~29 descendants each. Every one carries the agent, its reward, and the three training-only disturbance systems.","Systems_FighterRig, Systems_Stamina, BehaviorParameters, Agent_FighterBoxing, DecisionRequester, Systems_Shover, Systems_StrengthCurriculum, Systems_TrainingCubes, Reward_Locomotion"]
   ]}
 ];
 

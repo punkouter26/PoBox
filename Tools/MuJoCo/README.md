@@ -2,22 +2,9 @@
 
 Training RIGGED_Nick to balance and walk in **MuJoCo Warp**, for deployment
 into Unity through the **MuJoCo Unity plugin** (`Packages/org.mujoco`,
-3.12.0), and the comparison point for the Isaac Lab line in `Tools/Isaac/`.
-
-Two custom creatures, two trainers, one question: which route gets a working
-humanoid into Unity?
-
-| | Matt (Tools/Isaac) | Nick (this folder) |
-|---|---|---|
-| Trainer | Isaac Lab 2.2 / Isaac Sim 5.0, rsl_rl PPO | mujoco_warp 3.12.0, rsl_rl PPO (same version, same hyperparameters) |
-| Training physics | PhysX articulations | MuJoCo (Warp port) |
-| Unity physics | Unity PhysX `ConfigurableJoint` ragdoll | MuJoCo 3.12.0 itself, via the plugin's `MjScene` |
-| Sim-to-sim gap | PhysX → PhysX, but articulation vs. ragdoll, D6 vs. slerp drives, USD vs. bone frames | MuJoCo → MuJoCo, same version, same MJCF |
-| Observation contract | Isaac-native 102, adapter on the Unity side | The project's own 121 (+6 command) built identically in C# and Python |
-
-The whole difference is the last two rows. Matt's policy has to survive a
-translation between two physics engines and two rig conventions; Nick's runs
-on the same engine and the same model file in both places.
+3.12.0). This is the project's only training line: the policy runs on the
+same engine and the same model file in the trainer and in the game, which is
+what makes a policy trained here survive the trip into Unity.
 
 ## What ships, as of 2026-09-09
 
@@ -73,8 +60,8 @@ Two things about this folder's name and history:
 (nick02 to iteration 600, then resumed with the planted-feet term for 1500
 more). Fresh-start on 512 worlds: 93% survive 30 s of 150 N shoves every 4 s,
 100% walk 20 s at 1.008 m/s. In Unity (`Nick_DemoScene`, shoves on): 0 falls,
-7 cm drift standing, 0.968 m/s walking. The full tables and the Isaac
-comparison are in `Tools/COMPARISON_Matt_vs_Nick.md`.
+7 cm drift standing, 0.968 m/s walking. The full tables lived in a
+comparison document removed with the Isaac Lab line on 2026-09-14.
 
 Known cosmetic flaw: he lifts his feet ~0.3 m when walking, a high march. The
 clearance factor saturates at 0.10 m and nothing penalises going higher; a
@@ -100,7 +87,7 @@ Unity side, in `Assets/MuJoCoCreature/`:
 | Path | What |
 |---|---|
 | `Scripts/CreatureSentisController.cs` | Inference. Builds the observation vector, maps actions to `ctrl`. `_observeLocomotionCommand` adds the 6-term command; `_decimation` holds targets between decisions |
-| `Scripts/Systems_NickDemo.cs` | Cycles BALANCE (with shoves) and WALK, logs `NICK_DEMO` lines with the `MATT_DEMO` columns, HUD, camera |
+| `Scripts/Systems_NickDemo.cs` | Cycles BALANCE (with shoves) and WALK, logs `NICK_DEMO` lines, HUD, camera |
 | `Scripts/Systems_NickParityProbe.cs` | C# half of `parity_check.py` |
 | `Editor/RigTool_NickMuJoCo.cs` | `BuildDemoScene`, `ExportNickMjcf`, `PlayDemo`, `StopDemo`, `RunParityProbe` |
 | `Scenes/Nick_DemoScene.unity` | Generated. Nick alone, skinned mesh bound to the MuJoCo bodies |
@@ -131,8 +118,7 @@ echo PoBox.Editor.RigTool_NickMuJoCo.PlayDemo > Temp/agent-command.txt
 
 - **Observations: 127** = the 121-term balance vector `CreatureSentisController`
   always built, plus commanded speed, pelvis-local commanded direction (3), and
-  the 1.4 Hz gait clock (sin, cos) — `Agent_FighterBoxing`'s
-  `_observeLocomotionCommand` block, term for term.
+  the 1.4 Hz gait clock (sin, cos).
 - **Foot contact is rest-relative** under the locomotion contract: an ankle
   body within 0.03 m of its rest height. The legacy absolute 0.0525 m threshold
   is kept for the 2026-08-31 balance brain and never fires while standing (the
@@ -160,8 +146,8 @@ echo PoBox.Editor.RigTool_NickMuJoCo.PlayDemo > Temp/agent-command.txt
   `train_nick_loop.py`: checkpoints every 50 iterations, relaunch with
   `--resume-latest` and an absolute `--until-iteration`, so a crash costs at
   most two minutes. Launch runs through the loop, not `train_nick.py` directly.
-- **Check the GPU before judging throughput.** An Isaac run from another
-  session was drawing 87% of the GPU while the first profile ran.
+- **Check the GPU before judging throughput.** A run from another session
+  was drawing 87% of the GPU while the first profile ran.
 - **`mujoco_warp` returns quaternions wxyz** (it converts from Warp's xyzw on
   the way out) and `cvel` as `[angular, linear]`, both matching CPU MuJoCo;
   `NickEnv.self_check` measures this rather than assuming it.

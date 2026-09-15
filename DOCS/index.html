@@ -39,50 +39,40 @@ code{font-family:"IBM Plex Mono",monospace}
 </style>
 <main>
 <header>
-  <div class="kicker">Unity 6000.5.6f1 · ML-Agents 4.1.0 · generated 2026-08-23</div>
+  <div class="kicker">Unity 6000.6.0f1 · MuJoCo 3.12.0 · Inference Engine 2.6.1 · updated 2026-09-14</div>
   <h1>PoBox<br>documentation</h1>
-  <p class="lede">An active-ragdoll boxing project whose fighters are ML-Agents policies. Every figure below is generated from the repository — ONNX graphs, TensorBoard telemetry, and the live Unity Editor.</p>
+  <p class="lede">An active-ragdoll boxing project whose fighters are MuJoCo bodies driven by policies trained in MuJoCo Warp. The Unity ML-Agents / PhysX line and the Isaac Lab comparison were removed on 2026-09-14; the pages that described them went with them.</p>
 </header>
 
 <div class="cards">
-  <a class="card" href="creatures_dashboard.html">
-    <h2>Fight Lab dashboard</h2>
-    <p>The interactive one. Executive and Technical modes, three depth tiers, generational telemetry, tensor graphs, joint physics and hyperparameters.</p>
-    <span class="tag">Executive + Technical · 3 tiers</span>
-    <span class="f">creatures_dashboard.html</span>
-  </a>
-  <a class="card" href="training_motivation.html">
-    <h2>What the fighter wants</h2>
-    <p>The same story drawn around motive rather than architecture, in the <code>diagram-design</code> editorial house style. Hand-authored SVG, single accent, density held low.</p>
-    <span class="tag">Editorial · 3 tiers</span>
-    <span class="f">training_motivation.html</span>
-  </a>
   <a class="card" href="scenes.html">
     <h2>Scene anatomy</h2>
-    <p>Four scenes, every root object, what it does, and the exact order a contest starts in — including why fighters are built under an inactive holder.</p>
-    <span class="tag">Reference · 3 tiers</span>
+    <p>The three shipping scenes, every root object, what it does, and the exact order a contest starts in.</p>
+    <span class="tag">Reference</span>
     <span class="f">scenes.html</span>
   </a>
-  <a class="card" href="onnx_summary.md">
-    <h2>ONNX &amp; rig inventory</h2>
-    <p>Matrix A: seventeen models with I/O shapes, parameter counts, run IDs and promotion status. Matrix B: fourteen joints with drive modes, DOF and purpose.</p>
-    <span class="tag">Markdown · 3 tiers</span>
-    <span class="f">onnx_summary.md</span>
+  <a class="card" href="../Tools/MuJoCo/README.md">
+    <h2>MuJoCo Warp line: Nick</h2>
+    <p>How Nick is trained, measured, exported and run in Unity — the pipeline in order, the observation contract, and what was learned the hard way.</p>
+    <span class="tag">Training</span>
+    <span class="f">Tools/MuJoCo/README.md</span>
+  </a>
+  <a class="card" href="../CLAUDE.md">
+    <h2>Project guide</h2>
+    <p>Commands, architecture, the brains on disk and the rules that keep the trainer and the game reading one body.</p>
+    <span class="tag">Guide</span>
+    <span class="f">CLAUDE.md</span>
   </a>
 </div>
 
 <div class="tblwrap">
   <table>
-    <thead><tr><th>Diagram</th><th>Simple</th><th>Detailed</th></tr></thead>
+    <thead><tr><th>Diagram</th><th>SVG</th></tr></thead>
     <tbody>
-      <tr><td>Lifecycle &amp; execution loop</td><td><a href="assets/lifecycle-simple.svg">SVG</a></td><td><a href="assets/lifecycle-detailed.svg">SVG</a></td></tr>
-      <tr><td>Tensor blueprint &amp; actuator map</td><td><a href="assets/tensor-simple.svg">SVG</a></td><td><a href="assets/tensor-detailed.svg">SVG</a></td></tr>
-      <tr><td>Perception &amp; reward tree</td><td><a href="assets/reward-simple.svg">SVG</a></td><td><a href="assets/reward-detailed.svg">SVG</a></td></tr>
-      <tr><td>Hyperparameter &amp; trainer spec</td><td><a href="assets/trainer-simple.svg">SVG</a></td><td><a href="assets/trainer-detailed.svg">SVG</a></td></tr>
-      <tr><td>Scene flow</td><td colspan="2"><a href="assets/scene-flow.svg">SVG</a></td></tr>
+      <tr><td>Scene flow</td><td><a href="assets/scene-flow.svg">SVG</a></td></tr>
     </tbody>
   </table>
 </div>
 
-<p style="margin-top:28px;font-size:13px;color:var(--ink-3);max-width:none">Mermaid sources in <code>DOCS/diagrams/*.mmd</code>, compiled with <code>@mermaid-js/mermaid-cli</code> to <code>DOCS/assets/*.svg</code>. Chart palettes validated against the CVD/contrast checks before use.</p>
+<p style="margin-top:28px;font-size:13px;color:var(--ink-3);max-width:none">Mermaid source in <code>DOCS/diagrams/scene-flow.mmd</code>, compiled with <code>@mermaid-js/mermaid-cli</code> to <code>DOCS/assets/scene-flow.svg</code>.</p>
 </main>

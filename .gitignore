@@ -17,11 +17,8 @@
 # Per-build reports written by BuildReportInspector: GUID-named, one per build.
 /[Aa]ssets/BuildReports/
 
-# ML-Agents
-.venv/
+# Training runs: Tools/MuJoCo/train_nick.py writes results/nick/<run>.
 results/
-models/
-summaries/
 
 # Asset store tools
 /[Aa]ssets/AssetStoreTools*
@@ -68,10 +65,8 @@ crashlytics-build.properties
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
-EnvBuild/
-
-# Play publishing tooling venv — deliberately not .venv, which carries
-# load-bearing ml-agents/torch pins.
+# Play publishing tooling venv — kept apart from Tools/MuJoCo/.venv, whose
+# pins are load-bearing for training.
 Tools/publish-venv/
 
 # Python bytecode from the Tools/ scripts
@@ -80,30 +75,11 @@ __pycache__/
 # Written by the Unity Performance Testing package on every batchmode run.
 /[Aa]ssets/Resources/PerformanceTestRun*.json*
 
-# Brain evaluation player (Build_EvalEnv), rebuilt on demand.
-EvalBuild/
-eval/
-EnvBuild2/
-Assets/Agents/_Candidates/
-EnvBuild3/
-EnvBuild4/
-EnvBuild5/
-
-# Build_EvalEnv stages brains here at build time and deletes them afterwards.
-# Ignored so a build that dies midway cannot leave a second copy of every brain
-# in the repo -- and because anything under a Resources folder is dragged into
-# the shipped Android and WebGL players whether a scene references it or not.
-/[Aa]ssets/Resources/EvalBrains/
-/[Aa]ssets/Resources/EvalBrains.meta
-/[Aa]ssets/Agents/_Candidates.meta
 SmokeBuild/
 SmokeBuildWalk/
-EnvBuild6/
 WatchBuild/
 shots/
 
 # MuJoCo plugin's runtime log and trainer stderr dumps — run artifacts.
 MUJOCO_LOG.TXT
 Tools/MuJoCo/*.err
-# ML-Agents profiler output: rewritten on every play, meaningless in review.
-Assets/ML-Agents/Timers/

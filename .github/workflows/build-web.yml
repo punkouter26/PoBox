@@ -42,8 +42,8 @@ jobs:
         with:
           # game-ci/unity-builder pulls the project itself, but we still need
           # checkout for the artifact path context. LFS for the .onnx brains
-          # used by BehaviorParameters — without it Unity falls back to
-          # random heuristics during import and breaks the agents.
+          # the Inference Engine loads — without it Unity imports LFS pointer
+          # files instead of models and every creature runs without a policy.
           lfs: true
           submodules: recursive
 

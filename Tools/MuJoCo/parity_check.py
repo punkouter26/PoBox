@@ -9,12 +9,11 @@ the live MjScene and dump CreatureSentisController's observation vector, then
 builds the same vector here from the same state on CPU MuJoCo via
 nick_env.observe and diffs the two.
 
-Why this exists: ML-Agents and InferenceEngine check tensor SHAPE only. A
-quaternion in the wrong order, a velocity in the wrong frame, or a contact
-flag on the wrong threshold is the same width as the right thing and trains a
-policy for a creature that does not exist. The Isaac line lost gens 1-7 to
-exactly that class of bug (Tools/Isaac/README.md, root cause). This is the
-check that would have caught it.
+Why this exists: InferenceEngine checks tensor SHAPE only. A quaternion in
+the wrong order, a velocity in the wrong frame, or a contact flag on the wrong
+threshold is the same width as the right thing and trains a policy for a
+creature that does not exist. Earlier lines in this project lost whole
+generations to exactly that class of bug. This is the check that catches it.
 """
 from __future__ import annotations
 

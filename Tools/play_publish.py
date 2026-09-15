@@ -98,7 +98,7 @@ def access_token(credentials_path):
             "  Tools/publish-venv/Scripts/python.exe -m pip install "
             "-r Tools/requirements-publish.txt\n"
             "then re-run this script with that interpreter. Do NOT install it "
-            "into .venv — that venv's pins are load-bearing for ML-Agents training."
+            "into Tools/MuJoCo/.venv — that venv's pins are load-bearing for training."
         )
 
     if not os.path.exists(credentials_path):

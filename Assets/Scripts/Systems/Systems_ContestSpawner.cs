@@ -1,31 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using Unity.InferenceEngine;
-using Unity.MLAgents;
-using Unity.MLAgents.Policies;
 using UnityEngine;
 
 namespace PoBox
 {
     /// <summary>
-    /// One selectable fighter kind for the contest setup menu: prefab plus its
-    /// brain (null or forceHeuristic = code-driven PD bot) and an optional
-    /// tint that marks it in the ring.
+    /// One selectable fighter kind for the contest setup menu: a prefab and
+    /// an optional tint that marks it in the ring. The prefab carries its own
+    /// brain (a MuJoCo creature loads its policy through
+    /// CreatureSentisController). Empty in both shipping scenes since the
+    /// PhysX cast was removed on 2026-09-14: every contestant stands in the
+    /// scene at author time and is adopted rather than spawned.
     /// </summary>
     [Serializable]
     public sealed class ContestRosterEntry
     {
         public string displayName;
         public GameObject prefab;
-        public ModelAsset model;
-        public bool forceHeuristic;
         public Material tint;
-        // True when `model` belongs to the locomotion model line, which adds
-        // the commanded-speed observations. Those brains will not load onto a
-        // fighter left in the older layout — the observation vector is a
-        // different size — so the spawner must switch the flag on before the
-        // agent initializes.
-        public bool locomotionBrain;
     }
 
     /// <summary>
@@ -36,8 +28,6 @@ namespace PoBox
     /// </summary>
     public sealed class Systems_ContestSpawner : MonoBehaviour
     {
-        // ML-Agents names the single vector-observation input of an exported brain
-        // obs_0; the contest rigs have exactly one, so this is the tensor to measure.
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         /// <summary>
         /// World Y of the ring canvas the fighters stand on. Assets/Art/BoxingRing.glb
@@ -130,20 +120,8 @@ namespace PoBox
         }
 
         /// <summary>
-        /// Contest scenes must never open a trainer connection.
-        ///
-        /// The Academy initialises lazily the first time an Agent wakes, and it
-        /// tries port 5004 when it does, logging "Couldn't connect to trainer on
-        /// port 5004 ... Will perform inference instead" in every contest.
-        /// Harmless-looking, and it is not: a contest scene played while
-        /// mlagents-learn is listening CONNECTS to it and hands the trainer an
-        /// environment with no trainable behaviours, which is why training has
-        /// had to be stopped by hand for every in-scene test. In a shipped build
-        /// it is a pointless socket attempt on startup.
-        ///
-        /// Awake is early enough because no fighter exists yet -- SpawnAndBegin
-        /// is what creates them, so the Academy has had nothing to initialise
-        /// for.
+        /// Per-scene reset of the static line-up count, before any contestant
+        /// exists.
         /// </summary>
         private void Awake()
         {
@@ -151,7 +129,6 @@ namespace PoBox
             // a value left over from a contest would be reported over a scene that
             // has not fielded anyone yet.
             LastFieldedCount = 0;
-            Unity.MLAgents.CommunicatorFactory.Enabled = false;
 
             // HERE AS WELL AS IN SpawnAndBegin, BECAUSE HALF THE CONTEST SCENES
             // NEVER SPAWN ANYTHING. `Tools/ML Boxing/15` places the roster into
@@ -505,11 +482,6 @@ namespace PoBox
                 AddSpectatorSystem<Systems_JointStressView>(systemsRoot, "JointStressView");
                 added++;
             }
-            if (systemsRoot.GetComponentInChildren<Systems_TaleOfTheTape>(true) == null)
-            {
-                AddSpectatorSystem<Systems_TaleOfTheTape>(systemsRoot, "TaleOfTheTape");
-                added++;
-            }
             // Contact shadows, footfalls and the strain tint. Same contract as
             // the four above: they discover fighters themselves, load what they
             // need from Systems_SpectatorKit, and hold no scene state — so they
@@ -563,7 +535,7 @@ namespace PoBox
         /// Instantiates one fighter under <paramref name="holder"/> — which the caller
         /// keeps inactive — configures it, then reparents it to the scene root. That
         /// last step is what activates it, so Awake and OnEnable run against the
-        /// finished BrainParameters rather than the prefab's.
+        /// finished configuration rather than the prefab's.
         /// </summary>
         private static void Spawn(ContestRosterEntry entry, Transform holder,
             Vector3 position, Quaternion rotation, string instanceName, int copyIndex, int rosterIndex)
@@ -576,117 +548,44 @@ namespace PoBox
         }
 
         /// <summary>
-        /// PUBLIC so the editor tool that places the roster at author time
-        /// calls this exact code rather than a second copy of it. The
-        /// observation size is set here, and a scene whose fighters were
-        /// configured by a divergent copy would mis-size its sensors in total
-        /// silence -- see the observation-size contract in CLAUDE.md.
-        /// Safe to call from the Editor: components do not Awake until play
-        /// begins, so anything set here is serialized before the sensor exists.
+        /// PUBLIC so an editor tool that places a roster entry at author time
+        /// calls this exact code rather than a second copy of it. Safe to call
+        /// from the Editor: components do not Awake until play begins.
         /// </summary>
         public static void Configure(GameObject instance, ContestRosterEntry entry, int copyIndex,
             int rosterIndex)
         {
             var rig = instance.GetComponent<Systems_FighterRig>();
-            var agent = instance.GetComponent<Agent_FighterBoxing>();
             var stamina = instance.GetComponent<Systems_Stamina>();
-            if (agent != null) { agent.MaxStep = 0; }      // the referee owns the round lifecycle
             if (stamina != null) { stamina.enabled = false; }
 
-            // A fighter that is NOT a PhysX rig — the MuJoCo creature answers
-            // IContestFighter instead — has no rig to hang fall sensors on and no
-            // agent to size. The ring referees it through that interface instead,
-            // so there is nothing here for it. Returning is the whole of its
-            // configuration, and it has to happen BEFORE the first unguarded
-            // dereference: `agent.MaxStep` on a null used to throw inside the
-            // inactive spawn holder, which takes the entire line-up down with it
-            // and leaves the ring empty. This is what makes such a fighter
-            // spawnable from a roster entry at all.
-            if (rig == null || agent == null)
+            // A fighter that is NOT a PhysX rig -- a MuJoCo creature answers
+            // IContestFighter instead -- has no rig to hang fall sensors on. The
+            // ring referees it through that interface, so only the tint and the
+            // identity below apply to it.
+            if (rig != null)
             {
-                return;
-            }
-
-            // Fall sensors by role, not by joint index: the raptor's joint
-            // list is a different shape than the humanoids', and gloves exist
-            // only on rigs with arms. Shins are found by name — the same
-            // convention Reward_Balance and the heuristic bot already rely on.
-            rig.Torso.gameObject.AddComponent<Sensor_GroundContact>();
-            rig.Head.gameObject.AddComponent<Sensor_GroundContact>();
-            for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
-            {
-                var jointBody = rig.Joints[jointIndex].body;
-                if (jointBody != null &&
-                    jointBody.name.IndexOf("shin", StringComparison.OrdinalIgnoreCase) >= 0)
+                // Fall sensors by role, not by joint index: shins are found by
+                // name, and gloves exist only on rigs with arms.
+                rig.Torso.gameObject.AddComponent<Sensor_GroundContact>();
+                rig.Head.gameObject.AddComponent<Sensor_GroundContact>();
+                for (int jointIndex = 0; jointIndex < rig.Joints.Count; jointIndex++)
                 {
-                    jointBody.gameObject.AddComponent<Sensor_GroundContact>();
+                    var jointBody = rig.Joints[jointIndex].body;
+                    if (jointBody != null &&
+                        jointBody.name.IndexOf("shin", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        jointBody.gameObject.AddComponent<Sensor_GroundContact>();
+                    }
                 }
-            }
-            if (rig.GloveLeft != null)
-            {
-                rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
-            }
-            if (rig.GloveRight != null)
-            {
-                rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
-            }
-
-            // DECISION CADENCE IS THE CONTRACT; THE PHYSICS STEP IS NOT.
-            // Every brain in this roster was trained deciding once per 0.02 s
-            // with DecisionPeriod 1. Sharing a scene with a MuJoCo creature
-            // costs a finer step -- CreatureSentisController pins
-            // Time.fixedDeltaTime for the whole scene -- and at 0.005 s a
-            // DecisionPeriod of 1 drives these policies FOUR TIMES too fast.
-            // Holding each action for proportionally more physics steps is
-            // exactly MuJoCo's decimation under another name, and it keeps the
-            // 50 Hz the policy learned. The gait clock needs no help: it is
-            // StepCount * Time.fixedDeltaTime, i.e. elapsed seconds already.
-            var requester = instance.GetComponent<DecisionRequester>();
-            if (requester != null)
-            {
-                requester.DecisionPeriod = Mathf.Max(1, Mathf.RoundToInt(
-                    TRAINED_DECISION_SECONDS / Mathf.Max(1e-5f, Time.fixedDeltaTime)));
-            }
-
-            var behavior = instance.GetComponent<BehaviorParameters>();
-            if (behavior == null)
-            {
-                // Same reasoning as the rig guard above: an agent with no
-                // BehaviorParameters cannot be given a brain or a sensor size,
-                // and the null dereference would land inside the spawn holder.
-                return;
-            }
-            if (entry.locomotionBrain)
-            {
-                agent.SetObserveLocomotionCommand(true);
-            }
-            // Size the sensor from what this agent will actually emit, on every
-            // fighter rather than only the locomotion ones. Restating the flags here
-            // is what let the walk contest ship a 121-wide sensor to a 127-observation
-            // agent; asking the agent removes the chance to disagree. Correct at this
-            // point only because Spawn keeps the instance inactive until Configure
-            // returns, so the sensor has not been built from this value yet.
-            behavior.BrainParameters.VectorObservationSize = agent.ExpectedObservationCount;
-
-            int sensorSize = behavior.BrainParameters.VectorObservationSize;
-            if (entry.forceHeuristic || entry.model == null)
-            {
-                behavior.BehaviorType = BehaviorType.HeuristicOnly;
-            }
-            else if (AcceptBrain(entry, instance.name, sensorSize))
-            {
-                behavior.Model = entry.model;
-                behavior.BehaviorType = BehaviorType.InferenceOnly;
-            }
-            else
-            {
-                // Refused, not merely reported. A brain whose obs_0 is a
-                // different width than this fighter emits reads a vector that
-                // is shifted from the first differing observation onward, so
-                // every number after it means something else than it did in
-                // training. The heuristic PD bot is a worse fighter but an
-                // honest one, and it is the project's mandated fallback.
-                behavior.BehaviorType = BehaviorType.HeuristicOnly;
+                if (rig.GloveLeft != null)
+                {
+                    rig.GloveLeft.gameObject.AddComponent<Sensor_GroundContact>();
+                }
+                if (rig.GloveRight != null)
+                {
+                    rig.GloveRight.gameObject.AddComponent<Sensor_GroundContact>();
+                }
             }
 
             if (entry.tint != null)
@@ -786,15 +685,5 @@ namespace PoBox
             return wash;
         }
 
-        /// <summary>
-        /// True when <paramref name="entry"/>'s brain reads the vector this
-        /// fighter emits. The check itself lives in
-        /// <see cref="Systems_BrainCompatibility"/>, so the offline evaluation
-        /// harness refuses exactly the brains this spawner refuses.
-        /// </summary>
-        private static bool AcceptBrain(ContestRosterEntry entry, string instanceName, int sensorSize)
-        {
-            return Systems_BrainCompatibility.Accept(entry.model, instanceName, sensorSize);
-        }
     }
 }

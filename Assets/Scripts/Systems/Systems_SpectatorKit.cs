@@ -1,4 +1,3 @@
-using Unity.InferenceEngine;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -6,7 +5,7 @@ namespace PoBox
 {
     /// <summary>
     /// The assets the spectator layer needs and cannot obtain any other way:
-    /// two materials, the impact foley set, and the brain dossiers.
+    /// two materials, the impact foley set and the mix.
     ///
     /// WHY IT IS LOADED FROM Resources. Every system that reads this is created
     /// at RUNTIME by <see cref="Systems_ContestSpawner"/> rather than placed in
@@ -57,9 +56,6 @@ namespace PoBox
         [Tooltip("Announcer bus — the bell and the play-by-play. Never ducked.")]
         public AudioMixerGroup announcerGroup;
 
-        [Tooltip("One per brain under Assets/Agents. Matched to a roster entry by ModelAsset reference.")]
-        public Systems_BrainDossier[] dossiers;
-
         /// <summary>
         /// The kit, or null when it has not been generated. Callers must handle
         /// null: the kit is a presentation nicety and no contest depends on it
@@ -70,27 +66,5 @@ namespace PoBox
             return Resources.Load<Systems_SpectatorKit>(RESOURCE_PATH);
         }
 
-        /// <summary>
-        /// Dossier for <paramref name="modelAsset"/>, or null. Matched by
-        /// asset reference rather than by name: two brains exported from the
-        /// same run carry the same file name often enough that a string match
-        /// would confidently return the wrong generation.
-        /// </summary>
-        public Systems_BrainDossier Find(ModelAsset modelAsset)
-        {
-            if (modelAsset == null || dossiers == null)
-            {
-                return null;
-            }
-            for (int dossierIndex = 0; dossierIndex < dossiers.Length; dossierIndex++)
-            {
-                Systems_BrainDossier dossier = dossiers[dossierIndex];
-                if (dossier != null && dossier.model == modelAsset)
-                {
-                    return dossier;
-                }
-            }
-            return null;
-        }
     }
 }

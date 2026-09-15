@@ -70,10 +70,9 @@ namespace PoBox
         /// <summary>
         /// Which <see cref="ContestRosterEntry"/> this fighter was spawned
         /// from, or -1 for a fighter placed by hand. It is the only reliable
-        /// route from a body in the ring back to the BRAIN it was given, which
-        /// is what <see cref="Systems_TaleOfTheTape"/> needs: the display name
-        /// cannot do it, because a ring holding two of a kind names them
-        /// "Grandma" and "Grandma2" and only the first matches any roster entry.
+        /// route from a body in the ring back to the roster entry it came from:
+        /// the display name cannot do it, because a ring holding two of a kind
+        /// names them "Nick" and "Nick2" and only the first matches any entry.
         /// </summary>
         public int RosterIndex => _rosterIndex;
 

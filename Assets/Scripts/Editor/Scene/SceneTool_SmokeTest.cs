@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Unity.MLAgents.Policies;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -15,20 +14,12 @@ namespace PoBox.Editor
     /// Plays every NON-TRAINING scene in the open Editor and writes a telemetry
     /// report to Tools/cleanup/SCENE_SMOKE_REPORT.md.
     ///
-    /// WHY THIS EXISTS. The training scenes are covered: verify_train_scene.py
-    /// reads their YAML and catches a hole in the fall detector without opening
-    /// Unity. Nothing covered the three scenes that actually SHIP. The failure
-    /// this is built to catch is the documented one -- ten of sixteen fighters
-    /// throwing NullReferenceException every physics tick while the aggregate
-    /// still reads plausible -- so it reports PER FIGHTER, and counts exceptions
-    /// by signature rather than trusting a mean.
-    ///
-    /// It also records what each fighter's brain actually resolved to. A brain
-    /// assigned from code mismatches its sensor in total silence, and
-    /// Systems_BrainCompatibility.Accept is the only thing standing between that
-    /// and a scene that looks fine while every fighter runs the fallback PD bot.
-    /// The report prints sensor and expected observation width side by side so a
-    /// silent mismatch is visible.
+    /// WHY THIS EXISTS. Nothing else covers the three scenes that actually
+    /// SHIP. The failure this is built to catch is a body throwing an exception
+    /// every physics tick while the scene still looks plausible -- so it
+    /// reports PER CONTESTANT, counts exceptions by signature rather than
+    /// trusting a mean, and checks that the referee's round flow can actually
+    /// finish a match.
     ///
     /// RUN IT with the command bridge, which is the only way in while the Editor
     /// is open:
@@ -290,15 +281,6 @@ namespace PoBox.Editor
 
             foreach (var rig in rigs.OrderBy(r => r.name, StringComparer.Ordinal))
             {
-                var agent = rig.GetComponentInParent<Agent_FighterBoxing>();
-                if (agent == null) { agent = rig.GetComponentInChildren<Agent_FighterBoxing>(); }
-                var bp = agent != null ? agent.GetComponent<BehaviorParameters>() : null;
-
-                string model = bp != null && bp.Model != null ? bp.Model.name : "(none)";
-                string behavior = bp != null ? bp.BehaviorType.ToString() : "(no BehaviorParameters)";
-                int sensor = bp != null ? bp.BrainParameters.VectorObservationSize : -1;
-                int expected = agent != null ? agent.ExpectedObservationCount : -1;
-
                 var id = rig.GetComponentInParent<Systems_FighterIdentity>();
                 string identity = id != null ? id.DisplayName : "(none)";
 
@@ -315,10 +297,6 @@ namespace PoBox.Editor
                     rig.name,
                     identity,
                     $"joints={rig.JointCount}",
-                    $"sensor={sensor}",
-                    $"expected={expected}",
-                    $"model={model}",
-                    $"behavior={behavior}",
                     $"pelvisHeight={Fmt(height)}",
                     $"upright={Fmt(upright)}"));
             }
@@ -421,8 +399,8 @@ namespace PoBox.Editor
             sb.AppendLine($"Generated {DateTime.Now:yyyy-MM-dd HH:mm} by `SceneTool_SmokeTest.RunAll`,");
             sb.AppendLine($"{SecondsPerScene:0} s of play mode per scene in the open Editor.");
             sb.AppendLine();
-            sb.AppendLine("`sensor` is the width the VectorSensor was built at, `expected` is what");
-            sb.AppendLine("`ComputeObservationCount` derives from the rig. They must agree.");
+            sb.AppendLine("`fighter` rows are PhysX rigs (none since the cast was removed on 2026-09-14);");
+            sb.AppendLine("`contestant` rows are IContestFighter implementers such as Nick.");
             sb.AppendLine();
 
             for (int i = 0; i < Scenes.Length; i++)

@@ -5,26 +5,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 PoBox is a Unity 6000.6.0f1 (URP, portrait 9:16) active-ragdoll boxing game whose
-fighters are driven by ML-Agents policies. Most of the work here is not gameplay
-code — it is training brains that can stand and walk, and building the harness
-scenes used to evaluate them.
+fighters are **MuJoCo bodies driven by policies trained in MuJoCo Warp**. Most
+of the work here is not gameplay code — it is training brains that can stand
+and walk, and keeping the contest scenes that show them honest.
 
-There is no test suite, no linter, and no build script in the repo. The build,
-scene generation, and training entry points are all listed below.
+There is no test suite, no linter, and no build script in the repo. The scene
+checks, training entry points and build commands are all listed below.
 
 Binding rules for agents working here are in [AGENTS.md](AGENTS.md): branch
-policy and what `git sync` means, **new training goes to MuJoCo/Newton rather
-than ML-Agents**, **ask for the skinned mesh before building a rig**, when to
-close the Editor for a long run, TensorBoard, showing the simulator's UI,
-**authoring scene objects through MCP instead of from code**, which Unity MCP
-servers are available, fighter colours, physical realism including joint
-speed/force limits and full collision, and how to write an answer.
-`DOCS/` holds the project's own summary of itself; read it for orientation.
+policy and what `git sync` means, **MuJoCo Warp / Newton is the only trainer**,
+**ask for the skinned mesh before building a rig**, when to close the Editor
+for a long run, TensorBoard, showing the simulator's UI, **authoring scene
+objects through MCP instead of from code**, which Unity MCP servers are
+available, fighter colours, physical realism including joint speed/force
+limits and full collision, and how to write an answer. `DOCS/` holds the
+project's own summary of itself; read it for orientation.
+
+**What was removed on 2026-09-14, and must not come back:** the Unity
+ML-Agents / PhysX training line (`Agent_FighterBoxing`, the `Reward_*`
+components, `com.unity.ml-agents`, the `SCN_TRAIN_*` scenes, `Config/*.yaml`,
+the Python eval ladder) and the three PhysX fighters that ran on it (Grandma,
+Grandpa, the PhysX Raptor, and their `Locomotion_gen*` / `RaptorBalance01`
+brains), together with every Isaac Lab comparison. The cast is now Nick, a
+MuJoCo creature, and whatever MuJoCo creatures get trained next.
 
 ## User-requested operating rules
 
-- Train new policies in MuJoCo or Newton, not in the legacy ML-Agents/PhysX
-  pipeline.
+- Train new policies in MuJoCo Warp or Newton. Nothing else.
 - Keep work on `master` unless the user explicitly requests another branch.
 - Read the root `DOCS/` folder first for project context and summary material.
 - Start TensorBoard with each training run and remove stale TensorBoard runs that
@@ -35,9 +42,9 @@ speed/force limits and full collision, and how to write an answer.
   additional creatures or humans later.
 - Use the MuJoCo Android build approach from
   https://github.com/joanllobera/mujoco-bin/.
-- When training in MuJoCo or Isaac Lab, keep the simulator UI visible so the
-  motion can be observed during and after training; use Newton’s viewer if that
-  is the better viewing option.
+- When training in MuJoCo, keep the simulator UI visible so the motion can be
+  observed during and after training; use Newton's viewer if that is the better
+  viewing option.
 - Keep the motion realistic with Earth gravity, realistic mass, and a joint
   speed and force that resemble a real human's when the agent is a human.
 - Create as many prefabs, objects and static scene elements with Unity MCP as
@@ -63,50 +70,41 @@ speed/force limits and full collision, and how to write an answer.
 
 **The three shipping scenes are hand-authored assets.** `SCN_MENU`,
 `SCN_TEST_BALANCE_CONTEST` and `SCN_TEST_WALK_CONTEST` are tuned in the Editor
-and committed. The tools that used to build them
-(`RigTool_MenuScene`, `RigTool_ContestScene`, `RigTool_WalkContestScene`,
-1,622 lines) were deleted on 2026-09-08.
+and committed. The tools that used to build them were deleted on 2026-09-08,
+deliberately: `RigTool_ContestScene.BuildAll` destroyed the scene it built and
+logged "built end to end" anyway. A generator that cannot reproduce the
+artifact is not a generator; it is a way to lose one. Edit these scenes by
+hand and commit them.
 
-That is a deliberate reversal. `RigTool_ContestScene.BuildAll` destroyed the
-scene it built -- `Create()` opened a new empty scene, removing the
-`Systems_ContestSpawner` an earlier step had added and that was never
-reimplemented, so six of its nine steps bailed with "run 7c first" and it logged
-"built end to end" anyway. A generator that cannot reproduce the artifact is not
-a generator; it is a way to lose one. Edit these scenes by hand and commit them.
+Nick is placed in both contest scenes at author time by
+`RigTool_NickMuJoCo` (`PoBox/Nick/...` menu), which also builds his demo and
+ring scenes under `Assets/MuJoCoCreature/Scenes/` and exports the MJCF the
+trainer reads:
 
-**Training scenes are still generated**, because sixteen fighters on a shared
-ground box is not something to tune by hand. Those tools kept their
-`public static` entry points and LOST their menu items, so a regeneration that
-discards hand tuning cannot happen by a misclick:
-
-| Entry point | Builds |
+| Entry point | Does |
 |---|---|
-| `SceneTool_BalanceTraining.Create` / `.CreateGrandma` / `.CreateGrandpa` / `.CreateRaptor` | `SCN_TRAIN_BALANCE`, `_GRANDMA`, `_GRANDPA`, `_RAPTOR` |
-| `SceneTool_WalkTraining.Create` | `SCN_TRAIN_WALK` |
-| `SceneTool_LocomotionTraining.Create` | `SCN_TRAIN_LOCOMOTION` |
+| `RigTool_NickMuJoCo.BuildDemoScene` | Nick alone on a floor with the demo driver (`Nick_DemoScene`) |
+| `RigTool_NickMuJoCo.ExportNickMjcf` | writes the MJCF `MjScene` ACTUALLY generates to `Tools/MuJoCo/nick_unity.xml` |
+| `RigTool_NickMuJoCo.AddNickToContest` and the walk variant | places or refreshes Nick in the two contest scenes |
 
-Drive one from the command bridge while the Editor is open:
+Drive any `PoBox.Editor` static method from the command bridge while the
+Editor is open:
 
 ```powershell
-echo PoBox.Editor.SceneTool_LocomotionTraining.Create > Temp/agent-command.txt
+echo PoBox.Editor.SceneTool_SmokeTest.RunAll > Temp/agent-command.txt
 ```
 
 or headlessly with the Editor closed:
 
 ```powershell
 Unity.exe -batchmode -quit -projectPath . `
-          -executeMethod PoBox.Editor.SceneTool_LocomotionTraining.Create
+          -executeMethod PoBox.Editor.SceneTool_Audit.RunBatch
 ```
 
-**Re-running a scene tool overwrites that scene wholesale**, and the committed
-scene being healthy is no evidence that the tool still produces a healthy one.
-Regenerating `SCN_TRAIN_LOCOMOTION` on 2026-09-07 produced a scene in which ten
-of sixteen fighters threw `NullReferenceException` every physics tick and earned
-zero reward, while the trainer reported a plausible mean over the six that still
-worked. Run `python Tools/verify_train_scene.py` afterwards; it reads the YAML
-directly and needs no Unity.
-
-Fighter prefabs are still generated too, from `PoBox/Fighter/*`.
+Unity allows one process per project, so the headless form exits immediately
+while the Editor is open. **Editing a scene file on disk while that scene is
+open pops a modal "modified externally" dialog that stalls the Editor's update
+loop** — the bridge stops polling until someone presses Reload.
 
 ### Checking the shipping scenes
 
@@ -115,134 +113,66 @@ Two tools, and they catch different things:
 | Tool | Finds |
 |---|---|
 | `PoBox/Scene/Audit Shippable Scenes` (`SceneTool_Audit`) | dangling GUID references, missing tints, camera framing -- static, no play mode |
-| `PoBox/Scene/Smoke Test Shippable Scenes` (`SceneTool_SmokeTest`) | runtime exceptions, and what each fighter's brain actually resolved to |
+| `PoBox/Scene/Smoke Test Shippable Scenes` (`SceneTool_SmokeTest`) | runtime exceptions, match flow, and every contestant's state after 20 s |
 
 The smoke test plays each of the three scenes for 20 s and writes
-`Tools/cleanup/SCENE_SMOKE_REPORT.md`: errors counted by signature, then one row
-per fighter with its sensor width beside the width the rig derives. It reports
-per fighter on purpose, because an aggregate cannot see ten broken bodies behind
-six working ones. It refuses to run if an open scene has unsaved changes, since
-it walks scenes with `OpenScene`, which discards them without prompting.
+`Tools/cleanup/SCENE_SMOKE_REPORT.md`: errors counted by signature, the
+referee's round flow, then one row per contestant. It refuses to run if an
+open scene has unsaved changes, since it walks scenes with `OpenScene`, which
+discards them without prompting.
 
-It reports `IContestFighter` implementers separately from `Systems_FighterRig`,
-because Nick is refereed through that interface from another assembly and the
-rig sweep cannot see him.
+It reports `IContestFighter` implementers (Nick) separately from any
+`Systems_FighterRig`, because the creature is refereed through that interface
+from another assembly and a rig sweep cannot see him.
 
-### Training (the legacy PhysX line)
+### Training (MuJoCo Warp)
 
-**New training does not happen here.** [AGENTS.md](AGENTS.md) puts new policies
-on MuJoCo/Newton; this section documents the existing ML-Agents line, which is
-kept running so shipping brains can still be measured and rebuilt.
-
-Two ways in, and the headless one is the default now.
-
-**Headless (preferred).** Build a player once, then run as many trainers as the
-machine will take. Nothing needs the Editor open, so several generations can run
-side by side and the project stays free for builds:
+Everything lives in `Tools/MuJoCo/` with its own venv (`Tools/MuJoCo/.venv`,
+pins in `requirements.txt`). Read `Tools/MuJoCo/README.md` first.
 
 ```powershell
-Unity.exe -batchmode -quit -nographics -projectPath . -buildTarget Win64 `
-          -executeMethod PoBox.Editor.Build_TrainingEnv.Build -buildOutput EnvBuild
-.venv\Scripts\mlagents-learn Config\BoxerLocomotion21.yaml `
-          --run-id=boxer_locomotion21 --env=EnvBuild\PoBoxTrain.exe `
-          --no-graphics --num-envs 6
+# validate the env only
+Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/train_nick.py --smoke
+# a real run: TensorBoard started, viewer following the newest checkpoint
+Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/train_nick.py --run-name nick13 --num-envs 4096 --max-iterations 3000
+# judge a checkpoint -- never the reward curve
+Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/eval_nick.py --run nick13 --checkpoint model_3000.pt
+# export for Unity, with a SOURCE.txt written from the checkpoint's own name
+Tools/MuJoCo/.venv/Scripts/python.exe Tools/MuJoCo/export_onnx.py --run nick13 --checkpoint model_3000.pt
 ```
 
-Concurrent runs need **their own `--base-port` and their own env directory**:
-Windows holds a running `.exe` open, so a second generation that changes reward
-code must build to `EnvBuild2/`, `EnvBuild3/` and so on rather than over the top
-of a run in flight. Measured on a 24-core box: 6 envs sustain ~2,500 steps/s per
-run and four concurrent runs sit at ~35% CPU, so the limit is RAM (~250 MB per
-env player), not cores.
+Runs land in `results/nick/<run>/` (gitignored). `train_nick_loop.py`
+checkpoints every 50 iterations and relaunches with `--resume-latest`, so a
+crash costs at most two minutes; launch long runs through the loop.
+`watch_nick.py --follow` opens a viewer on the newest checkpoint, cycling
+BALANCE and WALK the way the Unity demo does — the UI AGENTS.md asks for.
+`newton_viewer.py` is the Newton alternative.
 
-**Attached to the Editor.** `mlagents-learn` with no `--env` waits on port 5004;
-start the trainer first, then press Play. If Unity logs `Couldn't connect to
-trainer on port 5004 ... Will perform inference instead`, nothing was listening
-and the scene just ran its baked brains.
+**The training model is the exported `nick_unity.xml`, never the authored
+`creature.xml`.** Training against the authored file is what made every early
+attempt collapse in Unity: the trainer and the game have to read one body at
+one timestep.
 
-**Start TensorBoard whenever training starts**, and prune dead runs from the
-log directory first so the live one is readable. When training in MuJoCo or
-Isaac Lab, run those with their UI visible rather than headless — watching how
-the creature moves is part of judging the policy. See [AGENTS.md](AGENTS.md).
+**In-training metrics cannot see whether a policy works.** `Metrics/fall_rate`
+read 0.0000 and mean episode length 1000/1000 for a policy whose fresh-start
+eval was 0% walk full-cap. Judge a checkpoint with `eval_nick.py`. Two rules
+it enforces:
 
-Run id matches the config name lowercased (`BoxerLocomotion21.yaml` ->
-`boxer_locomotion21`). Output lands in `results/` (gitignored), with a `.onnx`
-exported at every `checkpoint_interval` -- so a run stopped early still leaves
-usable brains behind and does not need a graceful shutdown to be salvaged.
+- **Every evaluation sets `NICK_TIMESTEP` and `NICK_DECIMATION` to the values
+  the brain was trained at**, which its `SOURCE.txt` states and `eval_nick.py`
+  prints on every run. A 0.02 s brain evaluated at 0.005 s fails exactly the
+  way a 0.005 s brain fails at 0.02 s, and one such measurement was once
+  written into this file as fact.
+- `--start-noise` (default on) perturbs the start pose. With the exact rest
+  pose, no domain randomisation and a deterministic policy, all N worlds are
+  the SAME world and the table has an effective sample size of one. The old
+  giveaway was the passive baseline reading median = mean = p25 = 1.52 s for
+  every brain ever measured.
 
-The venv pins are load-bearing -- `protobuf 3.20.3`, `torch 2.2.2`,
-`numpy 1.23.5`, `mlagents 1.1.0`, on **Python 3.10**. Any `pip install` that
-moves them breaks training; re-pin after. `Tools/requirements-training.txt`
-records the whole stack and how to rebuild it, including installing torch from
-the CPU index first -- the default index pulls the CUDA build, ten times the
-download for no benefit on 3x512 nets whose trainer is bound by environment
-throughput rather than matrix multiplies.
-
-### Measuring a brain
-
-Mean reward is not the shipping criterion for either mini-game, and the criteria
-that are -- steps between falls, upright fraction, alternation, distance reached
-before falling -- reach only TensorBoard, which only records while a trainer is
-attached. Four tools close that gap:
-
-| Tool | Answers |
-|---|---|
-| `python Tools/train_report.py <run-id>` | how a **live run** is doing, per body |
-| `pwsh -Command "& ./Tools/eval_candidates.ps1 -Runs @('<run-id>')"` | how a **finished brain** compares to the ones that ship |
-| `python Tools/verify_train_scene.py` | whether a regenerated scene has a hole in its fall detector |
-| `python Tools/ladder.py eval/*.json` | how a brain ranks against **every brain ever measured** |
-
-`eval_candidates.ps1` stages a run's latest checkpoint under `Assets/Agents`,
-rebuilds `EvalBuild/` and runs the matrix; it is safe to run while training
-continues. Pass array arguments with `-Command`, never `-File` -- under `-File`
-every argument arrives as a plain string, so `-Runs a,b` silently becomes one run
-named `a,b` and the script measures only the baselines.
-
-**Every measurement includes the heuristic PD bot.** It is the floor a policy has
-to clear, and it is not a soft one: measured 2026-09-07, it out-stands the
-shipping balance brain on the capsule by 40%.
-
-**The ladder remembers what the comparison table forgets.** `eval_compare.py`
-prints two reports side by side and then it is gone -- `eval/` is gitignored and
-the next run overwrites the files it was built from, so every promotion in this
-project's history has been argued from a table nobody can reproduce.
-`Tools/ladder.py` turns those same reports into **metric duels** and keeps them:
-one duel is one metric, on one body, in one condition, resolved between two
-brains, appended to `Tools/ladder/duels.jsonl`. Ratings are recomputed from the
-whole log every time, so `gen18` is still on the board months after anyone last
-ran it and a new checkpoint arrives into a field rather than into an empty room.
-`eval_candidates.ps1` ingests automatically at the end of a run; re-ingesting the
-same reports is a no-op, because a duel's id is a hash of the two reports'
-CONTENT rather than their filenames.
-
-Three things about it are deliberate and load-bearing:
-
-- **They are not fights.** Two brains never meet -- `Systems_EvalHarness`
-  measures each alone. A rating gap says how CONSISTENTLY one brain outmeasures
-  another across bodies and criteria, not who would win a round. The tale of
-  the tape says "Elo 1579 - 1st of 3" for exactly that reason and no stronger.
-- **The `ALL` row never duels.** An aggregate cannot see "improved the
-  characters by wrecking the capsule", which is the one outcome this project
-  has already ruled unshippable. Every duel is per body.
-- **A duel needs matching observation widths.** The width comes from the model's
-  own `obs_0` input, and a brain of a different width was measured on fighters
-  configured with a different sensor -- so the two reports are not like-for-like
-  however identical their scene and episode count look. Mismatched pairs are
-  skipped with a line on stderr.
-
-`PoBox/Brains/Import Ladder Ratings` (`Editor_LadderImport`) copies the ratings
-into the brain dossiers, where the tale of the tape shows them. It **refuses** a
-rating whose ladder width disagrees with the `.onnx` now sitting in
-`Assets/Agents/<name>/`: brain folder names here have historically lied about
-which generation they hold, and a rating written past that check would put a
-measured number beside a brain that never earned it.
-
-**Statistics are written per body** (`Locomotion/Grandma/StepsBetweenFalls`) as
-well as in aggregate. Sixteen fighters train one shared brain across three rigs,
-and the standing rule is that improving the characters by wrecking the capsule is
-not shippable -- which a single mean cannot see. An aggregate that matches the
-capsule's column exactly is the signature of the character rigs contributing
-nothing at all; see the fall-detector note under **Scene and prefab generation**.
+**The last checkpoint is not the best one.** PPO on this line oscillates
+across a plateau: in run `nick12` the final `model_4699` walks in 32% of
+starts where `model_3700`, a thousand iterations earlier, walks in 83%. Sweep
+checkpoints against `eval_nick.py` and promote the one that measures best.
 
 ### WebGL build and deploy
 
@@ -255,265 +185,167 @@ Also available as `PoBox/Build/WebGL`. Output is the committed static
 site in `WEB/`, deployed to Azure Static Web Apps by
 `.github/workflows/azure-static-web-apps.yml`. See [WEB/README.md](WEB/README.md).
 `.github/workflows/build-web.yml` rebuilds on pushes to `main` touching sources.
+The committed `WEB/` player predates the ML-Agents removal; rebuild it before
+the next deploy.
 
 ## Architecture
 
-### The observation-size contract
-
-This is the invariant most likely to bite you, and it has bitten this project
-repeatedly. `Agent_FighterBoxing.ComputeObservationCount(jointCount, observeOpponent,
-observeFootHeight, observeLocomotionCommand)` is the **single source of truth** for
-how wide the observation vector is. Three serialized bool flags on the agent change
-it, and each change invalidates every previously trained `.onnx`:
-
-- `_observeOpponent` — +19 (boxing phase; false in balance/walk)
-- `_observeFootHeight` — +2
-- `_observeLocomotionCommand` — +6 (commanded speed, goal direction, gait clock)
-
-Current fighters: 14 joints → 121 without the locomotion command, 127 with it.
-
-Every place that sizes `BehaviorParameters.VectorObservationSize` must call
-`ComputeObservationCount` (or `Agent_FighterBoxing.ExpectedObservationCount`) rather
-than restate the flags — `RigTool_PrepareForTraining`, `SceneTool_BalanceTraining`,
-`SceneTool_LocomotionTraining`, and `Systems_ContestSpawner.Configure` all do.
-
-Two failure modes to know:
-
-1. **Sensor too small.** ML-Agents logs `More observations (N) made than vector
-   observation size (M)` per step and truncates. Loud but easy to drown in.
-2. **Model doesn't match sensor.** ML-Agents only compares model shape to
-   `BrainParameters` from the *BehaviorParameters inspector*
-   (`Editor/BehaviorParametersEditor.cs`); its runtime path checks the model version
-   and nothing else. A brain assigned from code — which is every contest brain —
-   mismatches in **total silence**. `Systems_BrainCompatibility.Accept` catches
-   it and REFUSES the brain rather than merely reporting it, falling back to the
-   heuristic PD bot — a worse fighter but an honest one. It is deliberately not
-   `[Conditional]`: a player build has to make the same call an Editor run does.
-   Both the contest spawner and the offline evaluation harness go through it, so
-   the evaluator cannot benchmark a brain the game would refuse.
+### Brains
 
 **Every brain lives under `Assets/Agents/<Name>/`, one folder each, with a
-`SOURCE.txt` beside it.** Nick's two and the MuJoCo raptor's used to sit in
-`Assets/MuJoCoCreature/Policy/` instead, which put the brain the balance ring
-loads in a different tree from the brain the walk race loads.
+`SOURCE.txt` beside it** that states what it is, its observation/action
+contract, the timestep and decimation it was trained at, the run and
+checkpoint it came from, and what it measured. `export_onnx.py` writes one
+from the checkpoint's own filename rather than from what anyone believed the
+run had reached, because brain folder names have historically lied about
+which generation they hold. Verify with the ONNX input shape before trusting
+one.
 
-Brain folder names under `Assets/Agents/` have historically lied about which
-generation they contain. Verify with the ONNX input shape before trusting one;
-`Locomotion_gen25/SOURCE.txt` is the format for recording provenance, and
-`Tools/promote_brain.ps1` writes one from the checkpoint's own filename rather
-than from what anyone believed the run had reached.
+| Brain | Body | Step | Role |
+|---|---|---|---|
+| `Nick_Balance002` (`nick_balance_002.onnx`) | Nick | 0.02 s x decimation 1 | **both contest scenes load this one file.** nick12/model_3700: ring 96%, balance 98%, walk 87% over 10 consecutive 512-world evaluations |
+| `Nick_Locomotion` (`nick_locomotion.onnx`) | Nick | 0.005 s x decimation 4 | Nick's own demo scene; scores at the PASSIVE baseline if run at 0.02 s |
+| `Creature_Policy` | Nick | 0.005 s | the first MuJoCo Warp balance policy, 2026-08-31; superseded |
+| `RaptorMuJoCo_Balance` | MuJoCo raptor (`RaptorRig.prefab`, `RaptorController`) | 0.005 s | balance only, `Raptor_TestScene` / `MuJoCo_TestScene` |
 
-**The last checkpoint is not the best one.** PPO on this line oscillates
-across a plateau rather than settling on it: in run `nick12` the final
-`model_4699` walks in 32% of starts where `model_3700`, a thousand iterations
-earlier, walks in 83% -- with balance and ring healthy at both, so no
-aggregate flags it. Sweep checkpoints against `eval_nick.py` and promote the
-one that measures best.
+Check the `_onnxModelAsset` guid in a scene before assuming which brain it
+loads. A brain is loaded by `CreatureSentisController` through the Inference
+Engine (`com.unity.ai.inference`); the observation vector it builds is the
+contract, mirrored term for term by `Tools/MuJoCo/nick_env.py`, and
+`parity_check.py` proves the two agree. Feeding a different vector of the
+same width loads, runs and produces confident nonsense — the engine checks
+shape only — so the C# and the Python change in lockstep or not at all.
 
-**What ships, as of 2026-09-08:**
-
-| Mini-game | Brain | Why |
-|---|---|---|
-| Balance ring | `Locomotion_gen25` | 167.9 steps between falls under shove against `gen20`'s 91.7, and ahead on every body |
-| Walk race | `Locomotion_gen18_34M` | still the only brain that actually WALKS — alternation 0.601; the faster candidates slide |
-| Raptor | `RaptorBalance01` | its own model line, 13-joint rig; the shared 127-observation brain cannot load on it |
-| Balance ring AND walk race (Nick) | `nick_balance_002.onnx` | MuJoCo Warp at the contest step, 0.02 s x decimation 1. Both scenes load this one file. nick12/model_3700, 2026-09-09: ring 96%, balance 98%, walk 87% over 10 consecutive 512-world evaluations |
-| Nick's own ring / demo | `nick_locomotion.onnx` | MuJoCo Warp at 0.005 s. 99% full-cap at 250 N, walks at 0.980 m/s |
-
-Two mini-games, two brains, and that is the architecture rather than an
-accident: `gen25` was trained with the commanded speed pinned at 0 and cannot
-walk, `gen18` walks and cannot stand still.
-
-Nick's `nick_locomotion` walks at 0.005 s and scores at the PASSIVE baseline
-if run at 0.02, so it stays in his own demo scene. **Both contest scenes load
-`nick_balance_002`** -- check the `_onnxModelAsset` guid in either scene
-before assuming otherwise.
-
-The line that used to sit here, that `nick_balance_002` "CANNOT WALK (0%
-full-cap, 2.22 s median)", was **a measurement taken at the wrong timestep**.
-`eval_nick.py` defaults to 0.005 s, and a 0.02 s brain evaluated there fails
-exactly the way this project documents in the other direction. Measured at its
-own step the old brain walked at 64% and the current one walks at 87%.
-Two rules came out of that, and both are enforced in code now:
-
-- **Every evaluation of a Nick brain sets `NICK_TIMESTEP` and
-  `NICK_DECIMATION` to the values it was trained at**, which its `SOURCE.txt`
-  states and `eval_nick.py` prints on every run.
-- `eval_nick.py` perturbs the start pose (`--start-noise`, default on). With
-  the exact rest pose, no domain randomisation and a deterministic policy,
-  all N worlds are the SAME world and the walk table has an effective sample
-  size of one. The old giveaway was the passive baseline reading median =
-  mean = p25 = 1.52 s for every brain ever measured.
+The vector: 13 root terms, 7 per joint (rotation quaternion + angular
+velocity / 20) in canonical order, 8 foot-contact terms, 2 foot heights = 121;
+plus the 6-term locomotion command (speed, pelvis-local direction, gait clock
+sin/cos) = 127 when `_observeLocomotionCommand` is on. Actions are
+zero-centred position targets, `action >= 0 ? action * high : -action * low`.
 
 ### The timestep is a body property, not a scene setting
 
 `Time.fixedDeltaTime` is global, so one scene has one step, and a policy only
-works at the step its body is stable at. Measured 2026-09-08, both directions:
+works at the step its body is stable at. The contest scenes run at 0.02 s.
 
-| scene runs at | Nick | the PhysX cast |
-|---|---|---|
-| 0.02 s | 1.06 s median — the PASSIVE baseline is 1.08 | 30.0 s |
-| 0.005 s | 30.0 s | Standard 30.0 -> **2.9 s** |
+The position servos are kp=400, so at armature 0.02 `omega*dt` is 2.83 at a
+0.02 s step, past the stability limit of 2 — the actuator chatters and the
+policy has no authority. Armature 0.2 gives 0.89. It is set on Nick's 30
+`MjHingeJoint`s in Unity, NOT the raptor's 21, and exported into
+`nick_unity.xml` so the trainer and the game read one body. Any change to
+gains, armature or force limits is a BODY change: it invalidates every policy
+trained on it (see AGENTS.md on human joint speed and force).
 
-Neither survives the other's step, and DecisionPeriod compensation does not
-rescue the PhysX brains — the heuristic bot got BETTER at 0.005 s (2.8 -> 4.0),
-which is the tell that the physics is fine and the learned policies are simply
-out of distribution.
+### Contest scenes
 
-What made a shared ring possible was the BODY. The position servos are kp=400,
-so at armature 0.02 `omega*dt` is 2.83 at a 0.02 s step, past the stability
-limit of 2 — the actuator chatters and the policy has no authority. Armature
-0.2 gives 0.89. It is set on Nick's 30 `MjHingeJoint`s in Unity, NOT the
-Raptor's 21 in the same scene, and exported into `nick_unity.xml` so the
-trainer and the game read one body.
-
-**In-training metrics cannot see any of this.** `Metrics/fall_rate` read
-0.0000 and mean episode length 1000/1000 for a policy whose fresh-start eval
-was 0% walk full-cap and a 3.57 s median. Judge a checkpoint with
-`Tools/MuJoCo/eval_nick.py`, never the reward curve.
-
-### Agent / rig / reward split
-
-- `Agent_FighterBoxing` (`Assets/Scripts/Agent/`) — the only `Agent`. Collects
-  observations, buffers actions in `OnActionReceived`, and applies them **in
-  `FixedUpdate` only**. Also carries the code-driven heuristic PD bot (balance
-  strategy + scripted gait) used when `BehaviorType.HeuristicOnly`.
-- `Systems_FighterRig` — runtime handle to the ragdoll. Owns the serialized
-  `RigJointEntry` list (joints, per-axis ranges, base drive values), maps normalized
-  `[-1,1]` actions onto joint target rotations, and probes `GroundY` once in `Awake`.
-  Height observations are **ground-relative**, which is what lets the ring sit on a
-  1 m platform (`Systems_ContestSpawner.RING_FLOOR_Y`).
-- `Reward_*` (`Assets/Scripts/Reward/`) — rewards live in separate components, never
-  in the agent. `Reward_Locomotion` is the current line: one brain for both
-  mini-games, handed a commanded speed each episode (0 m/s = stand, 1 m/s = walk),
-  with the curriculum driving `speed_command_max` through named lessons
-  (StandStill → Sway → Shuffle → Step → Stride → Walk).
-
-Execution order is explicit and matters: agent `-100`, rewards `-99`, then the
-ML-Agents Academy stepper.
-
-### Training scenes vs contest scenes
-
-- **`SCN_TRAIN_*`** — headless by rule: no cameras, HUD, or audio. N fighter
-  instances (16 for balance) on a shared ground box, fully unpacked so training
-  components never become prefab overrides. Rewards and shovers attached.
-- **`SCN_TEST_*_CONTEST`** — presentation harnesses, explicitly "test-scene harness
-  only". Nothing is placed at author time: `Systems_ContestSpawner.SpawnAndBegin`
-  instantiates from a serialized roster of `ContestRosterEntry` (prefab + brain +
-  tint + `locomotionBrain` flag), then wakes a sleeping systems root holding the
+- **`SCN_TEST_*_CONTEST`** — presentation harnesses, explicitly "test-scene
+  harness only". The contestants stand in the scene at author time;
+  `Systems_ContestSpawner.SpawnAndBegin` adopts whichever of them the menu
+  picked, stands down the rest, then wakes a sleeping systems root holding the
   referee, drama camera, hazards, announcer, colour commentary and FX, which
-  self-discover fighters in their own `Start`.
+  self-discover contestants in their own `Start`. The spawner's roster of
+  prefab-spawnable fighters is empty now; the machinery stays so a future
+  MuJoCo creature prefab can be fielded from the menu.
 - **`SCN_MENU`** — build index 0. Picks a mini-game and roster, stashes them in a
   `Systems_MiniGameSelection` asset, and loads the contest scene, which skips its own
   setup menu when a selection is present.
 
+The referees (`Systems_BalanceContest`, `Systems_WalkContest`, both over
+`Systems_ContestReferee`) talk to a contestant through **`IContestFighter`**:
+display name, readiness, reset, stand/walk commands, world position, head
+height above the floor, and `ReportsDown`. `Systems_NickContestant` implements
+it in the `PoBox.MuJoCoCreature` assembly, because the shipping game must not
+have to link the MuJoCo plugin from `PoBox.Runtime`. Height is measured
+ABOVE THE FLOOR, never raw world Y — the ring canvas sits on a 1 m platform
+(`Systems_ContestSpawner.RING_FLOOR_Y`), and an absolute height silently
+rescales with altitude.
+
+A contestant is down when it reports so OR when its head drops under 40% of
+its standing height. Nick's `ReportsDown` needs both of its tells: the
+contest scenes set his controller's `_fallHeight` to -1 so a fallen body stays
+fallen rather than snapping back to the rest pose, which also means the
+reset counter never moves there, so he additionally reports down when his
+pelvis is under `_downPelvisHeight` (0.3 m).
+
+Both contest scenes carry a 3-round `Systems_MatchDirector`, so the referee's
+**Restart Rounds Automatically** must be ON; the director logs an error at
+startup when it is not, because the alternative was a match that froze after
+round one in silence (which both scenes shipped with from 2026-09-08 to
+2026-09-14).
+
+**The PhysX rig layer is still in the tree with nothing to act on.**
+`Systems_FighterRig`, `Sensor_GroundContact`, `Systems_Stamina` and the
+spectator systems written against them (impact FX, footsteps, joint-stress
+heatmap, colour commentary's strain tells, blob shadows) find zero rigs in
+every shipping scene since the PhysX cast was removed. They compile, they do
+nothing, and they are the next thing to port to MuJoCo bodies — or delete.
+
 **The booth has two voices.** `Systems_Announcer` is play-by-play and purely
-event-driven -- round start, a fall, a hazard, a save -- and those are the
-moments a spectator can already see. `Systems_ColourCommentary` is the second
-voice, a lower third driven by *rolling telemetry*, and it says the thing that
-is otherwise invisible: which ankle has been pinned at its force ceiling for
-three seconds, how many degrees a torso is off vertical and not correcting, how
-long since a fighter last lifted a foot. Every detector is a STREAK rather than
-an instant, because a threshold crossed for one frame at 50 Hz is noise.
-
-Four things it does on purpose:
-
-- **Strain is `Systems_Stamina.JointLoad01`**, the same number the heatmap draws
-  and stamina drains from -- never the action vector, which is a request rather
-  than a force and reads as full effort from a policy pinned against a limit.
-- **Sides come from geometry, not names.** Left and right are the sign of the
-  part's x in pelvis space. The capsule's parts are `ShinL`/`ShinR` and the
-  imported characters' are not; `Sensor_GroundContact`'s header records what
-  that asymmetry already cost once. Only the joint WORD (hip, knee, ankle)
-  comes from the name, and an unrecognised part is called "joint".
-- **Two clocks.** Streaks accumulate on SCALED time so the countdown's
-  `timeScale` 0 cannot manufacture a six-second strain out of a frozen ring; the
-  label fades on UNSCALED time so it keeps living through slow-mo.
-- **It yields to the play-by-play** via `Systems_Announcer.CalloutActive`, and
-  it *nominates* a camera subject rather than commanding one --
-  `Systems_DramaCamera.RequestFocus`, which the winner shot still outranks and
-  which is dropped at every round boundary. Honouring a cue changes the shot
-  subject, which the director already treats as an edit, so it arrives as a cut.
-
-Every line is also logged as `COLOUR_COMMENTARY | <tell> | <text>`, for the same
-reason `TALE_OF_THE_TAPE` is: the band is on screen for 4.5 s and an offline
-capture cannot reliably sample it.
-
-**Spawner subtlety:** fighters are instantiated under an *inactive* holder object,
-configured, then reparented to the scene root. Reparenting is what fires `Awake`/
-`OnEnable`, so `Agent.LazyInitialize` — which snapshots `BrainParameters` to build
-the `VectorSensor` — runs *after* `Configure` has corrected the observation size.
-Instantiating straight into the scene initializes the agent against the prefab's
-stale values instead. Anything that must be set before the sensor exists belongs in
-`Configure`.
+event-driven -- round start, a fall, a hazard, a save. `Systems_ColourCommentary`
+is the second voice, a lower third driven by rolling telemetry. Every detector
+is a STREAK rather than an instant, streaks accumulate on SCALED time so a
+frozen countdown cannot manufacture one, and it yields to the play-by-play via
+`Systems_Announcer.CalloutActive`. Every line is also logged as
+`COLOUR_COMMENTARY | <tell> | <text>`, because the band is on screen for 4.5 s
+and an offline capture cannot reliably sample it.
 
 ### Conventions stated in code
 
 These are referred to as "project rules" in comments and are enforced by convention:
 
-- Every app ships one code-driven heuristic bot (here, the PD balance/gait bot).
 - **The cast, and its colours.** A heuristic coded bot, always RED. A reference
   RL fighter on the standard body, always GREEN and untextured. Then zero or
   more custom creatures carrying their own textures and skinned meshes. Colour
-  is identity, not decoration: red means "no brain, hand-written", green means
-  "the standard policy on the standard body".
+  is identity, not decoration.
 - **Earth gravity, realistic joints and masses for the creature's size.** A rig
   that stands only because it is unnaturally heavy or hinged past its anatomy
   is not shippable, whatever its reward curve says.
+- **Everything collides.** Every limb carries a collision geometry, self-collision
+  is on, creature-vs-creature collision is on. Check the generated MJCF and the
+  Unity rig both. Two creatures can only collide if they live in the SAME
+  simulator: a MuJoCo body and a PhysX body pass straight through each other,
+  which is one reason the PhysX cast went.
 - No singletons and no `DontDestroyOnLoad` — cross-scene state goes through a
   `ScriptableObject` (`Systems_MiniGameSelection`).
 - Opening scene shows a version stamp, top-left, non-pickable.
 - Runtime UI is UI Toolkit, portrait 9:16, styled from `Assets/UI/USS_Contest.uss`
   through `PS_Contest` / `TSS_Contest`.
-- Observation and action counts are derived from the rig, never hand-typed.
 
 ### Naming and assemblies
 
-Type prefixes map to folders under `Assets/Scripts/`: `Agent_`, `Systems_`,
-`Reward_`, `Sensor_`. Everything is in namespace `PoBox` (`PoBox.Editor` for
-tools), split across two assembly definitions: `PoBox.Runtime` and `PoBox.Editor`.
-Nick carries his own pair, `PoBox.MuJoCoCreature` and `.Editor`, because the
-shipping game must not have to link the MuJoCo plugin.
+Type prefixes map to folders under `Assets/Scripts/`: `Systems_`, `Sensor_`.
+Everything is in namespace `PoBox` (`PoBox.Editor` for tools), split across
+two assembly definitions: `PoBox.Runtime` and `PoBox.Editor`. Nick carries his
+own pair, `PoBox.MuJoCoCreature` and `.Editor`, because the shipping game must
+not have to link the MuJoCo plugin.
 
 Editor code is grouped by what it acts on, and the prefix follows the folder:
 
 | Folder | Prefix | Acts on |
 |---|---|---|
 | `Editor/Build/` | `Build_` | produces an artifact: a player, a bundle, WebGL |
-| `Editor/Rig/` | `RigTool_` | the fighter prefab and rig pipeline |
 | `Editor/Scene/` | `SceneTool_` | authors or inspects a scene |
 | `Editor/` | `Editor_` | editor infrastructure: the command bridge, project settings |
+| `MuJoCoCreature/Editor/` | `RigTool_` | Nick's MuJoCo rig, scenes and MJCF export |
 
-The scene tools were named `RigTool_*` and built no rigs. `Editor_BuildAndroid`
-and `Editor_BuildAndroidAAB` were one class each for two artifacts off one key,
-and only the bundle path applied the SDK levels, ARM64 and IL2CPP -- so an APK
-built for testing could differ from the bundle that shipped, under a comment
-claiming it could not. They are now `Build_Android.Aab` and `.Apk` over one
-`Configure`.
-
-**One menu root: `PoBox/`.** It was three (`PoBox/`, `Tools/ML Boxing/`,
-`Tools/Web/`) with numbered items whose numbers had holes in them and two
-different items numbered 17.
+**One menu root: `PoBox/`.**
 
 ### Packages
 
 The dependency list is deliberately short: a package that no script references
-does not stay. UniTask, MessagePipe, VContainer and R3 were removed on
-2026-08-30 — they had **zero references** across all runtime and editor scripts,
-yet carried embedded patched copies in `Packages/`, a NuGet restore under
-`Assets/Packages/`, git-URL manifest entries and three `PoBox.Runtime.asmdef`
-references. Addressables, AI Navigation, Animation Rigging, Memory Profiler,
-Recorder, Android Logcat, Graphy, In-Game Debug Console, Asset Usage Detector
-and NuGetForUnity went the same way.
+does not stay. UniTask, MessagePipe, VContainer, R3, Addressables and friends
+were removed on 2026-08-30 with zero references; `com.unity.ml-agents` on
+2026-09-14 for the reason at the top of this file.
 
-Two that look unused and are not:
+Three that look unused and are not:
 
 - **`com.unity.pipeline`** is the MCP bridge the Editor is driven through. It
   reads as an unused experimental package and is load-bearing.
-- **`com.unity.cloud.gltfast`** imports the `.glb` fighter rigs.
+- **`com.unity.cloud.gltfast`** imports the `.glb` rigs (`RIGGED_Nick.glb`).
+- **`com.unity.ai.inference`** runs every brain (`CreatureSentisController`).
 
-`com.unity.ml-agents` 4.1.0 already includes what used to be
-`com.unity.ml-agents.extensions`; adding that package causes GUID conflicts.
+`Packages/org.mujoco` is the MuJoCo Unity plugin, pinned at
+`mjVERSION_HEADER = 3012000`; the Android `libmujoco.so` must match it
+(see AGENTS.md).
 
 After a manifest change, stale `Library/PackageCache/` folders for the removed
 packages keep compiling and fail against their now-missing dependencies. Delete
@@ -562,8 +394,7 @@ Without either, the build **aborts** rather than producing an unsigned artifact.
 | `Tools/play_publish.py` | Uploads a built AAB. Defaults to the `internal` track as a `draft`; `--dry-run` rehearses and discards |
 
 `Tools/play_publish.py` needs its own venv (`Tools/publish-venv`). Do not install it
-into `.venv` — that one carries load-bearing ml-agents/torch pins, and the C#/Python
-ml-agents versions must stay in exact parity.
+into `Tools/MuJoCo/.venv` — that one carries the trainer's pins.
 
 ### The shipped scene list is explicit
 
@@ -574,10 +405,8 @@ ml-agents versions must stay in exact parity.
   2. `Assets/Scenes/SCN_TEST_WALK_CONTEST.unity`
 
 It is a hardcoded list, not whatever is ticked in Build Settings, so a stray
-`SCN_TRAIN_*` tick can never bloat the bundle or — depending on order — boot a
-tester straight into a training rig. Build Settings happens to agree with it
-right now (verified 2026-08-30); the point is that the build does not depend on
-that staying true. A scene named here that is missing on disk **aborts** the build.
+scene tick can never bloat the bundle or boot a tester into the wrong scene.
+A scene named here that is missing on disk **aborts** the build.
 
 ### The icons
 

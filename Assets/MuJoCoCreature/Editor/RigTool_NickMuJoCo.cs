@@ -13,14 +13,11 @@ using UnityEngine.UIElements;
 namespace PoBox.Editor
 {
     /// <summary>
-    /// The Nick / MuJoCo Warp line's editor entry points, mirroring what
-    /// RigTool_MattDemoScene does for the Isaac Lab line so the two can be
-    /// judged side by side.
+    /// The Nick / MuJoCo Warp line's editor entry points.
     ///
     ///   BuildDemoScene  Nick alone on a floor, skinned mesh bound to the
     ///                   MuJoCo ragdoll, camera, HUD, and a driver that cycles
-    ///                   BALANCE and WALK and logs NICK_DEMO lines -- the same
-    ///                   columns as MATT_DEMO.
+    ///                   BALANCE and WALK and logs NICK_DEMO lines.
     ///   ExportNickMjcf  Writes the MJCF that MjScene ACTUALLY generates from
     ///                   the demo scene to Tools/MuJoCo/nick_unity.xml. This,
     ///                   not the authored creature.xml, is what training must
@@ -110,13 +107,10 @@ namespace PoBox.Editor
         /// Adds Nick to the shipped PhysX balance ring, or refreshes him if he
         /// is already there.
         ///
-        /// He is placed AT AUTHOR TIME, which the contest scenes otherwise
-        /// forbid -- Systems_ContestSpawner instantiates everyone else from a
-        /// roster. The spawner cannot carry him: it configures
-        /// BehaviorParameters and an Agent_FighterBoxing that a MuJoCo creature
-        /// does not have, and its roster holds prefabs while Nick is cloned
-        /// from a scene. Systems_BalanceContest finds him through
-        /// IContestFighter instead, so the referee needs nothing else.
+        /// He is placed AT AUTHOR TIME and the spawner adopts him: its roster
+        /// holds prefabs while Nick is cloned from a scene.
+        /// Systems_BalanceContest finds him through IContestFighter, so the
+        /// referee needs nothing else.
         ///
         /// He runs at the RING's timestep, not his own: the controller's
         /// timestep pin is switched OFF here, because pinning 0.005 s would

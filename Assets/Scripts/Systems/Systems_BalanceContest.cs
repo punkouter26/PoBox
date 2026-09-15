@@ -40,7 +40,6 @@ namespace PoBox
             public Systems_FighterRig rig;
             /// <summary>Set instead of rig for a non-PhysX contestant, e.g. the MuJoCo creature.</summary>
             public IContestFighter external;
-            public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
             public float startHeadHeight;
@@ -143,7 +142,6 @@ namespace PoBox
                 {
                     displayName = displayName,
                     rig = rig,
-                    agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     // Measured AFTER the reset, so it describes the pose the
                     // fighter actually stands in rather than a mid-drop one.
@@ -344,14 +342,6 @@ namespace PoBox
         }
 
         /// <summary>
-        /// Tells the fighter to hold station. The balance contest is the
-        /// 0 m/s end of the locomotion command the shared brain was trained
-        /// against (Reward_Locomotion: 0 = stand, 1 = walk), so saying so
-        /// explicitly is what makes one brain serve both mini-games — and it
-        /// re-asserts the command after every round reset. Harmless for a
-        /// fighter whose brain does not observe the command.
-        /// </summary>
-        /// <summary>
         /// Puts a rig into the pose a round starts from: the captured start
         /// pose, velocities zeroed, and every ground sensor cleared.
         ///
@@ -367,13 +357,15 @@ namespace PoBox
             }
         }
 
+        /// <summary>
+        /// Tells the fighter to hold station: the 0 m/s end of the locomotion
+        /// command a single brain serves both mini-games with. Re-asserted
+        /// after every round reset. A PhysX rig has no brain to command any
+        /// more, so only a contestant answering IContestFighter is told.
+        /// </summary>
         private static void CommandStand(Contestant contestant)
         {
-            if (contestant.external != null) { contestant.external.CommandStand(); return; }
-            if (contestant.agent != null)
-            {
-                contestant.agent.SetLocomotionCommand(0f, Vector3.forward);
-            }
+            if (contestant.external != null) { contestant.external.CommandStand(); }
         }
 
         private bool HasFallen(Contestant contestant)
@@ -397,7 +389,7 @@ namespace PoBox
             // height silently rescales with altitude: 40% of a 2.6 m head is
             // 1.04 m, which on a 1 m canvas means the fighter has to sink to
             // FOUR CENTIMETRES above the floor to count as collapsed instead of
-            // the intended ~64 cm. Reward_Locomotion.IsFallen documents having
+            // the intended ~64 cm. The locomotion reward once documented having
             // hit exactly this; the two contests still had the original form.
             return contestant.rig.Head.position.y - contestant.rig.GroundY
                 < contestant.startHeadHeight * HEAD_COLLAPSE_FRACTION;

@@ -63,10 +63,8 @@ namespace PoBox
         /// false. It also destroys the very thing this project judges a policy
         /// by, which is watching how the creature moves.
         ///
-        /// Opting IN rather than out is the choice
-        /// <see cref="Systems_EvalHarness"/> already makes for its own
-        /// command-line install, and for the same reason: a measurement and the
-        /// thing being measured cannot honestly run at the same time.
+        /// Opting IN rather than out, for the plain reason that a measurement
+        /// and the thing being measured cannot honestly run at the same time.
         /// </summary>
         public static bool Enabled { get; set; } = RequestedOnCommandLine();
 

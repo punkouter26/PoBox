@@ -7,8 +7,8 @@
 // in it; the equivalents are Tensor<float> and `new Worker(model, backend)`.
 //
 // OBSERVATIONS: the layout below is NOT "root velocity + projected gravity +
-// qpos/qvel". It is a term-for-term mirror of the vector the policy was
-// actually trained on, which is Agent_FighterBoxing.CollectObservations:
+// qpos/qvel". It is the project's own contract, built term for term here and
+// in Tools/MuJoCo/nick_env.py, and the policy was trained on exactly this:
 //
 //   root   (13)  pelvis height above ground            1
 //                pelvis-local linear velocity          3
@@ -25,13 +25,13 @@
 //                pelvis-local commanded direction      3   _observeLocomotionCommand
 //                gait clock sin, cos                   2   -> 127
 //
-// The optional 6-term block is Agent_FighterBoxing's _observeLocomotionCommand,
-// term for term, and it is what turns a balance brain into a locomotion brain:
+// The optional 6-term block is the locomotion command, and it is what turns
+// a balance brain into a locomotion brain:
 // the same network is told 0 m/s in the balance ring and ~1 m/s in the walk
 // race. Tools/MuJoCo/nick_env.py builds the identical vector in Python.
 //
 // Feeding a different vector of the same width would load, run, and produce
-// confident nonsense -- ML-Agents and InferenceEngine both only check SHAPE.
+// confident nonsense -- InferenceEngine only checks SHAPE.
 // If you change this, change the training env in lockstep.
 
 using System;
@@ -51,8 +51,7 @@ namespace PoBox.MuJoCoCreature
         private const int LOCOMOTION_COMMAND_OBS = 6;
         private const float ANGULAR_VELOCITY_SCALE = 20f;
         private const float FOOT_RAY_MAX = 1f;
-        // Agent_FighterBoxing.GAIT_CLOCK_FREQUENCY: the same clock the
-        // ML-Agents locomotion line hands its policy, so the contract is shared.
+        // The gait clock the policy observes; nick_env.py runs the same one.
         private const float GAIT_CLOCK_FREQUENCY = 1.4f;
         private const int HEAD_INDEX = 1;
 
@@ -101,9 +100,8 @@ namespace PoBox.MuJoCoCreature
 
         [Header("Locomotion command")]
         [Tooltip("Append the 6-term locomotion command (speed, pelvis-local " +
-                 "direction, gait clock) to the observation vector, exactly as " +
-                 "Agent_FighterBoxing does under _observeLocomotionCommand. The " +
-                 "brain must have been trained with it: 127 observations, not 121.")]
+                 "direction, gait clock) to the observation vector. The brain " +
+                 "must have been trained with it: 127 observations, not 121.")]
         [SerializeField] private bool _observeLocomotionCommand = false;
         [Tooltip("Run the policy every N physics steps and hold its targets in " +
                  "between. The MuJoCo Warp locomotion brain was trained at 4 " +
@@ -556,7 +554,7 @@ namespace PoBox.MuJoCoCreature
             for (int i = 0; i < count; i++)
             {
                 // The policy emits [-1,1]; ctrl is a TARGET ANGLE in radians,
-                // mapped zero-centred exactly as Systems_FighterRig does:
+                // mapped zero-centred, as nick_env.py does:
                 //   action >= 0 ? action * high : -action * low
                 // Written through the component's Control field, indexed by
                 // the actuator's OWN model id -- MjScene.SyncUnityToMjState

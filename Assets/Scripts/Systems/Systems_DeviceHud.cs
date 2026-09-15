@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Unity.MLAgents.Policies;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -337,7 +336,6 @@ namespace PoBox
             if (_debug == null) { return; }
             var lines = new List<string>();
 
-            int noBrain = 0;
             int down = 0;
             int rigsFound = 0;
             foreach (Systems_FighterRig rig in FindObjectsByType<Systems_FighterRig>(FindObjectsSortMode.None))
@@ -345,21 +343,6 @@ namespace PoBox
                 if (rig == null) { continue; }
                 rigsFound++;
                 if (rig.transform.position.y < 0.35f) { down++; }
-
-                // A fighter on HeuristicOnly in a contest scene is one whose
-                // brain Systems_BrainCompatibility REFUSED -- the silent
-                // failure that class exists to make loud. Worth the top line.
-                // The heuristic PD bot is HeuristicOnly ON PURPOSE -- it is the
-                // red coded fighter every app in this line ships (AGENTS.md), and
-                // counting it here reported a refused brain on every single run.
-                // Only an unexpected fallback is worth the top line.
-                var behaviour = rig.GetComponentInParent<BehaviorParameters>();
-                bool codedByDesign = rig.name.IndexOf("Bot", System.StringComparison.OrdinalIgnoreCase) >= 0;
-                if (!codedByDesign && behaviour != null
-                    && behaviour.BehaviorType == BehaviorType.HeuristicOnly)
-                {
-                    noBrain++;
-                }
             }
 
             // Everything that took the mat, including a contestant that is NOT a
@@ -372,9 +355,6 @@ namespace PoBox
             int total = Systems_ContestSpawner.LastFieldedCount > 0
                 ? Systems_ContestSpawner.LastFieldedCount
                 : rigsFound;
-            // Worst first: a fighter with no brain is a broken build; a fighter
-            // on the floor may just be losing.
-            if (noBrain > 0) { lines.Add($"{noBrain} fighter(s) fell back to the coded bot — brain refused"); }
             if (total == 0) { lines.Add("no fighters in this scene"); }
             else if (down > 0) { lines.Add($"{down} of {total} fighters are down"); }
             else { lines.Add($"{total} fighters up"); }

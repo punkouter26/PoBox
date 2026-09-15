@@ -80,7 +80,6 @@ namespace PoBox
             public Systems_FighterRig rig;
             /// <summary>Set instead of rig for e.g. the MuJoCo creature.</summary>
             public IContestFighter external;
-            public Agent_FighterBoxing agent;
             public Sensor_GroundContact[] fallSensors;
             /// <summary>Standing head height ABOVE THE FLOOR, not world Y.</summary>
             public float startHeadHeight;
@@ -178,7 +177,6 @@ namespace PoBox
                 {
                     displayName = displayName,
                     rig = rig,
-                    agent = rig.GetComponent<Agent_FighterBoxing>(),
                     fallSensors = fallSensors.ToArray(),
                     startHeadHeight = rig.Head.position.y - rig.GroundY,
                     startProjection = Vector3.Dot(rig.Pelvis.position, _goalDirection),
@@ -384,24 +382,14 @@ namespace PoBox
         }
 
         // Tells the fighter to walk. A trained brain reads this as an
-        // observation; the code-driven bot reads it to switch its scripted gait
-        // on. Without it both would just stand on the start line.
-        //
-        // THE CREATURE IS ASKED FIRST, and the order is the whole fix. This used
-        // to return early when there was no Agent_FighterBoxing on the racer,
-        // which is every racer that answers IContestFighter instead of being a
-        // PhysX rig — and there is no path from such a racer to
-        // CommandWalk below the early return, so the MuJoCo creature was never
-        // once told to walk in the race. It stood on the start line while the
-        // plates reported its distance. Systems_BalanceContest.CommandStand has
-        // always branched on the creature first; this is the same shape.
+        // observation; without it the racer would just stand on the start line.
+        // Only a contestant answering IContestFighter can be told: a PhysX rig
+        // has no brain to command any more. (This used to return early when
+        // the racer was not a PhysX agent, which left the MuJoCo creature
+        // standing on the start line while the plates reported its distance.)
         private void CommandRace(Racer racer)
         {
-            if (racer.external != null) { racer.external.CommandWalk(RACE_SPEED, _goalDirection); return; }
-            if (racer.agent != null)
-            {
-                racer.agent.SetLocomotionCommand(RACE_SPEED, _goalDirection);
-            }
+            if (racer.external != null) { racer.external.CommandWalk(RACE_SPEED, _goalDirection); }
         }
 
         private bool HasFallen(Racer racer)
@@ -419,7 +407,7 @@ namespace PoBox
             // height silently rescales with altitude: 40% of a 2.6 m head is
             // 1.04 m, which on a 1 m canvas means the fighter has to sink to
             // FOUR CENTIMETRES above the floor to count as collapsed instead of
-            // the intended ~64 cm. Reward_Locomotion.IsFallen documents having
+            // the intended ~64 cm. The locomotion reward once documented having
             // hit exactly this; the two contests still had the original form.
             if (racer.external != null)
             {

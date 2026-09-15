@@ -123,12 +123,13 @@ submitting — these are the answers the project supports, not a signature.
 | Is data encrypted in transit? | Not applicable — nothing is transmitted |
 | Can users request data deletion? | Not applicable — nothing is stored off-device |
 
-> **Check this before you submit.** Unity bundles for these projects request
-> `android.permission.INTERNET`, pulled in by the ML-Agents runtime rather than
-> by anything the game does. The app makes no network calls at run time, so
-> *no data collected* is the truthful answer — but Play does cross-check declared
-> permissions against data-safety answers, so confirm the permission is either
-> stripped from the release build or that you are comfortable explaining it.
+> **Check this before you submit.** Earlier bundles of this project requested
+> `android.permission.INTERNET`, pulled in by a runtime package that has since
+> been removed rather than by anything the game does. The app makes no network
+> calls at run time, so *no data collected* is the truthful answer — but Play
+> cross-checks declared permissions against data-safety answers, so read the
+> merged manifest of the bundle you upload and confirm the permission is gone
+> or that you are comfortable explaining it.
 
 ## 9. Internal testing track
 

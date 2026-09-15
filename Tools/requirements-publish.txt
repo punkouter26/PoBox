@@ -1,13 +1,12 @@
 # Dependencies for Tools/play_publish.py ONLY.
 #
-# Install into a DEDICATED venv, never into the project's .venv:
+# Install into a DEDICATED venv, never into Tools/MuJoCo/.venv:
 #
 #   py -3 -m venv Tools/publish-venv
 #   Tools/publish-venv/Scripts/python.exe -m pip install -r Tools/requirements-publish.txt
 #
-# .venv carries load-bearing pins (mlagents 1.1.0, torch 2.4.1, numpy 1.23.5,
-# protobuf 3.20.3) that a stray resolve would happily walk over, and the C#/Python
-# ml-agents versions must stay in exact parity or the comms handshake is rejected.
+# Tools/MuJoCo/.venv carries the mujoco_warp / warp / torch / rsl_rl pins the
+# trainer depends on, and a stray resolve would happily walk over them.
 # Publishing an app bundle has nothing to do with training and must not be able to
 # break it.
 #

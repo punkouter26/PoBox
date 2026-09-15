@@ -44,7 +44,7 @@ namespace PoBox
         // feeds cannot disagree about what exists.
         //
         // A sweep that only looks at rigs also does not see Nick: both contest
-        // scenes place five Systems_FighterRig plus Nick, who is refereed
+        // scenes place their contestants at author time; Nick is refereed
         // through IContestFighter from another assembly. The served list did not
         // include him either, and he appeared on the scoreboard having never
         // been listed.

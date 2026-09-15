@@ -101,22 +101,18 @@ namespace PoBox.Editor
             }
 
             var serialized = new SerializedObject(spawner);
+            // An EMPTY roster is the normal state since the PhysX cast was
+            // removed on 2026-09-14: every contestant stands in the scene at
+            // author time and the spawner adopts it. Only entries that exist
+            // are audited.
             SerializedProperty roster = serialized.FindProperty("_roster");
-            if (roster == null || roster.arraySize == 0)
-            {
-                problems.Add($"{label}: spawner has an empty roster");
-                return;
-            }
-
-            for (int i = 0; i < roster.arraySize; i++)
+            for (int i = 0; roster != null && i < roster.arraySize; i++)
             {
                 SerializedProperty entry = roster.GetArrayElementAtIndex(i);
                 string name = entry.FindPropertyRelative("displayName").stringValue;
-                bool heuristic = entry.FindPropertyRelative("forceHeuristic").boolValue;
                 string who = $"{label}: roster '{name}'";
 
                 CheckRef(entry.FindPropertyRelative("prefab"), who + " prefab", required: true, problems);
-                CheckRef(entry.FindPropertyRelative("model"), who + " model", required: !heuristic, problems);
                 // tint is genuinely optional -- textured character models must NOT
                 // be flattened by one -- so only a DANGLING reference is a fault.
                 CheckRef(entry.FindPropertyRelative("tint"), who + " tint", required: false, problems);

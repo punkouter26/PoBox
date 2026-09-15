@@ -53,8 +53,9 @@ the source every time.
 
 ## User-requested operating rules
 
-- Use MuJoCo or Newton for all new training, and keep the legacy ML-Agents/
-  PhysX line working only as a measured fallback.
+- Train every policy in MuJoCo Warp (or Newton). There is no other trainer
+  in this project: the Unity ML-Agents / PhysX line and the Isaac Lab line
+  were removed on 2026-09-14.
 - Use only the `master` branch for work unless the user explicitly asks for
   another branch.
 - Start TensorBoard whenever training starts, and prune obsolete runs from the
@@ -65,7 +66,7 @@ the source every time.
   needs before broadening the cast.
 - Use the MuJoCo Android build method from
   https://github.com/joanllobera/mujoco-bin/ when preparing Android phone builds.
-- For MuJoCo or Isaac Lab runs, show the simulator UI so the motion can be
+- For MuJoCo runs, show the simulator UI so the motion can be
   observed during and after training; use Newton’s viewer if that is the better
   option.
 - Keep motion realistic: Earth gravity, sensible joint ranges, realistic mass,
@@ -92,12 +93,13 @@ the source every time.
 
 ## Training: MuJoCo / Newton only
 
-**All new training happens in MuJoCo or Newton.** Not Unity ML-Agents / PhysX.
-The `SCN_TRAIN_*` scenes, the `Config/Boxer*.yaml` runs and the
-`Locomotion_gen*` brains described in [CLAUDE.md](CLAUDE.md) are the **legacy
-PhysX line**: keep them working, keep measuring against them, but do not start
-a new generation there. New policies are trained against a MuJoCo/Newton body,
-the way Nick is (`Tools/MuJoCo/`, `nick_unity.xml`).
+**All training happens in MuJoCo Warp or Newton.** Policies are trained
+against a MuJoCo/Newton body the way Nick is (`Tools/MuJoCo/`,
+`nick_unity.xml`) and run in Unity through the MuJoCo plugin and the
+Inference Engine. The Unity ML-Agents / PhysX line -- its agent, rewards,
+training scenes, YAML configs, eval ladder and the three PhysX fighters that
+ran on it -- was removed on 2026-09-14, as was every Isaac Lab comparison.
+Do not reintroduce either.
 
 The reason is the one already documented for Nick: the trainer and the game
 have to read **one body at one timestep**. An MJCF exported from the same rig
@@ -129,8 +131,7 @@ user guessing whether the project is theirs again.
 
 ## Training runs
 
-These apply to every trainer — MuJoCo, Newton, Isaac Lab, and ML-Agents for
-as long as the legacy line is still being measured.
+These apply to every training run.
 
 - **Always start TensorBoard when training starts**, so progress is visible
   without being asked for it.
@@ -138,14 +139,13 @@ as long as the legacy line is still being measured.
   check what is already in the log directory and remove dead runs that are
   only taking up room. A picker crowded with abandoned generations makes the
   live run harder to read, which defeats the point of starting it.
-- **When training in MuJoCo or Isaac Lab, show that application's UI.** These
+- **When training in MuJoCo, show that application's UI.** These
   runs are not to be launched headless by default: the user watches how the
   creature moves during and after training, and that observation is part of
   how a policy gets judged. Headless is an optimisation to be asked for, not
   assumed. **Use Newton to show the training if that is the better viewer**
   — the requirement is that the motion is watchable, not which app draws
-  it. (Unity ML-Agents training scenes remain headless by rule — they carry
-  no cameras — and TensorBoard is the window into those.)
+  it.
 
 ## Fighter conventions
 
@@ -214,9 +214,8 @@ not as coordinates buried in C#.
 The reason is direct: the user adjusts positions by hand. A static object placed
 by code can only be moved by editing and recompiling code; the same object
 placed via MCP is moved in the Inspector in two seconds. Reach for code only for
-things that genuinely cannot be authored — the N-fighter training grids, and the
-contest spawner's roster-driven instantiation, both of which are already
-documented as deliberate in [CLAUDE.md](CLAUDE.md).
+things that genuinely cannot be authored — the contest spawner's slot
+placement, documented as deliberate in [CLAUDE.md](CLAUDE.md).
 
 This is also the standing reversal recorded in CLAUDE.md: the three shipping
 scenes are **hand-authored assets**, because a generator that cannot reproduce

@@ -1,3 +1,8 @@
+> **Cast change, later on 2026-09-14.** The Unity ML-Agents / PhysX line and
+> the three PhysX contestants (Grandma, Grandpa, Raptor) were removed from the
+> project; Nick is the only contestant in both shipping scenes. Rows below that
+> describe those bodies are historical measurements, kept as they were taken.
+
 # Skinned character validation
 
 Approved scope: every existing skinned character completes a balance round and
@@ -13,15 +18,15 @@ one skinned node (`char1`) and one animation (not yet assessed as training data)
 | Character | Source | Live scene root | Existing simulation |
 |---|---|---|---|
 | Nick | Assets/MuJoCoCreature/Model/RIGGED_Nick.glb | Nick | MuJoCo, CreatureSentisController |
-| Grandma | Assets/Art/2026_GrandmaRigged.glb | Contest_Grandma | Legacy PhysX, Agent_FighterBoxing |
-| Grandpa | Assets/Art/2026_GrandpaRigged.glb | Contest_Grandpa | Legacy PhysX, Agent_FighterBoxing |
+| Grandma | Assets/Art/2026_GrandmaRigged.glb | (removed 2026-09-14) | Was a PhysX ragdoll on the ML-Agents line; the skinned source stays for a MuJoCo rig |
+| Grandpa | Assets/Art/2026_GrandpaRigged.glb | (removed 2026-09-14) | Was a PhysX ragdoll on the ML-Agents line; the skinned source stays for a MuJoCo rig |
 
 Root RIGGED_Nick.glb is byte-identical to the imported Nick source (SHA256
 da38b1e7d522570bc480507b8f4c195e6fe3e6ffcf3754d45e863e9192c3631f), so it is
 not a fourth character. Arena.glb and BoxingRing.glb have no skins. The existing
-Raptor is assembled from primitive segments by RigTool_RaptorRig and has no
-skinned renderer or supplied skinned source. Preserve it as an existing legacy
-contestant; do not invent a new rig or train it as part of the skinned scope.
+Raptor was assembled from primitive segments and had no skinned renderer or
+supplied skinned source; it left the contest scenes with the PhysX line on
+2026-09-14 (the MuJoCo raptor in Raptor_TestScene is unaffected).
 
 Source hashes:
 - Grandma: 3958ce7593fbfc1f3fbd9b09914d9ed238471901fb75b404aa45557efa670bee

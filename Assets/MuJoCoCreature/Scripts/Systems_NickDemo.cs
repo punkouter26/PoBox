@@ -11,11 +11,9 @@ namespace PoBox.MuJoCoCreature
     /// command), then walk at pace (the walk race's command), repeating.
     ///
     /// It LOGS one line per phase, NICK_DEMO, with the same columns
-    /// Systems_MattDemo logs as MATT_DEMO and Tools/MuJoCo/watch_nick.py
-    /// prints in Python. Those three tables side by side are the comparison
-    /// this line exists to make: a policy trained in MuJoCo Warp, run in the
-    /// MuJoCo Unity plugin, against one trained in Isaac Lab and run in
-    /// Unity's PhysX ragdoll. Same reward design, same columns, two simulators.
+    /// Tools/MuJoCo/watch_nick.py prints in Python. The two tables side by
+    /// side answer whether a policy trained in MuJoCo Warp holds up when run
+    /// in the MuJoCo Unity plugin.
     ///
     /// Keys (Input System): Space switches phase now, R resets the creature,
     /// P shoves it.
@@ -209,8 +207,7 @@ namespace PoBox.MuJoCoCreature
         /// <summary>
         /// One line per phase, so a run answers "does the MuJoCo Warp policy
         /// hold up in the Unity plugin" without anyone watching. Compare
-        /// against watch_nick.py's table for the same checkpoint in Python,
-        /// and against MATT_DEMO for the Isaac line.
+        /// against watch_nick.py's table for the same checkpoint in Python.
         /// </summary>
         private void LogPhaseIfAny()
         {

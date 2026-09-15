@@ -3,7 +3,6 @@
     "rootNamespace": "PoBox.Editor",
     "references": [
         "PoBox.Runtime",
-        "Unity.ML-Agents",
         "Unity.InferenceEngine",
         "Unity.Cinemachine",
         "Unity.RenderPipelines.Core.Runtime"

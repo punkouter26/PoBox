@@ -145,8 +145,8 @@ namespace PoBox
         /// guard is the one that holds when something reaches the rig outside
         /// the ordinary Awake sequence. On the contest spawn path a fighter is
         /// activated by being reparented out of the inactive holder, and
-        /// ML-Agents runs Agent.OnEnable -> LazyInitialize -> OnEpisodeBegin
-        /// inline from that reparent — which lands in ResetToStartPose before
+        /// the policy agent that used to sit on the rig ran its episode reset
+        /// inline from that reparent — which landed in ResetToStartPose before
         /// there is a start pose to restore. Measured 2026-08-21: four
         /// NullReferenceExceptions, one per fighter, on the *second* contest of
         /// a session (menu -> balance -> MENU -> menu -> walk) and none on the
