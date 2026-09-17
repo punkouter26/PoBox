@@ -157,15 +157,36 @@ mujoco.mj_forward(model, data)
 rest_foot_z = [float(data.xpos[i, 2]) for i in foot_ids]
 foot_contact_z = [z + FOOT_CONTACT_ABOVE_REST for z in rest_foot_z]
 rest_head_z = float(data.xpos[head_id, 2])
+rest_pelvis_z = float(data.xpos[pelvis_id, 2])
+# The hold window the run itself trained with (nickgetup01 trains at 2 s);
+# fall back to the 4 s standard for older configs.
+getup_stable = float(saved_env.get("getup_stable_seconds", 4.0))
 rng = np.random.RandomState(args.seed)
 
 
-def reset():
+def reset(getup: bool = False):
     mujoco.mj_resetData(model, data)
     data.qpos[:] = model.qpos0
     data.qvel[:] = 0.0
     data.ctrl[:] = 0.0
     data.xfrc_applied[:] = 0.0
+    if getup:
+        # The same fallen-start distribution nick_env's get-up task trains
+        # from: root tilted past vertical about a random horizontal axis,
+        # random yaw, hinges near rest, zero velocity, pelvis low.
+        yaw = rng.uniform(0.0, 2.0 * math.pi)
+        tilt = rng.uniform(65.0, 115.0) * math.pi / 180.0
+        axis = rng.uniform(0.0, 2.0 * math.pi)
+        half = tilt * 0.5
+        tilt_q = np.array([math.cos(half), math.sin(half) * math.cos(axis),
+                           math.sin(half) * math.sin(axis), 0.0])
+        yh = yaw * 0.5
+        yaw_q = np.array([math.cos(yh), 0.0, 0.0, math.sin(yh)])
+        yt = np.zeros(4)
+        mujoco.mju_mulQuat(yt, yaw_q, tilt_q)
+        mujoco.mju_mulQuat(data.qpos[3:7], yt, model.qpos0[3:7].copy())
+        data.qpos[2] = rng.uniform(0.10, 0.24)
+        data.qpos[7:] = model.qpos0[7:] + rng.uniform(-0.3, 0.3, model.nq - 7)
     mujoco.mj_forward(model, data)
 
 
@@ -186,8 +207,8 @@ def gather(commands: np.ndarray, step: int) -> np.ndarray:
     return obs[0].numpy()
 
 
-def run_phase(policy, walking: bool, viewer) -> dict:
-    reset()
+def run_phase(policy, walking: bool, viewer, getup: bool = False) -> dict:
+    reset(getup)
     fwd = pelvis_forward()
     direction = np.array([fwd[0], fwd[1]])
     direction /= max(np.linalg.norm(direction), 1e-6)
@@ -205,10 +226,14 @@ def run_phase(policy, walking: bool, viewer) -> dict:
     clearance_sum = 0.0
     down = 0
     falls = 0
+    risen_steps = 0
+    got_up = False
+    rose_at = -1.0
     max_torque = np.zeros(model.nu)
     max_joint_speed = np.zeros(model.nu)
     actuator_dofs = model.jnt_dofadr[model.actuator_trnid[:, 0]]
     wall = time.time()
+    up_vec = np.zeros(3)
     for step in range(steps):
         if viewer is not None and hasattr(viewer, "wait_for_step"):
             paused_at = time.time()
@@ -219,7 +244,7 @@ def run_phase(policy, walking: bool, viewer) -> dict:
         obs = gather(commands, step)
         action = np.clip(policy(obs), -1.0, 1.0)
         data.ctrl[:] = np.where(action >= 0.0, action * ctrl_high, -action * ctrl_low)
-        if not walking and shove_every and step > 0 and step % shove_every == 0:
+        if not walking and not getup and shove_every and step > 0 and step % shove_every == 0:
             angle = rng.uniform(0.0, 2.0 * math.pi)
             data.xfrc_applied[pelvis_id, :3] = np.array([math.cos(angle), math.sin(angle), 0.0]) * args.shove_newtons
             shove_left = shove_steps
@@ -234,6 +259,15 @@ def run_phase(policy, walking: bool, viewer) -> dict:
 
         v = data.cvel[pelvis_id, 3:5]
         speed_sum += float(np.dot(v, direction))
+        if getup:
+            # The training task's own rise rule: pelvis above 75% of rest
+            # height AND pelvis up-axis past 0.7, held getup_stable seconds.
+            mujoco.mju_rotVecQuat(up_vec, np.array([0.0, 0.0, 1.0]), data.xquat[pelvis_id])
+            risen = (data.xpos[pelvis_id, 2] > 0.75 * rest_pelvis_z) and (up_vec[2] > 0.7)
+            risen_steps = risen_steps + 1 if risen else 0
+            if not got_up and risen_steps * control_dt >= getup_stable:
+                got_up = True
+                rose_at = (step + 1) * control_dt
         foot_z = data.xpos[foot_ids, 2]
         left_down, right_down = foot_z[0] < foot_contact_z[0], foot_z[1] < foot_contact_z[1]
         clearance_sum += max(0.0, float(np.max(foot_z - np.array(rest_foot_z))))
@@ -246,8 +280,11 @@ def run_phase(policy, walking: bool, viewer) -> dict:
             down += 1
         if data.xpos[pelvis_id, 2] < 0.3:
             falls += 1
-            reset()
-            start = data.xpos[pelvis_id, :2].copy()
+            if not getup:
+                # A get-up attempt must stay down and keep trying — resetting
+                # him out of the floor would erase the very thing we watch.
+                reset()
+                start = data.xpos[pelvis_id, :2].copy()
 
         if viewer is not None:
             viewer.sync()
@@ -259,9 +296,11 @@ def run_phase(policy, walking: bool, viewer) -> dict:
     distance = float(np.linalg.norm(data.xpos[pelvis_id, :2] - start))
     n = max(1, step + 1)
     return {
-        "mode": "WALK" if walking else "BALANCE", "cmd": speed, "measured": speed_sum / n,
+        "mode": "GETUP" if getup else ("WALK" if walking else "BALANCE"),
+        "cmd": speed, "measured": speed_sum / n,
         "distance": distance, "alternation": min(1.0, (switches / n) / TARGET_SWITCHES_PER_STEP),
         "switches": switches, "clearance": clearance_sum / n, "down": down, "steps": n, "falls": falls,
+        "got_up": got_up, "rose_at": rose_at, "up_fraction": risen_steps / n,
         "max_torque": max_torque.tolist(), "max_joint_speed": max_joint_speed.tolist(),
     }
 
@@ -302,6 +341,11 @@ def main():
           (policy.name, args.model, args.timestep, args.decimation), flush=True)
 
     walking = False
+    getup = False
+    # BALANCE -> WALK -> GETUP: the get-up behaviour the nickgetup01 line
+    # trains is part of what this tool exists to let a human judge, so every
+    # third phase starts him on the floor.
+    cycle = ["BALANCE", "WALK", "GETUP"]
     phase = 0
     while args.phases <= 0 or phase < args.phases:
         if viewer is not None and not viewer.is_running():
@@ -311,16 +355,21 @@ def main():
             if reloaded is not policy:
                 policy = reloaded
                 print("policy: %s" % policy.name)
-        r = run_phase(policy, walking, viewer)
+        r = run_phase(policy, walking, viewer, getup)
+        extra = ""
+        if r["mode"] == "GETUP":
+            extra = " got_up=%s rise_at=%.1f s up_fraction=%.2f" % (r["got_up"], r["rose_at"], r["up_fraction"])
         print("NICK_WATCH %d | %s | cmd=%.2f measured=%.3f m/s distance=%.3f m alternation=%.3f "
-              "switches=%d clearance=%.3f m down=%d/%d steps falls=%d"
+              "switches=%d clearance=%.3f m down=%d/%d steps falls=%d%s"
               % (phase, r["mode"], r["cmd"], r["measured"], r["distance"], r["alternation"],
-                 r["switches"], r["clearance"], r["down"], r["steps"], r["falls"]), flush=True)
+                 r["switches"], r["clearance"], r["down"], r["steps"], r["falls"], extra), flush=True)
         print("NICK_PHYSICS " + json.dumps({
             "mode": r["mode"], "actuators": [model.actuator(i).name for i in range(model.nu)],
             "max_torque_nm": r["max_torque"], "max_joint_speed_rad_s": r["max_joint_speed"],
         }), flush=True)
-        walking = not walking
+        mode_next = cycle[(phase + 1) % len(cycle)]
+        walking = mode_next == "WALK"
+        getup = mode_next == "GETUP"
         phase += 1
     if viewer is not None:
         viewer.close()
