@@ -147,6 +147,26 @@ with the Newton viewer open.
 2. `getup_w_hold` 0.30 → 0.60: reward mass moves to staying up.
 3. Milestone bonuses halved (sit 0.25, crouch 0.5) — already learned.
 
-### Segment 3 (iters 2199→3400) — running
+### Segment 3 (iters 2199→3399) — DONE, 2 s window alone was not enough
+
+- In-training: risen rate roughly doubled (0.5% → 1.0%), sit 21% — the
+  climb continues, but fresh-start holds at the 2 s window did not
+  materialise in the eval.
+- **Episode evals (256 starts, TRUE 4 s standard via NICK_GETUP_STABLE=4):**
+  `model_3399` and `model_2900` both 0% success, 21% rose-but-no-hold.
+- Regression (model_3399): BAL 74% / WALK 74% / RING 69% — intact again.
+- Diagnosis: the stand-and-hold phase is too rare a slice of experience —
+  every episode pays for the whole chain from flat floor before practising
+  the last, decisive phase.
+
+### Change: start-height curriculum (applied before segment 4)
+
+A fraction of get-up episodes now START partway up: 25% at crouch height
+(60–70% rest pelvis, tilt 10–30 deg), 15% sitting (30–42%, tilt 50–70),
+60% still flat on the floor. The stand-and-hold phase trains in isolation
+and densely; the flat-floor majority keeps the full chain honest.
+Smoke clean.
+
+### Segment 4 (iters 3399→4600) — running
 
 (appended when it lands)

@@ -256,6 +256,13 @@ class NickEnvCfg:
     getup_bonus_crouch: float = 0.5               # one-time
     getup_timeout_fraction: float = 0.6           # failed attempts end at 12 s of the 20 s cap
     getup_w_hold: float = 0.60                    # upright*planted once risen (keep standing)
+    # START-HEIGHT CURRICULUM (seg 4). Seg 3 (2 s hold window) still evaluated
+    # 0%: worlds reach upright but fall during the stand, and the hold phase
+    # is too rare a slice of experience to learn from. A fraction of get-up
+    # episodes now START sitting or crouching — the stand-and-hold phase in
+    # isolation, densely — while the flat-floor majority keeps the full chain.
+    getup_start_crouch_fraction: float = 0.25     # start at crouch height, near upright
+    getup_start_sit_fraction: float = 0.15        # start sitting, mid tilt
     getup_success_bonus: float = 3.0              # one-time, at the stability mark
 
     # --- domain randomisation, fixed per world for the run ------------------
@@ -937,7 +944,20 @@ class NickEnv:
         # policy has to cope with it anyway. Fully vectorised: every world
         # samples a pose, the mask picks.
         gq = (mask & self.getup).unsqueeze(1)
-        tilt = torch.empty(n, device=dev).uniform_(*cfg.getup_tilt_deg_range) * (math.pi / 180.0)
+        # Start-height curriculum: most get-up worlds lie flat; a slice starts
+        # sitting or crouching, so the stand-and-hold phase gets dense
+        # experience instead of only the tail end of a full chain.
+        mode_r = torch.rand(n, device=dev)
+        is_crouch = mode_r < cfg.getup_start_crouch_fraction
+        is_sit = (mode_r >= cfg.getup_start_crouch_fraction) \
+            & (mode_r < cfg.getup_start_crouch_fraction + cfg.getup_start_sit_fraction)
+        # Tilt from vertical: lying 65-115 deg, sitting 50-70, crouch 10-30.
+        tilt = torch.where(is_crouch,
+                           torch.empty(n, device=dev).uniform_(10.0, 30.0),
+                           torch.where(is_sit,
+                                       torch.empty(n, device=dev).uniform_(50.0, 70.0),
+                                       torch.empty(n, device=dev).uniform_(*cfg.getup_tilt_deg_range))) \
+            * (math.pi / 180.0)
         tilt_axis = torch.rand(n, device=dev) * 2.0 * math.pi
         half = tilt * 0.5
         tilt_q = torch.stack([torch.cos(half),
@@ -952,7 +972,14 @@ class NickEnv:
                              torch.sin(yh)], dim=1)
         lying_qpos = self.qpos0.repeat(n, 1)
         lying_qpos[:, 3:7] = quat_mul(quat_mul(yaw_q, tilt_q), lying_qpos[:, 3:7])
-        lying_qpos[:, 2] = torch.empty(n, device=dev).uniform_(*cfg.getup_pelvis_z_range)
+        # Pelvis height follows the mode: crouch 60-70% of rest, sitting
+        # 30-42%, flat floor the configured lying band.
+        z_lo, z_hi = cfg.getup_pelvis_z_range
+        lying_qpos[:, 2] = torch.where(is_crouch,
+                                       torch.empty(n, device=dev).uniform_(0.60 * self.rest_pelvis_z, 0.70 * self.rest_pelvis_z),
+                                       torch.where(is_sit,
+                                                   torch.empty(n, device=dev).uniform_(0.30 * self.rest_pelvis_z, 0.42 * self.rest_pelvis_z),
+                                                   torch.empty(n, device=dev).uniform_(z_lo, z_hi)))
         lying_qpos = lying_qpos + ((torch.rand(n, self.mjm.nq, device=dev) * 2.0 - 1.0)
                                    * cfg.getup_joint_noise * self._hinge_qpos_mask).to(dtype)
         self.qpos[:] = torch.where(gq, lying_qpos, self.qpos)
