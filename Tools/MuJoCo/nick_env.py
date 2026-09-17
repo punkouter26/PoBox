@@ -233,7 +233,12 @@ class NickEnvCfg:
     getup_tilt_deg_range: tuple = (65.0, 115.0)   # past vertical, about a random horizontal axis
     getup_rise_pelvis_fraction: float = 0.75      # of rest pelvis height counts as "up"
     getup_rise_up_z: float = 0.7                  # and pelvis up-axis z at least this
-    getup_stable_seconds: float = 4.0             # continuously up this long = success
+    # CURRICULUM (seg 3): the hold window trains at 2 s first — after seg 2 the
+    # policy produced its first fresh-start 5.0 s stands (1-2 of 256 worlds)
+    # but could not hold 4 s. Evaluations measure the TRUE 4 s standard via
+    # NICK_GETUP_STABLE=4. Training at 2 s makes "stay up" earnable now; the
+    # window goes back to 4 s once the hold rate is established.
+    getup_stable_seconds: float = float(os.environ.get("NICK_GETUP_STABLE", "2.0"))
     # SHAPING, v2 (nickgetup01 seg 1 showed the first version too flat: the
     # gaussian over (z - rest)^2 reads ~0.02 until the body is most of the way
     # up, so PPO had no gradient to climb from flat-on-the-floor and episode
@@ -245,10 +250,12 @@ class NickEnvCfg:
     getup_w_upright: float = 0.20                 # up-axis shaping while still down
     getup_milestone_sit_fraction: float = 0.45    # of rest pelvis height: torso is up
     getup_milestone_crouch_fraction: float = 0.65 # of rest pelvis height: in a crouch
-    getup_bonus_sit: float = 0.5                  # one-time
-    getup_bonus_crouch: float = 1.0               # one-time
+    # Milestone bonuses halved for seg 3: sit/crouch are learned (22%/7% of
+    # worlds), and their reward mass now belongs to the rise-and-hold phase.
+    getup_bonus_sit: float = 0.25                 # one-time
+    getup_bonus_crouch: float = 0.5               # one-time
     getup_timeout_fraction: float = 0.6           # failed attempts end at 12 s of the 20 s cap
-    getup_w_hold: float = 0.30                    # upright*planted once risen (keep standing)
+    getup_w_hold: float = 0.60                    # upright*planted once risen (keep standing)
     getup_success_bonus: float = 3.0              # one-time, at the stability mark
 
     # --- domain randomisation, fixed per world for the run ------------------

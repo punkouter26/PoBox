@@ -128,6 +128,25 @@ with the Newton viewer open.
    flailing = more discovery from the floor).
 5. Smoke return improved −0.58 → −0.16 with no code path errors.
 
-### Segment 2 (iters 999→2200) — running
+### Segment 2 (iters 999→2199) — DONE, first successes
+
+- Shaping v2 moved the climb: sit 22.5% / crouch 6.6% of get-up worlds
+  (from unmeasurably small), risen rate peaked ~1.8% mid-run then settled
+  0.5% — the policy crouches readily but hesitated at full extension.
+- **Episode evals (256 fresh starts):** `model_2199` produced the FIRST
+  fresh-start successes — ~0.4–0.8% (1–2 worlds), rise time 5.0 s.
+  `model_1800` still 0%. So: real but marginal; still iterating.
+- **Regression (model_2199):** BALANCE 75% / WALK 74% (15.1 m) / RING 70% —
+  identical to segment 1. The contest skills are simply not being spent.
+
+### Change: curriculum step (applied before segment 3)
+
+1. Hold window trains at **2 s** (was 4) — "stay up" becomes earnable now.
+   Evaluations keep measuring the TRUE 4 s standard via `NICK_GETUP_STABLE=4`
+   (new env override); the window returns to 4 s once the hold rate exists.
+2. `getup_w_hold` 0.30 → 0.60: reward mass moves to staying up.
+3. Milestone bonuses halved (sit 0.25, crouch 0.5) — already learned.
+
+### Segment 3 (iters 2199→3400) — running
 
 (appended when it lands)
