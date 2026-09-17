@@ -724,8 +724,12 @@ class NickEnv:
         # Shaping v2: a linear height ramp pays from the first centimetre
         # (see the cfg comment for why the gaussian was replaced), plus
         # one-time sit/crouch milestone bonuses latched per episode.
+        # Seg 4 fix: the ramp used to cap at the CROUCH height, leaving a
+        # flat spot between crouch and upright exactly where worlds stalled
+        # (36% reached standing, few held). It now runs to the rise
+        # threshold, so standing the rest of the way up keeps paying.
         h_frac = s["pelvis_z"] / self.rest_pelvis_z
-        getup_progress = torch.clamp(h_frac / cfg.getup_milestone_crouch_fraction, max=1.0)
+        getup_progress = torch.clamp(h_frac / cfg.getup_rise_pelvis_fraction, max=1.0)
         ms = self.milestones
         newly_sit = (ms < 1) & (h_frac > cfg.getup_milestone_sit_fraction)
         newly_crouch = (ms < 2) & (h_frac > cfg.getup_milestone_crouch_fraction)

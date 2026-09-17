@@ -167,6 +167,23 @@ A fraction of get-up episodes now START partway up: 25% at crouch height
 and densely; the flat-floor majority keeps the full chain honest.
 Smoke clean.
 
-### Segment 4 (iters 3399→4600) — running
+### Segment 4 (iters 3399→4599) — DONE, the curriculum converted
+
+- **Episode evals (256 fresh starts, 4 s standard):** `model_4599`
+  success **1%** (~2-3 worlds, rise 4.0 s, ZERO relapses after success);
+  `model_4100` 0%. The headline: rose-but-no-hold jumped **21% → 34-36%**.
+  Worlds now reach standing nearly twice as often and sometimes hold.
+- In-training at the 2 s window: holds 8x over segment 3 (1.02%), risen
+  3.7%, sit 28.5%, crouch 15.8%.
+- Regression: unchanged (74/74/69 tables from the same checkpoint batch).
+
+### Change: ramp extension (applied before segment 5)
+
+The height ramp capped at the crouch milestone, leaving no gradient between
+crouch and upright — exactly where worlds stalled. It now runs to the rise
+threshold. Segment 5 also raises getup_fraction to 0.40 and crouch-start
+share to 0.30 (hold-phase practice where the bottleneck is).
+
+### Segment 5 (iters 4599→5800) — running
 
 (appended when it lands)
