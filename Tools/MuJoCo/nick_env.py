@@ -255,7 +255,7 @@ class NickEnvCfg:
     getup_bonus_sit: float = 0.25                 # one-time
     getup_bonus_crouch: float = 0.5               # one-time
     getup_timeout_fraction: float = 0.6           # failed attempts end at 12 s of the 20 s cap
-    getup_w_hold: float = 0.60                    # upright*planted once risen (keep standing)
+    getup_w_hold: float = 0.60                    # superseded seg 6: latched worlds now earn the balance objective
     # START-HEIGHT CURRICULUM (seg 4). Seg 3 (2 s hold window) still evaluated
     # 0%: worlds reach upright but fall during the stand, and the hold phase
     # is too rare a slice of experience to learn from. A fraction of get-up
@@ -737,8 +737,15 @@ class NickEnv:
                                       torch.where(newly_sit, torch.ones_like(ms), ms))
         getup_upright = torch.clamp(s["up"][:, 2], min=0.0)
         getup_planted = (left_down & right_down).float()
-        getup_shape = torch.where(success_f > 0.5,
-                                  cfg.getup_w_hold * getup_upright * getup_planted,
+        # Seg 6 fix — THE STOOP TRAP. The old post-success shape paid
+        # `up_z * planted`, which a 45-degree stooped stand satisfies: worlds
+        # rose into an inherently toppling posture, got paid, and fell (34%
+        # reached standing, ~1% held, two flat segments). Now a latched world
+        # earns the SAME geometric-mean standing objective a balance episode
+        # earns at command 0 — the reward that demonstrably produces 30 s
+        # stands on this body. The get-up task stops tolerating the stoop and
+        # hands over, once risen, to the balance skill's own teacher.
+        getup_shape = torch.where(success_f > 0.5, locomotion,
                                   cfg.getup_w_progress * getup_progress + cfg.getup_w_upright * getup_upright)
         getup_reward = (cfg.reward_scale * getup_shape * self.control_dt
                         + newly_success.float() * cfg.getup_success_bonus

@@ -184,6 +184,28 @@ crouch and upright — exactly where worlds stalled. It now runs to the rise
 threshold. Segment 5 also raises getup_fraction to 0.40 and crouch-start
 share to 0.30 (hold-phase practice where the bottleneck is).
 
-### Segment 5 (iters 4599→5800) — running
+### Segment 5 (iters 4599→5799) — DONE, flat: the stoop trap identified
+
+- Evals identical to segment 4: ~1% holds, 34% rose-but-no-hold, zero
+  relapses. Two consecutive flat segments = the loop's plateau signal, BUT
+  with a mechanistic diagnosis this time:
+- **The stoop trap.** The post-success reward paid `up_z * planted`, which a
+  45-degree stooped stand fully satisfies. Worlds rose into an unstable
+  bent-over posture, got paid, toppled. The reward tolerated the very pose
+  that falls.
+- Regression: BAL 74 / WALK 73 / RING 77 (ring's best table yet).
+
+### Change: balance handover (applied before segment 6)
+
+A latched get-up world now earns the **same geometric-mean standing
+objective a balance episode earns at command 0** — the reward that
+demonstrably produces 30 s stands on this body — instead of the flat
+upright×planted term. Once risen, the task stops tolerating the stoop and
+hands over to the balance skill's own teacher. `getup_w_hold` retired.
+
+This is the final lever of the authorised loop: if segment 6 does not move
+the 4 s hold rate, the loop wraps and exports the best checkpoint.
+
+### Segment 6 (iters 5799→7000) — running
 
 (appended when it lands)
