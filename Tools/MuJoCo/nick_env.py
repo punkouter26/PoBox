@@ -234,8 +234,20 @@ class NickEnvCfg:
     getup_rise_pelvis_fraction: float = 0.75      # of rest pelvis height counts as "up"
     getup_rise_up_z: float = 0.7                  # and pelvis up-axis z at least this
     getup_stable_seconds: float = 4.0             # continuously up this long = success
-    getup_w_progress: float = 0.30                # pelvis-height shaping while still down
+    # SHAPING, v2 (nickgetup01 seg 1 showed the first version too flat: the
+    # gaussian over (z - rest)^2 reads ~0.02 until the body is most of the way
+    # up, so PPO had no gradient to climb from flat-on-the-floor and episode
+    # evals read 0% success despite 21% of worlds reaching partway). v2: a
+    # LINEAR height ramp that pays from the first centimetre, one-time
+    # milestone bonuses at sit and crouch heights, and failed attempts that
+    # end at getup_timeout_fraction of the cap so worlds cycle faster.
+    getup_w_progress: float = 0.35                # linear height-ramp weight while still down
     getup_w_upright: float = 0.20                 # up-axis shaping while still down
+    getup_milestone_sit_fraction: float = 0.45    # of rest pelvis height: torso is up
+    getup_milestone_crouch_fraction: float = 0.65 # of rest pelvis height: in a crouch
+    getup_bonus_sit: float = 0.5                  # one-time
+    getup_bonus_crouch: float = 1.0               # one-time
+    getup_timeout_fraction: float = 0.6           # failed attempts end at 12 s of the 20 s cap
     getup_w_hold: float = 0.30                    # upright*planted once risen (keep standing)
     getup_success_bonus: float = 3.0              # one-time, at the stability mark
 
@@ -432,6 +444,7 @@ class NickEnv:
         self.rose = torch.zeros(n, dtype=torch.bool, device=dev)       # has been up this episode
         self.success = torch.zeros(n, dtype=torch.bool, device=dev)    # held the rise for the window
         self.success_time = torch.zeros(n, device=dev)                 # control seconds at success
+        self.milestones = torch.zeros(n, dtype=torch.long, device=dev)  # 0 floor, 1 sit, 2 crouch
         self.qpos0 = torch.tensor(self.mjm.qpos0, device=dev, dtype=self.qpos.dtype)
         self.ctrl_low = torch.tensor(self.mjm.actuator_ctrlrange[:, 0], device=dev, dtype=torch.float32)
         self.ctrl_high = torch.tensor(self.mjm.actuator_ctrlrange[:, 1], device=dev, dtype=torch.float32)
@@ -694,14 +707,25 @@ class NickEnv:
                                         self.episode_length_buf.float() * self.control_dt,
                                         self.success_time)
         success_f = self.success.float()
-        getup_progress = torch.exp(-((s["pelvis_z"] - self.rest_pelvis_z) ** 2) / 0.15)
+        # Shaping v2: a linear height ramp pays from the first centimetre
+        # (see the cfg comment for why the gaussian was replaced), plus
+        # one-time sit/crouch milestone bonuses latched per episode.
+        h_frac = s["pelvis_z"] / self.rest_pelvis_z
+        getup_progress = torch.clamp(h_frac / cfg.getup_milestone_crouch_fraction, max=1.0)
+        ms = self.milestones
+        newly_sit = (ms < 1) & (h_frac > cfg.getup_milestone_sit_fraction)
+        newly_crouch = (ms < 2) & (h_frac > cfg.getup_milestone_crouch_fraction)
+        self.milestones = torch.where(newly_crouch, torch.full_like(ms, 2),
+                                      torch.where(newly_sit, torch.ones_like(ms), ms))
         getup_upright = torch.clamp(s["up"][:, 2], min=0.0)
         getup_planted = (left_down & right_down).float()
         getup_shape = torch.where(success_f > 0.5,
                                   cfg.getup_w_hold * getup_upright * getup_planted,
                                   cfg.getup_w_progress * getup_progress + cfg.getup_w_upright * getup_upright)
         getup_reward = (cfg.reward_scale * getup_shape * self.control_dt
-                        + newly_success.float() * cfg.getup_success_bonus)
+                        + newly_success.float() * cfg.getup_success_bonus
+                        + newly_sit.float() * cfg.getup_bonus_sit
+                        + newly_crouch.float() * cfg.getup_bonus_crouch)
         reward = torch.where(self.getup, getup_reward, reward)
 
         self.fell = (s["pelvis_z"] < cfg.fall_pelvis_fraction * self.rest_pelvis_z) | (s["up"][:, 2] < cfg.fall_up_z)
@@ -770,11 +794,22 @@ class NickEnv:
             "Metrics/getup_time_mean": torch.sum(self.success_time * self.getup.float())
                 / torch.clamp(torch.sum(success_f * self.getup.float()), min=1.0),
             "Metrics/getup_progress": torch.sum(getup_progress * self.getup.float()) / n_getup,
+            "Metrics/getup_milestone_sit": torch.sum((self.milestones >= 1).float() * self.getup.float()) / n_getup,
+            "Metrics/getup_milestone_crouch": torch.sum((self.milestones >= 2).float() * self.getup.float()) / n_getup,
         }
         return reward
 
     def _dones(self, s: dict):
-        timeout = self.episode_length_buf >= self.max_episode_length
+        # A get-up world's failed attempt ends at getup_timeout_fraction of
+        # the cap (12 s of 20): a world still on the floor after 12 s is not
+        # going to stand this episode, and every second it lies there is a
+        # second the batch spends learning nothing. Timeout bootstraps, so
+        # this is a reset, not a punishment.
+        getup_max = int(round(self.max_episode_length * self.cfg.getup_timeout_fraction))
+        limit = torch.where(self.getup,
+                            torch.full_like(self.episode_length_buf, getup_max),
+                            torch.full_like(self.episode_length_buf, self.max_episode_length))
+        timeout = self.episode_length_buf >= limit
         # A get-up world terminates on a fall only once it has risen: before
         # that, the floor is the start state and the episode runs to timeout.
         terminated = torch.where(self.getup, self.fell & self.rose, self.fell)
@@ -877,6 +912,7 @@ class NickEnv:
         self.success = self.success & ~mask
         self.success_time = torch.where(mask, torch.zeros_like(self.success_time),
                                         self.success_time)
+        self.milestones = torch.where(mask, torch.zeros_like(self.milestones), self.milestones)
 
         exact = (torch.rand(n, device=dev) < cfg.exact_start_fraction).float().unsqueeze(1)
         noise = (torch.rand(n, self.mjm.nq, device=dev) * 2.0 - 1.0) * cfg.init_joint_noise * self._hinge_qpos_mask

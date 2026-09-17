@@ -100,4 +100,34 @@ with the Newton viewer open.
 
 ## Phase 2 — log
 
-(appended below as segments complete)
+### Segment 1 (nickgetup01, iters 0→999, warm-started from Nick_Torque002)
+
+- Warm start verified: actor reproduces the exported ONNX to 3.3e-6.
+- Ran clean, no crashes, ~2.1–2.5 s/iter with TB + viewer sharing the GPU.
+- Training-metric get-up success crawled 0 → ~0.12% of worlds; first
+  successes appeared around iteration 84.
+- **Episode eval (the judge), 256 fresh fallen starts:**
+  - `model_999`: get-up success **0%**, "rose-but-no-hold" 21%, no relapses.
+  - `model_500`: identical picture — success 0%, rose 20%.
+  - Reading: the policy reaches partway up but cannot hold 4 s; from flat on
+    the floor the v1 shaping (gaussian near standing height) had ~no gradient.
+- **Regression check on model_999 (the skills that must survive):**
+  BALANCE 75% full-cap (median 30 s), WALK 74% (median 20 s, 14.7 m,
+  0.73 m/s), RING 70% under hazards, passive baseline 1.3 s. No regression
+  from adding the get-up task.
+
+### Change: shaping v2 (applied before segment 2)
+
+1. Linear height ramp (`0.35 * clamp(z / 0.65 rest)`) replaces the gaussian —
+   pays from the first centimetre instead of ~0.02 flat signal.
+2. One-time milestone bonuses: sit (z > 45% rest) +0.5, crouch (z > 65%) +1.0,
+   latched per episode; logged as `getup_milestone_sit/crouch`.
+3. Failed get-up attempts end at 60% of the cap (12 s of 20) — a world still
+   down at 12 s was learning nothing for 8 more seconds. Timeout bootstraps.
+4. `getup_fraction` 0.25 → 0.33; PPO `entropy_coef` 0.001 → 0.005 (more
+   flailing = more discovery from the floor).
+5. Smoke return improved −0.58 → −0.16 with no code path errors.
+
+### Segment 2 (iters 999→2200) — running
+
+(appended when it lands)
