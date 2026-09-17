@@ -206,6 +206,21 @@ hands over to the balance skill's own teacher. `getup_w_hold` retired.
 This is the final lever of the authorised loop: if segment 6 does not move
 the 4 s hold rate, the loop wraps and exports the best checkpoint.
 
-### Segment 6 (iters 5799→7000) — running
+### Segment 6 (iters 5799→6999) — DONE, still flat at the exam
 
+- model_6999: 0% / model_6500: 1% at the 4 s standard; rose-no-hold 34-35%.
+  The balance handover has had only 1,200 iterations — retained unchanged.
+- Regression: BAL 74 / WALK 73 / RING 79 (ring's best again).
+- **Incident, fixed:** an export ran without `--out` and overwrote
+  `Nick_Locomotion`'s shipped onnx/SOURCE with the get-up brain; restored
+  from git immediately. Rule reinforced: ALWAYS pass `--out` for a new brain.
+
+### Target change (user, 2026-09-17 evening)
+
+The user accepts **10% full get-up success** as the bar. Loop continues.
+
+### Segment 7 (iters 6999→10000) — running, ~2 h
+
+Same recipe (balance handover needs iterations to show effect); exams at
+512 worlds at model_7500 / 8500 / 10000 for tighter reads at low rates.
 (appended when it lands)
