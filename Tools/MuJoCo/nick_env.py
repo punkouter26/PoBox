@@ -1,9 +1,13 @@
 """MuJoCo Warp velocity-command locomotion environment for Nick.
 
-ONE POLICY, TWO MINI-GAMES:
+ONE POLICY, THREE MINI-GAMES:
 the commanded forward speed is an observation, so a single brain covers the
 balance ring (command 0 m/s) and the walk race (command ~1 m/s). A quarter of
 episodes command a dead stop, so standing cannot be traded away for walking.
+The third game is GET-UP (`getup_fraction` of episodes): the world starts
+LYING ON THE FLOOR and is rewarded for standing back up and holding it --
+same observation contract, command 0 m/s, so the shipped brain file and the
+C# side are untouched.
 
 THE MODEL IS THE ONE UNITY GENERATES. Tools/MuJoCo/nick_unity.xml is what
 MjScene compiles at play time, exported by RigTool_NickMuJoCo.ExportNickMjcf --
@@ -214,6 +218,27 @@ class NickEnvCfg:
     init_vel_noise: float = 0.1
     exact_start_fraction: float = 0.3        # resets from the exact rest pose, as Unity does
 
+    # --- GET-UP: the third mini-game ----------------------------------------
+    # A fraction of episodes start LYING ON THE FLOOR -- root tilted past
+    # vertical about a random horizontal axis, hinge joints near rest, zero
+    # velocity -- and are rewarded for getting back up and HOLDING it
+    # (getup_stable_seconds, the practice scene's success rule). Falling is
+    # NOT a termination for these worlds until they have risen once: the
+    # floor is the start state, not a failure. Same observation vector,
+    # command 0 m/s like a standing world, so no C# change and no brain-file
+    # change -- only a policy that can now also rise.
+    getup_fraction: float = float(os.environ.get("NICK_GETUP_FRACTION", "0.25"))
+    getup_joint_noise: float = 0.3           # rad, hinge dofs, on the fallen pose
+    getup_pelvis_z_range: tuple = (0.10, 0.24)    # start lying pelvis height
+    getup_tilt_deg_range: tuple = (65.0, 115.0)   # past vertical, about a random horizontal axis
+    getup_rise_pelvis_fraction: float = 0.75      # of rest pelvis height counts as "up"
+    getup_rise_up_z: float = 0.7                  # and pelvis up-axis z at least this
+    getup_stable_seconds: float = 4.0             # continuously up this long = success
+    getup_w_progress: float = 0.30                # pelvis-height shaping while still down
+    getup_w_upright: float = 0.20                 # up-axis shaping while still down
+    getup_w_hold: float = 0.30                    # upright*planted once risen (keep standing)
+    getup_success_bonus: float = 3.0              # one-time, at the stability mark
+
     # --- domain randomisation, fixed per world for the run ------------------
     gain_scale_range: tuple = (0.85, 1.15)   # kp and kv together, keeps the damping ratio
     friction_scale_range: tuple = (0.7, 1.3)
@@ -353,7 +378,14 @@ class NickEnv:
         n = self.num_envs
         self.m = mjw.put_model(self.mjm, batch_sizes={
             "actuator_gainprm": n, "actuator_biasprm": n, "geom_friction": n})
-        self.d = mjw.put_data(self.mjm, self.mjd, nworld=n)
+        # GET-UP WORLDS LIE ON THE FLOOR. A whole body's worth of floor and
+        # self contacts is more constraint rows than the standing-pose
+        # heuristic sizes for, and an overflowing arena DROPS constraints --
+        # a dropped floor contact lets the body sink through the world, which
+        # would poison exactly the task that lives down there. Size both
+        # buffers explicitly with headroom (measured: lying starts ask for
+        # nefc 66-69 against a 64-row default).
+        self.d = mjw.put_data(self.mjm, self.mjd, nworld=n, nconmax=96, njmax=192)
         self.qpos = wp.to_torch(self.d.qpos)
         self.qvel = wp.to_torch(self.d.qvel)
         self.ctrl = wp.to_torch(self.d.ctrl)
@@ -394,6 +426,12 @@ class NickEnv:
         self.wind_wait = torch.zeros(n, dtype=torch.long, device=dev)
         self.lean_phase = torch.zeros(n, device=dev)
         self.fell = torch.zeros(n, dtype=torch.bool, device=dev)
+        # --- get-up task state (NickEnvCfg.getup_fraction) --------------------
+        self.getup = torch.zeros(n, dtype=torch.bool, device=dev)
+        self.up_steps = torch.zeros(n, dtype=torch.long, device=dev)   # consecutive risen frames
+        self.rose = torch.zeros(n, dtype=torch.bool, device=dev)       # has been up this episode
+        self.success = torch.zeros(n, dtype=torch.bool, device=dev)    # held the rise for the window
+        self.success_time = torch.zeros(n, device=dev)                 # control seconds at success
         self.qpos0 = torch.tensor(self.mjm.qpos0, device=dev, dtype=self.qpos.dtype)
         self.ctrl_low = torch.tensor(self.mjm.actuator_ctrlrange[:, 0], device=dev, dtype=torch.float32)
         self.ctrl_high = torch.tensor(self.mjm.actuator_ctrlrange[:, 1], device=dev, dtype=torch.float32)
@@ -637,10 +675,41 @@ class NickEnv:
                                      - cfg.w_ctrl_cost * action_cost
                                      - cfg.w_speed_cost * speed_cost) * self.control_dt
 
+        # --- GET-UP REWARD --------------------------------------------------
+        # The standing/walking product reward is useless on the floor (every
+        # factor saturates at the product floor, so there is no gradient to
+        # climb), so get-up worlds get an additive shape instead: pelvis
+        # height and the up-axis while still down, then upright-with-both-
+        # feet-planted once risen, plus a one-time bonus for holding the rise
+        # getup_stable_seconds. Rise/streak bookkeeping is unconditional so
+        # the dones and the metrics see it for every world.
+        rise = (s["pelvis_z"] > cfg.getup_rise_pelvis_fraction * self.rest_pelvis_z) \
+            & (s["up"][:, 2] > cfg.getup_rise_up_z)
+        self.rose = self.rose | rise
+        self.up_steps = torch.where(rise, self.up_steps + 1, torch.zeros_like(self.up_steps))
+        stable = self.up_steps.float() * self.control_dt >= cfg.getup_stable_seconds
+        newly_success = stable & ~self.success
+        self.success = self.success | newly_success
+        self.success_time = torch.where(newly_success,
+                                        self.episode_length_buf.float() * self.control_dt,
+                                        self.success_time)
+        success_f = self.success.float()
+        getup_progress = torch.exp(-((s["pelvis_z"] - self.rest_pelvis_z) ** 2) / 0.15)
+        getup_upright = torch.clamp(s["up"][:, 2], min=0.0)
+        getup_planted = (left_down & right_down).float()
+        getup_shape = torch.where(success_f > 0.5,
+                                  cfg.getup_w_hold * getup_upright * getup_planted,
+                                  cfg.getup_w_progress * getup_progress + cfg.getup_w_upright * getup_upright)
+        getup_reward = (cfg.reward_scale * getup_shape * self.control_dt
+                        + newly_success.float() * cfg.getup_success_bonus)
+        reward = torch.where(self.getup, getup_reward, reward)
+
         self.fell = (s["pelvis_z"] < cfg.fall_pelvis_fraction * self.rest_pelvis_z) | (s["up"][:, 2] < cfg.fall_up_z)
         if cfg.fall_head_fraction > 0.0:
             self.fell = self.fell | (s["head_z"] < cfg.fall_head_fraction * self.rest_head_z)
-        reward = reward + cfg.pen_termination * self.fell.float()
+        # On the floor is a get-up world's START STATE, not a failure: the
+        # termination penalty lands on a fall only once the world has risen.
+        reward = reward + cfg.pen_termination * (self.fell & (~self.getup | self.rose)).float()
 
         # Masked means, never boolean indexing: every `x[mask]` and every
         # `if mask.any()` is a device sync, and this runs every control step.
@@ -648,6 +717,7 @@ class NickEnv:
         standing_f = 1.0 - moving
         n_moving = torch.clamp(moving.sum(), min=1.0)
         n_standing = torch.clamp(standing_f.sum(), min=1.0)
+        n_getup = torch.clamp(self.getup.float().sum(), min=1.0)
         measured = torch.sum(v_xy * direction, dim=1)
         self.extras["log"] = {
             "Metrics/speed_ratio": torch.sum(measured / torch.clamp(speed, min=0.1) * moving) / n_moving,
@@ -693,12 +763,22 @@ class NickEnv:
                                                      <= 0.1 * torch.clamp(speed, min=0.1)).float()
                                                     * moving) / n_moving,
             "Metrics/overlift_factor": torch.sum(overlift * moving) / n_moving,
+            # --- get-up task (masked means, like the fall-rate split) ------
+            "Metrics/getup_world_fraction": self.getup.float().mean(),
+            "Metrics/getup_success_rate": torch.sum(success_f * self.getup.float()) / n_getup,
+            "Metrics/getup_risen_rate": torch.sum(self.rose.float() * self.getup.float()) / n_getup,
+            "Metrics/getup_time_mean": torch.sum(self.success_time * self.getup.float())
+                / torch.clamp(torch.sum(success_f * self.getup.float()), min=1.0),
+            "Metrics/getup_progress": torch.sum(getup_progress * self.getup.float()) / n_getup,
         }
         return reward
 
     def _dones(self, s: dict):
         timeout = self.episode_length_buf >= self.max_episode_length
-        return self.fell.clone(), timeout & ~self.fell
+        # A get-up world terminates on a fall only once it has risen: before
+        # that, the floor is the start state and the episode runs to timeout.
+        terminated = torch.where(self.getup, self.fell & self.rose, self.fell)
+        return terminated, timeout & ~terminated
 
     # ------------------------------------------------------------ transitions
     def _apply_pushes(self):
@@ -788,6 +868,16 @@ class NickEnv:
         self.lean_phase = torch.where(mask, torch.rand(n, device=dev) * 2.0 * math.pi,
                                       self.lean_phase)
 
+        # Task draw, BEFORE the pose so the pose can follow it: most worlds
+        # keep the standing/walking mix, a fraction start on the floor.
+        fresh_getup = torch.rand(n, device=dev) < cfg.getup_fraction
+        self.getup = torch.where(mask, fresh_getup, self.getup)
+        self.up_steps = torch.where(mask, torch.zeros_like(self.up_steps), self.up_steps)
+        self.rose = self.rose & ~mask
+        self.success = self.success & ~mask
+        self.success_time = torch.where(mask, torch.zeros_like(self.success_time),
+                                        self.success_time)
+
         exact = (torch.rand(n, device=dev) < cfg.exact_start_fraction).float().unsqueeze(1)
         noise = (torch.rand(n, self.mjm.nq, device=dev) * 2.0 - 1.0) * cfg.init_joint_noise * self._hinge_qpos_mask
         qpos = self.qpos0.unsqueeze(0) + (noise * (1.0 - exact)).to(dtype)
@@ -795,6 +885,35 @@ class NickEnv:
 
         self.qpos[:] = torch.where(m1, qpos, self.qpos)
         self.qvel[:] = torch.where(m1, qvel, self.qvel)
+
+        # GET-UP START POSE. The body lies where a fall leaves it: the root
+        # tilted past vertical about a random horizontal axis (a supine or
+        # prone landing, +-), hinge joints near rest -- a ragdoll does not
+        # fold itself -- and zero velocity. The solver pops whatever hand or
+        # hip starts a hair inside the floor; that mess is realistic and the
+        # policy has to cope with it anyway. Fully vectorised: every world
+        # samples a pose, the mask picks.
+        gq = (mask & self.getup).unsqueeze(1)
+        tilt = torch.empty(n, device=dev).uniform_(*cfg.getup_tilt_deg_range) * (math.pi / 180.0)
+        tilt_axis = torch.rand(n, device=dev) * 2.0 * math.pi
+        half = tilt * 0.5
+        tilt_q = torch.stack([torch.cos(half),
+                              torch.sin(half) * torch.cos(tilt_axis),
+                              torch.sin(half) * torch.sin(tilt_axis),
+                              torch.zeros(n, device=dev)], dim=1)
+        yaw = torch.rand(n, device=dev) * 2.0 * math.pi
+        yh = yaw * 0.5
+        yaw_q = torch.stack([torch.cos(yh),
+                             torch.zeros(n, device=dev),
+                             torch.zeros(n, device=dev),
+                             torch.sin(yh)], dim=1)
+        lying_qpos = self.qpos0.repeat(n, 1)
+        lying_qpos[:, 3:7] = quat_mul(quat_mul(yaw_q, tilt_q), lying_qpos[:, 3:7])
+        lying_qpos[:, 2] = torch.empty(n, device=dev).uniform_(*cfg.getup_pelvis_z_range)
+        lying_qpos = lying_qpos + ((torch.rand(n, self.mjm.nq, device=dev) * 2.0 - 1.0)
+                                   * cfg.getup_joint_noise * self._hinge_qpos_mask).to(dtype)
+        self.qpos[:] = torch.where(gq, lying_qpos, self.qpos)
+        self.qvel[:] = torch.where(gq, torch.zeros_like(self.qvel), self.qvel)
         self.ctrl[:] = torch.where(m1, torch.zeros_like(self.ctrl), self.ctrl)
         self.xfrc[:] = torch.where(mask.view(n, 1, 1), torch.zeros_like(self.xfrc), self.xfrc)
         self.actions = torch.where(m1, torch.zeros_like(self.actions), self.actions)
@@ -811,6 +930,11 @@ class NickEnv:
         yaw = torch.empty(n, device=dev).uniform_(*cfg.heading_range_deg) * (math.pi / 180.0)
         # Rest heading is (0, -1, 0); rotated about +z by yaw it is (sin, -cos).
         fresh = torch.stack([speed, torch.sin(yaw), -torch.cos(yaw)], dim=1)
+        # Get-up worlds command a dead stop, exactly like a standing episode:
+        # the 6-term command stays in distribution, so the shipped 127-term
+        # contract needs no change and no C# edit.
+        speed = torch.where(self.getup, torch.zeros_like(speed), speed)
+        fresh = torch.stack([speed, fresh[:, 1], fresh[:, 2]], dim=1)
         self.commands = torch.where(m1, fresh, self.commands)
 
         # Kinematics for the new states, so the first observation of the new

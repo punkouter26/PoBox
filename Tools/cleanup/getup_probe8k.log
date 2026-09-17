@@ -1,0 +1,924 @@
+TensorBoard housekeeping
+ENV READY  num_envs=8192  obs=127  act=30  control_dt=0.020  model=C:\Users\punko\Downloads\PoBox\Tools\MuJoCo\nick_unity.xml
+Actor MLP: Sequential(
+  (0): Linear(in_features=127, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=30, bias=True)
+)
+Critic MLP: Sequential(
+  (0): Linear(in_features=127, out_features=512, bias=True)
+  (1): ELU(alpha=1.0)
+  (2): Linear(in_features=512, out_features=256, bias=True)
+  (3): ELU(alpha=1.0)
+  (4): Linear(in_features=256, out_features=128, bias=True)
+  (5): ELU(alpha=1.0)
+  (6): Linear(in_features=128, out_features=1, bias=True)
+)
+WARM_START actor matches exported ONNX; max error 0.00000334; critic is new
+TRAINING  logs -> C:\Users\punko\Downloads\PoBox\results\nick\getup_probe8k
+################################################################################
+                       [1m Learning iteration 0/20 [0m                        
+
+                       Computation: 58955 steps/s (collection: 2.301s, learning 1.034s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0758
+               Mean surrogate loss: 0.2316
+                 Mean entropy loss: 42.5706
+                       Mean reward: -1.02
+               Mean episode length: 22.90
+               Metrics/speed_ratio: 0.5160
+       Metrics/drift_when_standing: 0.4703
+          Metrics/upright_fraction: 0.7931
+               Metrics/alternation: 0.1800
+            Metrics/single_support: 0.4288
+                    Metrics/facing: 0.9650
+     Metrics/planted_when_standing: 0.4778
+            Metrics/foot_clearance: 0.0824
+                    Metrics/height: 0.7224
+                 Metrics/fall_rate: 0.2026
+   Metrics/standing_world_fraction: 0.4346
+        Metrics/fall_rate_standing: 0.4658
+          Metrics/fall_rate_moving: 0.0003
+                  Metrics/tilt_deg: 21.8332
+        Metrics/actuator_force_abs: 35.4430
+        Metrics/actuator_force_max: 157.5367
+               Metrics/action_cost: 0.7519
+               Metrics/action_rate: 0.6029
+           Metrics/joint_accel_abs: 79.2758
+           Metrics/hinge_speed_max: 11.0915
+       Metrics/over_speed_fraction: 0.0855
+            Metrics/track_err_frac: 0.5478
+        Metrics/track_within_10pct: 0.0832
+           Metrics/overlift_factor: 0.9928
+      Metrics/getup_world_fraction: 0.2480
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.1091
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.1758
+--------------------------------------------------------------------------------
+                   Total timesteps: 196608
+                    Iteration time: 3.33s
+                      Time elapsed: 00:00:03
+                               ETA: 00:01:06
+
+Storing git diff for 'PoBox' in: C:\Users\punko\Downloads\PoBox\results\nick\getup_probe8k\git\PoBox.diff
+################################################################################
+                       [1m Learning iteration 1/20 [0m                        
+
+                       Computation: 62151 steps/s (collection: 2.235s, learning 0.928s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.2568
+               Mean surrogate loss: -0.0030
+                 Mean entropy loss: 42.5744
+                       Mean reward: -1.20
+               Mean episode length: 47.17
+               Metrics/speed_ratio: 0.5774
+       Metrics/drift_when_standing: 0.3873
+          Metrics/upright_fraction: 0.7778
+               Metrics/alternation: 0.6124
+            Metrics/single_support: 0.6613
+                    Metrics/facing: 0.9113
+     Metrics/planted_when_standing: 0.4402
+            Metrics/foot_clearance: 0.1162
+                    Metrics/height: 0.6475
+                 Metrics/fall_rate: 0.2250
+   Metrics/standing_world_fraction: 0.4483
+        Metrics/fall_rate_standing: 0.4852
+          Metrics/fall_rate_moving: 0.0132
+                  Metrics/tilt_deg: 25.4588
+        Metrics/actuator_force_abs: 34.4940
+        Metrics/actuator_force_max: 166.0420
+               Metrics/action_cost: 0.7608
+               Metrics/action_rate: 0.5644
+           Metrics/joint_accel_abs: 73.6769
+           Metrics/hinge_speed_max: 10.7191
+       Metrics/over_speed_fraction: 0.0733
+            Metrics/track_err_frac: 0.5840
+        Metrics/track_within_10pct: 0.1061
+           Metrics/overlift_factor: 0.9006
+      Metrics/getup_world_fraction: 0.2453
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0964
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.1185
+--------------------------------------------------------------------------------
+                   Total timesteps: 393216
+                    Iteration time: 3.16s
+                      Time elapsed: 00:00:06
+                               ETA: 00:01:01
+
+################################################################################
+                       [1m Learning iteration 2/20 [0m                        
+
+                       Computation: 62372 steps/s (collection: 2.227s, learning 0.925s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.2290
+               Mean surrogate loss: -0.0067
+                 Mean entropy loss: 42.5782
+                       Mean reward: -0.53
+               Mean episode length: 65.82
+               Metrics/speed_ratio: 0.6796
+       Metrics/drift_when_standing: 0.3907
+          Metrics/upright_fraction: 0.7161
+               Metrics/alternation: 0.6783
+            Metrics/single_support: 0.6780
+                    Metrics/facing: 0.9059
+     Metrics/planted_when_standing: 0.4241
+            Metrics/foot_clearance: 0.1201
+                    Metrics/height: 0.6130
+                 Metrics/fall_rate: 0.2744
+   Metrics/standing_world_fraction: 0.5225
+        Metrics/fall_rate_standing: 0.5082
+          Metrics/fall_rate_moving: 0.0185
+                  Metrics/tilt_deg: 29.8965
+        Metrics/actuator_force_abs: 34.1749
+        Metrics/actuator_force_max: 163.3830
+               Metrics/action_cost: 0.7601
+               Metrics/action_rate: 0.5632
+           Metrics/joint_accel_abs: 73.4260
+           Metrics/hinge_speed_max: 10.7125
+       Metrics/over_speed_fraction: 0.0733
+            Metrics/track_err_frac: 0.6300
+        Metrics/track_within_10pct: 0.1017
+           Metrics/overlift_factor: 0.8641
+      Metrics/getup_world_fraction: 0.2843
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0471
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0782
+--------------------------------------------------------------------------------
+                   Total timesteps: 589824
+                    Iteration time: 3.15s
+                      Time elapsed: 00:00:09
+                               ETA: 00:00:57
+
+################################################################################
+                       [1m Learning iteration 3/20 [0m                        
+
+                       Computation: 61586 steps/s (collection: 2.259s, learning 0.933s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.1896
+               Mean surrogate loss: -0.0069
+                 Mean entropy loss: 42.5960
+                       Mean reward: -0.09
+               Mean episode length: 69.71
+               Metrics/speed_ratio: 0.6532
+       Metrics/drift_when_standing: 0.3839
+          Metrics/upright_fraction: 0.6661
+               Metrics/alternation: 0.6752
+            Metrics/single_support: 0.6703
+                    Metrics/facing: 0.9271
+     Metrics/planted_when_standing: 0.4144
+            Metrics/foot_clearance: 0.1160
+                    Metrics/height: 0.5867
+                 Metrics/fall_rate: 0.3175
+   Metrics/standing_world_fraction: 0.5766
+        Metrics/fall_rate_standing: 0.5379
+          Metrics/fall_rate_moving: 0.0171
+                  Metrics/tilt_deg: 32.7876
+        Metrics/actuator_force_abs: 34.0809
+        Metrics/actuator_force_max: 162.2753
+               Metrics/action_cost: 0.7584
+               Metrics/action_rate: 0.5668
+           Metrics/joint_accel_abs: 73.5232
+           Metrics/hinge_speed_max: 10.6376
+       Metrics/over_speed_fraction: 0.0722
+            Metrics/track_err_frac: 0.6399
+        Metrics/track_within_10pct: 0.0942
+           Metrics/overlift_factor: 0.8734
+      Metrics/getup_world_fraction: 0.3287
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0435
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0701
+--------------------------------------------------------------------------------
+                   Total timesteps: 786432
+                    Iteration time: 3.19s
+                      Time elapsed: 00:00:12
+                               ETA: 00:00:54
+
+################################################################################
+                       [1m Learning iteration 4/20 [0m                        
+
+                       Computation: 60798 steps/s (collection: 2.293s, learning 0.941s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.1575
+               Mean surrogate loss: -0.0044
+                 Mean entropy loss: 42.6054
+                       Mean reward: -0.15
+               Mean episode length: 72.79
+               Metrics/speed_ratio: 0.6003
+       Metrics/drift_when_standing: 0.3616
+          Metrics/upright_fraction: 0.6268
+               Metrics/alternation: 0.6767
+            Metrics/single_support: 0.6669
+                    Metrics/facing: 0.9287
+     Metrics/planted_when_standing: 0.4159
+            Metrics/foot_clearance: 0.1122
+                    Metrics/height: 0.5582
+                 Metrics/fall_rate: 0.3616
+   Metrics/standing_world_fraction: 0.6167
+        Metrics/fall_rate_standing: 0.5750
+          Metrics/fall_rate_moving: 0.0181
+                  Metrics/tilt_deg: 35.4534
+        Metrics/actuator_force_abs: 33.9402
+        Metrics/actuator_force_max: 160.8899
+               Metrics/action_cost: 0.7570
+               Metrics/action_rate: 0.5691
+           Metrics/joint_accel_abs: 73.4662
+           Metrics/hinge_speed_max: 10.5675
+       Metrics/over_speed_fraction: 0.0714
+            Metrics/track_err_frac: 0.6291
+        Metrics/track_within_10pct: 0.0927
+           Metrics/overlift_factor: 0.8819
+      Metrics/getup_world_fraction: 0.3728
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0394
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0636
+--------------------------------------------------------------------------------
+                   Total timesteps: 983040
+                    Iteration time: 3.23s
+                      Time elapsed: 00:00:16
+                               ETA: 00:00:51
+
+################################################################################
+                       [1m Learning iteration 5/20 [0m                        
+
+                       Computation: 60536 steps/s (collection: 2.310s, learning 0.938s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.1299
+               Mean surrogate loss: -0.0067
+                 Mean entropy loss: 42.6044
+                       Mean reward: 0.04
+               Mean episode length: 81.04
+               Metrics/speed_ratio: 0.5605
+       Metrics/drift_when_standing: 0.3473
+          Metrics/upright_fraction: 0.5890
+               Metrics/alternation: 0.6705
+            Metrics/single_support: 0.6744
+                    Metrics/facing: 0.9301
+     Metrics/planted_when_standing: 0.4027
+            Metrics/foot_clearance: 0.1120
+                    Metrics/height: 0.5347
+                 Metrics/fall_rate: 0.3989
+   Metrics/standing_world_fraction: 0.6481
+        Metrics/fall_rate_standing: 0.6068
+          Metrics/fall_rate_moving: 0.0160
+                  Metrics/tilt_deg: 37.8040
+        Metrics/actuator_force_abs: 33.8361
+        Metrics/actuator_force_max: 159.7269
+               Metrics/action_cost: 0.7573
+               Metrics/action_rate: 0.5678
+           Metrics/joint_accel_abs: 73.4104
+           Metrics/hinge_speed_max: 10.6209
+       Metrics/over_speed_fraction: 0.0714
+            Metrics/track_err_frac: 0.6318
+        Metrics/track_within_10pct: 0.0893
+           Metrics/overlift_factor: 0.8697
+      Metrics/getup_world_fraction: 0.4093
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0337
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0538
+--------------------------------------------------------------------------------
+                   Total timesteps: 1179648
+                    Iteration time: 3.25s
+                      Time elapsed: 00:00:19
+                               ETA: 00:00:48
+
+################################################################################
+                       [1m Learning iteration 6/20 [0m                        
+
+                       Computation: 60050 steps/s (collection: 2.331s, learning 0.943s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.1153
+               Mean surrogate loss: -0.0075
+                 Mean entropy loss: 42.5938
+                       Mean reward: 0.27
+               Mean episode length: 85.43
+               Metrics/speed_ratio: 0.5118
+       Metrics/drift_when_standing: 0.3284
+          Metrics/upright_fraction: 0.5525
+               Metrics/alternation: 0.6733
+            Metrics/single_support: 0.6786
+                    Metrics/facing: 0.9240
+     Metrics/planted_when_standing: 0.3981
+            Metrics/foot_clearance: 0.1089
+                    Metrics/height: 0.5111
+                 Metrics/fall_rate: 0.4334
+   Metrics/standing_world_fraction: 0.6672
+        Metrics/fall_rate_standing: 0.6410
+          Metrics/fall_rate_moving: 0.0170
+                  Metrics/tilt_deg: 40.0588
+        Metrics/actuator_force_abs: 33.7036
+        Metrics/actuator_force_max: 158.6873
+               Metrics/action_cost: 0.7576
+               Metrics/action_rate: 0.5671
+           Metrics/joint_accel_abs: 73.4353
+           Metrics/hinge_speed_max: 10.6298
+       Metrics/over_speed_fraction: 0.0715
+            Metrics/track_err_frac: 0.6517
+        Metrics/track_within_10pct: 0.0842
+           Metrics/overlift_factor: 0.8664
+      Metrics/getup_world_fraction: 0.4414
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0262
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0467
+--------------------------------------------------------------------------------
+                   Total timesteps: 1376256
+                    Iteration time: 3.27s
+                      Time elapsed: 00:00:22
+                               ETA: 00:00:45
+
+################################################################################
+                       [1m Learning iteration 7/20 [0m                        
+
+                       Computation: 59660 steps/s (collection: 2.335s, learning 0.960s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0992
+               Mean surrogate loss: -0.0100
+                 Mean entropy loss: 42.5902
+                       Mean reward: 0.07
+               Mean episode length: 83.49
+               Metrics/speed_ratio: 0.4869
+       Metrics/drift_when_standing: 0.3159
+          Metrics/upright_fraction: 0.5178
+               Metrics/alternation: 0.6743
+            Metrics/single_support: 0.6859
+                    Metrics/facing: 0.9203
+     Metrics/planted_when_standing: 0.3911
+            Metrics/foot_clearance: 0.1091
+                    Metrics/height: 0.4904
+                 Metrics/fall_rate: 0.4668
+   Metrics/standing_world_fraction: 0.6849
+        Metrics/fall_rate_standing: 0.6742
+          Metrics/fall_rate_moving: 0.0159
+                  Metrics/tilt_deg: 42.1923
+        Metrics/actuator_force_abs: 33.5981
+        Metrics/actuator_force_max: 157.7264
+               Metrics/action_cost: 0.7578
+               Metrics/action_rate: 0.5655
+           Metrics/joint_accel_abs: 73.4104
+           Metrics/hinge_speed_max: 10.6280
+       Metrics/over_speed_fraction: 0.0710
+            Metrics/track_err_frac: 0.6656
+        Metrics/track_within_10pct: 0.0812
+           Metrics/overlift_factor: 0.8565
+      Metrics/getup_world_fraction: 0.4747
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0220
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0423
+--------------------------------------------------------------------------------
+                   Total timesteps: 1572864
+                    Iteration time: 3.30s
+                      Time elapsed: 00:00:25
+                               ETA: 00:00:42
+
+################################################################################
+                       [1m Learning iteration 8/20 [0m                        
+
+                       Computation: 59895 steps/s (collection: 2.335s, learning 0.948s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0910
+               Mean surrogate loss: -0.0069
+                 Mean entropy loss: 42.5806
+                       Mean reward: 0.42
+               Mean episode length: 89.02
+               Metrics/speed_ratio: 0.4489
+       Metrics/drift_when_standing: 0.3092
+          Metrics/upright_fraction: 0.4816
+               Metrics/alternation: 0.6843
+            Metrics/single_support: 0.7020
+                    Metrics/facing: 0.9189
+     Metrics/planted_when_standing: 0.3855
+            Metrics/foot_clearance: 0.1102
+                    Metrics/height: 0.4692
+                 Metrics/fall_rate: 0.5001
+   Metrics/standing_world_fraction: 0.6990
+        Metrics/fall_rate_standing: 0.7088
+          Metrics/fall_rate_moving: 0.0153
+                  Metrics/tilt_deg: 44.4840
+        Metrics/actuator_force_abs: 33.4561
+        Metrics/actuator_force_max: 156.7430
+               Metrics/action_cost: 0.7586
+               Metrics/action_rate: 0.5641
+           Metrics/joint_accel_abs: 73.2961
+           Metrics/hinge_speed_max: 10.6511
+       Metrics/over_speed_fraction: 0.0711
+            Metrics/track_err_frac: 0.6747
+        Metrics/track_within_10pct: 0.0803
+           Metrics/overlift_factor: 0.8413
+      Metrics/getup_world_fraction: 0.5064
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0186
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0362
+--------------------------------------------------------------------------------
+                   Total timesteps: 1769472
+                    Iteration time: 3.28s
+                      Time elapsed: 00:00:29
+                               ETA: 00:00:38
+
+################################################################################
+                       [1m Learning iteration 9/20 [0m                        
+
+                       Computation: 59207 steps/s (collection: 2.361s, learning 0.960s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0798
+               Mean surrogate loss: -0.0070
+                 Mean entropy loss: 42.5593
+                       Mean reward: 0.26
+               Mean episode length: 85.11
+               Metrics/speed_ratio: 0.4160
+       Metrics/drift_when_standing: 0.2928
+          Metrics/upright_fraction: 0.4521
+               Metrics/alternation: 0.6799
+            Metrics/single_support: 0.6992
+                    Metrics/facing: 0.9168
+     Metrics/planted_when_standing: 0.3722
+            Metrics/foot_clearance: 0.1111
+                    Metrics/height: 0.4505
+                 Metrics/fall_rate: 0.5295
+   Metrics/standing_world_fraction: 0.7044
+        Metrics/fall_rate_standing: 0.7451
+          Metrics/fall_rate_moving: 0.0157
+                  Metrics/tilt_deg: 46.3299
+        Metrics/actuator_force_abs: 33.3456
+        Metrics/actuator_force_max: 155.6183
+               Metrics/action_cost: 0.7586
+               Metrics/action_rate: 0.5644
+           Metrics/joint_accel_abs: 73.4418
+           Metrics/hinge_speed_max: 10.6926
+       Metrics/over_speed_fraction: 0.0714
+            Metrics/track_err_frac: 0.6964
+        Metrics/track_within_10pct: 0.0769
+           Metrics/overlift_factor: 0.8323
+      Metrics/getup_world_fraction: 0.5342
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0141
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0333
+--------------------------------------------------------------------------------
+                   Total timesteps: 1966080
+                    Iteration time: 3.32s
+                      Time elapsed: 00:00:32
+                               ETA: 00:00:35
+
+################################################################################
+                       [1m Learning iteration 10/20 [0m                       
+
+                       Computation: 59239 steps/s (collection: 2.368s, learning 0.951s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0736
+               Mean surrogate loss: -0.0064
+                 Mean entropy loss: 42.5400
+                       Mean reward: 0.39
+               Mean episode length: 84.28
+               Metrics/speed_ratio: 0.4279
+       Metrics/drift_when_standing: 0.2867
+          Metrics/upright_fraction: 0.4222
+               Metrics/alternation: 0.6940
+            Metrics/single_support: 0.7121
+                    Metrics/facing: 0.9169
+     Metrics/planted_when_standing: 0.3675
+            Metrics/foot_clearance: 0.1117
+                    Metrics/height: 0.4339
+                 Metrics/fall_rate: 0.5573
+   Metrics/standing_world_fraction: 0.7161
+        Metrics/fall_rate_standing: 0.7725
+          Metrics/fall_rate_moving: 0.0146
+                  Metrics/tilt_deg: 48.1497
+        Metrics/actuator_force_abs: 33.2516
+        Metrics/actuator_force_max: 154.9476
+               Metrics/action_cost: 0.7582
+               Metrics/action_rate: 0.5636
+           Metrics/joint_accel_abs: 73.3590
+           Metrics/hinge_speed_max: 10.7200
+       Metrics/over_speed_fraction: 0.0715
+            Metrics/track_err_frac: 0.6897
+        Metrics/track_within_10pct: 0.0762
+           Metrics/overlift_factor: 0.8213
+      Metrics/getup_world_fraction: 0.5629
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0145
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0328
+--------------------------------------------------------------------------------
+                   Total timesteps: 2162688
+                    Iteration time: 3.32s
+                      Time elapsed: 00:00:35
+                               ETA: 00:00:32
+
+################################################################################
+                       [1m Learning iteration 11/20 [0m                       
+
+                       Computation: 58828 steps/s (collection: 2.383s, learning 0.959s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0635
+               Mean surrogate loss: -0.0058
+                 Mean entropy loss: 42.5417
+                       Mean reward: 0.37
+               Mean episode length: 81.60
+               Metrics/speed_ratio: 0.3908
+       Metrics/drift_when_standing: 0.2715
+          Metrics/upright_fraction: 0.3940
+               Metrics/alternation: 0.7126
+            Metrics/single_support: 0.7090
+                    Metrics/facing: 0.9060
+     Metrics/planted_when_standing: 0.3613
+            Metrics/foot_clearance: 0.1140
+                    Metrics/height: 0.4180
+                 Metrics/fall_rate: 0.5824
+   Metrics/standing_world_fraction: 0.7221
+        Metrics/fall_rate_standing: 0.8009
+          Metrics/fall_rate_moving: 0.0146
+                  Metrics/tilt_deg: 49.8236
+        Metrics/actuator_force_abs: 33.1239
+        Metrics/actuator_force_max: 154.1285
+               Metrics/action_cost: 0.7584
+               Metrics/action_rate: 0.5652
+           Metrics/joint_accel_abs: 73.1454
+           Metrics/hinge_speed_max: 10.6814
+       Metrics/over_speed_fraction: 0.0707
+            Metrics/track_err_frac: 0.7166
+        Metrics/track_within_10pct: 0.0726
+           Metrics/overlift_factor: 0.8028
+      Metrics/getup_world_fraction: 0.5880
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0127
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0318
+--------------------------------------------------------------------------------
+                   Total timesteps: 2359296
+                    Iteration time: 3.34s
+                      Time elapsed: 00:00:39
+                               ETA: 00:00:29
+
+################################################################################
+                       [1m Learning iteration 12/20 [0m                       
+
+                       Computation: 58534 steps/s (collection: 2.399s, learning 0.960s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0568
+               Mean surrogate loss: -0.0076
+                 Mean entropy loss: 42.5232
+                       Mean reward: 0.37
+               Mean episode length: 85.63
+               Metrics/speed_ratio: 0.3871
+       Metrics/drift_when_standing: 0.2632
+          Metrics/upright_fraction: 0.3723
+               Metrics/alternation: 0.7186
+            Metrics/single_support: 0.7058
+                    Metrics/facing: 0.9008
+     Metrics/planted_when_standing: 0.3666
+            Metrics/foot_clearance: 0.1120
+                    Metrics/height: 0.4039
+                 Metrics/fall_rate: 0.6042
+   Metrics/standing_world_fraction: 0.7355
+        Metrics/fall_rate_standing: 0.8161
+          Metrics/fall_rate_moving: 0.0150
+                  Metrics/tilt_deg: 51.1317
+        Metrics/actuator_force_abs: 33.0612
+        Metrics/actuator_force_max: 153.5685
+               Metrics/action_cost: 0.7571
+               Metrics/action_rate: 0.5671
+           Metrics/joint_accel_abs: 73.1030
+           Metrics/hinge_speed_max: 10.6369
+       Metrics/over_speed_fraction: 0.0702
+            Metrics/track_err_frac: 0.7160
+        Metrics/track_within_10pct: 0.0727
+           Metrics/overlift_factor: 0.7993
+      Metrics/getup_world_fraction: 0.6104
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0135
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0306
+--------------------------------------------------------------------------------
+                   Total timesteps: 2555904
+                    Iteration time: 3.36s
+                      Time elapsed: 00:00:42
+                               ETA: 00:00:26
+
+################################################################################
+                       [1m Learning iteration 13/20 [0m                       
+
+                       Computation: 58525 steps/s (collection: 2.401s, learning 0.959s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0517
+               Mean surrogate loss: -0.0086
+                 Mean entropy loss: 42.5243
+                       Mean reward: 0.57
+               Mean episode length: 89.46
+               Metrics/speed_ratio: 0.3842
+       Metrics/drift_when_standing: 0.2533
+          Metrics/upright_fraction: 0.3512
+               Metrics/alternation: 0.7153
+            Metrics/single_support: 0.7124
+                    Metrics/facing: 0.8996
+     Metrics/planted_when_standing: 0.3604
+            Metrics/foot_clearance: 0.1132
+                    Metrics/height: 0.3902
+                 Metrics/fall_rate: 0.6254
+   Metrics/standing_world_fraction: 0.7477
+        Metrics/fall_rate_standing: 0.8315
+          Metrics/fall_rate_moving: 0.0144
+                  Metrics/tilt_deg: 52.3556
+        Metrics/actuator_force_abs: 32.9786
+        Metrics/actuator_force_max: 152.7141
+               Metrics/action_cost: 0.7565
+               Metrics/action_rate: 0.5682
+           Metrics/joint_accel_abs: 73.2068
+           Metrics/hinge_speed_max: 10.6782
+       Metrics/over_speed_fraction: 0.0703
+            Metrics/track_err_frac: 0.7112
+        Metrics/track_within_10pct: 0.0734
+           Metrics/overlift_factor: 0.7823
+      Metrics/getup_world_fraction: 0.6289
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0091
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0261
+--------------------------------------------------------------------------------
+                   Total timesteps: 2752512
+                    Iteration time: 3.36s
+                      Time elapsed: 00:00:45
+                               ETA: 00:00:22
+
+################################################################################
+                       [1m Learning iteration 14/20 [0m                       
+
+                       Computation: 58457 steps/s (collection: 2.415s, learning 0.948s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0522
+               Mean surrogate loss: -0.0057
+                 Mean entropy loss: 42.5291
+                       Mean reward: 0.65
+               Mean episode length: 103.00
+               Metrics/speed_ratio: 0.3902
+       Metrics/drift_when_standing: 0.2463
+          Metrics/upright_fraction: 0.3338
+               Metrics/alternation: 0.7342
+            Metrics/single_support: 0.7122
+                    Metrics/facing: 0.9040
+     Metrics/planted_when_standing: 0.3703
+            Metrics/foot_clearance: 0.1101
+                    Metrics/height: 0.3759
+                 Metrics/fall_rate: 0.6448
+   Metrics/standing_world_fraction: 0.7625
+        Metrics/fall_rate_standing: 0.8413
+          Metrics/fall_rate_moving: 0.0138
+                  Metrics/tilt_deg: 53.4802
+        Metrics/actuator_force_abs: 32.8887
+        Metrics/actuator_force_max: 151.9332
+               Metrics/action_cost: 0.7555
+               Metrics/action_rate: 0.5714
+           Metrics/joint_accel_abs: 73.0123
+           Metrics/hinge_speed_max: 10.5873
+       Metrics/over_speed_fraction: 0.0693
+            Metrics/track_err_frac: 0.7048
+        Metrics/track_within_10pct: 0.0784
+           Metrics/overlift_factor: 0.7795
+      Metrics/getup_world_fraction: 0.6505
+        Metrics/getup_success_rate: 0.0001
+          Metrics/getup_risen_rate: 0.0101
+           Metrics/getup_time_mean: 1.4333
+            Metrics/getup_progress: 0.0273
+--------------------------------------------------------------------------------
+                   Total timesteps: 2949120
+                    Iteration time: 3.36s
+                      Time elapsed: 00:00:49
+                               ETA: 00:00:19
+
+################################################################################
+                       [1m Learning iteration 15/20 [0m                       
+
+                       Computation: 58105 steps/s (collection: 2.427s, learning 0.957s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0475
+               Mean surrogate loss: -0.0083
+                 Mean entropy loss: 42.5255
+                       Mean reward: 0.52
+               Mean episode length: 87.48
+               Metrics/speed_ratio: 0.3998
+       Metrics/drift_when_standing: 0.2387
+          Metrics/upright_fraction: 0.3157
+               Metrics/alternation: 0.7320
+            Metrics/single_support: 0.7155
+                    Metrics/facing: 0.9054
+     Metrics/planted_when_standing: 0.3637
+            Metrics/foot_clearance: 0.1104
+                    Metrics/height: 0.3639
+                 Metrics/fall_rate: 0.6624
+   Metrics/standing_world_fraction: 0.7746
+        Metrics/fall_rate_standing: 0.8510
+          Metrics/fall_rate_moving: 0.0143
+                  Metrics/tilt_deg: 54.4898
+        Metrics/actuator_force_abs: 32.8523
+        Metrics/actuator_force_max: 151.6569
+               Metrics/action_cost: 0.7547
+               Metrics/action_rate: 0.5727
+           Metrics/joint_accel_abs: 72.9601
+           Metrics/hinge_speed_max: 10.5564
+       Metrics/over_speed_fraction: 0.0689
+            Metrics/track_err_frac: 0.6967
+        Metrics/track_within_10pct: 0.0815
+           Metrics/overlift_factor: 0.7771
+      Metrics/getup_world_fraction: 0.6667
+        Metrics/getup_success_rate: 0.0002
+          Metrics/getup_risen_rate: 0.0097
+           Metrics/getup_time_mean: 4.3000
+            Metrics/getup_progress: 0.0249
+--------------------------------------------------------------------------------
+                   Total timesteps: 3145728
+                    Iteration time: 3.38s
+                      Time elapsed: 00:00:52
+                               ETA: 00:00:16
+
+################################################################################
+                       [1m Learning iteration 16/20 [0m                       
+
+                       Computation: 58148 steps/s (collection: 2.423s, learning 0.958s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0404
+               Mean surrogate loss: -0.0085
+                 Mean entropy loss: 42.5218
+                       Mean reward: 0.66
+               Mean episode length: 97.12
+               Metrics/speed_ratio: 0.4602
+       Metrics/drift_when_standing: 0.2350
+          Metrics/upright_fraction: 0.2999
+               Metrics/alternation: 0.7397
+            Metrics/single_support: 0.7172
+                    Metrics/facing: 0.9102
+     Metrics/planted_when_standing: 0.3652
+            Metrics/foot_clearance: 0.1094
+                    Metrics/height: 0.3513
+                 Metrics/fall_rate: 0.6792
+   Metrics/standing_world_fraction: 0.7871
+        Metrics/fall_rate_standing: 0.8592
+          Metrics/fall_rate_moving: 0.0134
+                  Metrics/tilt_deg: 55.4028
+        Metrics/actuator_force_abs: 32.8473
+        Metrics/actuator_force_max: 151.3976
+               Metrics/action_cost: 0.7546
+               Metrics/action_rate: 0.5748
+           Metrics/joint_accel_abs: 73.0471
+           Metrics/hinge_speed_max: 10.5477
+       Metrics/over_speed_fraction: 0.0686
+            Metrics/track_err_frac: 0.6576
+        Metrics/track_within_10pct: 0.0892
+           Metrics/overlift_factor: 0.7775
+      Metrics/getup_world_fraction: 0.6840
+        Metrics/getup_success_rate: 0.0002
+          Metrics/getup_risen_rate: 0.0089
+           Metrics/getup_time_mean: 4.3000
+            Metrics/getup_progress: 0.0245
+--------------------------------------------------------------------------------
+                   Total timesteps: 3342336
+                    Iteration time: 3.38s
+                      Time elapsed: 00:00:56
+                               ETA: 00:00:13
+
+################################################################################
+                       [1m Learning iteration 17/20 [0m                       
+
+                       Computation: 58132 steps/s (collection: 2.430s, learning 0.952s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0377
+               Mean surrogate loss: -0.0088
+                 Mean entropy loss: 42.5226
+                       Mean reward: 0.85
+               Mean episode length: 113.89
+               Metrics/speed_ratio: 0.4867
+       Metrics/drift_when_standing: 0.2299
+          Metrics/upright_fraction: 0.2840
+               Metrics/alternation: 0.7361
+            Metrics/single_support: 0.7213
+                    Metrics/facing: 0.9060
+     Metrics/planted_when_standing: 0.3599
+            Metrics/foot_clearance: 0.1101
+                    Metrics/height: 0.3408
+                 Metrics/fall_rate: 0.6954
+   Metrics/standing_world_fraction: 0.7949
+        Metrics/fall_rate_standing: 0.8715
+          Metrics/fall_rate_moving: 0.0129
+                  Metrics/tilt_deg: 56.3044
+        Metrics/actuator_force_abs: 32.8132
+        Metrics/actuator_force_max: 151.0843
+               Metrics/action_cost: 0.7545
+               Metrics/action_rate: 0.5753
+           Metrics/joint_accel_abs: 73.0102
+           Metrics/hinge_speed_max: 10.5775
+       Metrics/over_speed_fraction: 0.0687
+            Metrics/track_err_frac: 0.6462
+        Metrics/track_within_10pct: 0.0898
+           Metrics/overlift_factor: 0.7732
+      Metrics/getup_world_fraction: 0.6992
+        Metrics/getup_success_rate: 0.0002
+          Metrics/getup_risen_rate: 0.0077
+           Metrics/getup_time_mean: 4.3000
+            Metrics/getup_progress: 0.0223
+--------------------------------------------------------------------------------
+                   Total timesteps: 3538944
+                    Iteration time: 3.38s
+                      Time elapsed: 00:00:59
+                               ETA: 00:00:09
+
+################################################################################
+                       [1m Learning iteration 18/20 [0m                       
+
+                       Computation: 57745 steps/s (collection: 2.450s, learning 0.955s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0367
+               Mean surrogate loss: -0.0073
+                 Mean entropy loss: 42.5194
+                       Mean reward: 0.85
+               Mean episode length: 105.21
+               Metrics/speed_ratio: 0.5082
+       Metrics/drift_when_standing: 0.2230
+          Metrics/upright_fraction: 0.2730
+               Metrics/alternation: 0.7530
+            Metrics/single_support: 0.7404
+                    Metrics/facing: 0.9050
+     Metrics/planted_when_standing: 0.3512
+            Metrics/foot_clearance: 0.1117
+                    Metrics/height: 0.3322
+                 Metrics/fall_rate: 0.7086
+   Metrics/standing_world_fraction: 0.8013
+        Metrics/fall_rate_standing: 0.8813
+          Metrics/fall_rate_moving: 0.0124
+                  Metrics/tilt_deg: 56.9534
+        Metrics/actuator_force_abs: 32.7663
+        Metrics/actuator_force_max: 150.6393
+               Metrics/action_cost: 0.7541
+               Metrics/action_rate: 0.5764
+           Metrics/joint_accel_abs: 73.0514
+           Metrics/hinge_speed_max: 10.5338
+       Metrics/over_speed_fraction: 0.0683
+            Metrics/track_err_frac: 0.6414
+        Metrics/track_within_10pct: 0.0939
+           Metrics/overlift_factor: 0.7621
+      Metrics/getup_world_fraction: 0.7119
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0068
+           Metrics/getup_time_mean: 0.1792
+            Metrics/getup_progress: 0.0216
+--------------------------------------------------------------------------------
+                   Total timesteps: 3735552
+                    Iteration time: 3.40s
+                      Time elapsed: 00:01:02
+                               ETA: 00:00:06
+
+################################################################################
+                       [1m Learning iteration 19/20 [0m                       
+
+                       Computation: 57286 steps/s (collection: 2.454s, learning 0.978s)
+             Mean action noise std: 1.00
+          Mean value_function loss: 0.0355
+               Mean surrogate loss: -0.0088
+                 Mean entropy loss: 42.5210
+                       Mean reward: 1.14
+               Mean episode length: 122.29
+               Metrics/speed_ratio: 0.5034
+       Metrics/drift_when_standing: 0.2177
+          Metrics/upright_fraction: 0.2600
+               Metrics/alternation: 0.7659
+            Metrics/single_support: 0.7413
+                    Metrics/facing: 0.9088
+     Metrics/planted_when_standing: 0.3507
+            Metrics/foot_clearance: 0.1130
+                    Metrics/height: 0.3226
+                 Metrics/fall_rate: 0.7219
+   Metrics/standing_world_fraction: 0.8096
+        Metrics/fall_rate_standing: 0.8889
+          Metrics/fall_rate_moving: 0.0118
+                  Metrics/tilt_deg: 57.7375
+        Metrics/actuator_force_abs: 32.7041
+        Metrics/actuator_force_max: 150.2702
+               Metrics/action_cost: 0.7542
+               Metrics/action_rate: 0.5758
+           Metrics/joint_accel_abs: 72.9992
+           Metrics/hinge_speed_max: 10.5187
+       Metrics/over_speed_fraction: 0.0678
+            Metrics/track_err_frac: 0.6476
+        Metrics/track_within_10pct: 0.0951
+           Metrics/overlift_factor: 0.7533
+      Metrics/getup_world_fraction: 0.7240
+        Metrics/getup_success_rate: 0.0000
+          Metrics/getup_risen_rate: 0.0054
+           Metrics/getup_time_mean: 0.0000
+            Metrics/getup_progress: 0.0197
+--------------------------------------------------------------------------------
+                   Total timesteps: 3932160
+                    Iteration time: 3.43s
+                      Time elapsed: 00:01:06
+                               ETA: 00:00:03
+
+TRAINING_DONE

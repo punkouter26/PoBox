@@ -47,6 +47,9 @@ parser.add_argument("--tensorboard-port", type=int, default=6007)
 parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--save-interval", type=int, default=50)
 parser.add_argument("--w-planted", type=float, default=None, help="override NickEnvCfg.w_planted for this run")
+parser.add_argument("--getup-fraction", type=float, default=None,
+                    help="fraction of episodes that start lying on the floor (the get-up task; "
+                         "0.25 default, 0 disables — env var NICK_GETUP_FRACTION also works)")
 parser.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
                     help="override any NickEnvCfg field, repeatable (e.g. --env w_overlift=0.3). "
                          "Tuples take a comma: --env speed_range=0.3,1.2")
@@ -116,6 +119,8 @@ if log_dir.exists() and any(log_dir.glob("model_*.pt")) and not (args.resume or 
 cfg = NickEnvCfg(num_envs=args.num_envs, seed=args.seed, model_path=preferred_model_path())
 if args.w_planted is not None:
     cfg.w_planted = args.w_planted
+if args.getup_fraction is not None:
+    cfg.getup_fraction = args.getup_fraction
 
 
 def coerce(current, text: str):

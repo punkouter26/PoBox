@@ -49,6 +49,7 @@ namespace PoBox.Editor
         // (= the full cap) vs 17.7 s.
         private const string TORQUE_BRAIN_PATH = "Assets/Agents/Nick_Torque002/nick_torque_002.onnx";
         private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
+        private const string GETUP_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_GetUpPractice.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
         private const string PANEL_SETTINGS_PATH = "Assets/UI/PS_Contest.asset";
         // Written by Tools/MuJoCo/export_onnx.py. A constant, so a stale brain
@@ -109,6 +110,100 @@ namespace PoBox.Editor
             EditorSceneManager.OpenScene(RING_SCENE_PATH, OpenSceneMode.Single);
             Debug.Log("RigTool: entering play mode on Nick's balance ring. Watch for CONTEST_ROUND lines.");
             EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>
+        /// Nick's get-up practice ring. Same construction as the balance ring
+        /// -- creature cloned from the source scene, same environment, same
+        /// HUD -- but driven by Systems_NickGetUpRing: he stands, an automatic
+        /// 1800 N shove puts him on the floor, and the ring times his rise.
+        /// Success is head above 75% of standing height, HELD 4 s -- the same
+        /// rule the get-up task in Tools/MuJoCo/nick_env.py rewards.
+        ///
+        /// The controller gets the TORQUE brain (the one the contests run) at
+        /// decimation 1, and _fallHeight = -1: a fallen body STAYS fallen, or
+        /// every "success" would be the controller teleporting him upright.
+        /// The brain on disk today cannot get up at all, so the first runs of
+        /// this scene are expected to log FAIL after FAIL -- that is the
+        /// baseline the new training has to beat.
+        /// </summary>
+        [MenuItem("PoBox/Nick/Build Get-Up Practice Scene")]
+        public static void BuildGetUpRing()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            GameObject nick = CloneCreatureFromSourceScene(scene);
+            if (nick == null) { return; }
+
+            BuildEnvironment(out Transform cameraTransform);
+            ConfigureController(nick, out CreatureSentisController controller);
+            UIDocument hud = BuildHud();
+
+            // The brain must match the body AND the 0.02 s ring step, exactly
+            // as in the contest scenes; see AddNickToContest for the reasoning
+            // behind each line.
+            var serialized = new SerializedObject(controller);
+            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(TORQUE_BRAIN_PATH);
+            if (brain == null)
+            {
+                Debug.LogError($"RigTool: no brain at {TORQUE_BRAIN_PATH}; build refused.");
+                return;
+            }
+            serialized.FindProperty("_onnxModelAsset").objectReferenceValue = brain;
+            serialized.FindProperty("_observeLocomotionCommand").boolValue = true;
+            serialized.FindProperty("_decimation").intValue = 1;
+            serialized.FindProperty("_fixedTimestepOverride").floatValue = 0f;
+            // NO AUTO-RESET: the whole point of this scene is that he is on
+            // the floor and has to get up by himself.
+            serialized.FindProperty("_fallHeight").floatValue = -1f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            // He practices on the spot, so a fixed camera like the ring's.
+            if (cameraTransform != null)
+            {
+                cameraTransform.position = new Vector3(3.0f, 1.6f, -3.0f);
+                cameraTransform.LookAt(new Vector3(0f, 0.9f, 0f));
+            }
+
+            var ring = nick.AddComponent<Systems_NickGetUpRing>();
+            var ringSerialized = new SerializedObject(ring);
+            ringSerialized.FindProperty("_controller").objectReferenceValue = controller;
+            ringSerialized.FindProperty("_hud").objectReferenceValue = hud;
+            ringSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Directory.CreateDirectory(Path.GetDirectoryName(GETUP_SCENE_PATH));
+            EditorSceneManager.SaveScene(scene, GETUP_SCENE_PATH);
+            Debug.Log($"RigTool: built {GETUP_SCENE_PATH}. Press Play, or run it and grep GETUP_RESULT.");
+        }
+
+        /// <summary>Opens the get-up practice scene and plays it; GETUP_RESULT lines follow.</summary>
+        [MenuItem("PoBox/Nick/Play Get-Up Practice Scene")]
+        public static void PlayGetUpRing()
+        {
+            if (EditorApplication.isPlaying) { return; }
+            if (!File.Exists(GETUP_SCENE_PATH))
+            {
+                Debug.LogError($"RigTool: {GETUP_SCENE_PATH} does not exist; run Build Get-Up Practice Scene first.");
+                return;
+            }
+            EditorSceneManager.OpenScene(GETUP_SCENE_PATH, OpenSceneMode.Single);
+            Debug.Log("RigTool: entering play mode on the get-up practice scene. Watch for GETUP_RESULT lines.");
+            EditorApplication.EnterPlaymode();
+        }
+
+        /// <summary>
+        /// Saves any open scenes and quits the Editor. For the long-run rule
+        /// (AGENTS.md): a MuJoCo RL run of 30 minutes or more gets the whole
+        /// machine, so the Editor is closed first — through here, cleanly,
+        /// rather than killed. Run it through the command bridge just before
+        /// launching the trainer.
+        /// </summary>
+        [MenuItem("PoBox/Nick/Quit Editor (for long runs)")]
+        public static void QuitEditor()
+        {
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log("RigTool: scenes saved; quitting the Editor for a headless training run.");
+            EditorApplication.Exit(0);
         }
 
         /// <summary>
