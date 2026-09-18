@@ -219,8 +219,20 @@ the 4 s hold rate, the loop wraps and exports the best checkpoint.
 
 The user accepts **10% full get-up success** as the bar. Loop continues.
 
-### Segment 7 (iters 6999→10000) — running, ~2 h
+### Segment 7 (iters 6999→9999) — DONE, honest 0% → 2% over 3000 iters
 
-Same recipe (balance handover needs iterations to show effect); exams at
-512 worlds at model_7500 / 8500 / 10000 for tighter reads at low rates.
+- Exam at 512 fresh fallen starts, 4 s standard:
+  - model_9900: success **2%** (~10/512), rose-but-no-hold 36%, rise 4.0 s, **zero relapses**
+  - model_8500: success 2%, same picture — heading into the plateau band
+- In-training peak: getup_success_rate 2.85%, risen 6.9%, progress 0.33
+- Regression check (model_9900): BAL 74% / WALK 74% (14.65 m, 0.71 m/s) / RING **80%** (best ring score of the whole loop). Skills safer than at the start.
+- The 0% → 2% is real and the trajectory was still climbing at the end. Two priors going in: balance-handover needs more iterations than one segment to show effect, and incremental progress is real but slow.
+
+### Segment 8 (iters 9999→30000, ~9 h user-authorised) — RUNNING
+
+Resume from model_9999.pt, same recipe (getup_fraction 0.40, crouch-start 0.30, entropy 0.005). Mid-segment exams at 15000 / 20000 / 25000. Decision table per the project's training-loop prompt:
+- Hit ≥10% success AND regression ceilings hold → STOP, export, hand back
+- Still climbing → continue
+- Flat across two segments → STOP, export best
+- Trip a regression ceiling → STOP, report tradeoff
 (appended when it lands)
