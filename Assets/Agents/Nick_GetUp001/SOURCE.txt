@@ -1,0 +1,22 @@
+nick_getup_001.onnx
+===================
+
+WHAT      Locomotion brain for Nick (RIGGED_Nick.glb on the MuJoCo Unity plugin),
+          trained in MUJOCO WARP.
+CONTRACT  127 observations / 30 continuous actions.
+          CreatureSentisController.GatherObservations with _observeLocomotionCommand
+          on: the 121-term balance vector plus commanded speed, pelvis-local
+          commanded direction (3) and the 1.4 Hz gait clock (sin, cos).
+          Foot contact is rest-relative (ankle within 0.03 m of rest).
+          Actions are zero-centred position targets in canonical order.
+          Control every 4 physics step(s) of 0.0050 s (decimation 4, 50 Hz).
+          EVALUATE AND RUN IT AT THIS STEP. A policy measured at another
+          one measures a creature that is not this one.
+          The observation normaliser is BAKED INTO THE GRAPH; feed raw.
+          input obs_0 [batch,127], output continuous_actions [batch,30].
+MODEL     Tools/MuJoCo/nick_unity.xml -- the MJCF MjScene generates, exported from Unity.
+          NOT the authored creature file.
+TRAINED   2026-09-18, results/nick/nickgetup01, model_29999.pt (iteration 29999), rsl_rl PPO on mujoco_warp.
+          Config: results/nick/nickgetup01/config.json.
+MEASURED  Best of Nick get-up line 2026-09-18: 6% get-up success at the 4-second standard over 512 fresh fallen starts, zero relapses. Trained at timestep 0.005 x decimation 4; body nick_unity.xml. EVALUATED at NICK_TIMESTEP=0.005 NICK_DECIMATION=4. Regression: BAL 75% / WALK 74% (14.39 m, 0.70 m/s) / RING 82%. Previous best Nick_Torque002 was 0% on the same test.
+EXPORT    Tools/MuJoCo/export_onnx.py --run nickgetup01 --checkpoint model_29999.pt

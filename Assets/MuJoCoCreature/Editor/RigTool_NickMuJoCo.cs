@@ -48,6 +48,7 @@ namespace PoBox.Editor
         // 300 (Torque001) on every walk table — WALK 62% vs 48%, median 20 s
         // (= the full cap) vs 17.7 s.
         private const string TORQUE_BRAIN_PATH = "Assets/Agents/Nick_Torque002/nick_torque_002.onnx";
+        private const string GETUP_BRAIN_PATH = "Assets/Agents/Nick_GetUp001/nick_getup_001.onnx";
         private const string RING_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_BalanceRing.unity";
         private const string GETUP_SCENE_PATH = "Assets/MuJoCoCreature/Scenes/Nick_GetUpPractice.unity";
         private const string MJCF_EXPORT_PATH = "Tools/MuJoCo/nick_unity.xml";
@@ -142,11 +143,16 @@ namespace PoBox.Editor
             // The brain must match the body AND the 0.02 s ring step, exactly
             // as in the contest scenes; see AddNickToContest for the reasoning
             // behind each line.
+            // The brain must match the body AND the 0.02 s ring step, exactly
+            // as in the contest scenes; see AddNickToContest for the reasoning
+            // behind each line. Default is the get-up brain (this scene's
+            // purpose); pass any other path to A/B different brains against it
+            // via the menu overload below.
             var serialized = new SerializedObject(controller);
-            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(TORQUE_BRAIN_PATH);
+            var brain = AssetDatabase.LoadAssetAtPath<ModelAsset>(GETUP_BRAIN_PATH);
             if (brain == null)
             {
-                Debug.LogError($"RigTool: no brain at {TORQUE_BRAIN_PATH}; build refused.");
+                Debug.LogError($"RigTool: no brain at {GETUP_BRAIN_PATH}; build refused.");
                 return;
             }
             serialized.FindProperty("_onnxModelAsset").objectReferenceValue = brain;
