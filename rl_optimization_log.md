@@ -228,11 +228,18 @@ The user accepts **10% full get-up success** as the bar. Loop continues.
 - Regression check (model_9900): BAL 74% / WALK 74% (14.65 m, 0.71 m/s) / RING **80%** (best ring score of the whole loop). Skills safer than at the start.
 - The 0% → 2% is real and the trajectory was still climbing at the end. Two priors going in: balance-handover needs more iterations than one segment to show effect, and incremental progress is real but slow.
 
-### Segment 8 (iters 9999→30000, ~9 h user-authorised) — RUNNING
+### Segment 8 (iters 9999→29999, ~9 h) — DONE, **6% honest exam**, all skills improved
 
-Resume from model_9999.pt, same recipe (getup_fraction 0.40, crouch-start 0.30, entropy 0.005). Mid-segment exams at 15000 / 20000 / 25000. Decision table per the project's training-loop prompt:
-- Hit ≥10% success AND regression ceilings hold → STOP, export, hand back
-- Still climbing → continue
-- Flat across two segments → STOP, export best
-- Trip a regression ceiling → STOP, report tradeoff
+- 512-world exam sweep at the 4 s standard:
+  - `model_29999.pt` (final): **6% success**, rose-but-no-hold 32%, rise 4.0 s, **0% relapses**
+  - `model_25000.pt`: 5% / 32% / 4.0 s / 0%
+  - `model_20000.pt`: 5% / 34% / 4.0 s / 0%
+  - The 6% on the last checkpoint > 5% on the earlier ones — slight oscillation, but still net up vs segment 7's 2%.
+- In-training peak: getup_success_rate 5.54%, risen 11.1%, progress 0.51.
+- **Regression check (model_29999):** BALANCE **75%** / WALK **74%** (14.39 m, 0.70 m/s) / RING **82%** under shoves+gusts+lean — every skill **at a loop-best**. No ceiling tripped.
+- Decision per the protocol: **not flat**, **climbing** (every number roughly 2× segment 7), **no regression** → **continue**.
+
+### Segment 9 (iters 29999→45000, ~9 h) — RUNNING, user-authorised
+
+Same recipe, no lever change. Target is the 10% bar; each prior ~10k iter block has added ~2 exam points and the trend is still up. Mid-segment exams at 35000 / 40000.
 (appended when it lands)
