@@ -112,7 +112,8 @@ Unity's articulation has no such setting, so the ankles answer faster in Unity.
   `PerfTelemetry` acts on frame time and is switched off in the editor, so it has never run.
 - The walk is weak: fighters reach about 0.2 m/s against the 0.3 to 1.0 they ask for.
 - About 30 kB of garbage a frame in the editor; not investigated.
-- The project is not a git repository.
+- Training checkpoints and logs are not in git (`training/checkpoints`, `training/logs`); only the policies
+  copied to `Assets/Entrants` are. The project before the 2026-09-30 rebuild is under the tag `nick-era`.
 
 ## Running it
 
