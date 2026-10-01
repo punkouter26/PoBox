@@ -190,7 +190,9 @@ namespace PoBox.EditorTools
             if (s_rec == null && s_pair == null && Bout.Instance != null) HitSummary(Bout.Instance);
             SessionState.SetBool(Flag, false);
             Debug.Log("PROBE end");
-            EditorApplication.Exit(0);
+            // Headless, the probe is the whole session. In somebody's open editor it only stops playing.
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+            else EditorApplication.ExitPlaymode();
         }
 
         // ---------------------------------------------------------------- hold and replay
