@@ -1,11 +1,14 @@
 {
     "name": "PoBox.Editor",
-    "rootNamespace": "PoBox.Editor",
+    "rootNamespace": "PoBox.EditorTools",
     "references": [
         "PoBox.Runtime",
-        "Unity.InferenceEngine",
         "Unity.Cinemachine",
-        "Unity.RenderPipelines.Core.Runtime"
+        "Unity.InferenceEngine",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Core.Editor",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.Editor"
     ],
     "includePlatforms": [
         "Editor"

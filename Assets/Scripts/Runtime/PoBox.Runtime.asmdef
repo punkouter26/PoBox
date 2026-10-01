@@ -1,0 +1,19 @@
+{
+    "name": "PoBox.Runtime",
+    "rootNamespace": "PoBox",
+    "references": [
+        "Unity.Cinemachine",
+        "Unity.InferenceEngine",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

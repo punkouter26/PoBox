@@ -1,0 +1,406 @@
+/*
+ * PoBox UI theme. One stylesheet for the whole interface.
+ *
+ * Same house rules as PoDecath, so the two games read as a pair:
+ *
+ *  - The reference screen is 1080 x 1920 and the panel scales to the device, so every number below is in
+ *    reference pixels. A reference pixel is about 0.38 dp on a phone, which is why the smallest text here
+ *    is 26 px: anything less is under 10 sp and stops being readable.
+ *
+ *  - Spacing is on a 4 px grid. Furniture laid over the picture (chips, the scoreboard, the dock) gets 8 px
+ *    gaps and at most 16 px of padding; only the two sheets, which are cards, get 20.
+ *
+ *  - Anything a thumb presses is at least 88 px tall (a 44 pt target at 2x), however tight the rest is.
+ *
+ *  - Nothing scrolls. A panel that does not fit is a panel with too much in it.
+ */
+
+:root {
+    --ink:            rgb(240, 244, 249);
+    --ink-dim:        rgb(168, 178, 192);
+    --ink-faint:      rgb(116, 126, 140);
+
+    /* Opaque, both of them. The panel blends in linear space, where four per cent of white text showing
+       through a 96% dark card comes out as a clearly readable grey: anything laid over other interface
+       has to hide it completely. Only furniture over the picture (--overlay) is see-through. */
+    --scrim:          rgb(7, 9, 14);
+    --surface:        rgb(14, 17, 25);
+    --surface-2:      rgba(34, 40, 54, 0.98);
+    --surface-line:   rgba(255, 255, 255, 0.10);
+    --overlay:        rgba(6, 8, 14, 0.78);
+    --row:            rgba(255, 255, 255, 0.05);
+    --row-lead:       rgba(255, 255, 255, 0.11);
+
+    --accent:         rgb(46, 191, 140);
+    --accent-press:   rgb(32, 150, 110);
+    --danger:         rgb(255, 108, 92);
+    --warn:           rgb(255, 198, 84);
+    --red:            rgb(226, 62, 62);
+    --blue:           rgb(52, 124, 240);
+
+    --t-micro:        26px;
+    --t-small:        28px;
+    --t-body:         32px;
+    --t-title:        40px;
+    --t-display:      52px;
+
+    --gap-1:           4px;
+    --gap-2:           8px;
+    --gap-3:          12px;
+    --gap-4:          16px;
+    --gap-5:          20px;
+
+    /* Height of a frame row and the distance anything else keeps from the top and bottom edges. */
+    --frame-row:      88px;
+    --frame-clear:   104px;
+
+    --radius:         12px;
+    --radius-sm:       8px;
+}
+
+/* ------------------------------------------------------------------ base */
+
+Label { margin: 0; padding: 0; }
+
+.root {
+    flex-grow: 1;
+    color: var(--ink);
+    font-size: var(--t-body);
+}
+
+/* The safe area. Its edges are set in code from Screen.safeArea; everything lives inside it. */
+.safe {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.spacer { flex-grow: 1; }
+.hidden { display: none; }
+
+.label-micro { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
+
+/* ------------------------------------------------------------------ buttons */
+
+.btn {
+    background-color: var(--surface-2);
+    border-radius: var(--radius-sm);
+    border-width: 0;
+    color: var(--ink);
+    font-size: var(--t-body);
+    -unity-font-style: bold;
+    padding: 0 20px;
+    margin: 0;
+    height: 88px;
+    min-height: 88px;
+    transition-property: background-color, scale;
+    transition-duration: 0.12s;
+    transition-timing-function: ease-out;
+}
+
+.btn:hover { background-color: rgba(46, 191, 140, 0.18); }
+.btn:active { scale: 0.97 0.97; background-color: var(--accent-press); }
+
+.btn--primary { background-color: var(--accent); color: rgb(6, 20, 15); }
+.btn--primary:hover { background-color: rgb(60, 210, 156); }
+.btn--ghost { background-color: var(--overlay); }
+.btn--on { background-color: rgba(46, 191, 140, 0.30); border-width: 2px; border-color: var(--accent); }
+.btn--danger { background-color: var(--danger); color: rgb(30, 6, 4); }
+
+/* An icon and a word side by side, and an icon alone. */
+.btn--tool { flex-direction: row; align-items: center; justify-content: center; }
+.btn--icon { width: 88px; padding: 0; align-items: center; justify-content: center; }
+.btn-word { font-size: var(--t-body); -unity-font-style: bold; margin-left: 10px; }
+
+.icon {
+    width: 44px;
+    height: 44px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--ink);
+}
+.icon--trophy { background-image: url("project://database/Assets/UI/Icons/trophy.png"); }
+.icon--video  { background-image: url("project://database/Assets/UI/Icons/video.png"); }
+.icon--return { background-image: url("project://database/Assets/UI/Icons/return.png"); }
+.icon--next   { background-image: url("project://database/Assets/UI/Icons/next.png"); }
+.icon--prev   { background-image: url("project://database/Assets/UI/Icons/next.png"); scale: -1 1; }
+
+/* ------------------------------------------------------------------ frame: the five anchors */
+
+.frame-row {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    height: var(--frame-row);
+    flex-direction: row;
+    align-items: center;
+}
+.frame-row--top { top: var(--gap-2); }
+.frame-row--bottom { bottom: var(--gap-2); }
+
+.chip {
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+    border-width: 0;
+    margin: 0;
+    padding: 0 20px;
+    height: 72px;
+    color: var(--ink);
+    font-size: var(--t-body);
+    -unity-text-align: middle-center;
+}
+
+.frame-title { -unity-font-style: bold; letter-spacing: 3px; }
+
+/* The frame-rate chip is centred on the screen, not on the space left between its neighbours. */
+.frame-centre {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    align-items: center;
+    justify-content: center;
+}
+.frame-fps { min-width: 190px; -unity-font-style: bold; }
+.frame-fps--warn { color: var(--warn); }
+.frame-fps--bad { color: var(--danger); }
+
+.frame-btn { height: 72px; min-height: 72px; padding: 0 24px; }
+
+.frame-debug { flex-direction: row; align-items: center; }
+.frame-debug-text { font-size: var(--t-body); margin-left: 12px; }
+.frame-version { color: var(--ink-dim); font-size: var(--t-small); }
+
+.dot { width: 20px; height: 20px; border-radius: 10px; background-color: var(--accent); }
+.dot--warn { background-color: var(--warn); }
+.dot--bad { background-color: var(--danger); }
+.dot--page { width: 16px; height: 16px; border-radius: 8px; margin-left: 10px; background-color: rgba(255, 255, 255, 0.25); }
+.dot--on { background-color: var(--ink); }
+
+/* ------------------------------------------------------------------ scoreboard */
+
+.board {
+    position: absolute;
+    top: var(--frame-clear);
+    left: var(--gap-4);
+    right: var(--gap-4);
+    background-color: var(--overlay);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+}
+
+.board-row { flex-direction: row; align-items: center; height: 72px; }
+
+.name { flex: 1 1 0; flex-direction: row; align-items: center; overflow: hidden; }
+.name--red { border-left-width: 8px; border-left-color: var(--red); padding-left: 12px; }
+.name--blue { flex-direction: row-reverse; border-right-width: 8px; border-right-color: var(--blue); padding-right: 12px; }
+.name-text { font-size: 38px; -unity-font-style: bold; flex-shrink: 0; }
+
+.badge {
+    font-size: var(--t-micro);
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 6px;
+    padding: 2px 8px;
+    margin: 0 8px;
+    color: var(--ink-dim);
+    flex-shrink: 0;
+}
+.badge--big { font-size: var(--t-body); padding: 8px 16px; margin: 0; color: var(--ink); -unity-font-style: bold; }
+
+.clock { width: 230px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
+.clock-round { font-size: 30px; color: var(--warn); -unity-font-style: bold; margin-right: 10px; }
+.clock-time { font-size: 56px; -unity-font-style: bold; }
+
+.bars { flex-direction: row; height: 40px; margin-top: var(--gap-2); }
+.hp { flex: 1 1 0; background-color: rgba(255, 255, 255, 0.08); border-radius: 6px; overflow: hidden; }
+.hp--red { margin-right: 6px; flex-direction: row; }
+.hp--blue { margin-left: 6px; flex-direction: row-reverse; }
+.hp-fill { height: 100%; width: 100%; }
+.hp-fill--red { background-color: var(--red); }
+.hp-fill--blue { background-color: var(--blue); }
+.hp-text { position: absolute; top: 0; bottom: 0; font-size: var(--t-small); -unity-font-style: bold; -unity-text-align: middle-center; }
+.hp-text--l { left: 12px; }
+.hp-text--r { right: 12px; }
+
+/* Tug of war: red's share of the bar is red's chance as it stands. */
+.momentum { height: 40px; margin-top: var(--gap-2); background-color: var(--blue); border-radius: 6px; overflow: hidden; }
+.momentum-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background-color: var(--red); }
+.momentum-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background-color: rgba(255, 255, 255, 0.9); }
+.momentum-text { position: absolute; top: 0; bottom: 0; font-size: var(--t-small); -unity-font-style: bold; -unity-text-align: middle-center; }
+.momentum-text--l { left: 12px; }
+.momentum-text--r { right: 12px; }
+
+/* Tale of the tape, mirrored: one row serves both fighters, with the key in the middle. */
+.tape { margin-top: var(--gap-2); }
+.tape--card { margin-top: var(--gap-3); }
+.tape-row {
+    flex-direction: row;
+    align-items: center;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0);
+}
+/* The row that cycles on a tap looks pressable, and the whole width of it is the target. */
+.tape-row--tap { background-color: rgba(255, 255, 255, 0.07); }
+.tape-row--tap:active { background-color: rgba(46, 191, 140, 0.25); }
+.tape-val { flex: 1 1 0; font-size: var(--t-body); -unity-font-style: bold; color: var(--ink); }
+.tape-val--l { -unity-text-align: middle-right; padding-right: 20px; }
+.tape-val--r { -unity-text-align: middle-left; padding-left: 20px; }
+.tape-key { width: 250px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
+.glyph { width: 30px; height: 30px; margin-right: 10px; color: var(--ink-dim); }
+.tape-key--tap .glyph { color: var(--accent); }
+.tape-code { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
+.tape-key--tap .tape-code { color: var(--accent); }
+
+/* ------------------------------------------------------------------ over the picture */
+
+.banner {
+    position: absolute;
+    top: 470px;
+    left: 0; right: 0;
+    -unity-text-align: middle-center;
+    font-size: 96px;
+    -unity-font-style: bold;
+    letter-spacing: 6px;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+}
+.banner--count { top: 500px; font-size: 220px; letter-spacing: 0; color: var(--warn); }
+
+.replay-tag {
+    position: absolute;
+    top: 448px;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    height: 56px;
+    background-color: rgba(226, 62, 62, 0.88);
+    border-radius: var(--radius-sm);
+    padding: 0 20px;
+    font-size: var(--t-small);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ dock */
+
+.dock {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    bottom: var(--frame-clear);
+}
+
+.ticker {
+    height: 56px;
+    font-size: var(--t-body);
+    -unity-text-align: middle-left;
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+    padding: 0 20px;
+    margin-bottom: var(--gap-2);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.strip { height: 196px; background-color: var(--overlay); border-radius: var(--radius); padding: 10px 16px 12px 16px; }
+.strip-head { flex-direction: row; align-items: center; height: 40px; }
+.strip-title { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
+.strip-value { font-size: var(--t-body); -unity-font-style: bold; margin-left: 16px; }
+.strip-graph { flex-grow: 1; margin-top: 6px; }
+
+/* ------------------------------------------------------------------ sheets */
+
+.sheet {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    background-color: var(--surface);
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: var(--surface-line);
+    padding: var(--gap-5);
+}
+
+/* Results, numbers and replay on one card. */
+.results { bottom: var(--frame-clear); }
+.res-head { flex-direction: row; align-items: center; height: 104px; }
+.res-icon { width: 72px; height: 72px; margin-right: 16px; -unity-background-image-tint-color: var(--warn); }
+.res-title { flex: 1 1 0; }
+.res-winner { font-size: var(--t-display); -unity-font-style: bold; }
+.res-method { font-size: var(--t-body); color: var(--ink-dim); }
+.res-graph { height: 120px; margin-top: var(--gap-3); background-color: rgba(255, 255, 255, 0.04); border-radius: var(--radius-sm); }
+.res-caption {
+    height: 44px;
+    margin-top: 10px;
+    font-size: var(--t-small);
+    color: var(--ink-dim);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.res-actions { flex-direction: row; align-items: center; margin-top: var(--gap-2); }
+.res-actions .btn { margin-right: var(--gap-2); }
+.res-go { flex: 1 1 0; margin-right: 0; }
+
+.scrub { height: 64px; justify-content: center; }
+.scrub-track { height: 12px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.14); }
+.scrub-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 6px; background-color: var(--accent); }
+.scrub-mark { position: absolute; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; background-color: var(--warn); }
+.scrub-knob { position: absolute; top: 12px; left: 0; width: 40px; height: 40px; border-radius: 20px; background-color: var(--ink); }
+
+/* Menu: one sheet, three tabs. Every page is the same height so the sheet does not jump between them. */
+.menu-sheet { top: var(--frame-clear); }
+.seg { flex-direction: row; height: 88px; background-color: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 6px; }
+.seg-btn {
+    flex: 1 1 0;
+    margin: 0 3px;
+    padding: 0;
+    border-width: 0;
+    border-radius: var(--radius-sm);
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--ink-dim);
+    font-size: var(--t-body);
+    -unity-font-style: bold;
+}
+.seg-btn--on { background-color: var(--accent); color: rgb(6, 20, 15); }
+
+.page { height: 520px; margin-top: var(--gap-4); }
+.page-label { margin-top: var(--gap-5); margin-bottom: var(--gap-1); }
+.grid { flex-direction: row; margin-top: var(--gap-2); margin-left: -4px; margin-right: -4px; }
+.grid-2 { flex: 1 1 0; margin: 0 4px; }
+.grid-4 { flex: 1 1 0; margin: 0 4px; padding: 0; }
+
+.lg-row {
+    flex-direction: row;
+    align-items: center;
+    height: 76px;
+    margin-bottom: var(--gap-1);
+    padding: 0 16px;
+    background-color: var(--row);
+    border-radius: var(--radius-sm);
+}
+.lg-row--live { background-color: var(--row-lead); border-left-width: 6px; border-left-color: var(--accent); }
+.lg-cell { font-size: var(--t-body); }
+.lg-rank { width: 52px; color: var(--ink-dim); }
+.lg-name { flex: 1 1 0; -unity-font-style: bold; }
+.lg-badge { width: 200px; font-size: var(--t-micro); color: var(--ink-dim); }
+.lg-elo { width: 120px; -unity-text-align: middle-right; -unity-font-style: bold; }
+.lg-record { width: 150px; -unity-text-align: middle-right; color: var(--ink-dim); }
+
+/* Debug: grows out of the DEBUG chip and lies over the dock rather than moving it. */
+.debug-panel {
+    position: absolute;
+    left: var(--gap-4);
+    bottom: var(--frame-clear);
+    width: 720px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    background-color: var(--scrim);
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-color: var(--surface-line);
+    padding: var(--gap-3);
+}
+.dbg-cell { width: 50%; height: 52px; flex-direction: row; align-items: center; padding: 0 8px; }
+.dbg-key { width: 140px; font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); }
+.dbg-val { font-size: 30px; -unity-font-style: bold; }

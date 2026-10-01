@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: first build, UI before and after</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:18px; margin:16px 0; }
+  figure { margin:0; }
+  figcaption { color:var(--dim); font-size:14px; margin-top:6px; }
+  figcaption b { color:var(--ink); }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:760px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .ok { color:var(--accent); font-weight:700; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: first build</h1>
+  <p class="dim">30 September 2026 · the interface before and after, with what changed marked on the pictures</p>
+
+  <p>The project had no interface at all that morning: no scenes, no scripts. So the honest "before" is
+     an empty screen. The picture on the left below is the nearest thing to one: the very first time the
+     new HUD drew, before anything had been tuned. The picture on the right is where it ended the day.</p>
+
+  <h2>The fight screen</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE · first pass</span>
+      <div class="shot">
+        <img src="img/01_first_pass.png" alt="First pass of the fight screen">
+        <span class="pin" style="left:85%; top:8%">A</span>
+        <span class="pin" style="left:50%; top:17%">B</span>
+        <span class="pin" style="left:50%; top:45%">C</span>
+        <span class="pin" style="left:50%; top:60%">D</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>The name SWARMER was 5 pixels too wide for its box and was being cut off. The layout check caught it.</li>
+        <li>Everything reads zero: the fighters stood in their corners and never reached each other.</li>
+        <li>The camera had backed off behind the crowd to fit two fighters standing far apart.</li>
+        <li>The ropes cross straight over both fighters.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER · end of day</span>
+      <div class="shot">
+        <img src="img/02_fight.png" alt="Fight screen at the end of the day">
+        <span class="pin" style="left:9%; top:2.7%">1</span>
+        <span class="pin" style="left:50%; top:2.7%">2</span>
+        <span class="pin" style="left:91%; top:2.7%">3</span>
+        <span class="pin" style="left:10%; top:97.3%">4</span>
+        <span class="pin" style="left:93%; top:97.3%">5</span>
+        <span class="pin" style="left:6%; top:11.2%">6</span>
+        <span class="pin" style="left:6%; top:13.8%">7</span>
+        <span class="pin" style="left:50%; top:18.6%">8</span>
+        <span class="pin" style="left:8%; top:21%">9</span>
+        <span class="pin" style="left:90%; top:82.5%">10</span>
+        <span class="pin" style="left:88%; top:86%">11</span>
+      </div>
+      <ol class="legend">
+        <li>Top-left: the game's name.</li>
+        <li>Top-centre: the frame rate. Tap it for the frame-time graph and the debug panel.</li>
+        <li>Top-right: MENU.</li>
+        <li>Bottom-left: DEBUG. The dot is green, amber or red by frame time.</li>
+        <li>Bottom-right: the version.</li>
+        <li>Health, one bar each, emptying towards the middle.</li>
+        <li>Momentum: a tug of war. Red's share of the bar is red's chance as it stands.</li>
+        <li>Tale of the tape, mirrored: one row serves both fighters, with an icon and a short word in the middle instead of a label each side.</li>
+        <li>The green row cycles on a tap: energy, joint stress, balance, power. One row instead of four.</li>
+        <li>Commentary: one line, written from the measured numbers.</li>
+        <li>One graph, three pages (excitement, momentum, frame time). Swipe sideways or tap; nothing scrolls down.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>Everything else opens over that screen</h2>
+  <p>Nothing replaces the fight screen and nothing pushes it around. The menu, the debug readings and the
+     result are each a panel laid over it, and the five corner items stay where they are throughout.</p>
+  <div class="grid">
+    <figure><div class="shot"><img src="img/03_knockdown_count.png" alt="Knockdown count"></div>
+      <figcaption><b>Knockdown.</b> The camera goes overhead, the count is the big number, and the line at the bottom quotes the punch that did it.</figcaption></figure>
+    <figure><div class="shot"><img src="img/04_round_replay.png" alt="Replay between rounds"></div>
+      <figcaption><b>Between rounds.</b> The best moment of the round replays in slow motion under a red tag. The crowd goes out of focus.</figcaption></figure>
+    <figure><div class="shot"><img src="img/05_results.png" alt="Results card"></div>
+      <figcaption><b>The result.</b> One card: who won and how, both fighters' numbers, the momentum of the whole bout with the highlights marked, and the replay with its scrubber. The highlight reel plays above it.</figcaption></figure>
+    <figure><div class="shot"><img src="img/06_menu_match.png" alt="Menu, match tab"></div>
+      <figcaption><b>Menu, MATCH.</b> Restart, next bout, camera and speed. Three tabs on one sheet instead of three screens.</figcaption></figure>
+    <figure><div class="shot"><img src="img/07_menu_league.png" alt="Menu, league tab"></div>
+      <figcaption><b>Menu, LEAGUE.</b> The ladder. Every entry says SCRIPTED because none is a trained policy yet.</figcaption></figure>
+    <figure><div class="shot"><img src="img/08_menu_settings.png" alt="Menu, settings tab"></div>
+      <figcaption><b>Menu, SETTINGS.</b> Six switches. RESET LADDER asks twice.</figcaption></figure>
+    <figure><div class="shot"><img src="img/09_debug.png" alt="Debug panel"></div>
+      <figcaption><b>DEBUG.</b> Twelve readings in a panel that grows out of the bottom-left chip and lies over the graph.</figcaption></figure>
+    <figure><div class="shot"><img src="img/10_tall_phone.png" alt="Tall phone"></div>
+      <figcaption><b>A tall phone (9:20).</b> Same layout, more picture between the scoreboard and the graph.</figcaption></figure>
+  </div>
+
+  <h2>Does it all fit on one screen?</h2>
+  <p>Checked by the game itself rather than by eye. The check walks every element on screen and counts
+     anything outside the screen, anything that scrolls, any text smaller than 26 px (about the smallest a
+     phone shows legibly), any label cut off by its box, and whether the five corner items are in their corners.</p>
+  <table>
+    <tr><th>Screen state</th><th>720 x 1280</th><th>1080 x 1920</th><th>1080 x 2400</th></tr>
+    <tr><td>Fight</td><td class="ok">pass</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>Menu: MATCH, LEAGUE, SETTINGS</td><td class="ok">pass</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>Debug panel open</td><td class="ok">pass</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>Results card</td><td class="ok">pass</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+  </table>
+  <p class="dim">Every cell: off-screen 0, scrolling 0, small text 0, cut-off text 0, corners in place. The same check runs as an automated test (4 of 4 passing).</p>
+
+  <div class="note">
+    <b>What these pictures do not show.</b> The fighters are placeholder bodies made of capsules, driven by
+    a hand-written routine and held upright with outside help. No policy has been trained, because training
+    is to start from a skinned mesh that has not been supplied yet. Nothing has been run on a phone, and
+    nobody has listened to the sound. The full list is in <code>DOCS/README.md</code>.
+  </div>
+</main>
+</body>
+</html>

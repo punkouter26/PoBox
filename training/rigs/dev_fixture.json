@@ -1,0 +1,329 @@
+{
+  "source": "C:/Users/punko/Downloads/PoDecath/Assets/Models/Characters/MATT_RiggedAvaturn.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.803,
+  "mass_kg": 75.0,
+  "notes": [
+    "head bone had no crown end; its top was placed 7.5% of the figure's height above the neck"
+  ],
+  "bones": [
+    {
+      "name": "Hips",
+      "parent": null,
+      "head": [
+        0.0,
+        -0.0112,
+        0.9049
+      ],
+      "tail": [
+        -0.0,
+        -0.011,
+        1.0238
+      ]
+    },
+    {
+      "name": "Spine",
+      "parent": "Hips",
+      "head": [
+        -0.0,
+        -0.011,
+        1.0238
+      ],
+      "tail": [
+        -0.0,
+        -0.0107,
+        1.1377
+      ]
+    },
+    {
+      "name": "Spine2",
+      "parent": "Spine1",
+      "head": [
+        0.0,
+        0.0087,
+        1.2997
+      ],
+      "tail": [
+        0.0,
+        0.0494,
+        1.4979
+      ]
+    },
+    {
+      "name": "Neck",
+      "parent": "Spine2",
+      "head": [
+        0.0,
+        0.0494,
+        1.4979
+      ],
+      "tail": [
+        0.0,
+        0.016,
+        1.6377
+      ]
+    },
+    {
+      "name": "Head",
+      "parent": "Neck",
+      "head": [
+        0.0,
+        0.016,
+        1.6377
+      ],
+      "tail": [
+        0.0,
+        0.016,
+        1.7681
+      ]
+    },
+    {
+      "name": "LeftArm",
+      "parent": "LeftShoulder",
+      "head": [
+        0.2221,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        0.4945,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "LeftForeArm",
+      "parent": "LeftArm",
+      "head": [
+        0.4945,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        0.7663,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "LeftHand",
+      "parent": "LeftForeArm",
+      "head": [
+        0.7663,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        0.9392,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "LeftHandMiddle3",
+      "parent": "LeftHandMiddle2",
+      "head": [
+        0.9192,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        0.9392,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "RightArm",
+      "parent": "RightShoulder",
+      "head": [
+        -0.2221,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        -0.4945,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "RightForeArm",
+      "parent": "RightArm",
+      "head": [
+        -0.4945,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        -0.7663,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "RightHand",
+      "parent": "RightForeArm",
+      "head": [
+        -0.7663,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        -0.9392,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "RightHandMiddle3",
+      "parent": "RightHandMiddle2",
+      "head": [
+        -0.9192,
+        0.0412,
+        1.4778
+      ],
+      "tail": [
+        -0.9392,
+        0.0412,
+        1.4778
+      ]
+    },
+    {
+      "name": "LeftUpLeg",
+      "parent": "Hips",
+      "head": [
+        0.096,
+        -0.0114,
+        0.8949
+      ],
+      "tail": [
+        0.096,
+        -0.0147,
+        0.4865
+      ]
+    },
+    {
+      "name": "LeftLeg",
+      "parent": "LeftUpLeg",
+      "head": [
+        0.096,
+        -0.0147,
+        0.4865
+      ],
+      "tail": [
+        0.096,
+        0.013,
+        0.0903
+      ]
+    },
+    {
+      "name": "LeftFoot",
+      "parent": "LeftLeg",
+      "head": [
+        0.096,
+        0.013,
+        0.0903
+      ],
+      "tail": [
+        0.096,
+        -0.1221,
+        0.0208
+      ]
+    },
+    {
+      "name": "LeftToeBase",
+      "parent": "LeftFoot",
+      "head": [
+        0.096,
+        -0.1221,
+        0.0208
+      ],
+      "tail": [
+        0.096,
+        -0.1626,
+        0.0
+      ]
+    },
+    {
+      "name": "RightUpLeg",
+      "parent": "Hips",
+      "head": [
+        -0.0961,
+        -0.0114,
+        0.8949
+      ],
+      "tail": [
+        -0.0961,
+        -0.0147,
+        0.4865
+      ]
+    },
+    {
+      "name": "RightLeg",
+      "parent": "RightUpLeg",
+      "head": [
+        -0.0961,
+        -0.0147,
+        0.4865
+      ],
+      "tail": [
+        -0.0961,
+        0.013,
+        0.0903
+      ]
+    },
+    {
+      "name": "RightFoot",
+      "parent": "RightLeg",
+      "head": [
+        -0.0961,
+        0.013,
+        0.0903
+      ],
+      "tail": [
+        -0.0961,
+        -0.1221,
+        0.021
+      ]
+    },
+    {
+      "name": "RightToeBase",
+      "parent": "RightFoot",
+      "head": [
+        -0.0961,
+        -0.1221,
+        0.021
+      ],
+      "tail": [
+        -0.0961,
+        -0.1626,
+        0.0002
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "Hips",
+    "neck": "Neck",
+    "head": "Head",
+    "spine": "Spine",
+    "torso": "Spine2",
+    "thigh_l": "LeftUpLeg",
+    "shin_l": "LeftLeg",
+    "foot_l": "LeftFoot",
+    "toe_l": "LeftToeBase",
+    "upper_arm_l": "LeftArm",
+    "forearm_l": "LeftForeArm",
+    "hand_l": "LeftHand",
+    "hand_tip_l": "LeftHandMiddle3",
+    "thigh_r": "RightUpLeg",
+    "shin_r": "RightLeg",
+    "foot_r": "RightFoot",
+    "toe_r": "RightToeBase",
+    "upper_arm_r": "RightArm",
+    "forearm_r": "RightForeArm",
+    "hand_r": "RightHand",
+    "hand_tip_r": "RightHandMiddle3"
+  },
+  "all_bones": 54
+}

@@ -1,0 +1,2 @@
+policy.onnx copied from training/checkpoints/match/latest_zombie.onnx
+written 2026-10-01 14:07:06
