@@ -269,3 +269,19 @@ Also: Unity keeps its fixed step as 0.004999993 s and the plugin hands that to M
 
 **Decision:** B1 to B3, B5 to B9 are done for Matt. The HUD (B4), the other six boxers (B10) and the report
 (B11) are next; no training before them.
+
+## 2026-10-02, late evening: Phase B complete
+
+- **All seven boxers** are prefabs (`Assets/Boxers/NAME`); `MjRetrofit.CheckAll` puts each in the testbed's world
+  in turn: 0 differences from the trainer's fingerprint for every one of them.
+- **The HUD** (`Assets/UI/Testbed.uxml`, `TestbedHud`): title, telemetry, behaviour selector, reset, shoves, cube,
+  version. Before and after: `DOCS/reports/2026-10-02-retrofit-testbed.html`.
+- **Cost in the editor** with the zero policy: 0.12 ms a physics step (MuJoCo and the plugin's copy to the
+  transforms), 0.5 ms a control step for the observation and the policy on the CPU, about 220 frames a second.
+  At 200 physics steps and 50 control steps a second that is about 50 ms of each second. Not measured on a phone.
+- The three parity tests pass with the HUD in the scene.
+- Not done: the camera does not follow the boxer; the other six cannot be picked on the testbed's screen.
+
+**Decision:** Phase C starts with R0 and R1 for Matt (`--stage footwork` from `checkpoints/r0_start/latest_matt.pt`),
+then the gate C3 in Unity. Notes from the gauntlet session's entry above apply: check a policy without its noise
+before calling a rung done, and do not drop the noise sharply on a resume.

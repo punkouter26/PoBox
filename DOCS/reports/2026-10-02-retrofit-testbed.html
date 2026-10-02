@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox retrofit: the testbed and its HUD</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox retrofit: the testbed and its HUD</h1>
+  <p class="dim">2 October 2026 · Phase B of <code>tasks.md</code> · the new screen before and after its HUD, with each part marked</p>
+
+  <p>The testbed is a new scene, <code>Assets/Scenes/Testbed.unity</code>, where one boxer stands on MuJoCo's physics and
+  nothing of Unity's. It is where each rung of training is checked before it goes into the boxing game. The boxing
+  game's own HUD has not been touched.</p>
+
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE: THE SCENE AS FIRST BUILT</span>
+      <div class="shot"><img src="img/testbed_before.png" alt="Matt standing in his guard on a grey floor, no interface"></div>
+      <p class="dim">Matt's own mesh riding on his MuJoCo body, the floor, a light. Nothing to press and nothing to read.</p>
+    </div>
+    <div>
+      <span class="tag after">AFTER: THE FIVE ANCHORS</span>
+      <div class="shot">
+        <img src="img/testbed_after.png" alt="The same scene with a title, telemetry, a behaviour button, reset, shove and cube buttons, and a version line">
+        <span class="pin" style="left:19%; top:4%;">1</span>
+        <span class="pin" style="left:50%; top:13.5%;">2</span>
+        <span class="pin" style="left:86%; top:8.5%;">3</span>
+        <span class="pin" style="left:32%; top:92.5%;">4</span>
+        <span class="pin" style="left:84%; top:94%;">5</span>
+        <span class="pin" style="left:66%; top:38%;">6</span>
+      </div>
+    </div>
+  </div>
+
+  <ol class="legend">
+    <li><b>Top left: title.</b> The screen's name, and under it the boxer and the policy file driving him. Here the policy
+        is <code>zero_policy</code>: it always answers zero, so the guard is held by the joint drives alone.</li>
+    <li><b>Top centre: frame rate and telemetry.</b> Frames a second, milliseconds for one physics step and for one control
+        step's observation and policy, then simulated time, pelvis height, how upright he is, falls, and cubes in play.</li>
+    <li><b>Top right: behaviour selector.</b> Cycles STAND, WALK, TURN. It changes what the boxer is asked to do (the
+        command and where his stand-in opponent is). A zero policy ignores it; a trained one will not.</li>
+    <li><b>Bottom left: RESET, SHOVES, CUBE.</b> RESET stands him back in his guard by writing MuJoCo's state. SHOVES turns on
+        a 10 to 30 N s shove every few seconds. CUBE throws one of the eight pooled cubes at his chest at 5 m/s, or drops it on him.</li>
+    <li><b>Bottom right: version.</b> The app's version and the MuJoCo library actually loaded (3.5.0).</li>
+    <li><b>The boxer.</b> Not part of the HUD, but new: the mesh is placed on MuJoCo's bodies every frame. The grey collision
+        shapes are still there, switched off.</li>
+  </ol>
+
+  <h2>What is under the picture</h2>
+  <div class="wide">
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>Unity physics components in the scene (Rigidbody, ArticulationBody, Collider, Joint)</td><td>0 of each</td></tr>
+    <tr><td>The model Unity compiles, against the trainer's, for all seven boxers</td><td>0 differences at 1e-6</td></tr>
+    <tr><td>First observation, Unity against C MuJoCo 3.5.0 (103 numbers)</td><td>largest difference 6.0e-08</td></tr>
+    <tr><td>Zero-action run of 5 s with a cube strike at 2 s: a joint, Unity against C MuJoCo</td><td>within 1.8e-05 rad throughout</td></tr>
+    <tr><td>The same run: pelvis height</td><td>within 0.009 mm</td></tr>
+    <tr><td>Cost in the editor on this laptop</td><td>0.12 ms a physics step, 0.5 ms a control step, about 220 frames a second</td></tr>
+  </table>
+  </div>
+
+  <div class="note">
+    <b>Not there yet.</b> The camera does not follow the boxer, so one that walks or falls leaves the picture. Only Matt is
+    in the scene; the other six have prefabs but no way to pick them on this screen. Nothing has been trained on the new
+    bodies: with the zero policy Matt stands for a few seconds and tips over. None of it has been run on a phone.
+  </div>
+</main>
+</body>
+</html>

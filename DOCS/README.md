@@ -26,9 +26,48 @@ tag `pre-retrofit`; from Phase B of the plan until Phase D its fights do not run
   `pip`. MuJoCo 3.5.0 for Python, the version Unity will run, is in `training/.mj350` (not versioned):
   `PYTHONPATH=training/.mj350` in front of a tool makes it use that.
 
+**Where it stands (2 October, evening): Phase B is done; nothing has been trained on the new bodies yet.**
+
+- All seven boxers are prefabs of the MuJoCo plugin's components with their meshes bound (`Assets/Boxers/NAME`),
+  and each compiles to the trainer's model with no difference (`PoBox/Mj/Check Every Boxer Against Training`).
+- `Assets/Scenes/Testbed.unity` is the scene every rung is checked in: one boxer, the floor, the pool of 8 cubes,
+  a HUD with reset, shoves, a cube and a behaviour selector. It holds no Rigidbody, ArticulationBody or collider.
+  Report with the screen before and after: `DOCS/reports/2026-10-02-retrofit-testbed.html`.
+- The runtime is `Assets/Scripts/Mj`: `MjBoxer` (observation out of mjData, policy, targets into mjData.ctrl),
+  `MjCubePool`, `MjTestbed` (the control step every fourth physics step), `TestbedHud`. The importer is
+  `Assets/Scripts/Editor/MjRetrofit.cs`. The plugin is embedded in `Packages/org.mujoco` with three small changes
+  marked `PoBox:` (it did not compile on Unity 6000.6 and its scenes did not load in MuJoCo 3.5.0).
+- Play-mode tests `MjParityTests`: no Unity physics in the scene; the compiled model is the trainer's; a
+  zero-action run of 5 s with a cube strike matches plain C MuJoCo 3.5.0 to 1.8e-05 rad a joint.
+- Two things worth knowing before touching this: the plugin copies each `MjActuator.Control` over `mjData.ctrl`
+  after every step, so targets are written again before each one; and `mj_step` leaves body positions one step
+  behind `qpos`, so they are brought up to date (`mj_kinematics`) before the boxer observes, as the trainer does.
+
 The sections below describe the game before the retrofit.
 
-## Finishing every boxer: where it stands (2026-10-02, 11:35, stopped unfinished)
+## Finishing every boxer, on the new laptop (2026-10-02, afternoon)
+
+Carried on at 13:10 on the new machine (RTX 5070 Ti Laptop GPU; the gauntlet runs at about 35,000 steps a
+second here against 13,300 on the old one). Report with the TensorBoard charts explained:
+`DOCS/reports/2026-10-02-training-gauntlets.html`.
+
+- **First pass done, 16:53.** Matt, Nick, Lil Matt, Trump, Grandma and Grandpa each had a 36-minute gauntlet
+  (`training/checkpoints/g1_<name>`). Full exam afterwards (`training/handoff/exam_1.log`): **0 of 7 pass**,
+  one to four lines failed each. Footing fails for four (Matt 3.11 falls a minute against Grandpa, the others
+  about 1), carrying on for six, Lil Matt's guard, Trump's and Lil Matt's chin. Zombie, who passed after his
+  own gauntlet, now fails footing against the new Nick.
+- **No second round.** One was started at 17:04 and stopped at 17:09 (`g2_nick`, marked rejected): the retrofit
+  above changes the bodies, so these policies are warm starts for its boxing rungs (C7 in `tasks.md`), not
+  entrants. `training/logs/policies.json` points at the six `g1_<name>` policies and Zombie's earlier one. The
+  queue runner is stopped and nothing of this session is on the GPU.
+- **Matt only stays up with his training noise on** (0 falls in 30 episodes against Grandpa with it, 19 without;
+  the exam and the game run without). A low-noise run to cure it (`p1_matt`) is marked rejected.
+- **Two GPU faults** at 14:21 and 14:27 (nvlddmkm event 13) each killed a run; cause not established. The
+  queue runner carries on with the next job and a run keeps its last checkpoint (every 50 iterations).
+- Nothing from today has been imported into the game. The trainer's Python on this machine has mujoco 3.14.1
+  and torch 2.11 (the notes below say 3.14.0 and 2.5.1); Zombie's exam gives the same result here as there.
+
+## Finishing every boxer: where it stood at the move (2026-10-02, 11:35, stopped unfinished)
 
 **Stopped at 11:35 at the owner's request, to move the project to another computer.** One boxer of seven
 (Zombie) passes the exam; six gauntlets were not run. The policies, the progress files and the steps to

@@ -30,6 +30,9 @@ namespace PoBox.Mj
         public double Now { get; private set; }
         public double ControlDt { get; private set; }
         public int Falls { get; private set; }
+        /// <summary>Milliseconds of a physics step (MuJoCo and the plugin's copy to the transforms) and of a control step's observation, policy and targets; smoothed.</summary>
+        public double PhysicsMs { get; private set; }
+        public double PolicyMs { get; private set; }
         public bool Ready => boxer != null && boxer.Bound;
         /// <summary>Raised when a control step's physics is done; the boxer's state is that of the end of the step.</summary>
         public event Action ControlStepDone;
@@ -42,12 +45,17 @@ namespace PoBox.Mj
         double _shoveLeft, _nextShove, _downFor;
         readonly double[] _shove = new double[3], _chest = new double[3];
         readonly System.Random _rng = new System.Random(1);
+        readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
+        long _stepBegan;
+
+        static double Smooth(double was, long ticks) => was + 0.05 * (ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency - was);
 
         void Awake()
         {
             // The plugin steps MuJoCo once a FixedUpdate and takes MuJoCo's step from Unity's: both are the trainer's.
             Time.fixedDeltaTime = physicsStep;
             // The plugin makes its own MjScene; this only has to be listening before it compiles the model.
+            _clock.Start();
             var scene = MjScene.Instance;
             scene.postInitEvent += OnModel;
             scene.preUpdateEvent += BeforePhysics;
@@ -109,7 +117,8 @@ namespace PoBox.Mj
             if (!Ready) return;
             // The plugin's MjActuator copies its own Control field over mjData.ctrl after every step, so the
             // targets are written again before each one: they are held for the whole control step.
-            if (_sub != 0) { boxer.Drive(); return; }
+            if (_sub != 0) { boxer.Drive(); _stepBegan = _clock.ElapsedTicks; return; }
+            long began = _clock.ElapsedTicks;
             if (shoves && Now >= _nextShove)
             {
                 _nextShove = Now + 2.0 + 2.0 * _rng.NextDouble();
@@ -122,11 +131,22 @@ namespace PoBox.Mj
             if (_shoveLeft > 1e-6) boxer.Push(_shove[0], _shove[1], _shove[2]); else boxer.Push(0, 0, 0);
             _shoveLeft = Math.Max(0.0, _shoveLeft - ControlDt);
             if (cubes != null) cubes.Tick(ControlDt);
+            _stepBegan = _clock.ElapsedTicks;
+            PolicyMs = Smooth(PolicyMs, _stepBegan - began);
+        }
+
+        /// <summary>What the boxer is asked to do from where it stands: hold its guard, walk forward at 0.6 m/s, or turn to an opponent behind it.</summary>
+        public void SetBehaviour(int kind)
+        {
+            if (kind == MjBoxer.Walk) boxer.SetEpisode(MjBoxer.Walk, 0.6 * boxer.Cfg.speed, 0.0, 0.0, 1.2, 0.0);
+            else if (kind == MjBoxer.Turn) boxer.SetEpisode(MjBoxer.Turn, 0.0, 0.0, 0.0, 1.5, Math.PI);
+            else boxer.SetEpisode(MjBoxer.Stand, 0.0, 0.0, 0.0, 1.3, 0.0);
         }
 
         void AfterPhysics(object sender, MjStepArgs a)
         {
             if (!Ready) return;
+            PhysicsMs = Smooth(PhysicsMs, _clock.ElapsedTicks - _stepBegan);
             _sub = (_sub + 1) % _decimation;
             if (_sub != 0) return;
             Now += ControlDt;
@@ -137,8 +157,9 @@ namespace PoBox.Mj
             MujocoLib.mj_kinematics(_m, _d);
             ControlStepDone?.Invoke();
             if (!autoReset) return;
-            _downFor = boxer.Fallen ? _downFor + ControlDt : 0.0;
-            if (boxer.Fallen && _downFor <= ControlDt) Falls++;
+            // Once down it is down until it is stood up again: a body rolling on the floor is one fall, not several.
+            if (boxer.Fallen && _downFor == 0.0) Falls++;
+            if (boxer.Fallen || _downFor > 0.0) _downFor += ControlDt;
             if (_downFor >= 2.0 || boxer.DistanceFromOrigin > 5.0 || double.IsNaN(boxer.PelvisHeight)) ResetBoxer();
         }
     }

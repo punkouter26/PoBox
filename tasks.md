@@ -1,6 +1,6 @@
 # PoBox retrofit: task list
 
-Status: **approved 2026-10-02. Phases 0 and A and the trainer side of C0 are done. Phase B is done for Matt (plugin, prefab, testbed, model check, zero-brain parity) except the HUD (B4); the other six boxers (B10) and the report (B11) are next.**
+Status: **approved 2026-10-02. Phases 0 and A and the trainer side of C0 are done. Phase B is done: all seven boxers are prefabs that compile to the trainer's model, the testbed scene and its HUD are authored, and the zero-brain parity test passes for Matt. Phase C (training) is next.**
 What happened, with the numbers, is in `rl_optimization_log.md`.
 
 Tick a task when it is done and verified. Commit to `master` at the end of each numbered group.
@@ -96,7 +96,7 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [x] B2 Fixed timestep 0.005 s; Unity physics set to script-stepped and never stepped.
 - [x] B3 Pilot boxer (Matt): import his MJCF with the plugin's importer, bind his skinned mesh to the `MjBody`
       transforms, save as a prefab.
-- [ ] B4 Author the testbed scene in the editor: `MjScene` and global settings matching the trainer, a ground
+- [x] B4 Author the testbed scene in the editor: `MjScene` and global settings matching the trainer, a ground
       plane `MjGeom`, a 9:16 camera, a basic HUD with the five anchors.
 - [x] B5 Cube pool prefab: 8 x (`MjBody` + `MjFreeJoint` + box `MjGeom`), parked. One small script fires and
       parks a cube by writing `qpos` and `qvel`. No `Instantiate` or `Destroy`.
@@ -109,8 +109,8 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [x] B9 Zero-brain parity against a C MuJoCo 3.5.0 recording of the same 5 s (guard hold, one cube at 5 m/s at
       2 s): move each joint alone to check index and sign; rest pose; pelvis height within 3 mm and joints within
       0.01 rad over the first second; mass and limits already covered by B6.
-- [ ] B10 Repeat B3 and B6 for the other six boxers.
-- [ ] B11 HUD before/after report; commit.
+- [x] B10 Repeat B3 and B6 for the other six boxers.
+- [x] B11 HUD before/after report; commit.
 
 ## Phase C: training and verification, rung by rung
 
