@@ -208,14 +208,14 @@ class FootworkEnv(BoxingEnv):
     # ---- what knocks it about ------------------------------------------------------------------
     def _shove(self) -> None:
         N, K = self.N, self.K
-        start = (self._u(N, K) < self.dt / self.shove_every_s) & (self.shove_left <= 0.0) & (self.disturb > 0.0)
+        start = (self._u(N, K) < self.dt / self.shove_every_s) & (self.shove_left <= 1e-6) & (self.disturb > 0.0)
         ang, secs = self._u(N, K, lo=-math.pi, hi=math.pi), self._u(N, K, lo=0.1, hi=0.2)
         newtons = self._u(N, K, lo=10.0, hi=30.0) * self.disturb * self.frail.view(1, K) / secs
         force = torch.stack([torch.cos(ang), torch.sin(ang), torch.zeros_like(ang)], -1) * newtons[..., None]
         self.shove_force = torch.where(start[..., None], force, self.shove_force)
         self.shove_left = torch.where(start, secs, (self.shove_left - self.dt).clamp_min(0.0))
         for k in range(K):
-            self.xfrc[:, self.b_torso[k], :3] = self.shove_force[:, k] * (self.shove_left[:, k] > 0.0).float()[:, None]
+            self.xfrc[:, self.b_torso[k], :3] = self.shove_force[:, k] * (self.shove_left[:, k] > 1e-6).float()[:, None]
         self._f["shoves"] += start.float().sum()
 
     def _cubes(self) -> None:

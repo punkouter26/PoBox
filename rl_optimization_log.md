@@ -124,3 +124,26 @@ Checked on the CPU, 6 to 16 worlds (`device="cpu"`; nothing here has run on the 
 **Not done:** `train_box.py` does not know the stage yet (it is shared with the running queue and waits for
 it to end); nothing has been trained; the style reward's judge (the discriminator) is not written, so the
 `style` term pays nothing. The reward weights are first guesses.
+
+## 2026-10-02: the footwork exam and the reference recording, in plain C MuJoCo (CPU)
+
+`training/tools/footwork_c.py` is the footwork stage for one world in plain C MuJoCo: the exam for R0 to R2,
+the recording Unity will be checked against, and the template for the C# observation.
+
+- **The 103 numbers are the same in both.** `--check-env` puts the Warp stage and the C runner in the same
+  state: the observations agree to 2.5e-07. After one to five steps of the same random actions they are 0.01
+  to 0.09 apart (and a foot-contact flag flips), which is Warp against C, not the observation.
+- **Baseline exam, Matt's widened match policy** (C MuJoCo 3.5.0, 30 episodes of each kind, no noise):
+
+  | Line | Result | Mark | |
+  |---|---|---|---|
+  | Stand, 20 s under shoves and cubes | up at the end in 40% | 95% | fail |
+  | Walk, 0.3 to 1.0 m/s | velocity off by 0.68 m/s; no falls | 0.15 m/s; 0.2 falls a minute | fail |
+  | Turn to face, 3 s | 37% | 90% | fail |
+  | Joint speed | fastest joint at 0.40 of its limit | 1.00 | pass |
+
+  This is where R0 to R2 start. (The 10-episode run before it gave 50%, 0.60 and 40%.)
+- **Zero-action reference for Phase B:** `training/models/v2/matt_reference_hold.json`, 5 s from the keyframe
+  in MuJoCo 3.5.0, a row a control step (observation, action, targets, torques, root and joint state, foot
+  contacts) and the one cube thrown at 2.0 s as an event. The guard holds itself: pelvis 0.953 m at the start,
+  0.946 m at 1 s, 0.944 m at 2 s; the cube knocks it over and it is down at 4.58 s.
