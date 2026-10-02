@@ -1,0 +1,44 @@
+{
+ "grandma": {
+  "match": "handoff/match_grandma.pt",
+  "match_from": "checkpoints/r5_trump_v_grandma/latest_grandma.pt",
+  "getup": "handoff/getup_grandma.pt",
+  "getup_from": "checkpoints/getup_trump_grandma/latest_grandma.pt"
+ },
+ "grandpa": {
+  "match": "handoff/match_grandpa.pt",
+  "match_from": "checkpoints/r5_grandpa_v_zombie/latest_grandpa.pt",
+  "getup": "handoff/getup_grandpa.pt",
+  "getup_from": "checkpoints/getup2_grandpa_zombie/latest_grandpa.pt"
+ },
+ "lilmatt": {
+  "match": "handoff/match_lilmatt.pt",
+  "match_from": "checkpoints/r5_nick_v_lilmatt/latest_lilmatt.pt",
+  "getup": "handoff/getup_lilmatt.pt",
+  "getup_from": "checkpoints/getup_nick_lilmatt/latest_lilmatt.pt"
+ },
+ "matt": {
+  "match": "handoff/match_matt.pt",
+  "match_from": "checkpoints/defend/latest_matt.pt",
+  "getup": "handoff/getup_matt.pt",
+  "getup_from": "checkpoints/getup4_matt_zombie/latest_matt.pt"
+ },
+ "nick": {
+  "match": "handoff/match_nick.pt",
+  "match_from": "checkpoints/r5_nick_v_lilmatt/latest_nick.pt",
+  "getup": "handoff/getup_nick.pt",
+  "getup_from": "checkpoints/getup_nick_lilmatt/latest_nick.pt"
+ },
+ "trump": {
+  "match": "handoff/match_trump.pt",
+  "match_from": "checkpoints/r5_trump_v_grandma/latest_trump.pt",
+  "getup": "handoff/getup_trump.pt",
+  "getup_from": "checkpoints/getup_trump_grandma/latest_trump.pt"
+ },
+ "zombie": {
+  "match": "handoff/match_zombie.pt",
+  "match_from": "checkpoints/g1_zombie/latest_zombie.pt",
+  "getup": "handoff/getup_zombie.pt",
+  "getup_from": "checkpoints/getup2_grandpa_zombie/latest_zombie.pt"
+ }
+}

@@ -1,0 +1,136 @@
+{
+ "when": "2026-10-02 11:18:06",
+ "marks": {
+  "footing_falls_per_min": 0.2,
+  "attack_hits_per_s": 0.5,
+  "attack_speed": 4.0,
+  "guard_block_share": 0.3,
+  "guard_head_taken_per_s": 0.3,
+  "chin_legs_per_min": 1.5,
+  "getup_rate": 0.8,
+  "getup_within_s": 8.0,
+  "getup_rate_frail": 0.6,
+  "getup_within_s_frail": 9.0,
+  "carry_on_rate": 0.9
+ },
+ "rounds": 3,
+ "round_s": 45.0,
+ "trials": 40,
+ "boxers": {
+  "zombie": {
+   "passed": true,
+   "lines": {
+    "footing": {
+     "ok": true,
+     "text": "0.00 falls a minute at worst"
+    },
+    "attack": {
+     "ok": true,
+     "text": "0.83 a second at 6.9 m/s (mark 4.0), 90% to the head"
+    },
+    "guard": {
+     "ok": true,
+     "text": "stops 97% of what comes at its head (0.36 blocks a second), takes 0.01 head shots a second"
+    },
+    "chin": {
+     "ok": true,
+     "text": "legs taken 0.00 a minute (worst 0.00)"
+    },
+    "getting up": {
+     "ok": true,
+     "text": "38 of 40 knockdowns, in 1.6 s on average (mark 80% within 8 s; against grandma)"
+    },
+    "carrying on": {
+     "ok": true,
+     "text": "35 of 38 still up 3 s after the match policy took over"
+    }
+   },
+   "vs": {
+    "grandma": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 0.6444444444444671,
+     "speed": 5.911478311302223,
+     "head_share": 0.896551724137931,
+     "blocks_per_s": 0.2296296296296377,
+     "head_taken_per_s": 0.04444444444444601,
+     "block_share": 0.8378378378378378,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    },
+    "grandpa": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 0.9259259259259585,
+     "speed": 8.355636780132397,
+     "head_share": 1.0,
+     "blocks_per_s": 0.1629629629629687,
+     "head_taken_per_s": 0.0,
+     "block_share": 1.0,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    },
+    "lilmatt": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 0.7555555555555821,
+     "speed": 5.498001230508285,
+     "head_share": 0.8137254901960784,
+     "blocks_per_s": 0.2962962962963067,
+     "head_taken_per_s": 0.0,
+     "block_share": 1.0,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    },
+    "matt": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 1.2666666666667112,
+     "speed": 8.692352328360327,
+     "head_share": 1.0,
+     "blocks_per_s": 0.5333333333333521,
+     "head_taken_per_s": 0.0,
+     "block_share": 1.0,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    },
+    "nick": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 0.8222222222222512,
+     "speed": 6.762967189788227,
+     "head_share": 0.8738738738738738,
+     "blocks_per_s": 0.5629629629629828,
+     "head_taken_per_s": 0.007407407407407668,
+     "block_share": 0.987012987012987,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    },
+    "trump": {
+     "falls_own_per_min": 0.0,
+     "falls_hit_per_min": 0.0,
+     "hits_per_s": 0.5703703703703904,
+     "speed": 6.293148693595745,
+     "head_share": 0.8441558441558441,
+     "blocks_per_s": 0.38518518518519873,
+     "head_taken_per_s": 0.0,
+     "block_share": 1.0,
+     "legs_per_min": 0.0,
+     "falls_dazed_per_min": 0.0
+    }
+   },
+   "getup": {
+    "trials": 40,
+    "floored": 40,
+    "up": 38,
+    "t_up": 62.66859844168815,
+    "carried": 35,
+    "within_s": 8.0,
+    "frail": false,
+    "against": "grandma",
+    "policy": "checkpoints\\getup2_grandpa_zombie\\latest_zombie.pt"
+   },
+   "match": "checkpoints\\g1_zombie\\latest_zombie.pt"
+  }
+ }
+}

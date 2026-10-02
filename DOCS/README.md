@@ -9,7 +9,12 @@ Read `AGENTS.md` for the owner's house rules. The sibling project `../PoDecath` 
 relative: same engine version, same house style, and the source of the render settings, icons and sound
 recordings copied in here.
 
-## Finishing every boxer: where it stands (2026-10-02, 11:30, work in progress)
+## Finishing every boxer: where it stands (2026-10-02, 11:35, stopped unfinished)
+
+**Stopped at 11:35 at the owner's request, to move the project to another computer.** One boxer of seven
+(Zombie) passes the exam; six gauntlets were not run. The policies, the progress files and the steps to
+carry on are in `training/handoff/` (start with its `README.md`); the trainer's Python environment is in
+the sibling project `../PoDecath/training/.venv` and has to come too.
 
 The owner's goal of 1 October, 23:48: train all boxers until they can do everything a bout needs. What
 that means is one exam, `training/tools/exam.py` (footing, attack, guard, chin, getting up, carrying on);

@@ -1,0 +1,83 @@
+2026-10-01 22:23:06  wait   for process 28380 to leave the GPU
+2026-10-01 23:08:07  tensorboard: already up on http://localhost:6006
+2026-10-01 23:08:07  league 8 h: 18 min on the bag for each of trump, grandma, grandpa, nick, lilmatt, then 15 ring sessions over 5 rounds; the hurt rule from round 4
+2026-10-01 23:08:07  start  train_box.py --xml models\trump_bag.xml --run-name bag_trump --max-hours 0.3000 --keep-old-runs --no-tensorboard --career --num-envs 4096 --resume checkpoints\bag_matt\latest.pt --reset-std 0.3
+2026-10-01 23:09:47  viewer on bag_trump
+2026-10-01 23:26:22  end    bag_trump: exit 0, fall rate 0.01, 1.95 hits/s at 8.7 m/s
+2026-10-01 23:26:22  start  train_box.py --xml models\grandma_bag.xml --run-name bag_grandma --max-hours 0.3000 --keep-old-runs --no-tensorboard --career --num-envs 4096 --resume checkpoints\bag_matt\latest.pt --reset-std 0.3
+2026-10-01 23:29:28  viewer on bag_grandma
+2026-10-01 23:39:19  sheet  logs\sheets\bag_grandma_2338.png
+2026-10-01 23:44:42  end    bag_grandma: exit 0, fall rate 0.02, 1.92 hits/s at 8.5 m/s
+2026-10-01 23:44:42  start  train_box.py --xml models\grandpa_bag.xml --run-name bag_grandpa --max-hours 0.3000 --keep-old-runs --no-tensorboard --career --num-envs 4096 --resume checkpoints\bag_matt\latest.pt --reset-std 0.3
+2026-10-01 23:46:19  viewer on bag_grandpa
+2026-10-02 00:02:57  end    bag_grandpa: exit 0, fall rate 0.02, 1.48 hits/s at 7.4 m/s
+2026-10-02 00:02:57  start  train_box.py --xml models\nick_bag.xml --run-name bag_nick --max-hours 0.3000 --keep-old-runs --no-tensorboard --career --num-envs 4096 --resume checkpoints\bag_matt\latest.pt --reset-std 0.3
+2026-10-02 00:05:59  viewer on bag_nick
+2026-10-02 00:09:25  sheet  logs\sheets\bag_nick_0008.png
+2026-10-02 00:21:13  end    bag_nick: exit 0, fall rate 0.01, 2.98 hits/s at 8.7 m/s
+2026-10-02 00:21:13  start  train_box.py --xml models\lilmatt_bag.xml --run-name bag_lilmatt --max-hours 0.3000 --keep-old-runs --no-tensorboard --career --num-envs 4096 --resume checkpoints\bag_matt\latest.pt --reset-std 0.3
+2026-10-02 00:24:45  viewer on bag_lilmatt
+2026-10-02 00:39:23  sheet  logs\sheets\bag_lilmatt_0038.png
+2026-10-02 00:39:32  end    bag_lilmatt: exit 0, fall rate 0.03, 1.97 hits/s at 8.6 m/s
+2026-10-02 00:39:32  start  train_box.py --xml models\trump_vs_zombie_spar.xml --run-name r1_trump_v_zombie --max-hours 0.4229 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\bag_trump\latest.pt checkpoints\defend\latest_zombie.pt --freeze zombie --reset-std 0.35
+2026-10-02 00:41:23  viewer on r1_trump_v_zombie
+2026-10-02 01:05:09  end    r1_trump_v_zombie: exit 0, fall rate 0.17 | trump: 1.54 hits/s at 8.3 m/s, head 0%, down in 1%, 0.06 blocks/s | zombie: 2.07 hits/s at 6.6 m/s, head 100%, down in 16%, 0.12 blocks/s
+2026-10-02 01:05:09  start  train_box.py --xml models\grandma_vs_lilmatt_spar.xml --run-name r1_grandma_v_lilmatt --max-hours 0.4226 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\bag_grandma\latest.pt checkpoints\bag_lilmatt\latest.pt --reset-std 0.35
+2026-10-02 01:07:43  viewer on r1_grandma_v_lilmatt
+2026-10-02 01:10:15  sheet  logs\sheets\r1_grandma_v_lilmatt_0108.png
+2026-10-02 01:30:54  end    r1_grandma_v_lilmatt: exit 0, fall rate 0.12 | grandma: 1.52 hits/s at 8.1 m/s, head 6%, down in 8%, 2.36 blocks/s | lilmatt: 1.50 hits/s at 7.8 m/s, head 5%, down in 4%, 1.55 blocks/s
+2026-10-02 01:30:54  start  train_box.py --xml models\grandpa_vs_nick_spar.xml --run-name r1_grandpa_v_nick --max-hours 0.4221 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\bag_grandpa\latest.pt checkpoints\bag_nick\latest.pt --reset-std 0.35
+2026-10-02 01:32:35  viewer on r1_grandpa_v_nick
+2026-10-02 01:39:54  sheet  logs\sheets\r1_grandpa_v_nick_0138.png
+2026-10-02 01:56:26  end    r1_grandpa_v_nick: exit 0, fall rate 0.02 | grandpa: 1.15 hits/s at 5.0 m/s, head 57%, down in 1%, 1.49 blocks/s | nick: 0.96 hits/s at 6.0 m/s, head 100%, down in 1%, 0.13 blocks/s
+2026-10-02 01:56:26  start  train_box.py --xml models\trump_vs_lilmatt_spar.xml --run-name r2_trump_v_lilmatt --max-hours 0.4218 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r1_trump_v_zombie\latest_trump.pt checkpoints\r1_grandma_v_lilmatt\latest_lilmatt.pt
+2026-10-02 01:58:14  viewer on r2_trump_v_lilmatt
+2026-10-02 02:10:13  sheet  logs\sheets\r2_trump_v_lilmatt_0209.png
+2026-10-02 02:22:01  end    r2_trump_v_lilmatt: exit 0, fall rate 0.00 | trump: 1.70 hits/s at 8.8 m/s, head 100%, down in 0%, 1.46 blocks/s | lilmatt: 1.66 hits/s at 8.5 m/s, head 0%, down in 0%, 0.06 blocks/s
+2026-10-02 02:22:01  start  train_box.py --xml models\nick_vs_matt_spar.xml --run-name r2_nick_v_matt --max-hours 0.4214 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r1_grandpa_v_nick\latest_nick.pt checkpoints\defend\latest_matt.pt --freeze matt
+2026-10-02 02:23:34  viewer on r2_nick_v_matt
+2026-10-02 02:40:34  sheet  logs\sheets\r2_nick_v_matt_0239.png
+2026-10-02 02:47:29  end    r2_nick_v_matt: exit 0, fall rate 0.00 | nick: 2.87 hits/s at 8.6 m/s, head 34%, down in 0%, 0.81 blocks/s | matt: 0.43 hits/s at 3.4 m/s, head 4%, down in 0%, 0.76 blocks/s
+2026-10-02 02:47:29  start  train_box.py --xml models\grandma_vs_grandpa_spar.xml --run-name r2_grandma_v_grandpa --max-hours 0.4211 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r1_grandma_v_lilmatt\latest_grandma.pt checkpoints\r1_grandpa_v_nick\latest_grandpa.pt
+2026-10-02 02:49:14  viewer on r2_grandma_v_grandpa
+2026-10-02 03:10:29  sheet  logs\sheets\r2_grandma_v_grandpa_0309.png
+2026-10-02 03:12:57  end    r2_grandma_v_grandpa: exit 0, fall rate 0.08 | grandma: 0.00 hits/s at 0.0 m/s, head 0%, down in 4%, 0.04 blocks/s | grandpa: 0.11 hits/s at 2.8 m/s, head 2%, down in 4%, 0.00 blocks/s
+2026-10-02 03:12:57  start  train_box.py --xml models\trump_vs_nick_spar.xml --run-name r3_trump_v_nick --max-hours 0.4207 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r2_trump_v_lilmatt\latest_trump.pt checkpoints\r2_nick_v_matt\latest_nick.pt
+2026-10-02 03:14:49  viewer on r3_trump_v_nick
+2026-10-02 03:29:18  note   r2_grandma_v_grandpa rejected (neither boxed); grandma and grandpa go into round 3 from their round-1 policies, written over that run's latest_*.pt
+2026-10-02 03:38:21  end    r3_trump_v_nick: exit 0, fall rate 0.03 | trump: 1.68 hits/s at 8.7 m/s, head 100%, down in 2%, 0.00 blocks/s | nick: 3.06 hits/s at 8.7 m/s, head 98%, down in 1%, 0.26 blocks/s
+2026-10-02 03:38:21  start  train_box.py --xml models\grandpa_vs_lilmatt_spar.xml --run-name r3_grandpa_v_lilmatt --max-hours 0.4203 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r2_grandma_v_grandpa\latest_grandpa.pt checkpoints\r2_trump_v_lilmatt\latest_lilmatt.pt
+2026-10-02 03:40:10  viewer on r3_grandpa_v_lilmatt
+2026-10-02 03:41:07  sheet  logs\sheets\r3_grandpa_v_lilmatt_0340.png
+2026-10-02 04:03:46  end    r3_grandpa_v_lilmatt: exit 0, fall rate 0.06 | grandpa: 0.18 hits/s at 4.1 m/s, head 28%, down in 5%, 0.31 blocks/s | lilmatt: 0.00 hits/s at 2.4 m/s, head 100%, down in 1%, 0.35 blocks/s
+2026-10-02 04:03:46  start  train_box.py --xml models\grandma_vs_zombie_spar.xml --run-name r3_grandma_v_zombie --max-hours 0.4199 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r2_grandma_v_grandpa\latest_grandma.pt checkpoints\defend\latest_zombie.pt --freeze zombie
+2026-10-02 04:03:55  note   r3_grandpa_v_lilmatt rejected; grandpa goes on from his round-1 policy and lilmatt from his round-2 policy; styles changed in roster.json (grandpa taken 1.0 crowd 0.5, lilmatt press 0.25)
+2026-10-02 04:05:07  viewer on r3_grandma_v_zombie
+2026-10-02 04:11:25  sheet  logs\sheets\r3_grandma_v_zombie_0410.png
+2026-10-02 04:29:09  end    r3_grandma_v_zombie: exit 0, fall rate 0.08 | grandma: 1.93 hits/s at 8.3 m/s, head 0%, down in 4%, 2.00 blocks/s | zombie: 2.08 hits/s at 5.7 m/s, head 100%, down in 5%, 0.03 blocks/s
+2026-10-02 04:29:09  start  train_box.py --xml models\trump_vs_grandpa_spar.xml --run-name r4_trump_v_grandpa --max-hours 0.4194 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r3_trump_v_nick\latest_trump.pt checkpoints\r3_grandpa_v_lilmatt\latest_grandpa.pt --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 04:30:46  viewer on r4_trump_v_grandpa
+2026-10-02 04:41:44  sheet  logs\sheets\r4_trump_v_grandpa_0440.png
+2026-10-02 04:54:30  end    r4_trump_v_grandpa: exit 0, fall rate 0.08 | trump: 0.13 hits/s at 5.2 m/s, head 100%, down in 2%, 0.03 blocks/s | grandpa: 1.65 hits/s at 6.0 m/s, head 95%, down in 5%, 1.13 blocks/s
+2026-10-02 04:54:30  start  train_box.py --xml models\grandma_vs_nick_spar.xml --run-name r4_grandma_v_nick --max-hours 0.4187 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r3_grandma_v_zombie\latest_grandma.pt checkpoints\r3_trump_v_nick\latest_nick.pt --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 04:55:57  note   r4_trump_v_grandpa: grandpa's policy kept; trump goes on from his round-3 policy (he landed 0.13 a second here)
+2026-10-02 04:56:24  viewer on r4_grandma_v_nick
+2026-10-02 05:12:03  sheet  logs\sheets\r4_grandma_v_nick_0511.png
+2026-10-02 05:19:48  end    r4_grandma_v_nick: exit 0, fall rate 0.00 | grandma: 1.85 hits/s at 7.6 m/s, head 8%, down in 0%, 3.23 blocks/s | nick: 0.27 hits/s at 6.1 m/s, head 100%, down in 0%, 0.61 blocks/s
+2026-10-02 05:19:48  start  train_box.py --xml models\lilmatt_vs_matt_spar.xml --run-name r4_lilmatt_v_matt --max-hours 0.4180 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r3_grandpa_v_lilmatt\latest_lilmatt.pt checkpoints\defend\latest_matt.pt --freeze matt --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 05:21:23  viewer on r4_lilmatt_v_matt
+2026-10-02 05:42:24  sheet  logs\sheets\r4_lilmatt_v_matt_0541.png
+2026-10-02 05:45:03  end    r4_lilmatt_v_matt: exit 0, fall rate 0.05 | lilmatt: 1.85 hits/s at 8.8 m/s, head 0%, down in 5%, 0.15 blocks/s | matt: 0.06 hits/s at 4.0 m/s, head 0%, down in 0%, 0.01 blocks/s
+2026-10-02 05:45:03  start  train_box.py --xml models\trump_vs_grandma_spar.xml --run-name r5_trump_v_grandma --max-hours 0.4171 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r4_trump_v_grandpa\latest_trump.pt checkpoints\r4_grandma_v_nick\latest_grandma.pt --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 05:46:44  viewer on r5_trump_v_grandma
+2026-10-02 06:10:14  end    r5_trump_v_grandma: exit 0, fall rate 0.03 | trump: 0.03 hits/s at 8.7 m/s, head 100%, down in 0%, 0.99 blocks/s | grandma: 1.93 hits/s at 8.6 m/s, head 1%, down in 3%, 1.37 blocks/s
+2026-10-02 06:10:14  start  train_box.py --xml models\grandpa_vs_zombie_spar.xml --run-name r5_grandpa_v_zombie --max-hours 0.4156 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r4_trump_v_grandpa\latest_grandpa.pt checkpoints\defend\latest_zombie.pt --freeze zombie --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 06:11:45  viewer on r5_grandpa_v_zombie
+2026-10-02 06:12:43  sheet  logs\sheets\r5_grandpa_v_zombie_0611.png
+2026-10-02 06:14:53  note   r5_trump_v_grandma: grandma's policy kept; trump's final policy is his round-3 one (he landed 0.03 a second here)
+2026-10-02 06:35:21  end    r5_grandpa_v_zombie: exit 0, fall rate 0.04 | grandpa: 1.20 hits/s at 4.0 m/s, head 0%, down in 4%, 0.06 blocks/s | zombie: 0.20 hits/s at 6.6 m/s, head 99%, down in 0%, 0.68 blocks/s
+2026-10-02 06:35:21  start  train_box.py --xml models\nick_vs_lilmatt_spar.xml --run-name r5_nick_v_lilmatt --max-hours 0.4127 --keep-old-runs --no-tensorboard --career --num-envs 2048 --survivor-bootstrap --resume checkpoints\r4_grandma_v_nick\latest_nick.pt checkpoints\r4_lilmatt_v_matt\latest_lilmatt.pt --daze --daze-hi 42 --ko-bonus 6 --max-std 0.35 --entropy-coef 0 --lr 3e-4 --lr-max 5e-4
+2026-10-02 06:37:03  viewer on r5_nick_v_lilmatt
+2026-10-02 06:43:02  sheet  logs\sheets\r5_nick_v_lilmatt_0642.png
+2026-10-02 07:00:18  end    r5_nick_v_lilmatt: exit 0, fall rate 0.42 | nick: 1.80 hits/s at 7.3 m/s, head 76%, down in 6%, 0.41 blocks/s | lilmatt: 1.38 hits/s at 7.0 m/s, head 39%, down in 36%, 0.68 blocks/s
+2026-10-02 07:00:18  done   7.87 h. Final policies: trump checkpoints\r5_trump_v_grandma\latest_trump.pt, grandma checkpoints\r5_trump_v_grandma\latest_grandma.pt, grandpa checkpoints\r5_grandpa_v_zombie\latest_grandpa.pt, nick checkpoints\r5_nick_v_lilmatt\latest_nick.pt, lilmatt checkpoints\r5_nick_v_lilmatt\latest_lilmatt.pt

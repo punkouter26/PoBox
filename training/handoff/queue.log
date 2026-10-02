@@ -1,0 +1,38 @@
+2026-10-02 00:16:09  waiting for logs\league.done
+2026-10-02 07:00:21  it is there
+2026-10-02 07:00:21  tensorboard: already up on http://localhost:6006
+2026-10-02 07:00:21  held (logs/queue.hold)
+2026-10-02 07:12:22  start  bench_envs: tools/bench_envs.py --write logs/bench_envs.json
+2026-10-02 07:13:32  end    bench_envs: exit 0 | best: 2048
+2026-10-02 07:13:32  start  getup_matt_zombie: train_getup.py --a matt --b zombie --resume checkpoints/cgetup_matt/latest_matt.pt checkpoints/cgetup_zombie/latest_zombie.pt --num-envs 0 --max-hours 2.5 --done-when 0.9 --run-name getup_matt_zombie
+2026-10-02 07:15:44  viewer on getup_matt_zombie
+2026-10-02 07:47:15  end    getup_matt_zombie: exit 0 | [stop] stop file, after iteration 1044, 0.56 h
+2026-10-02 07:47:15  start  getup2_matt_zombie: train_getup.py --a matt --b zombie --resume checkpoints/getup_matt_zombie/latest_matt.pt checkpoints/getup_matt_zombie/latest_zombie.pt --num-envs 2048 --max-hours 2.0 --done-when 0.9 --run-name getup2_matt_zombie
+2026-10-02 07:49:26  viewer on getup2_matt_zombie
+2026-10-02 08:15:28  end    getup2_matt_zombie: exit 0 | [stop] stop file, after iteration 881, 0.47 h
+2026-10-02 08:15:28  start  getup3_matt_zombie: train_getup.py --a matt --b zombie --resume checkpoints/getup2_matt_zombie/latest_matt.pt checkpoints/getup2_matt_zombie/latest_zombie.pt --num-envs 2048 --max-hours 1.5 --done-when 0.9 --max-std 0.4 --entropy-coef 0 --run-name getup3_matt_zombie
+2026-10-02 08:17:49  viewer on getup3_matt_zombie
+2026-10-02 08:30:10  end    getup3_matt_zombie: exit 0 | [stop] stop file, after iteration 442, 0.24 h
+2026-10-02 08:30:10  start  getup4_matt_zombie: train_getup.py --a matt --b zombie --resume checkpoints/getup3_matt_zombie/latest_matt.pt checkpoints/getup3_matt_zombie/latest_zombie.pt --num-envs 2048 --max-hours 0.5 --done-when 0.9 --max-std 0.4 --entropy-coef 0 --run-name getup4_matt_zombie
+2026-10-02 08:32:31  viewer on getup4_matt_zombie
+2026-10-02 09:00:33  end    getup4_matt_zombie: exit 0 | [stop] 0.5 h, after iteration 964, 0.50 h
+2026-10-02 09:00:33  start  getup_nick_lilmatt: train_getup.py --a nick --b lilmatt --resume checkpoints/getup4_matt_zombie/latest_zombie.pt checkpoints/getup4_matt_zombie/latest_matt.pt --fresh-assist nick lilmatt --assist 0.3 --num-envs 2048 --max-hours 1.0 --done-when 0.9 --run-name getup_nick_lilmatt --max-std 0.45
+2026-10-02 09:02:54  viewer on getup_nick_lilmatt
+2026-10-02 09:13:24  end    getup_nick_lilmatt: exit 0 | [stop] stop file, after iteration 393, 0.21 h
+2026-10-02 09:13:24  start  getup_trump_grandma: train_getup.py --a trump --b grandma --resume checkpoints/getup4_matt_zombie/latest_zombie.pt checkpoints/getup4_matt_zombie/latest_zombie.pt --fresh-assist trump grandma --assist 0.5 --num-envs 2048 --max-hours 1.0 --done-when 0.9 --run-name getup_trump_grandma --max-std 0.45
+2026-10-02 09:15:46  viewer on getup_trump_grandma
+2026-10-02 09:51:27  end    getup_trump_grandma: exit 0 | [stop] stop file, after iteration 1361, 0.63 h
+2026-10-02 09:51:27  start  getup_grandpa_zombie: train_getup.py --a grandpa --b zombie --resume checkpoints/getup4_matt_zombie/latest_zombie.pt checkpoints/getup4_matt_zombie/latest_zombie.pt --fresh-assist grandpa --assist 0.5 --num-envs 2048 --max-hours 1.0 --done-when 0.9 --run-name getup_grandpa_zombie --max-std 0.45
+2026-10-02 09:53:19  viewer on getup_grandpa_zombie
+2026-10-02 09:53:59  end    getup_grandpa_zombie: exit 0 | [stop] stop file, after iteration 80, 0.04 h
+2026-10-02 09:53:59  start  getup2_grandpa_zombie: train_getup.py --a grandpa --b zombie --resume checkpoints/getup_trump_grandma/latest_grandma.pt checkpoints/getup4_matt_zombie/latest_zombie.pt --fresh-assist grandpa --assist 0.3 --num-envs 2048 --max-hours 0.8 --done-when 0.9 --max-std 0.45 --run-name getup2_grandpa_zombie
+2026-10-02 09:56:00  viewer on getup2_grandpa_zombie
+2026-10-02 10:39:22  end    getup2_grandpa_zombie: exit 0 | [stop] stop file, after iteration 926, 0.75 h
+2026-10-02 10:39:22  start  g1_zombie: train_gauntlet.py --name zombie --resume checkpoints/defend/latest_zombie.pt --against matt=checkpoints/defend/latest_matt.pt nick=checkpoints/r5_nick_v_lilmatt/latest_nick.pt lilmatt=checkpoints/r5_nick_v_lilmatt/latest_lilmatt.pt trump=checkpoints/r5_trump_v_grandma/latest_trump.pt grandma=checkpoints/r5_trump_v_grandma/latest_grandma.pt grandpa=checkpoints/r5_grandpa_v_zombie/latest_grandpa.pt --run-name g1_zombie --daze --daze-hi 42 --reset-std 0.3 --max-std 0.35 --max-hours 0.6 --block-w 0.05 --handover logs/handover_zombie.npz --handover-share 0.15
+2026-10-02 10:44:23  viewer on g1_zombie
+2026-10-02 11:15:45  end    g1_zombie: exit 0 | [stop] after iteration 480, 0.60 h
+2026-10-02 11:15:45  held (logs/queue.hold)
+2026-10-02 11:28:45  start  g1_matt: train_gauntlet.py --name matt --resume checkpoints/defend/latest_matt.pt --against zombie=checkpoints/g1_zombie/latest_zombie.pt nick=checkpoints/r5_nick_v_lilmatt/latest_nick.pt lilmatt=checkpoints/r5_nick_v_lilmatt/latest_lilmatt.pt trump=checkpoints/r5_trump_v_grandma/latest_trump.pt grandma=checkpoints/r5_trump_v_grandma/latest_grandma.pt grandpa=checkpoints/r5_grandpa_v_zombie/latest_grandpa.pt --run-name g1_matt --daze --daze-hi 42 --reset-std 0.3 --max-std 0.35 --max-hours 0.6 --models models/guard --block-w 0.05 --weights zombie=2 --handover logs/handover_matt.npz --handover-share 0.15 --num-envs 4608 --lr 5e-4 --lr-max 1e-3
+2026-10-02 11:32:27  viewer on g1_matt
+2026-10-02 11:32:27  end    g1_matt: exit 0 | [stop] after iteration 37, 0.05 h
+2026-10-02 11:32:27  stopped (logs/queue.stop)

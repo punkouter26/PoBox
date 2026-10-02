@@ -1,0 +1,32 @@
+{
+  "ck": {
+    "trump": "C:\\Users\\punko\\Downloads\\PoBox\\training\\checkpoints\\r5_trump_v_grandma\\latest_trump.pt",
+    "grandma": "C:\\Users\\punko\\Downloads\\PoBox\\training\\checkpoints\\r5_trump_v_grandma\\latest_grandma.pt",
+    "grandpa": "C:\\Users\\punko\\Downloads\\PoBox\\training\\checkpoints\\r5_grandpa_v_zombie\\latest_grandpa.pt",
+    "nick": "C:\\Users\\punko\\Downloads\\PoBox\\training\\checkpoints\\r5_nick_v_lilmatt\\latest_nick.pt",
+    "lilmatt": "C:\\Users\\punko\\Downloads\\PoBox\\training\\checkpoints\\r5_nick_v_lilmatt\\latest_lilmatt.pt"
+  },
+  "done": [
+    "bag_trump",
+    "bag_grandma",
+    "bag_grandpa",
+    "bag_nick",
+    "bag_lilmatt",
+    "r1_trump_v_zombie",
+    "r1_grandma_v_lilmatt",
+    "r1_grandpa_v_nick",
+    "r2_trump_v_lilmatt",
+    "r2_nick_v_matt",
+    "r2_grandma_v_grandpa",
+    "r3_trump_v_nick",
+    "r3_grandpa_v_lilmatt",
+    "r3_grandma_v_zombie",
+    "r4_trump_v_grandpa",
+    "r4_grandma_v_nick",
+    "r4_lilmatt_v_matt",
+    "r5_trump_v_grandma",
+    "r5_grandpa_v_zombie",
+    "r5_nick_v_lilmatt"
+  ],
+  "started": 1790910487.4564412
+}

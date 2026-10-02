@@ -1,0 +1,101 @@
+  grandma v grandpa: done (73 s)
+  grandma v lilmatt: done (115 s)
+  grandma v matt: done (153 s)
+  grandma v nick: done (199 s)
+  trump v grandma: done (238 s)
+  grandma v zombie: done (282 s)
+  grandpa v lilmatt: done (333 s)
+  grandpa v matt: done (381 s)
+  grandpa v nick: done (433 s)
+  trump v grandpa: done (481 s)
+  grandpa v zombie: done (533 s)
+  lilmatt v matt: done (584 s)
+  nick v lilmatt: done (632 s)
+  trump v lilmatt: done (673 s)
+  lilmatt v zombie: done (716 s)
+  nick v matt: done (760 s)
+  trump v matt: done (805 s)
+  matt v zombie: done (853 s)
+  trump v nick: done (906 s)
+  nick v zombie: done (966 s)
+  trump v zombie: done (1025 s)
+
+GRANDMA   FAIL   (checkpoints\r5_trump_v_grandma\latest_grandma.pt)
+    footing      FAIL  2.67 falls a minute at worst
+    attack       pass  0.70 a second at 5.5 m/s (mark 3.0), 25% to the head
+    guard        pass  stops 83% of what comes at its head (1.18 blocks a second), takes 0.24 head shots a second
+    chin         pass  legs taken 0.00 a minute (worst 0.00)
+        v grandpa  lands 0.09/s at 2.1 m/s, 0% head | blocks 0.66/s, head shots taken 0.02/s | falls 0.33/min | dazed: legs 0.00/min
+        v lilmatt  lands 1.37/s at 7.8 m/s, 72% head | blocks 1.52/s, head shots taken 0.04/s | falls 1.67/min | dazed: legs 0.00/min
+        v matt     lands 0.09/s at 2.7 m/s, 6% head | blocks 0.70/s, head shots taken 0.00/s | falls 0.67/min | dazed: legs 0.00/min
+        v nick     lands 1.07/s at 6.8 m/s, 72% head | blocks 2.54/s, head shots taken 0.67/s | falls 1.00/min | dazed: legs 0.00/min
+        v trump    lands 1.36/s at 8.3 m/s, 2% head | blocks 1.38/s, head shots taken 0.02/s | falls 0.00/min | dazed: legs 0.00/min
+        v zombie   lands 0.25/s at 5.6 m/s, 0% head | blocks 0.28/s, head shots taken 0.72/s | falls 2.67/min | dazed: legs 0.00/min
+GRANDPA   FAIL   (checkpoints\r5_grandpa_v_zombie\latest_grandpa.pt)
+    footing      FAIL  2.67 falls a minute at worst
+    attack       pass  0.65 a second at 3.8 m/s (mark 3.0), 40% to the head
+    guard        pass  stops 82% of what comes at its head (0.91 blocks a second), takes 0.04 head shots a second
+    chin         pass  legs taken 0.11 a minute (worst 0.67)
+        v grandma  lands 0.16/s at 2.4 m/s, 11% head | blocks 1.55/s, head shots taken 0.00/s | falls 1.67/min | dazed: legs 0.00/min
+        v lilmatt  lands 1.36/s at 4.4 m/s, 80% head | blocks 1.58/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v matt     lands 0.02/s at 4.8 m/s, 0% head | blocks 0.03/s, head shots taken 0.00/s | falls 2.67/min | dazed: legs 0.00/min
+        v nick     lands 0.49/s at 2.9 m/s, 92% head | blocks 2.21/s, head shots taken 0.26/s | falls 2.67/min | dazed: legs 0.67/min
+        v trump    lands 0.16/s at 3.4 m/s, 57% head | blocks 0.11/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v zombie   lands 1.71/s at 5.2 m/s, 0% head | blocks 0.00/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+LILMATT   FAIL   (checkpoints\r5_nick_v_lilmatt\latest_lilmatt.pt)
+    footing      FAIL  1.33 falls a minute at worst
+    attack       pass  0.89 a second at 5.6 m/s (mark 4.0), 4% to the head
+    guard        FAIL  stops 27% of what comes at its head (0.16 blocks a second), takes 0.95 head shots a second
+    chin         pass  legs taken 0.44 a minute (worst 2.67)
+        v grandma  lands 1.28/s at 5.2 m/s, 3% head | blocks 0.24/s, head shots taken 0.98/s | falls 0.00/min | dazed: legs 0.00/min
+        v grandpa  lands 0.29/s at 3.7 m/s, 0% head | blocks 0.00/s, head shots taken 1.09/s | falls 0.00/min | dazed: legs 0.00/min
+        v matt     lands 0.13/s at 4.9 m/s, 0% head | blocks 0.02/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v nick     lands 1.61/s at 7.9 m/s, 19% head | blocks 0.62/s, head shots taken 1.27/s | falls 0.00/min | dazed: legs 2.67/min
+        v trump    lands 1.58/s at 7.7 m/s, 4% head | blocks 0.04/s, head shots taken 1.47/s | falls 0.00/min | dazed: legs 0.00/min
+        v zombie   lands 0.47/s at 4.3 m/s, 0% head | blocks 0.05/s, head shots taken 0.92/s | falls 1.33/min | dazed: legs 0.00/min
+MATT      FAIL   (checkpoints\defend\latest_matt.pt)
+    footing      FAIL  1.00 falls a minute at worst
+    attack       FAIL  0.44 a second at 4.4 m/s (mark 4.0), 1% to the head
+    guard        pass  stops 51% of what comes at its head (0.24 blocks a second), takes 0.26 head shots a second
+    chin         pass  legs taken 0.22 a minute (worst 1.33)
+        v grandma  lands 0.31/s at 4.9 m/s, 0% head | blocks 0.15/s, head shots taken 0.01/s | falls 0.00/min | dazed: legs 0.00/min
+        v grandpa  lands 0.02/s at 3.8 m/s, 0% head | blocks 0.00/s, head shots taken 0.00/s | falls 0.67/min | dazed: legs 0.00/min
+        v lilmatt  lands 0.00/s at 0.0 m/s, 0% head | blocks 0.02/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v nick     lands 0.61/s at 4.0 m/s, 3% head | blocks 1.26/s, head shots taken 0.05/s | falls 0.33/min | dazed: legs 0.00/min
+        v trump    lands 0.23/s at 4.9 m/s, 5% head | blocks 0.01/s, head shots taken 0.04/s | falls 1.00/min | dazed: legs 0.00/min
+        v zombie   lands 1.47/s at 8.8 m/s, 0% head | blocks 0.00/s, head shots taken 1.49/s | falls 0.00/min | dazed: legs 1.33/min
+NICK      FAIL   (checkpoints\r5_nick_v_lilmatt\latest_nick.pt)
+    footing      FAIL  2.33 falls a minute at worst
+    attack       pass  1.20 a second at 5.7 m/s (mark 4.0), 58% to the head
+    guard          -   stops 43% of what comes at its head (0.38 blocks a second), takes 0.57 head shots a second; built without a guard
+    chin         pass  legs taken 0.00 a minute (worst 0.00)
+        v grandma  lands 0.73/s at 5.0 m/s, 92% head | blocks 0.58/s, head shots taken 0.77/s | falls 2.33/min | dazed: legs 0.00/min
+        v grandpa  lands 0.39/s at 4.2 m/s, 66% head | blocks 0.19/s, head shots taken 0.46/s | falls 1.33/min | dazed: legs 0.00/min
+        v lilmatt  lands 1.64/s at 7.5 m/s, 77% head | blocks 0.46/s, head shots taken 0.31/s | falls 0.00/min | dazed: legs 0.00/min
+        v matt     lands 1.21/s at 6.0 m/s, 4% head | blocks 0.87/s, head shots taken 0.02/s | falls 2.00/min | dazed: legs 0.00/min
+        v trump    lands 2.89/s at 8.1 m/s, 92% head | blocks 0.09/s, head shots taken 1.44/s | falls 0.00/min | dazed: legs 0.00/min
+        v zombie   lands 0.32/s at 3.2 m/s, 18% head | blocks 0.10/s, head shots taken 0.43/s | falls 2.33/min | dazed: legs 0.00/min
+TRUMP     FAIL   (checkpoints\r5_trump_v_grandma\latest_trump.pt)
+    footing      FAIL  1.67 falls a minute at worst
+    attack       pass  0.53 a second at 5.1 m/s (mark 4.0), 53% to the head
+    guard          -   stops 52% of what comes at its head (0.33 blocks a second), takes 0.77 head shots a second; built without a guard
+    chin         pass  legs taken 1.00 a minute (worst 3.00)
+        v grandma  lands 0.02/s at 8.1 m/s, 100% head | blocks 0.09/s, head shots taken 0.02/s | falls 0.00/min | dazed: legs 0.00/min
+        v grandpa  lands 0.00/s at 0.0 m/s, 0% head | blocks 0.04/s, head shots taken 0.09/s | falls 0.00/min | dazed: legs 0.00/min
+        v lilmatt  lands 1.47/s at 8.3 m/s, 100% head | blocks 0.22/s, head shots taken 0.07/s | falls 0.00/min | dazed: legs 0.00/min
+        v matt     lands 0.23/s at 5.5 m/s, 20% head | blocks 0.07/s, head shots taken 0.01/s | falls 1.67/min | dazed: legs 0.00/min
+        v nick     lands 1.44/s at 8.6 m/s, 100% head | blocks 1.53/s, head shots taken 2.64/s | falls 0.00/min | dazed: legs 3.00/min
+        v zombie   lands 0.00/s at 0.0 m/s, 0% head | blocks 0.01/s, head shots taken 1.76/s | falls 0.00/min | dazed: legs 3.00/min
+ZOMBIE    FAIL   (checkpoints\defend\latest_zombie.pt)
+    footing      FAIL  5.67 falls a minute at worst
+    attack       pass  0.90 a second at 6.0 m/s (mark 4.0), 80% to the head
+    guard        pass  stops 99% of what comes at its head (0.91 blocks a second), takes 0.01 head shots a second
+    chin         pass  legs taken 0.00 a minute (worst 0.00)
+        v grandma  lands 0.74/s at 6.4 m/s, 98% head | blocks 0.48/s, head shots taken 0.00/s | falls 1.00/min | dazed: legs 0.00/min
+        v grandpa  lands 0.00/s at 0.0 m/s, 0% head | blocks 1.53/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v lilmatt  lands 0.92/s at 6.9 m/s, 100% head | blocks 0.83/s, head shots taken 0.00/s | falls 1.33/min | dazed: legs 0.00/min
+        v matt     lands 1.49/s at 8.9 m/s, 100% head | blocks 1.76/s, head shots taken 0.00/s | falls 0.00/min | dazed: legs 0.00/min
+        v nick     lands 0.50/s at 6.0 m/s, 86% head | blocks 0.84/s, head shots taken 0.06/s | falls 5.67/min | dazed: legs 0.00/min
+        v trump    lands 1.77/s at 7.5 m/s, 100% head | blocks 0.03/s, head shots taken 0.00/s | falls 0.33/min | dazed: legs 0.00/min
+
+0 of 7 boxers pass. 1025 s.
