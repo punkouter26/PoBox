@@ -1,0 +1,24 @@
+{
+ "stand": {
+  "up_at_20s": 0.95,
+  "pass": true
+ },
+ "walk": {
+  "velocity_error": 0.021472905079308432,
+  "falls_per_min": 0.0,
+  "pass": true
+ },
+ "turn": {
+  "faced_in_3s": 0.3,
+  "pass": false
+ },
+ "joints": {
+  "worst": "ankle_x_l",
+  "p99_of_limit": 0.3306288204871177,
+  "pass": true
+ },
+ "episodes_each": 100,
+ "mujoco": "3.5.0",
+ "boxer": "matt",
+ "policy": "checkpoints/r1_matt/latest.pt"
+}

@@ -126,9 +126,9 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
   - [x] exam lines for R0, R1, R2 and joint speed (`tools/footwork_c.py --exam`)
   - [x] reference export: 5 s from C MuJoCo 3.5.0 (`tools/footwork_c.py --reference`); the zero-action one
         for Phase B is `models/v2/matt_reference_hold.json`
-- [ ] C1 R0 stand: train Matt, pass the exam line, log.
-- [ ] C2 R1 walk: train Matt, pass the exam line, log.
-- [ ] C3 **Gate.** Export Matt's R1 policy to ONNX and the reference trajectory. In Unity: replay test, 5 s
+- [x] C1 R0 stand: train Matt, pass the exam line, log.
+- [x] C2 R1 walk: train Matt, pass the exam line, log.
+- [x] C3 **Gate.** Export Matt's R1 policy to ONNX and the reference trajectory. In Unity: replay test, 5 s
       closed-loop comparison, fall rate over 25 episodes. **If it fails, stop and fix before C4.**
 - [ ] C4 R0 and R1 for the other six, warm-started from Matt; a Unity spot check of each.
 - [ ] C5 R2 turn, all seven; Unity spot check.

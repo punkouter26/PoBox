@@ -337,3 +337,45 @@ From `r0_matt`, 60% walk episodes, style weight 0.3. Two things went wrong.
 **Decision.** Stopped and set aside (`checkpoints/r1_matt_a`, curves in `logs/tb_archive/r1_matt_a`). A step
 reward was added to the stage: when a walk is asked for, each foot that lands is paid for the time it was up
 beyond a quarter of a second (`steps`). R1 started again from `r0_matt`, to iteration 2,900 (about 40 minutes).
+
+## 2026-10-02, 19:00 to 19:31: R1 for Matt (`r1_matt`, the fourth attempt) and the gate
+
+**Why the first three attempts stood still.** The per-step reward terms (TensorBoard `rt_*`) gave it away: when
+a walk began, the energy charge was 0.43 a step and the slip and lean charges 0.1 to 0.2 more, against at most 0.8
+to be gained by tracking the command well. A clumsy first walk cost more than it earned, so the policy learned to
+stand. Starting a walk mid-stride from the clips (third attempt, `--rsi 0.5`) did not change that on its own.
+Fourth attempt: when a walk is asked for, tracking pays double, and energy, slip and lean are charged at 30%.
+
+`train_resilient.py ... --stage footwork --resume checkpoints/r0_matt/latest.pt --run-name r1_matt --walk-share 0.6
+--rsi 0.5 --style-w 0.3 --reset-std 0.3 --max-std 0.35`, stopped at iteration 1,950 (20 minutes) once it passed.
+
+| Minutes | Walk asked | Walk done | Error (with noise) |
+|---|---|---|---|
+| 0 | 0.50 | 0.46 (mid-stride starts) | 0.54 |
+| 4 | 0.48 | 0.20 | 0.48 |
+| 8 | 0.49 | 0.32 | 0.34 |
+| 10 | 0.50 | 0.43 | 0.25 |
+| 20 | 0.50 | 0.48 | 0.14 |
+
+**Exam, no noise, C MuJoCo 3.5.0, 100 episodes of each kind:** stand **95%** (mark 95%, pass), walk **off by 0.02
+m/s** with **no falls** (marks 0.15 and 0.2 a minute, pass), joints at 0.33 of their limits (pass). Turn 30%: not
+yet trained. R0 and R1 are passed.
+
+**The gate (C3), Unity against C MuJoCo 3.5.0** (`MjGateTests`, with `checkpoints/r1_matt/latest.onnx` on Matt's
+prefab via `MjRetrofit.Promote`):
+
+| Test | Unity | C MuJoCo | Mark | |
+|---|---|---|---|---|
+| Replay of 250 recorded observations: largest difference in an action | 6.7e-06 | | 1e-04 | pass |
+| Closed loop, 5 s of walking at 0.6 m/s: on its feet | all 5 s | all 5 s | the same | pass |
+| cadence | 5.20 footfalls a second | 5.40 | within 10% | pass |
+| RMS joint torque | 51.34 N m | 51.16 N m | within 15% | pass |
+| ground covered | 3.112 m | 3.109 m | | |
+| 25 episodes from C's own starts, a 20 N s shove at 2 s and a 5 m/s cube at 4 s: on the floor | 0% | 0% | within 0.05 | pass |
+| the same ending | 25 of 25 | | | |
+
+The joints of the closed-loop runs part by 0.05 rad at 3.2 s: a walking body is chaotic, and the summaries above
+are what is compared for that reason.
+
+**Decision:** the gate is passed; later rungs may go ahead (tasks.md, the parity rule). R2 (turn) for Matt started
+at 19:31 from `r1_matt`.

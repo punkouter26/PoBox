@@ -6304,7 +6304,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Mj::PoBox.Mj.MjBoxer
   prefix: a_
   config: {fileID: 4900000, guid: 2b44fc7b1e0152b4da071743a38db8ae, type: 3}
-  policy: {fileID: 5022602860645237092, guid: 75d5545dd5b40ee4287e21b6ac83ff26, type: 3}
+  policy: {fileID: 5022602860645237092, guid: 98650a66198c89f4c985740be5d0c776, type: 3}
 --- !u!114 &6414601557123744375
 MonoBehaviour:
   m_ObjectHideFlags: 0
