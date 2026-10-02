@@ -24,10 +24,19 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def main() -> None:
     args = sys.argv[1:]
+    # --gauntlet: train_gauntlet.py, whose save is latest_NAME.pt and whose length is --more-iters, counted
+    # from the run's own save; what is left of it is worked out again at every restart.
+    gauntlet = "--gauntlet" in args
+    if gauntlet:
+        args.remove("--gauntlet")
     run = args[args.index("--run-name") + 1]
-    latest = os.path.join(HERE, "checkpoints", run, "latest.pt")
+    latest = os.path.join(HERE, "checkpoints", run, f"latest_{args[args.index('--name') + 1]}.pt" if gauntlet else "latest.pt")
+    script = "train_gauntlet.py" if gauntlet else "train_box.py"
+    if gauntlet and os.path.exists(latest):
+        raise SystemExit(f"[resilient] {run} already has a save; start a gauntlet under a new name")
+    total = int(args[args.index("--more-iters") + 1]) if gauntlet and "--more-iters" in args else 0
     for attempt in range(1, 9):
-        code = subprocess.call([sys.executable, os.path.join(HERE, "train_box.py")] + args, cwd=HERE)
+        code = subprocess.call([sys.executable, os.path.join(HERE, script)] + args, cwd=HERE)
         if code == 0:
             return
         print(f"[resilient] attempt {attempt} of {run} ended with exit code {code} at {time.strftime('%H:%M:%S')}", flush=True)
@@ -40,6 +49,10 @@ def main() -> None:
         if "--reset-std" in args:
             k = args.index("--reset-std")
             del args[k:k + 2]
+        if total:
+            import torch
+            done = int(torch.load(latest, map_location="cpu", weights_only=False).get("extra", {}).get("iter", 0))
+            args[args.index("--more-iters") + 1] = str(max(1, total - done))
         time.sleep(30)        # let the driver come back
     raise SystemExit(f"[resilient] {run} faulted eight times; giving up")
 
