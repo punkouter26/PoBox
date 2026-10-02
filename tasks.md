@@ -109,14 +109,14 @@ session was training on the old ones at the time. `tools/build_roster.py --all -
 
 ## Phase C: training and verification, rung by rung
 
-- [ ] C0 Trainer changes, each with a short smoke run. Written on 2 October and tried on the CPU only
-      (`envs/footwork.py`, `tools/widen_policy.py`, `tools/retarget_clips.py`); a tick here is "works on the CPU":
+- [x] C0 Trainer changes, each with a short smoke run (`envs/footwork.py`, `style.py`, `tools/widen_policy.py`,
+      `tools/retarget_clips.py`, `tools/footwork_c.py`); the numbers are in `rl_optimization_log.md`:
   - [x] randomisation of mass, friction, contact softness, joint damping and drive gains, a body a world
   - [x] shoves as forces on the trunk, and cubes fired from the pool
   - [x] the 3-number walk command, and widening existing networks with zero weights
   - [x] stand, walk and turn as one stage (`--stage footwork`, not yet known to `train_box.py`)
   - [x] CMU walk and turn clips retargeted to the boxers' joints (`clips/walk_turn.npz`)
-  - [ ] `train_box.py` hook-up (the stage, the judge, a fixed-batch ONNX export), and a smoke run on the GPU
+  - [x] `train_box.py` hook-up (the stage, the judge, a fixed-batch ONNX export), and a smoke run on the GPU
   - [x] the style reward's judge (`style.py`: legs, pelvis and trunk against the clips)
   - [x] exam lines for R0, R1, R2 and joint speed (`tools/footwork_c.py --exam`)
   - [x] reference export: 5 s from C MuJoCo 3.5.0 (`tools/footwork_c.py --reference`); the zero-action one

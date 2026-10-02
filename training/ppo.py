@@ -273,11 +273,12 @@ class ExportPolicy(nn.Module):
         return self.actor(x), self.critic(x)
 
 
-def export_onnx(ppo: PPO, path: str, obs_dim: int) -> None:
+def export_onnx(ppo: PPO, path: str, obs_dim: int, fixed_batch: bool = False) -> None:
+    """fixed_batch: the graph takes exactly one observation, which is all the game ever gives it."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     wrapper = ExportPolicy(ppo.model, ppo.obs_rms, ppo.cfg.obs_clip).to("cpu").eval()
     dummy = torch.zeros(1, obs_dim)
     torch.onnx.export(wrapper, dummy, path, input_names=["obs"], output_names=["actions", "value"],
                       opset_version=17, dynamo=False,
-                      dynamic_axes={"obs": {0: "batch"}, "actions": {0: "batch"}, "value": {0: "batch"}})
+                      dynamic_axes=None if fixed_batch else {"obs": {0: "batch"}, "actions": {0: "batch"}, "value": {0: "batch"}})
     ppo.model.to(ppo.device)

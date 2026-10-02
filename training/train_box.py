@@ -33,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
 from envs.getup import GetUpEnv  # noqa: E402
+from envs.footwork import FootworkEnv  # noqa: E402
 from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
 
 
@@ -97,9 +98,17 @@ def main() -> None:
     ap.add_argument("--survivor-bootstrap", action="store_true",
                     help="the fighter left standing when the other falls has its episode cut short, not ended: "
                          "without this a knockdown costs the one who lands it the rest of the episode's reward")
-    ap.add_argument("--stage", default="auto", choices=["auto", "getup"],
+    ap.add_argument("--stage", default="auto", choices=["auto", "getup", "footwork"],
                     help="auto: bag or match, read from the model. getup: the fighters in the match model learn to "
-                         "stand back up after a knockdown (envs/getup.py); resume it from the match policies")
+                         "stand back up after a knockdown (envs/getup.py); resume it from the match policies. "
+                         "footwork: a boxer alone learns to stand, walk and turn while it is shoved and has cubes "
+                         "thrown at it (envs/footwork.py); resume it from a policy widened by tools/widen_policy.py")
+    ap.add_argument("--walk-share", type=float, default=0.5, help="footwork: share of episodes that are a commanded walk")
+    ap.add_argument("--turn-share", type=float, default=0.25, help="footwork: share that are a turn to face the stand-in")
+    ap.add_argument("--disturb", type=float, default=1.0, help="footwork: size of the shoves and speed of the cubes; 0 is none")
+    ap.add_argument("--randomise", type=float, default=0.15, help="footwork: each world's body is within this of the file's")
+    ap.add_argument("--style-w", type=float, default=0.0,
+                    help="footwork: what a moment the judge takes for a walking clip's is paid (style.py); 0 is no judge")
     ap.add_argument("--daze", action="store_true",
                     help="being hit weakens the joint drives, and enough of it takes the legs away (as in the game)")
     ap.add_argument("--daze-tau", type=float, default=2.5, help="seconds for the daze to drain to a third")
@@ -131,6 +140,11 @@ def main() -> None:
         env = GetUpEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                        cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                        slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
+    elif args.stage == "footwork":
+        env = FootworkEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
+                          episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
+                          fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
+                          disturb=args.disturb, randomise=args.randomise)
     else:
         env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
@@ -162,6 +176,12 @@ def main() -> None:
                         init_std=args.init_std, max_std=args.max_std, lr_max=args.lr_max)
         learners.append(PPO(D, A, per_learner, device, cfg))
 
+    judge = None
+    if args.stage == "footwork" and args.style_w > 0.0:
+        from style import Judge, clip_features
+        judge = Judge(clip_features(env.m, env.cfg["joint_order"])[0], device)
+        print(f"[style] the judge has {len(judge.real):,} moments from the clips; a moment like them pays {args.style_w:g}")
+
     frozen = [n in args.freeze for n in names]
     if all(frozen):
         raise SystemExit("--freeze names every fighter in the model; nobody is left to learn")
@@ -173,6 +193,8 @@ def main() -> None:
         for i, (name, ppo, path) in enumerate(zip(names, learners, args.resume)):
             extra = ppo.load(path)
             career[i] = int(extra.get("career", 0))
+            if judge is not None and "judge" in extra:
+                judge.load_state_dict(extra["judge"])
             same_stage = extra.get("mode", "") == env.mode and extra.get("fighters", []) == env.names
             if same_stage:
                 start_iter = int(extra.get("iter", 0))
@@ -222,11 +244,19 @@ def main() -> None:
 
     for it in range(start_iter, args.iters):
         t0 = time.time()
+        paid = torch.zeros((), device=device)
         with torch.no_grad():
             for _ in range(args.steps):
                 acts = [best_punch(ppo, o) if fz else ppo.act(o) for ppo, o, fz in zip(learners, split(obs), frozen)]
                 act = torch.stack(acts, 1).reshape(N * K, A) if env.hetero else acts[0]
                 obs, rew, done, timeout = env.step(act)
+                if judge is not None:
+                    # Paid for the moment the step ended in, where a walk is being judged and the episode goes on.
+                    feat, judged = env.style_features(), env.style_mask() & ~done
+                    pay = args.style_w * judge.reward(feat) * judged.float()
+                    rew = rew + pay
+                    judge.show(feat[judged])
+                    paid += pay.mean()
                 for ppo, r, d, t, fz in zip(learners, split(rew), split(done), split(timeout), frozen):
                     if not fz:
                         ppo.record(r, d, t)
@@ -235,6 +265,9 @@ def main() -> None:
         total_steps += args.steps * N * K
         fps = args.steps * N * K / max(1e-6, time.time() - t0)
         s = env.get_stats()
+        if judge is not None:
+            s.update({"judge_loss": 0.0, "judge_on_clips": 0.0, "judge_on_boxer": 0.0, **judge.update()})
+            s["rt_style"] = paid.item() / args.steps
         if not all(v == v for v in (stats["kl"], s["ep_return"])):   # NaN check
             print(f"[abort] NaN at iteration {it}; the last checkpoint is intact", flush=True)
             break
@@ -274,6 +307,11 @@ def main() -> None:
             if env.hetero:
                 print("          " + " | ".join(
                     f"{n}: up from the floor {s[n + '_up_rate_from_floor']:.0%}, unaided {s[n + '_up_rate_unaided']:.0%}, help {s[n + '_assist']:.2f}" for n in names), flush=True)
+        elif it % 10 == 0 and env.mode == "footwork":
+            print(f"it {it:6d} | {fps:7.0f} sps | ret {s['ep_return']:7.2f} | len {s['ep_len_s']:5.1f}s | falls: stand {s['stand_fall_rate']:4.2f} "
+                  f"walk {s['walk_fall_rate']:4.2f} turn {s['turn_fall_rate']:4.2f} | walk asked {s['speed_asked']:4.2f} did {s['speed']:4.2f} off {s['track_err']:4.2f} m/s "
+                  f"| faced in 3 s {s['turn_rate']:4.0%} | style {s['rt_style']:5.3f} "
+                  f"| kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:6.1f} min", flush=True)
         elif it % 10 == 0:
             print(f"it {it:6d} | {fps:7.0f} sps | ret {s['ep_return']:7.2f} | len {s['ep_len_s']:5.1f}s | fall {s['fall_rate']:4.2f} "
                   f"| hits/s {s['hits_per_s']:5.2f} (head {s['head_share']:3.0%}) at {s['hit_speed']:4.1f} m/s, max {s['hit_speed_max']:4.1f} "
@@ -296,6 +334,7 @@ def main() -> None:
                 ppo.save(ck, {"iter": it + 1, "mode": env.mode, "fighters": env.names, "fighter": name, "obs_dim": D,
                               "act_dim": A, "action_scale": env.action_scale, "run_name": run_name, "career": career[k],
                               "xml": os.path.abspath(args.xml),
+                              **({"judge": judge.state_dict()} if judge is not None else {}),
                               # What the viewer needs to show the policy in the world it was trained in.
                               "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo,
                                       "daze_hi": args.daze_hi, "daze_weak": args.daze_weak, "block_w": args.block_w}})
@@ -305,7 +344,7 @@ def main() -> None:
                     continue
                 shutil.copyfile(ck, os.path.join(ck_dir, f"latest{tag(name)}.pt"))
                 try:
-                    export_onnx(ppo, os.path.join(ck_dir, f"latest{tag(name)}.onnx"), D)
+                    export_onnx(ppo, os.path.join(ck_dir, f"latest{tag(name)}.onnx"), D, fixed_batch=env.mode == "footwork")
                 except Exception as e:   # an export problem must never cost the run
                     print(f"[onnx] export failed: {e}", flush=True)
                 manifest = dict(env.cfgs[k if env.hetero else 0])

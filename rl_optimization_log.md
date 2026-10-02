@@ -164,3 +164,33 @@ no arms. The policy gets no new input. `python style.py` is its check:
 
 Not yet in the training loop (`train_box.py` waits for the other session's queue), so untried on the GPU and
 its weight against the other rewards is not chosen.
+
+## 2026-10-02, 17:00: the other session's queue ended; first run of the footwork stage on the GPU
+
+The other session's last gauntlet (`g1_grandpa`) ended at 16:53 and its queue reported "nothing queued"; it
+then started its own exam on the CPU. The GPU was free.
+
+`train_box.py` now knows the stage (`--stage footwork`, with `--walk-share`, `--turn-share`, `--disturb`,
+`--randomise`, `--style-w`), runs the judge beside PPO and keeps its state in the checkpoint, and exports a
+footwork policy as a fixed-batch graph (`ppo.export_onnx(..., fixed_batch=True)`; other stages as before).
+
+**Smoke run** `smoke_footwork` (deleted afterwards): Matt, from his widened match policy
+(`checkpoints/r0_start/latest_matt.pt`), 4,096 worlds, 40 iterations, 48 s, style weight 0.3, noise 0.30.
+
+| | Iteration 10 | Iteration 30 |
+|---|---|---|
+| Falls an episode: stand / walk / turn | 0.71 / 0.14 / 0.88 | 0.52 / 0.10 / 0.74 |
+| Walk: asked, did, off by (m/s) | 0.50, 0.32, 0.59 | 0.48, 0.27, 0.54 |
+| Faced the stand-in in 3 s | 12% | 26% |
+| Style paid a step | 0.022 | 0.016 |
+
+- **Throughput: about 77,000 steps a second** on the RTX 5070 Ti with the editor open and idle (the old
+  laptop did 48,000 to 59,000 fighter-steps on the match).
+- It runs, saves, and the numbers move the right way inside a minute. Nothing more is claimed: 40 iterations.
+- The first update's KL was 5.5 (the observation scaling meets a new distribution of states); the adaptive
+  rate dropped to 2e-05 and recovered. Worth a look in the first real run: a few iterations with the policy
+  frozen while the scaling settles would avoid it.
+- The exported graph: opset 17, input `obs` 1 x 103, outputs `actions` 1 x 21 and `value` 1 x 1.
+- Run folders of the retrofit carry `REJECTED.txt` so the old game's importer passes them over.
+
+**Decision:** the trainer side of C0 is complete. No real training until Phase B's zero-brain parity passes.
