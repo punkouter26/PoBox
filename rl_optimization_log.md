@@ -285,3 +285,39 @@ Also: Unity keeps its fixed step as 0.004999993 s and the plugin hands that to M
 **Decision:** Phase C starts with R0 and R1 for Matt (`--stage footwork` from `checkpoints/r0_start/latest_matt.pt`),
 then the gate C3 in Unity. Notes from the gauntlet session's entry above apply: check a policy without its noise
 before calling a rung done, and do not drop the noise sharply on a resume.
+
+## 2026-10-02, 18:11 to 18:41: R0 for Matt, `r0_matt` (stand)
+
+`train_box.py --stage footwork --xml models/v2/matt_solo.xml --resume checkpoints/r0_start/latest_matt.pt
+--walk-share 0 --turn-share 0 --disturb 1.0 --randomise 0.15 --episode-s 20 --reset-std 0.3 --max-std 0.35
+--lr 5e-4 --lr-max 1e-3 --max-hours 0.5`. 4,096 worlds, 1,193 iterations, 117 million steps. About 95,000
+steps a second with the Unity editor closed, 62,000 to 70,000 once the owner had it opened again.
+
+| Iteration | Minutes | Falls an episode (with noise) | Return | Noise | Power |
+|---|---|---|---|---|---|
+| 20 | 0.3 | 0.77 | 77 | 0.30 | 1,165 W |
+| 50 | 0.9 | 0.04 | 554 | 0.29 | 891 W |
+| 100 | 2.0 | 0.02 | 828 | 0.28 | 764 W |
+| 300 | 6.6 | 0.00 | 1,152 | 0.24 | 490 W |
+| 600 | 14.2 | 0.00 | 1,431 | 0.20 | 298 W |
+| 1,192 | 30.0 | 0.01 | 1,654 | 0.16 | 136 W |
+
+**Exam, no noise, C MuJoCo 3.5.0** (`tools/footwork_c.py --exam`; stand line: up at 20 s under shoves of 10 to
+30 N s and cubes at 5 m/s, mark 95%):
+
+| Checkpoint | Episodes | Stand |
+|---|---|---|
+| before (widened match policy) | 30 | 40% |
+| iteration about 220 | 30 | 83% |
+| iteration about 850 | 50 | 100% |
+| final, iteration 1,193 | 100 | **94%: one episode short of the mark** |
+
+Joint speed passes (fastest joint at 0.28 of its limit). Walk and turn fail, as they must: neither was trained.
+
+**Reading.** Standing under the knocks is learned in the first minute and the rest is polish; the noise-free
+exam lags the training number, as the gauntlet session warned. 94 and 100 of two samples are the same policy
+within chance: it is at the mark, not clear of it. The power fell tenfold: it has learned to stand quietly.
+
+**Decision.** Not called passed. R1 keeps 40% of its episodes as stands under the same knocks, so R0 goes on
+being trained, and both lines are examined again after it. The tracking reward was changed before R1: one width
+of 0.25 m/s was flat at a standstill when 1 m/s is asked (exp(-16)); it is now half at 0.5 m/s and half at 0.2.

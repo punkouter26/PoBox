@@ -313,7 +313,9 @@ class FootworkEnv(BoxingEnv):
         r["alive"] = torch.full((N, K), 0.15, device=self.device)
         r["upright"] = 0.25 * upright.clamp_min(0.0)
         r["height"] = -1.0 * (self.stand_height - 0.08 - pos[..., 2]).clamp_min(0.0)
-        r["track"] = 1.0 * torch.exp(-(v_err / 0.25) ** 2)
+        # Two widths: the wide one can be felt from a standstill when 1 m/s is asked (the narrow one alone is
+        # flat there: exp(-16)), the narrow one is what makes 0.15 m/s of error cost something.
+        r["track"] = 0.5 * torch.exp(-(v_err / 0.5) ** 2) + 0.5 * torch.exp(-(v_err / 0.2) ** 2)
         r["yaw"] = 0.5 * torch.exp(-(w_err / 0.5) ** 2) * (1.0 - turn)
         r["face"] = (0.25 * stand + 0.6 * turn) * torch.cos(off)
         # The guard stays up whatever the legs are doing; the legs go back to the stance when nothing is asked.
