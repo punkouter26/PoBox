@@ -1,0 +1,3 @@
+basement_boxing_ring_1k.hdr: "Basement Boxing Ring" by Sergej Majboroda, from Poly Haven
+(https://polyhaven.com/a/basement_boxing_ring), CC0 1.0. Downloaded 2026-10-01, the 1k HDR.
+Used as the hall's ambient light and what the gloves and posts reflect. It is not drawn as a backdrop.

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: Matt v Zombie, the eight-hour training run</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:17px; margin:26px 0 6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .chart { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; margin:14px 0; }
+  .chart img { display:block; width:100%; height:auto; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin:14px 0; }
+  .level { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .level h4 { margin:0 0 6px; font-size:13px; letter-spacing:.08em; color:var(--warn); }
+  .level p { margin:6px 0; }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:12px 16px; margin:14px 0; max-width:80ch; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:80ch; }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; max-width:76ch; }
+  ol.legend li { margin:5px 0; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:980px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.n { font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .ok { color:var(--accent); font-weight:700; }
+  .no { color:#ffb4a8; font-weight:700; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Matt v Zombie: the eight-hour training run</h1>
+  <p class="dim">1 October 2026 · 09:48 to 17:39 · MuJoCo Warp on the laptop's RTX 2060 · the three TensorBoard charts that matter, each explained three ways</p>
+
+  <p>Both fighters finished training able to stand, close the distance and trade punches for a full
+     twelve-second episode without falling, and they now box each other in the Unity game. Zombie is the
+     better of the two: it lands as often as Matt and its glove arrives faster.</p>
+
+  <table>
+    <tr><th>Stage</th><th>Length</th><th>How it ended</th></tr>
+    <tr><td>Matt and the heavy bag</td><td class="n">45 min</td><td>falls in 2% of episodes; 1.96 punches a second landing at 8.6 m/s</td></tr>
+    <tr><td>Zombie and the heavy bag</td><td class="n">45 min</td><td>falls in under 1%; 2.09 punches a second at 8.7 m/s</td></tr>
+    <tr><td>The two in one ring, a policy each</td><td class="n">381 min</td><td>no falls; each lands about 1.5 punches a second; Matt's arrive at 6.2 m/s, Zombie's at 8.8 m/s; no knockdowns</td></tr>
+  </table>
+  <p class="dim">The match stage ran 10,193 learning steps and just over a billion fighter-steps of physics.
+     Checked afterwards with the final policies acting without any exploration noise: 50 episodes, 600 seconds, no falls.</p>
+
+  <h2>Chart 1 · How often somebody falls over</h2>
+  <div class="chart"><img src="img/tb_fall_rate.png" alt="TensorBoard chart env/fall_rate for the three runs"></div>
+  <p class="dim">TensorBoard, <code>env/fall_rate</code>: the share of episodes that ended because a fighter fell. Orange and blue are the two bag stages, red is the match. Across is learning steps.</p>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>At first they fall down every time. Then they learn to stay up. The line goes down to the floor and stays there. Down is good.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>Each try lasts twelve seconds. The line shows how many tries out of a hundred ended with someone on the floor. It starts at a hundred, because a beginner topples straight away, and drops to one or two. The little bumps afterwards are the fighters trying new things and sometimes overdoing it.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>The fraction of episodes terminated by a fall (pelvis under 60% of standing height, or tilted past about 66 degrees). On the bag both fighters are under 5% within about five minutes. The match starts again from 100%: a fighter that learned on a bag leans on what it hits, and an opponent moves. It is back under 10% in twenty minutes and at 0 to 3% for the remaining six hours, with exploration noise still switched on.</p></div>
+  </div>
+  <div class="verdict"><strong>Against earlier runs: as good, and harder won.</strong> The last rehearsal (one policy playing both sides, 49 minutes) also ended at 0% falls; the one before it, cut off at 16 minutes, was still at 13%. This run reaches the same place with two different bodies and two separate learners, which is the harder problem.</div>
+
+  <h2>Chart 2 · How many punches each fighter lands</h2>
+  <div class="chart"><img src="img/tb_hits_per_fighter.png" alt="TensorBoard charts env/matt_hits_per_s and env/zombie_hits_per_s"></div>
+  <p class="dim">TensorBoard, <code>env/matt_hits_per_s</code> and <code>env/zombie_hits_per_s</code>, match stage only: punches landed per second by each fighter.</p>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>Up means lots of punches. Zombie punches straight away. Matt stands still for a long time, and then he starts punching too.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>Zombie works out how to hit Matt in the first few minutes. Matt does almost nothing for about an hour: he has learned that going near Zombie gets him knocked over, so he just stands and takes it. Then he finds a punch that works, and after that the two lines sit at about the same height: one and a half punches every second, each.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>Both policies lost their bag-stage punch in the first minutes of the match, when every exchange ended in a fall. Zombie recovered it by about minute 20. Matt stayed under 0.2 hits a second from minute 15 to minute 67, a stable passive strategy (standing in range is rewarded; being hit costs less than falling), passed one hit a second at minute 79 and matched Zombie by minute 180. Zombie's rate falls from about 2.0 to 1.5 as Matt begins to hit back.</p></div>
+  </div>
+  <div class="verdict"><strong>Against earlier runs: same end point, an hour slower to reach it.</strong> The rehearsal reached 1.6 landed punches a second per fighter in 49 minutes with no passive phase, because there one policy drove both fighters and could not fall behind itself. With a policy each, one fighter can be left behind, and for an hour Matt was. That hour is the main thing to fix before the next long run.</div>
+
+  <h2>Chart 3 · How hard the punches land</h2>
+  <div class="chart"><img src="img/tb_hit_speed.png" alt="TensorBoard chart env/hit_speed for the three runs"></div>
+  <p class="dim">TensorBoard, <code>env/hit_speed</code>: how fast the glove is closing on its target when it lands, in metres per second, averaged over both fighters. Capped at 9, about what a trained boxer's glove does.</p>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>Up means a big punch. Down means a little tap. They learn big punches, then little taps for a while, then big punches again.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>On the bag both fighters learn to hit hard, about as fast as a real boxer's glove. In the ring the line dips, because Matt's first punches at Zombie are slow pokes and they pull the average down. As Matt gets braver the line climbs back up.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>Closing speed along the surface normal at the moment of landing, the quantity the hit reward is proportional to. Both bag stages plateau at 8.6 to 8.7 m/s. The match dips to about 6.3 m/s around learning step 2,500, when Matt's tentative punches (2 to 4 m/s) enter the average, and recovers to 8.4 by step 4,500. It ends at 7.5: Zombie holds 8.8, but Matt's falls from 8.2 to 6.2 over the last hundred minutes while his rate stays the same. I do not know why.</p></div>
+  </div>
+  <div class="verdict"><strong>Against earlier runs: Zombie the same, Matt worse at the end.</strong> The rehearsal finished at 8.7 m/s. Zombie matches that. Matt does not, and that is the difference between the two in the game. One real change from the rehearsals: there 98% of punches went to the head; here it is half, because Matt, the shorter of the two, goes to the body.</div>
+
+  <h2>All the runs side by side</h2>
+  <table>
+    <tr><th>Run</th><th>Length</th><th>Falls</th><th>Punches landed</th><th>Glove speed</th><th>What it was</th></tr>
+    <tr><td>Rehearsal 1, bag</td><td class="n">12 min</td><td class="n">1%</td><td class="n">17.7 /s</td><td class="n">11.4 m/s</td><td>a cheat: rubbing the glove up and down the bag</td></tr>
+    <tr><td>Rehearsal 2, bag</td><td class="n">10 min</td><td class="n">3%</td><td class="n">5.4 /s</td><td class="n">8.0 m/s</td><td>another: five quick pats a second</td></tr>
+    <tr><td>Rehearsal 4, bag</td><td class="n">21 min</td><td class="n">0%</td><td class="n">1.9 /s</td><td class="n">8.6 m/s</td><td>real punches, after the rules were tightened</td></tr>
+    <tr><td>Rehearsal 3, spar</td><td class="n">16 min</td><td class="n">13%</td><td class="n">1.5 /s</td><td class="n">8.2 m/s</td><td>fighters propped on each other</td></tr>
+    <tr><td>Rehearsal 4, spar</td><td class="n">49 min</td><td class="n">0%</td><td class="n">1.6 /s</td><td class="n">8.7 m/s</td><td>one policy on both sides, stand-in rig</td></tr>
+    <tr><td><strong>This run, Matt on the bag</strong></td><td class="n">45 min</td><td class="n">2%</td><td class="n">2.0 /s</td><td class="n">8.6 m/s</td><td>the owner's mesh</td></tr>
+    <tr><td><strong>This run, Zombie on the bag</strong></td><td class="n">45 min</td><td class="n">1%</td><td class="n">2.1 /s</td><td class="n">8.7 m/s</td><td>the owner's mesh</td></tr>
+    <tr><td><strong>This run, the match</strong></td><td class="n">381 min</td><td class="n">0%</td><td class="n">1.5 /s each</td><td class="n">6.2 and 8.8 m/s</td><td>two bodies, two policies</td></tr>
+  </table>
+  <p class="dim">The rehearsals were on a stand-in rig the night before and their TensorBoard data was cleared when this run started, as the house rule asks; their numbers here are from the status files the trainer keeps in <code>training/logs</code>.</p>
+
+  <div class="note"><strong>How fast it ran.</strong> About 48,000 fighter-steps a second for the first four hours, while test jobs of mine shared the processor. About 11,500 for the forty minutes the Unity editor was open in Play mode. About 59,000 for the last forty-five minutes, with the machine left alone. The editor being open cost roughly a tenth of the match stage's steps.</div>
+
+  <h2>In the game: before and after</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE · 30 September</span>
+      <div class="shot">
+        <img src="img/02_fight.png" alt="The fight screen with two stand-in fighters made of capsules">
+        <span class="pin" style="left:26%; top:52%">A</span>
+        <span class="pin" style="left:74%; top:50%">B</span>
+        <span class="pin" style="left:14%; top:8%">C</span>
+      </div>
+    </div>
+    <div>
+      <span class="tag after">AFTER · 1 October, the final policies</span>
+      <div class="shot">
+        <img src="img/20_entrants_fight.png" alt="The fight screen with Matt and Zombie boxing">
+        <span class="pin" style="left:34%; top:55%">1</span>
+        <span class="pin" style="left:58%; top:50%">2</span>
+        <span class="pin" style="left:10%; top:8%">3</span>
+        <span class="pin" style="left:50%; top:16.4%">4</span>
+        <span class="pin" style="left:35%; top:82.5%">5</span>
+      </div>
+    </div>
+  </div>
+  <ol class="legend" style="list-style:upper-alpha">
+    <li>A stand-in body: capsules and spheres.</li>
+    <li>Moved by a hand-written script, and held upright by a hidden spring on its hips and a string on its chest.</li>
+    <li>Six invented names; none of them had been trained.</li>
+  </ol>
+  <ol class="legend">
+    <li>Matt: the owner's mesh on a body built from its own skeleton, 1.81 m and 79.5 kg. Nothing holds him up.</li>
+    <li>Zombie, the same way: 80.2 kg, hips 9 cm higher. Each is driven only by its policy, fifty decisions a second.</li>
+    <li>The names are the fighters'. The app now starts on a screen where the two are chosen (see the boxer-menu report).</li>
+    <li>Nearly every punch thrown lands: these two stand in range and trade. Nobody defends yet.</li>
+    <li>The strength of a punch is the glove's closing speed times the 2.2 kg behind a glove, as in training.</li>
+  </ol>
+
+  <div class="pair">
+    <div>
+      <span class="tag after">THE BOUT THAT SCREEN IS FROM</span>
+      <div class="shot"><img src="img/21_entrants_results.png" alt="Results card: Zombie wins on points 133 to 26"></div>
+    </div>
+    <div>
+      <p>Three rounds, no knockdowns, Zombie on points, 133 to 26. Zombie landed 243 of 250, Matt 117 of 123. Matt finished with 2 of his 100 health.</p>
+      <p>The scorekeeper's numbers were set from these two policies sparring for five minutes on the clock: a punch under 4.9 N·s does not count, the busier fighter takes about 100 health off the other over a bout, the hardest 4% of punches stagger, and the hardest 0.8% put a tired fighter down.</p>
+      <p class="dim">One bout is one bout. In sparring just before it the two landed at the same rate, 1.5 a second each.</p>
+    </div>
+  </div>
+
+  <h2>The thing that nearly did not work</h2>
+  <p>The policies did not survive being moved into Unity's own physics. With Unity's bodies matching MuJoCo's at rest to the millimetre, and the policies' inputs matching to three decimal places, the same two policies still fell over in most episodes.</p>
+  <table>
+    <tr><th>Same policies, training's twelve-second episodes</th><th>Episodes ending in a fall</th></tr>
+    <tr><td>MuJoCo Warp, where they were trained</td><td class="n ok">0%</td></tr>
+    <tr><td>MuJoCo, the plain C library</td><td class="n ok">0%</td></tr>
+    <tr><td>Unity's physics (three runs)</td><td class="n no">69%, 79%, 89%</td></tr>
+    <tr><td>Unity, with the fight stepped by MuJoCo inside the game</td><td class="n ok">0%</td></tr>
+  </table>
+  <p>So the game loads MuJoCo as a library and steps the fight in it; the bodies on screen follow. It is exact, and it has a price: the library in the project is the Windows one, so a phone build would fall back to Unity's physics and the falls.</p>
+
+  <h2>Not right yet</h2>
+  <ul>
+    <li>Nobody defends. Both fighters stand in range and trade.</li>
+    <li>No knockdowns in training at all, and none in the bout above.</li>
+    <li>Matt's punches lost speed in the last part of the run; the cause is not known.</li>
+    <li>Matt's passive hour cost about an eighth of the run.</li>
+    <li>There is no get-up policy: after a count, a fighter is stood back up in its guard.</li>
+    <li>The game needs Windows to run the trained fighters properly.</li>
+  </ul>
+</main>
+</body>
+</html>

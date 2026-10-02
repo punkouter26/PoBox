@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PoBox.Sim
@@ -10,6 +11,8 @@ namespace PoBox.Sim
         public int landed;
         public int clean;
         public int knockdowns;       // scored on the opponent
+        public int blocked;          // the opponent's punches this fighter stopped on its gloves and arms
+        public int downs;            // times this fighter went down
         public float peakImpulse;    // N s
         public float damageDealt;    // health points
         public float energyJ;        // joint work, sum of |torque x joint speed| dt
@@ -19,9 +22,15 @@ namespace PoBox.Sim
     /// The physical fighter: thirteen articulation links, the health and control it has left, and the
     /// telemetry everything else reads (joint stress, balance, power, glove speed, hit impulses).
     ///
-    /// It decides nothing. A brain sets the joint drive targets (<see cref="ScriptedBoxer"/> today; a
-    /// MuJoCo-trained policy once there is a skinned mesh to train on), and this class turns what the
-    /// physics then did into numbers. That is the seam: swap the brain, keep the broadcast.
+    /// It decides nothing. A brain sets the joint drive targets (<see cref="ScriptedBoxer"/> for the stand-in,
+    /// a MuJoCo-trained policy for an entrant), and this class turns what the physics then did into numbers.
+    /// That is the seam: swap the brain, keep the broadcast.
+    ///
+    /// What a punch does to a trained fighter is the rule its policy was trained under (training/envs/boxing.py):
+    /// every hit adds its closing speed to the fighter's daze, in full to the head and a share to the body;
+    /// the daze drains with a time constant of a couple of seconds; above a threshold the joint drives
+    /// weaken, and at a higher one the legs go and the fighter is down for a count. It then has to get up
+    /// by itself, with the policy trained for that, before the count reaches ten.
     /// </summary>
     public class Fighter : MonoBehaviour
     {
@@ -39,7 +48,7 @@ namespace PoBox.Sim
         public BodyPart head;
         public BodyPart upperArmL, forearmL, upperArmR, forearmR;
         public BodyPart thighL, shinL, footL, thighR, shinR, footR;
-        [Tooltip("Every link, pelvis first. The replay and the heat map index parts by this order.")]
+        [Tooltip("Every link, pelvis first.")]
         public BodyPart[] parts = new BodyPart[0];
         public float standingPelvisHeight = 0.97f;
         public float totalMass = 72f;
@@ -53,37 +62,84 @@ namespace PoBox.Sim
         public float damagePerNs = 0.4f;
         [Tooltip("Impulse below this is a touch, not a punch.")]
         public float impulseFloor = 2.0f;
-        [Tooltip("Impulse x zone weight at which the fighter goes down.")]
+        [Tooltip("Stand-in only. Impulse x zone weight at which the fighter goes down.")]
         public float knockdownShock = 30f;
-        [Tooltip("Impulse x zone weight at which the fighter is visibly rocked.")]
+        [Tooltip("Stand-in only. Impulse x zone weight at which the fighter is visibly rocked.")]
         public float staggerShock = 15f;
         [Tooltip("Joint work that empties the tank, in joules.")]
         public float staminaJoules = 40000f;
-        [Tooltip("Seconds after the bell or after getting up from a count during which a punch cannot put this fighter down or stagger it; only running out of health can. Without it a fighter stood up after a count walks into the other's first punch, thrown with a step behind it, and is down again three seconds later, for the whole round.")]
+        [Tooltip("Seconds after the bell or after getting up from a count during which a punch cannot put this fighter down; only running out of health can.")]
         public float graceSeconds = 0f;
-        [Tooltip("A single punch only puts down a fighter whose health is below this. 100 = any time.")]
+        [Tooltip("Stand-in only. A single punch only puts down a fighter whose health is below this. 100 = any time.")]
         public float knockdownBelowHealth = 100f;
         [Tooltip("The ring, for standing a trained fighter back up inside it. Half-width 0 = not known.")]
         public Vector3 ringCentre;
         public float ringHalf;
+
+        [Header("Daze (trained fighters): the rule the policies were trained under")]
+        public bool dazeRule;
+        [Tooltip("Seconds for the daze to drain to a third.")]
+        public float dazeTau = 2.5f;
+        [Tooltip("Daze at which the joint drives start to weaken, and at which the legs go.")]
+        public float dazeLo = 14f, dazeHi = 42f;
+        [Tooltip("Share of drive strength lost just below the upper threshold.")]
+        public float dazeWeak = 0.45f;
+        [Tooltip("What a body shot adds to the daze, as a share of what the same punch to the head would.")]
+        public float dazeBody = 0.3f;
+        [Tooltip("How long the drives stay slack after the legs go, seconds, least and most. Then the fighter starts to get up.")]
+        public Vector2 slackSeconds = new Vector2(1.2f, 2.4f);
+        [Tooltip("Seconds a fighter that has got up by itself stands before the match policy takes the body back.")]
+        public float handOverSeconds = 1.5f;
 
         // ------------------------------------------------------------ state
         public float Health { get; private set; } = 100f;
         public float Stamina { get; private set; } = 1f;
         /// <summary>How much control the fighter has over its own body: 1 normal, about 0.5 rocked, 0 limp.</summary>
         public float Authority { get; private set; } = 1f;
+        /// <summary>The share of joint drive strength the fighter has left: what the brain multiplies its drives by.</summary>
+        public float DriveScale { get; private set; } = 1f;
+        /// <summary>Accumulated punishment, in m/s of punches taken; drains by itself. See the class comment.</summary>
+        public float Daze { get; private set; }
+        /// <summary>0 clear-headed, 1 about to go.</summary>
+        public float Daze01 => dazeRule ? Mathf.Clamp01(Daze / Mathf.Max(1f, dazeHi)) : Mathf.Clamp01(_stagger);
         public bool IsDown { get; private set; }
+        /// <summary>Down, and trying to get up.</summary>
         public bool IsRising { get; private set; }
         public bool IsOut => Health <= 0f;
-        public bool Staggered => _stagger > 0f;
+        public bool Staggered => dazeRule ? Daze > dazeLo : _stagger > 0f;
         public float TimeSinceHit => Time.time - _lastHitAt;
 
         [NonSerialized] public FighterStats stats;
 
+        /// <summary>Impulse taken this bout, N s, by where it landed: head, chest, belly, left arm, right arm.</summary>
+        public readonly float[] taken = new float[5];
+        public const int ZoneHead = 0, ZoneChest = 1, ZoneBelly = 2, ZoneArmL = 3, ZoneArmR = 4;
+
+        /// <summary>A mark left where a punch landed: which link, where on it, how bad.</summary>
+        public struct Bruise
+        {
+            public Transform bone;
+            public Vector3 local;
+            public float amount;
+        }
+
+        public const int MaxBruises = 8;
+        public readonly List<Bruise> bruises = new List<Bruise>(MaxBruises);
+
         // ------------------------------------------------------------ telemetry
         public Vector3 CenterOfMass { get; private set; }
-        /// <summary>1 with the centre of mass over the feet, 0 with it outside them (or on the canvas).</summary>
+        public Vector3 CenterOfMassVelocity { get; private set; }
+        /// <summary>
+        /// 1 planted, 0 going over. Where the body will come to rest if nothing is done about it (the centre of
+        /// mass carried on by its own speed: the "capture point") against the patch of canvas the feet cover:
+        /// 1 with that point 10 cm or more inside the patch, a half with it on the edge, 0 with it 10 cm outside.
+        /// </summary>
         public float BalanceMargin { get; private set; } = 1f;
+        /// <summary>The capture point from the middle of the feet, metres, x to the fighter's right and y ahead of it.</summary>
+        public Vector2 CaptureOffset { get; private set; }
+        /// <summary>Each foot from the middle of the two, in the same frame (left, right), and whether it is on the canvas.</summary>
+        public readonly Vector2[] footOffset = new Vector2[2];
+        public readonly bool[] footDown = { true, true };
         public float PowerW { get; private set; }
         public float PeakStress { get; private set; }
         public BodyPart PeakStressPart { get; private set; }
@@ -116,9 +172,14 @@ namespace PoBox.Sim
         const float PunchLife = 0.5f;
         Vector3[] _restPos;
         Quaternion[] _restRot;
-        float _stagger, _downTimer, _lowTime, _lastHitAt = -99f, _floorY;
+        float _stagger, _downTimer, _lowTime, _lastHitAt = -99f, _floorY, _stoodFor;
+        Vector3 _prevCom;
+        bool _hasPrevCom, _canGetUp;
+        readonly List<Vector2> _hullPoints = new List<Vector2>(8), _hull = new List<Vector2>(9);
+        public const float PunchMass = 2.2f;
         const float HitWindow = 0.05f;
         const float HitCooldown = 0.22f;
+        const float HitCap = 9f;
 
         void Awake()
         {
@@ -160,14 +221,18 @@ namespace PoBox.Sim
             _floorY = position.y;
             _upSince = Time.time;
             _pendL = default; _pendR = default;
-            _stagger = 0f; _downTimer = 0f; _lowTime = 0f;
-            IsDown = false; IsRising = false; Authority = 1f;
+            _stagger = 0f; _downTimer = 0f; _lowTime = 0f; _stoodFor = 0f;
+            _hasPrevCom = false;
+            Daze = 0f;
+            IsDown = false; IsRising = false; Authority = 1f; DriveScale = 1f;
             foreach (BodyPart p in parts) p.stress = 0f;
 
             if (newBout)
             {
                 Health = 100f; Stamina = 1f;
                 stats = default;
+                Array.Clear(taken, 0, taken.Length);
+                bruises.Clear();
                 foreach (BodyPart p in parts) p.bruise = 0f;
             }
             else
@@ -212,31 +277,56 @@ namespace PoBox.Sim
             if (other.owner == null || other.owner == this || part.strike == null) return;
             // Nothing scores before the bell or while the referee is counting.
             if (!Bout.Fighting) return;
-            // Which part of them was touched. Usually the link's own kind; finer where one link carries
-            // several (a trained fighter's head is a ball on its torso link).
-            var zoneTag = otherCollider.GetComponent<Rl.HitZone>();
-            PartKind touched = zoneTag != null ? zoneTag.kind : other.kind;
-
-            // Was it the glove, or the forearm behind it?
+            // Was it the glove, or the forearm behind it? And which part of them did the glove touch:
+            // usually the link's own kind, finer where one link carries several shapes (a trained fighter's
+            // head is a ball on its torso link, beside the chest and the body). Each contact says which
+            // shape it was on; of the ones the glove made, the most telling counts.
             ContactPoint cp = default;
             bool glove = false;
+            PartKind touched = other.kind;
+            float telling = -1f;
             for (int i = 0; i < c.contactCount; i++)
             {
-                cp = c.GetContact(i);
-                if (cp.thisCollider == part.strike) { glove = true; break; }
+                ContactPoint at = c.GetContact(i);
+                if (at.thisCollider != part.strike) continue;
+                var zoneTag = at.otherCollider != null ? at.otherCollider.GetComponent<Rl.HitZone>() : null;
+                PartKind kind = zoneTag != null ? zoneTag.kind : other.kind;
+                if (ZoneWeight(kind) <= telling) continue;
+                telling = ZoneWeight(kind);
+                touched = kind;
+                cp = at;
+                glove = true;
             }
             if (!glove) return;
 
             bool left = part.side < 0;
             ref Pending p = ref (left ? ref _pendL : ref _pendR);
             float impulse = c.impulse.magnitude;
+            Vector3 gloveVelocity = c.relativeVelocity;
+            bool shadowed = mjcf != null && mjcf.Shadowed;
+            if (shadowed)
+            {
+                // The body in the scene is a shadow of the one MuJoCo is simulating, and what Unity's solver
+                // says it took to stop a shadow's glove is not a measurement of anything. A punch here is what
+                // it is in training: how fast the glove was closing on what it hit, as MuJoCo's own state
+                // has it, over the control step it landed in. Times the mass behind a glove (2.2 kg, measured
+                // as impulse over speed when Unity did simulate the arm), newton-seconds.
+                int hand = left ? 0 : 1;
+                float speed = touched == PartKind.Head ? mjcf.ring.HitSpeed(mjcf.slot, hand, true)
+                            : touched == PartKind.Torso || touched == PartKind.Pelvis ? mjcf.ring.HitSpeed(mjcf.slot, hand, false)
+                            : Mathf.Max(mjcf.ring.HitSpeed(mjcf.slot, hand, true), mjcf.ring.HitSpeed(mjcf.slot, hand, false));
+                // A layout from before the ring measured punches has nothing to say; fall back on the contact.
+                if (speed <= 0f && mjcf.ring.L.fighters[mjcf.slot].r_glove <= 0f)
+                    speed = Mathf.Min(HitCap, Mathf.Abs(Vector3.Dot(c.relativeVelocity, cp.normal)));
+                impulse = PunchMass * speed;
+                gloveVelocity = mjcf.ring.GloveVelocity(mjcf.slot, hand);
+            }
 
             if (p.active)
             {
-                // A shadow's glove is stopped by MuJoCo over several steps, and on each of them Unity
-                // reports the impulse it would take to stop what is left: the hardest of those is the
-                // punch, their sum is several punches.
-                p.e.impulse = mjcf != null && mjcf.Shadowed ? Mathf.Max(p.e.impulse, impulse) : p.e.impulse + impulse;
+                // A shadow's glove is stopped by MuJoCo over several steps: the hardest reading is the punch,
+                // their sum would be several punches.
+                p.e.impulse = shadowed ? Mathf.Max(p.e.impulse, impulse) : p.e.impulse + impulse;
                 // A punch that comes off the guard and still reaches the head is a head shot: within the
                 // one touch, the hit is scored on the most telling part the glove got to.
                 if (other.owner == p.e.victim && ZoneWeight(touched) > ZoneWeight(p.e.zone))
@@ -269,7 +359,8 @@ namespace PoBox.Sim
                 point = cp.point,
                 normal = cp.normal,
                 impulse = impulse,
-                gloveSpeed = c.relativeVelocity.magnitude,
+                gloveSpeed = shadowed ? impulse / PunchMass : c.relativeVelocity.magnitude,
+                velocity = gloveVelocity,
                 time = Bout.Clock,
             };
         }
@@ -313,6 +404,18 @@ namespace PoBox.Sim
             }
         }
 
+        static int ZoneIndex(PartKind zone, BodyPart part)
+        {
+            switch (zone)
+            {
+                case PartKind.Head: return ZoneHead;
+                case PartKind.Torso: return ZoneChest;
+                case PartKind.UpperArm:
+                case PartKind.Forearm: return part != null && part.side > 0 ? ZoneArmR : ZoneArmL;
+                default: return ZoneBelly;
+            }
+        }
+
         void TakeHit(ref HitEvent e, BodyPart part)
         {
             float zone = ZoneWeight(e.zone);
@@ -320,12 +423,30 @@ namespace PoBox.Sim
             e.damage = Mathf.Max(0f, e.impulse - impulseFloor) * damagePerNs * zone;
             Health = Mathf.Max(0f, Health - e.damage);
             if (part != null) part.bruise = Mathf.Clamp01(part.bruise + e.damage / 35f);
+            taken[ZoneIndex(e.zone, part)] += e.impulse;
+            if (!e.clean) stats.blocked++;
+            MarkBruise(part, e.point, e.clean ? e.damage : e.damage * 0.3f);
             _lastHitAt = Time.time;
             LastHitTaken = e;
 
             if (IsDown) return;
-            float shock = e.impulse * zone;
             bool fresh = Time.time - _upSince < graceSeconds;
+            if (dazeRule)
+            {
+                float speed = Mathf.Min(HitCap, e.impulse / PunchMass);
+                float share = e.zone == PartKind.Head ? 1f : e.zone == PartKind.Torso || e.zone == PartKind.Pelvis ? dazeBody : 0f;
+                Daze += speed * share;
+                // Just up from a count, the legs cannot go again straight away: the daze is held under the line.
+                if (fresh) Daze = Mathf.Min(Daze, dazeHi * 0.9f);
+                if (Health <= 0f || Daze >= dazeHi)
+                {
+                    GoDown();
+                    _wentDownThisStep = true;
+                }
+                return;
+            }
+
+            float shock = e.impulse * zone;
             if (Health <= 0f || (shock >= knockdownShock && !fresh && Health < knockdownBelowHealth))
             {
                 GoDown();
@@ -337,12 +458,41 @@ namespace PoBox.Sim
             }
         }
 
+        /// <summary>Remembers where a punch landed, on the link it landed on, so the mark moves with the body.</summary>
+        void MarkBruise(BodyPart part, Vector3 worldPoint, float damage)
+        {
+            if (part == null || damage <= 0f) return;
+            float amount = Mathf.Clamp01(damage / 6f);
+            Transform bone = part.transform;
+            Vector3 local = bone.InverseTransformPoint(worldPoint);
+            int weakest = 0;
+            for (int i = 0; i < bruises.Count; i++)
+            {
+                Bruise b = bruises[i];
+                if (b.bone == bone && (b.local - local).sqrMagnitude < 0.07f * 0.07f)
+                {
+                    b.amount = Mathf.Min(1f, b.amount + amount);
+                    bruises[i] = b;
+                    return;
+                }
+                if (b.amount < bruises[weakest].amount) weakest = i;
+            }
+            var mark = new Bruise { bone = bone, local = local, amount = amount };
+            if (bruises.Count < MaxBruises) bruises.Add(mark);
+            else if (bruises[weakest].amount < amount) bruises[weakest] = mark;
+        }
+
         void GoDown()
         {
             IsDown = true;
             IsRising = false;
-            // The less there is left, the longer the canvas holds on. Out cold never gets up.
-            _downTimer = IsOut ? float.PositiveInfinity : Mathf.Lerp(2.0f, 4.2f, 1f - Health / 100f);
+            _stoodFor = 0f;
+            Daze = 0f;
+            stats.downs++;
+            if (IsOut) _downTimer = float.PositiveInfinity;       // out cold never gets up
+            else if (dazeRule) _downTimer = UnityEngine.Random.Range(slackSeconds.x, slackSeconds.y);
+            // The stand-in: the less there is left, the longer the canvas holds on.
+            else _downTimer = Mathf.Lerp(2.0f, 4.2f, 1f - Health / 100f);
         }
 
         // ------------------------------------------------------------ per step
@@ -364,6 +514,7 @@ namespace PoBox.Sim
             float mass = 0f, power = 0f, peak = 0f, sum = 0f;
             int driven = 0;
             BodyPart peakPart = null;
+            bool shadowed = mjcf != null && mjcf.Shadowed;
 
             for (int i = 0; i < parts.Length; i++)
             {
@@ -380,7 +531,7 @@ namespace PoBox.Sim
                 for (int l = 0; l < links; l++)
                 {
                     ArticulationBody link = part.Drive(l);
-                    if (mjcf != null && mjcf.Shadowed)
+                    if (shadowed)
                     {
                         // The body that is doing the work is the one in MuJoCo; its motors report their own torque.
                         int j = mjcf.IndexOf(link);
@@ -414,6 +565,10 @@ namespace PoBox.Sim
             }
 
             CenterOfMass = mass > 0f ? com / mass : transform.position;
+            if (_hasPrevCom) CenterOfMassVelocity = Vector3.Lerp(CenterOfMassVelocity, (CenterOfMass - _prevCom) / dt, 0.3f);
+            else CenterOfMassVelocity = Vector3.zero;
+            _prevCom = CenterOfMass;
+            _hasPrevCom = true;
             PowerW += (power - PowerW) * 0.1f;
             PeakStress = peak;
             PeakStressPart = peakPart;
@@ -423,42 +578,169 @@ namespace PoBox.Sim
             // Tired fighters are slower fighters. The tank refills at rest, slowly.
             Stamina = Mathf.Clamp(Stamina - power * dt / staminaJoules + 0.004f * dt, 0.12f, 1f);
 
-            if (forearmL != null && forearmL.strike != null)
-                GloveSpeedL = forearmL.body.GetPointVelocity(forearmL.strike.bounds.center).magnitude;
-            if (forearmR != null && forearmR.strike != null)
-                GloveSpeedR = forearmR.body.GetPointVelocity(forearmR.strike.bounds.center).magnitude;
-
-            // Balance: how far the centre of mass has wandered from between the feet, against how far
-            // apart the feet are. Crude, and enough to tell a fighter who is planted from one who is going.
-            if (footL != null && footR != null)
+            if (shadowed)
             {
-                Vector3 l = footL.body.worldCenterOfMass, r = footR.body.worldCenterOfMass;
-                Vector3 mid = (l + r) * 0.5f;
-                float halfSpan = Vector3.Distance(new Vector3(l.x, 0f, l.z), new Vector3(r.x, 0f, r.z)) * 0.5f + 0.14f;
-                float off = Vector2.Distance(new Vector2(CenterOfMass.x, CenterOfMass.z), new Vector2(mid.x, mid.z));
-                float margin = 1f - Mathf.Clamp01(off / halfSpan);
-                if (PelvisHeight < standingPelvisHeight * 0.6f) margin = 0f;
-                BalanceMargin += (margin - BalanceMargin) * 0.2f;
+                GloveSpeedL = mjcf.ring.GloveVelocity(mjcf.slot, 0).magnitude;
+                GloveSpeedR = mjcf.ring.GloveVelocity(mjcf.slot, 1).magnitude;
             }
+            else
+            {
+                if (forearmL != null && forearmL.strike != null)
+                    GloveSpeedL = forearmL.body.GetPointVelocity(forearmL.strike.bounds.center).magnitude;
+                if (forearmR != null && forearmR.strike != null)
+                    GloveSpeedR = forearmR.body.GetPointVelocity(forearmR.strike.bounds.center).magnitude;
+            }
+
+            SampleBalance();
+        }
+
+        /// <summary>
+        /// Balance, as a person standing on a moving floor would feel it. The capture point is where the
+        /// centre of mass would end up over if the body kept its present speed and nothing caught it:
+        /// its position plus its velocity times sqrt(height / g). While that point is inside the patch of
+        /// canvas the feet cover, standing still is possible; once it is outside, only a step saves it.
+        /// </summary>
+        void SampleBalance()
+        {
+            if (footL == null || footR == null) return;
+            float height = Mathf.Max(0.2f, CenterOfMass.y - _floorY);
+            float reach = Mathf.Sqrt(height / 9.81f);
+            var capture = new Vector2(CenterOfMass.x + CenterOfMassVelocity.x * reach, CenterOfMass.z + CenterOfMassVelocity.z * reach);
+
+            _hullPoints.Clear();
+            Vector2 mid = Vector2.zero;
+            for (int i = 0; i < 2; i++)
+            {
+                BodyPart foot = i == 0 ? footL : footR;
+                BoxCollider box = mjcf != null ? (i == 0 ? mjcf.footL : mjcf.footR) : null;
+                Transform t = box != null ? box.transform : foot.transform;
+                Vector3 centre = box != null ? t.TransformPoint(box.center) : foot.body.worldCenterOfMass;
+                Vector3 half = box != null ? Vector3.Scale(box.size, t.lossyScale) * 0.5f : new Vector3(0.045f, 0.03f, 0.13f);
+                Vector3 ax = t.right * half.x, ay = t.up * half.y, az = t.forward * half.z;
+                float lift = centre.y - (Mathf.Abs(ax.y) + Mathf.Abs(ay.y) + Mathf.Abs(az.y)) - _floorY;
+                footDown[i] = mjcf != null && mjcf.Shadowed ? mjcf.ring.FootDown(mjcf.slot, i) : lift < 0.03f;
+                mid += new Vector2(centre.x, centre.z) * 0.5f;
+                if (!footDown[i]) continue;
+                // The sole is the box's two longest axes; the shortest is its thickness.
+                Vector3 u = ax, v = az;
+                if (half.x <= half.y && half.x <= half.z) u = ay;
+                else if (half.z <= half.x && half.z <= half.y) v = ay;
+                for (int sx = -1; sx <= 1; sx += 2)
+                    for (int sz = -1; sz <= 1; sz += 2)
+                    {
+                        Vector3 corner = centre + u * sx + v * sz;
+                        _hullPoints.Add(new Vector2(corner.x, corner.z));
+                    }
+            }
+
+            // A boxer on the move has its capture point near the edge of its feet most of the time, and
+            // over it for a moment in every step: that is what stepping is. So the scale runs from 10 cm
+            // outside the feet (0: going, unless a step is found) to 10 cm inside them (1: planted).
+            float margin = 0f;
+            if (_hullPoints.Count >= 3 && PelvisHeight >= standingPelvisHeight * 0.6f)
+            {
+                ConvexHull(_hullPoints, _hull);
+                margin = Mathf.Clamp01((InsideDistance(_hull, capture) + 0.10f) / 0.20f);
+            }
+            BalanceMargin += (margin - BalanceMargin) * 0.25f;
+
+            // The same picture in the fighter's own frame, for the gauge on the HUD.
+            Vector3 fwd = mjcf != null ? mjcf.Forward : pelvis.transform.forward;
+            var f2 = new Vector2(fwd.x, fwd.z);
+            if (f2.sqrMagnitude < 1e-6f) f2 = Vector2.up;
+            f2.Normalize();
+            var r2 = new Vector2(f2.y, -f2.x);
+            Vector2 Local(Vector2 world) => new Vector2(Vector2.Dot(world - mid, r2), Vector2.Dot(world - mid, f2));
+            CaptureOffset = Vector2.Lerp(CaptureOffset, Local(capture), 0.25f);
+            for (int i = 0; i < 2; i++)
+            {
+                BodyPart foot = i == 0 ? footL : footR;
+                Vector3 c = foot.body.worldCenterOfMass;
+                footOffset[i] = Local(new Vector2(c.x, c.z));
+            }
+        }
+
+        /// <summary>Andrew's monotone chain. The points come back anticlockwise, without the first repeated.</summary>
+        static void ConvexHull(List<Vector2> points, List<Vector2> hull)
+        {
+            points.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+            hull.Clear();
+            for (int pass = 0; pass < 2; pass++)
+            {
+                int start = hull.Count;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    Vector2 p = pass == 0 ? points[i] : points[points.Count - 1 - i];
+                    while (hull.Count - start >= 2)
+                    {
+                        Vector2 a = hull[hull.Count - 2], b = hull[hull.Count - 1];
+                        if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) > 0f) break;
+                        hull.RemoveAt(hull.Count - 1);
+                    }
+                    hull.Add(p);
+                }
+                hull.RemoveAt(hull.Count - 1);
+            }
+        }
+
+        /// <summary>How far inside a convex polygon a point is, metres. Negative outside.</summary>
+        static float InsideDistance(List<Vector2> hull, Vector2 p)
+        {
+            float least = float.MaxValue;
+            for (int i = 0; i < hull.Count; i++)
+            {
+                Vector2 a = hull[i], b = hull[(i + 1) % hull.Count];
+                Vector2 edge = b - a;
+                float len = edge.magnitude;
+                if (len < 1e-5f) continue;
+                // Anticlockwise: the inside is to the left of every edge.
+                float d = (edge.x * (p.y - a.y) - edge.y * (p.x - a.x)) / len;
+                if (d < least) least = d;
+            }
+            return least == float.MaxValue ? 0f : least;
         }
 
         void UpdateControl(float dt)
         {
+            if (dazeRule) Daze *= Mathf.Exp(-dt / Mathf.Max(0.1f, dazeTau));
+
             if (IsDown)
             {
                 if (!IsRising)
                 {
                     Authority = Mathf.MoveTowards(Authority, 0f, dt * 10f);
+                    DriveScale = 0.04f;
                     _downTimer -= dt;
                     if (_downTimer <= 0f && !IsOut)
                     {
-                        if (mjcf != null) { StandUp(); return; }
+                        if (mjcf != null)
+                        {
+                            // A trained fighter gets up by itself if it has been taught to; if it has not,
+                            // it is stood back in its guard, as it was before there was a policy for this.
+                            SendMessage("BeginGetUp", SendMessageOptions.DontRequireReceiver);
+                            if (!_canGetUp) { StandUp(); return; }
+                        }
                         IsRising = true;
+                        _stoodFor = 0f;
                     }
+                }
+                else if (mjcf != null)
+                {
+                    // The drives are back and the get-up policy has them. Up is on its feet and upright (the
+                    // test the policy was trained to pass, after half a second of it), and the policy keeps
+                    // the body for a second more before the match policy has it back: handed over at half a
+                    // second, with the body still settling into its guard, the match policy fell over in a
+                    // third of the trials (training/tools/exam.py, HANDOVER_S, which is the same number).
+                    Authority = Mathf.MoveTowards(Authority, 1f, dt * 10f);
+                    DriveScale = 1f;
+                    bool standing = PelvisHeight > standingPelvisHeight * 0.88f && Upright > 0.85f;
+                    _stoodFor = standing ? _stoodFor + dt : 0f;
+                    if (_stoodFor >= handOverSeconds) FinishGetUp();
                 }
                 else
                 {
                     Authority = Mathf.MoveTowards(Authority, 1f, dt * 0.9f);
+                    DriveScale = Authority;
                     if (Authority >= 1f && PelvisHeight > standingPelvisHeight * 0.85f)
                     {
                         IsDown = false;
@@ -472,10 +754,12 @@ namespace PoBox.Sim
             float target = 1f;
             if (_stagger > 0f) { _stagger -= dt; target = 0.5f; }
             Authority = Mathf.MoveTowards(Authority, target, dt * 3f);
+            DriveScale = dazeRule
+                ? 1f - dazeWeak * Mathf.Clamp01((Daze - dazeLo) / Mathf.Max(1e-3f, dazeHi - dazeLo))
+                : Authority < 0.25f ? 0.04f : Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(0.25f, 1f, Authority));
 
-            // On the canvas without having been put there by a rule: a trip, a shove into the ropes, or,
-            // for a trained fighter, the only way it ever goes down. If a punch landed just before, the
-            // punch gets the credit.
+            // On the canvas without having been put there by a rule: a trip, a shove into the ropes, legs
+            // that were too weak to hold. If a punch landed just before, the punch gets the credit.
             if (PelvisHeight < standingPelvisHeight * 0.6f || Upright < 0.4f)
             {
                 _lowTime += dt;
@@ -496,9 +780,33 @@ namespace PoBox.Sim
             else _lowTime = 0f;
         }
 
+        /// <summary>For looking at a knockdown without waiting for one: the legs go, now, as if the daze had reached the line.</summary>
+        public void ForceDown()
+        {
+            if (IsDown) return;
+            GoDown();
+            SimBus.RaiseKnockdown(this, default);
+        }
+
+        /// <summary>The brain's answer to BeginGetUp: it has a policy for this.</summary>
+        public void AcceptGetUp() => _canGetUp = true;
+
+        void FinishGetUp()
+        {
+            IsDown = false;
+            IsRising = false;
+            _upSince = Time.time;
+            _pendL = default; _pendR = default;
+            _stagger = 0f; _lowTime = 0f; _stoodFor = 0f;
+            Daze = 0f;
+            Authority = 1f; DriveScale = 1f;
+            SendMessage("EndGetUp", SendMessageOptions.DontRequireReceiver);
+            SimBus.RaiseGotUp(this);
+        }
+
         /// <summary>
-        /// A trained fighter has no get-up of its own yet (that is a separate policy to train), so when the
-        /// count allows, it is stood back in its guard where it lies, facing the other fighter.
+        /// A trained fighter with no get-up policy is stood back in its guard where it lies, facing the
+        /// other fighter, when the count allows.
         /// </summary>
         void StandUp()
         {
@@ -551,7 +859,9 @@ namespace PoBox.Sim
             _upSince = Time.time;
             _pendL = default; _pendR = default;
             _stagger = 0f; _lowTime = 0f;
-            IsDown = false; IsRising = false; Authority = 1f;
+            Daze = 0f;
+            _hasPrevCom = false;
+            IsDown = false; IsRising = false; Authority = 1f; DriveScale = 1f;
             SendMessage("ResetBrain", SendMessageOptions.DontRequireReceiver);
             SimBus.RaiseGotUp(this);
         }

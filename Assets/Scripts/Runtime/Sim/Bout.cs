@@ -4,17 +4,20 @@ using PoBox.League;
 
 namespace PoBox.Sim
 {
-    public enum BoutPhase { Intro, Fight, Count, RoundBreak, Results }
+    public enum BoutPhase { Intro, Fight, Count, RoundBreak, Results, WalkOn }
 
     /// <summary>
-    /// The rules. Rounds, the clock, the count over a fighter on the canvas, who won and how, and then the
-    /// next pairing off the ladder. It also owns time: the slow motion on a big hit and the freeze while a
-    /// replay plays both go through here, so there is exactly one place that touches the time scale.
+    /// The rules. The walk-on, rounds, the clock, the count over a fighter on the canvas, the three judges'
+    /// cards, who won and how, and then the next pairing off the ladder. It also owns time: the speed chosen
+    /// in the menu goes through here, so there is exactly one place that touches the time scale.
+    ///
+    /// A bout ends inside the distance when a fighter fails to beat the count of ten, or has no health
+    /// left; otherwise it goes to the judges (<see cref="Judges"/>), who may not agree.
     /// </summary>
     public class Bout : MonoBehaviour
     {
         public static Bout Instance { get; private set; }
-        /// <summary>Physics is stepping. False while a replay is on screen.</summary>
+        /// <summary>Physics is stepping. False between rounds and while the result is up.</summary>
         public static bool SimRunning { get; private set; }
         /// <summary>The fighters are allowed to throw.</summary>
         public static bool Fighting => Instance != null && Instance.Phase == BoutPhase.Fight;
@@ -28,16 +31,20 @@ namespace PoBox.Sim
         public Transform blueCorner;
         public Transform redNeutral;
         public Transform blueNeutral;
+        [Tooltip("Where each fighter stands for the walk-on: in its own corner, by the post. Empty: at its starting mark.")]
+        public Transform redStool, blueStool;
         public LeagueTable league;
 
         [Header("Rules")]
         public int rounds = 3;
         public float roundSeconds = 45f;
         public float introSeconds = 2.5f;
+        [Tooltip("Real seconds the two are shown in their corners before the first round: the cameras and the lights have it, the fighters stand. 0 = none.")]
+        public float walkOnSeconds = 5f;
         [Tooltip("Seconds per number of the referee's count.")]
         public float countInterval = 0.7f;
-        [Tooltip("Real seconds the round-break replay may take before the next round starts regardless.")]
-        public float breakSeconds = 9f;
+        [Tooltip("Real seconds between the end of one round and the start of the next.")]
+        public float breakSeconds = 3f;
         [Tooltip("Real seconds the results stay up before the next bout starts on its own.")]
         public float resultsSeconds = 18f;
         public bool autoAdvance = true;
@@ -46,8 +53,7 @@ namespace PoBox.Sim
 
         [Header("Time")]
         public float physicsStep = 1f / 120f;
-        [Range(0.1f, 2f)] public float userTimeScale = 1f;
-        public bool fixedStepInSlowMotion;
+        [Range(1f, 4f)] public float userTimeScale = 1f;
 
         public BoutPhase Phase { get; private set; } = BoutPhase.Intro;
         public int Round { get; private set; } = 1;
@@ -55,18 +61,23 @@ namespace PoBox.Sim
         public int Count { get; private set; }
         public Fighter Downed { get; private set; }
         public Fighter Winner { get; private set; }
-        /// <summary>"KO R2 0:31", "POINTS 58-41", "DRAW 40-40".</summary>
+        /// <summary>"KO R2 0:31", "SPLIT DECISION", "MAJORITY DRAW".</summary>
         public string Method { get; private set; } = "";
+        /// <summary>The three judges. Their cards are complete once the bout has gone the distance.</summary>
+        public readonly Judges judges = new Judges();
+        /// <summary>The bout went to the cards.</summary>
+        public bool Decision { get; private set; }
         public float EloDelta { get; private set; }
         public int BoutNumber { get; private set; }
-        public float PhaseAge => Time.unscaledTime - _phaseStartReal;
+        /// <summary>
+        /// Real seconds in the present phase. Counted frame by frame with no frame worth more than a tenth
+        /// of a second: the first frame after a scene loads can take several seconds, and a clock read off
+        /// the wall would have the five-second walk-on over before anything had been drawn.
+        /// </summary>
+        public float PhaseAge => _phaseAge;
         public float ResultsTimeLeft => Mathf.Max(0f, resultsSeconds - PhaseAge);
-        public bool SlowMotion => Time.unscaledTime < _slowUntil;
 
-        /// <summary>Set by the replay system while a clip owns the screen: the break waits for it.</summary>
-        [NonSerialized] public bool replayBusy;
-
-        float _phaseTimer, _countTimer, _phaseStartReal, _slowUntil, _slowScale = 1f;
+        float _phaseTimer, _countTimer, _phaseAge;
         bool _started;
 
         void Awake()
@@ -80,12 +91,16 @@ namespace PoBox.Sim
         {
             SimBus.Knockdown += OnKnockdown;
             SimBus.GotUp += OnGotUp;
+            SimBus.Hit += OnHit;
+            SimBus.PunchThrown += OnPunch;
         }
 
         void OnDisable()
         {
             SimBus.Knockdown -= OnKnockdown;
             SimBus.GotUp -= OnGotUp;
+            SimBus.Hit -= OnHit;
+            SimBus.PunchThrown -= OnPunch;
             if (Instance == this)
             {
                 Instance = null;
@@ -112,6 +127,8 @@ namespace PoBox.Sim
             Clock = 0f;
             Count = 0;
             Downed = null;
+            Decision = false;
+            judges.Reset();
 
             if (league != null && !fixedEntrants && league.PickNext(out PolicyProfile a, out PolicyProfile b))
             {
@@ -119,9 +136,12 @@ namespace PoBox.Sim
                 Assign(blue, b);
             }
 
-            Place(true);
+            // The walk-on finds each fighter in its own corner, across the ring from the other.
+            bool walk = walkOnSeconds > 0f;
+            Place(true, walk);
             _started = true;
-            SetPhase(BoutPhase.Intro);
+            if (red != null) judges.impulseFloor = red.impulseFloor;
+            SetPhase(walk ? BoutPhase.WalkOn : BoutPhase.Intro);
             SimBus.Say($"{red.displayName} v {blue.displayName}", 2);
         }
 
@@ -130,6 +150,8 @@ namespace PoBox.Sim
         {
             BoutNumber++;
             Winner = null; Method = ""; EloDelta = 0f; Round = 1; Clock = 0f; Count = 0; Downed = null;
+            Decision = false;
+            judges.Reset();
             Place(true);
             SetPhase(BoutPhase.Intro);
         }
@@ -141,10 +163,14 @@ namespace PoBox.Sim
             f.displayName = p.displayName;
         }
 
-        void Place(bool newBout)
+        void Place(bool newBout, bool inCorners = false)
         {
-            Respawn(red, redCorner, redNeutral, newBout);
-            Respawn(blue, blueCorner, blueNeutral, newBout);
+            Respawn(red, inCorners && redStool != null ? redStool : redCorner, redNeutral, newBout);
+            Respawn(blue, inCorners && blueStool != null ? blueStool : blueCorner, blueNeutral, newBout);
+            // A body that has been told where to stand is only drawn there once the physics has stepped.
+            // The walk-on simulates nothing, so the two would be shown where the last bout left them: one
+            // step, of no length to speak of, puts them in their corners.
+            if (inCorners && Physics.simulationMode == SimulationMode.Script) Physics.Simulate(1e-4f);
         }
 
         void Respawn(Fighter f, Transform corner, Transform neutral, bool newBout)
@@ -163,14 +189,14 @@ namespace PoBox.Sim
         {
             BoutPhase from = Phase;
             Phase = next;
-            _phaseStartReal = Time.unscaledTime;
+            _phaseAge = 0f;
             _phaseTimer = 0f;
 
             bool run = next == BoutPhase.Intro || next == BoutPhase.Fight || next == BoutPhase.Count;
-            // PhysicsStepper steps the world only while this is set, which is what freezes it for a replay.
+            // PhysicsStepper steps the world only while this is set, which is what freezes it between rounds.
             SimRunning = run;
 
-            if (next == BoutPhase.Intro) RoundTimeLeft = roundSeconds;
+            if (next == BoutPhase.Intro || next == BoutPhase.WalkOn) RoundTimeLeft = roundSeconds;
             if (_started) SimBus.RaisePhase(from, next);
         }
 
@@ -179,9 +205,20 @@ namespace PoBox.Sim
             ApplyTime();
             float dt = Time.deltaTime;
             _phaseTimer += dt;
+            _phaseAge += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
 
             switch (Phase)
             {
+                case BoutPhase.WalkOn:
+                    // Real seconds: nothing is being simulated, so the game's speed has nothing to speed up.
+                    if (PhaseAge >= walkOnSeconds)
+                    {
+                        // Out of the corners to the marks they box from. The picture cuts at the same moment.
+                        Place(true);
+                        SetPhase(BoutPhase.Intro);
+                    }
+                    break;
+
                 case BoutPhase.Intro:
                     if (_phaseTimer >= introSeconds)
                     {
@@ -208,7 +245,7 @@ namespace PoBox.Sim
                     break;
 
                 case BoutPhase.RoundBreak:
-                    if (!replayBusy && PhaseAge > 1.2f || PhaseAge > breakSeconds)
+                    if (PhaseAge > breakSeconds)
                     {
                         Round++;
                         Place(false);
@@ -224,28 +261,27 @@ namespace PoBox.Sim
 
         void ApplyTime()
         {
-            float scale = userTimeScale;
-            if (Time.unscaledTime < _slowUntil) scale *= _slowScale;
+            float scale = Mathf.Max(1f, userTimeScale);
             if (!Mathf.Approximately(Time.timeScale, scale)) Time.timeScale = scale;
-            // Slow motion would otherwise run the physics at a fraction of the frame rate and stutter:
-            // articulations are not interpolated. Shrinking the step with the scale keeps one step a frame.
-            // Not for trained fighters: their policies were trained at one step length and one control
-            // rate, and a shorter step is a different body. At 200 Hz slow motion still gets a step a frame.
-            float step = fixedStepInSlowMotion ? physicsStep : physicsStep * Mathf.Clamp(scale, 0.25f, 1f);
-            if (!Mathf.Approximately(Time.fixedDeltaTime, step)) Time.fixedDeltaTime = step;
+            // The step never changes with the speed: a trained policy was taught at one step length and one
+            // control rate, and a different step is a different body.
+            if (!Mathf.Approximately(Time.fixedDeltaTime, physicsStep)) Time.fixedDeltaTime = physicsStep;
         }
 
-        /// <summary>Slows the fight for a moment. Real seconds, so the length does not depend on the scale.</summary>
-        public void SlowMo(float scale, float realSeconds)
+        void OnHit(HitEvent e)
         {
-            if (Phase != BoutPhase.Fight && Phase != BoutPhase.Count) return;
-            _slowScale = Mathf.Clamp(scale, 0.1f, 1f);
-            _slowUntil = Mathf.Max(_slowUntil, Time.unscaledTime + realSeconds);
+            if (Phase == BoutPhase.Fight && e.attacker != null) judges.OnHit(e.attacker == red ? 0 : 1, e);
+        }
+
+        void OnPunch(Fighter f, PunchType type, int hand)
+        {
+            if (Phase == BoutPhase.Fight) judges.OnThrown(f == red ? 0 : 1);
         }
 
         void OnKnockdown(Fighter f, HitEvent cause)
         {
             if (Phase != BoutPhase.Fight) return;
+            judges.OnKnockdown(f == red ? 0 : 1);
             Downed = f;
             Count = 0;
             _countTimer = 0f;
@@ -263,15 +299,15 @@ namespace PoBox.Sim
         void EndRound()
         {
             RoundTimeLeft = 0f;
+            judges.CloseRound();
             if (Round >= rounds)
             {
-                float r = Score(red), b = Score(blue);
-                if (Mathf.Abs(r - b) < 2f) Finish(null, $"DRAW {r:0}-{b:0}", false);
-                else if (r > b) Finish(red, $"POINTS {r:0}-{b:0}", false);
-                else Finish(blue, $"POINTS {b:0}-{r:0}", false);
+                Decision = true;
+                string verdict = judges.Verdict(out int winner);
+                Finish(winner == 0 ? red : winner == 1 ? blue : null, verdict, false);
                 return;
             }
-            SimBus.Say($"End of round {Round}: {Leader()}", 2);
+            SimBus.Say($"End of round {Round}. The cards: {CardsText()}", 2);
             SetPhase(BoutPhase.RoundBreak);
         }
 
@@ -279,7 +315,8 @@ namespace PoBox.Sim
         {
             Winner = winner;
             Method = method;
-            if (league != null)
+            // A boxer against a copy of itself is not a result the ladder can hold.
+            if (league != null && red.displayName != blue.displayName)
             {
                 float score = winner == null ? 0.5f : winner == red ? 1f : 0f;
                 EloDelta = league.Report(red.displayName, blue.displayName, score, knockout);
@@ -292,15 +329,11 @@ namespace PoBox.Sim
 
         public Fighter Other(Fighter f) => f == red ? blue : red;
 
-        /// <summary>What a judge would add up: damage done, with a knockdown worth a clear round.</summary>
+        /// <summary>Damage done, with a knockdown worth a clear round: one number for a fighter's bout so far.</summary>
         public static float Score(Fighter f) => f == null ? 0f : f.stats.damageDealt + 15f * f.stats.knockdowns;
 
-        string Leader()
-        {
-            float r = Score(red), b = Score(blue);
-            if (Mathf.Abs(r - b) < 2f) return "level";
-            return r > b ? $"{red.displayName} ahead {r:0}-{b:0}" : $"{blue.displayName} ahead {b:0}-{r:0}";
-        }
+        /// <summary>The three cards as they stand, red's score first: "29-28 · 28-29 · 29-28".</summary>
+        public string CardsText() => $"{judges.Card(0)} · {judges.Card(1)} · {judges.Card(2)}";
 
         public static string ClockText(float seconds)
         {

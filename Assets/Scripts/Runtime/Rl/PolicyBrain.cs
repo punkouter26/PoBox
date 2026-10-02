@@ -20,10 +20,18 @@ namespace PoBox.Rl
     /// the fighter's own heading. Anything that does not match is an input the policy has never seen, and
     /// nothing will say so except the fighter falling over.
     ///
-    /// Two things the policy was not trained for are handled around it rather than by it. While the
-    /// referee counts over the other fighter, its target is moved to its own neutral corner, so it walks
-    /// there instead of standing over a body. And when it is hurt its joint drives are weakened, which is
-    /// how a heavy punch becomes a knockdown: the policy keeps asking, the legs stop answering.
+    /// One thing the policy was not trained for is handled around it rather than by it: while the referee
+    /// counts over the other fighter it is shown a stand-in to square up to, so it does not stand over a
+    /// body. Being hurt it was trained for: its joint drives weaken with the fighter's daze, exactly as
+    /// they did in training, and the policy has learned what that costs.
+    ///
+    /// A fighter that has gone down gets up with a second policy, trained for that and nothing else
+    /// (training/envs/getup.py). It sees the same hundred numbers, with a stand-in for the opponent
+    /// standing where the real one is. When the fighter is on its feet the match policy has it back.
+    ///
+    /// Beside its actions a policy exported since 2026-10-01 gives its critic's value of the state: what
+    /// it expects the next couple of seconds to be worth to it. <see cref="Value"/> is that number; the
+    /// win-probability bar is built from the two fighters' values.
     /// </summary>
     [DefaultExecutionOrder(-50)]
     public class PolicyBrain : MonoBehaviour
@@ -32,6 +40,8 @@ namespace PoBox.Rl
         public MjcfRig rig;
         public MjcfRig opponent;
         public ModelAsset model;
+        [Tooltip("The policy that gets the fighter up off the canvas. Empty: the fighter is stood up by the referee.")]
+        public ModelAsset getUpModel;
         public BackendType backend = BackendType.CPU;
         public Vector3 ringCentre;
         public float ringHalf = 3.05f;
@@ -52,6 +62,12 @@ namespace PoBox.Rl
         public const int ObservationSize = 100;
 
         public bool HasModel => _worker != null;
+        public bool HasGetUp => _getUpWorker != null;
+        /// <summary>The fighter is down and this is the get-up policy at work.</summary>
+        public bool GettingUp { get; private set; }
+        /// <summary>The critic's value of the present state, in the trainer's reward units. Only with <see cref="HasValue"/>.</summary>
+        public float Value { get; private set; }
+        public bool HasValue { get; private set; }
         public int PolicySteps { get; private set; }
         public float InferenceMs { get; private set; }
         /// <summary>Share of joint targets that had to be clamped to the joint ranges, smoothed.</summary>
@@ -60,8 +76,8 @@ namespace PoBox.Rl
         public float[] LastAction => _action;
         int _sinceReset;
 
-        Model _model;
-        Worker _worker;
+        Model _model, _getUpRuntime;
+        Worker _worker, _getUpWorker;
         Tensor<float> _input;
         float[] _obs = new float[ObservationSize];
         float[] _action = new float[0], _lastAction = new float[0], _targets = new float[0], _jointPos = new float[0], _jointVel = new float[0];
@@ -92,6 +108,12 @@ namespace PoBox.Rl
                 _model = ModelLoader.Load(model);
                 _worker = new Worker(_model, backend);
                 _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
+                foreach (Model.Output o in _model.outputs) if (o.name == "value") HasValue = true;
+                if (getUpModel != null)
+                {
+                    _getUpRuntime = ModelLoader.Load(getUpModel);
+                    _getUpWorker = new Worker(_getUpRuntime, backend);
+                }
             }
             catch (Exception e)
             {
@@ -106,8 +128,29 @@ namespace PoBox.Rl
         {
             _input?.Dispose();
             _worker?.Dispose();
+            _getUpWorker?.Dispose();
             _input = null;
             _worker = null;
+            _getUpWorker = null;
+        }
+
+        /// <summary>Sent by the fighter when its time on the canvas is up. Answers only if there is a policy for getting up.</summary>
+        public void BeginGetUp()
+        {
+            if (_getUpWorker == null || fighter == null) return;
+            fighter.AcceptGetUp();
+            GettingUp = true;
+            Array.Clear(_lastAction, 0, _lastAction.Length);
+            Array.Clear(_action, 0, _action.Length);
+            _hasPrev = false;
+        }
+
+        /// <summary>Sent by the fighter when it is back on its feet: the match policy takes over where the get-up left the body.</summary>
+        public void EndGetUp()
+        {
+            GettingUp = false;
+            _hasPrev = false;
+            _sight = Sight.Real;
         }
 
         /// <summary>Called when the fighter is stood back up: the policy starts from a clean slate, as an episode does.</summary>
@@ -124,6 +167,7 @@ namespace PoBox.Rl
             _sight = Sight.Real;
             _sinceReset = 0;
             _hasPrev = false;
+            GettingUp = false;
             SetDriveScale(1f);
         }
 
@@ -147,12 +191,40 @@ namespace PoBox.Rl
         {
             if (!Bout.SimRunning || rig == null || rig.root == null) return;
 
-            // Hurt: the drives weaken. Out: they go slack and the body is a ragdoll.
-            float authority = fighter != null ? fighter.Authority : 1f;
-            SetDriveScale(authority < 0.25f ? 0.04f : Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(0.25f, 1f, authority)));
+            // Hurt: the drives weaken. Down: they go slack and the body is a ragdoll. The fighter keeps the number.
+            SetDriveScale(fighter != null ? fighter.DriveScale : 1f);
+
+            // While the referee counts over the other fighter this one stands in its guard, turned towards
+            // them, and waits. When they are up it is let go from that stance, with a clear head.
+            if (rig.Shadowed && fighter != null && fighter.opponent != null && opponent != null && !fighter.IsDown)
+            {
+                Vector3 towards = opponent.root.transform.position - rig.root.transform.position;
+                if (fighter.opponent.IsDown)
+                {
+                    rig.ring.Hold(rig.slot, towards);
+                    _holding = true;
+                    return;
+                }
+                if (_holding)
+                {
+                    // One last look at where they have been stood, then go.
+                    rig.ring.Hold(rig.slot, towards);
+                    _holding = false;
+                    _releaseNext = true;
+                    return;
+                }
+                if (_releaseNext)
+                {
+                    _releaseNext = false;
+                    rig.ring.Release(rig.slot);
+                    ResetBrain();
+                }
+            }
 
             _stepCounter++;
             if (_stepCounter % rig.controlDecimation != 0) return;
+            // Lying on the canvas with nothing answering, there is nothing to decide.
+            if (fighter != null && fighter.IsDown && !GettingUp) return;
             Step();
         }
 
@@ -169,9 +241,16 @@ namespace PoBox.Rl
             else if (_worker != null)
             {
                 long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+                Worker worker = GettingUp && _getUpWorker != null ? _getUpWorker : _worker;
                 _input.Upload(_obs);
-                _worker.Schedule(_input);
-                if (_worker.PeekOutput() is Tensor<float> output)
+                worker.Schedule(_input);
+                if (HasValue && worker == _worker && worker.PeekOutput("value") is Tensor<float> value)
+                {
+                    value.CompleteAllPendingOperations();
+                    float v = value.AsReadOnlySpan()[0];
+                    if (!float.IsNaN(v) && !float.IsInfinity(v)) Value = v;
+                }
+                if (worker.PeekOutput("actions") is Tensor<float> output)
                 {
                     output.CompleteAllPendingOperations();
                     ReadOnlySpan<float> span = output.AsReadOnlySpan();
@@ -202,7 +281,7 @@ namespace PoBox.Rl
 
         // ---------------------------------------------------------------- observation
 
-        bool _atCorner;
+        bool _atCorner, _holding, _releaseNext;
         enum Sight { Real, StandIn, Return }
         Sight _sight;
         Vector3 _phantom;
@@ -289,7 +368,11 @@ namespace PoBox.Rl
         {
             if (rig.Shadowed)
             {
-                rig.ring.Observe(rig.slot, _obs, _lastAction, Phantom(rig.root.transform.position, controlDt), bagStage);
+                // Getting up, the fighter is shown what it was shown when it learned to: a stand-in for the
+                // other fighter, in its guard, on the spot where the real one is standing.
+                Vector3? shown = GettingUp && opponent != null ? opponent.root.transform.position
+                                 : Phantom(rig.root.transform.position, controlDt);
+                rig.ring.Observe(rig.slot, _obs, _lastAction, shown, bagStage);
                 return;
             }
             Transform pelvis = rig.root.transform;
@@ -397,7 +480,7 @@ namespace PoBox.Rl
         /// </summary>
         void NotePunches()
         {
-            if (fighter == null || opponent == null) return;
+            if (fighter == null || opponent == null || fighter.IsDown) return;
             Vector3 head = opponent.headGeom.position;
             for (int hand = 0; hand < 2; hand++)
             {

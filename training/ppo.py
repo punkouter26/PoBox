@@ -117,6 +117,14 @@ class PPOConfig:
     # the floor inside 1.4 s -- 0 of 40 trials survived 5 s. Training therefore opened every run by
     # shaking the athlete apart, and the policy's first job was to cancel its own exploration.
     init_std: float = 0.8
+    # Two limits for a rung that refines a policy that already works, both off by default. Found needed on
+    # 2026-10-01: restarted from the match policies under a harder rule, with knockdowns (and their large
+    # one-off rewards) twenty times as frequent, the value loss rose tenfold, the advantage estimates
+    # turned to noise, and with nothing left pulling the exploration noise down the entropy bonus walked
+    # it up from 0.30 to 0.65 in forty minutes. The fighters got steadily worse. max_std holds the noise
+    # under a ceiling; lr_max stops the KL-adaptive rate from running up to where it undoes what is known.
+    max_std: float = 0.0
+    lr_max: float = 1e-2
 
 
 class PPO:
@@ -206,7 +214,7 @@ class PPO:
                     if kl > c.desired_kl * 2.0:
                         self.cfg.lr = max(1e-5, self.cfg.lr / c.lr_adapt)
                     elif kl < c.desired_kl / 2.0 and kl > 0.0:
-                        self.cfg.lr = min(1e-2, self.cfg.lr * c.lr_adapt)
+                        self.cfg.lr = min(c.lr_max, self.cfg.lr * c.lr_adapt)
                     for g in self.opt.param_groups:
                         g["lr"] = self.cfg.lr
                 ratio = torch.exp(logp - logp_old[idx])
@@ -218,6 +226,9 @@ class PPO:
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.model.parameters(), c.max_grad_norm)
                 self.opt.step()
+                if c.max_std > 0.0:
+                    with torch.no_grad():
+                        self.model.log_std.clamp_(max=float(np.log(c.max_std)))
                 stats["policy_loss"] += surr.item(); stats["value_loss"] += v_loss.item()
                 stats["entropy"] += ent.mean().item(); stats["kl"] += kl.item()
                 n_updates += 1
@@ -245,25 +256,28 @@ class PPO:
 
 
 class ExportPolicy(nn.Module):
-    """obs (1, N) raw -> normalised -> actor mean. The whole policy as one graph, for Unity's Inference Engine."""
+    """obs (1, N) raw -> normalised -> actor mean, and the critic's value of the same state. The whole
+    policy as one graph, for Unity's Inference Engine. The value is what the game's win-probability bar
+    reads: the critic's own estimate of how the next couple of seconds will go for this fighter."""
 
     def __init__(self, model: ActorCritic, rms: RunningMeanStd, clip: float):
         super().__init__()
         self.actor = model.actor
+        self.critic = model.critic
         self.register_buffer("mean", rms.mean.clone())
         self.register_buffer("std", torch.sqrt(rms.var + 1e-8).clone())
         self.clip = clip
 
-    def forward(self, obs: torch.Tensor) -> torch.Tensor:
+    def forward(self, obs: torch.Tensor):
         x = torch.clamp((obs - self.mean) / self.std, -self.clip, self.clip)
-        return self.actor(x)
+        return self.actor(x), self.critic(x)
 
 
 def export_onnx(ppo: PPO, path: str, obs_dim: int) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     wrapper = ExportPolicy(ppo.model, ppo.obs_rms, ppo.cfg.obs_clip).to("cpu").eval()
     dummy = torch.zeros(1, obs_dim)
-    torch.onnx.export(wrapper, dummy, path, input_names=["obs"], output_names=["actions"],
+    torch.onnx.export(wrapper, dummy, path, input_names=["obs"], output_names=["actions", "value"],
                       opset_version=17, dynamo=False,
-                      dynamic_axes={"obs": {0: "batch"}, "actions": {0: "batch"}})
+                      dynamic_axes={"obs": {0: "batch"}, "actions": {0: "batch"}, "value": {0: "batch"}})
     ppo.model.to(ppo.device)

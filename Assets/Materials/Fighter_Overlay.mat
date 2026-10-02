@@ -27,6 +27,7 @@ Material:
     m_Floats:
     - _Bruise: 0
     - _BruiseGain: 1
+    - _BruiseRadius: 0.09
     - _RimIntensity: 0.55
     - _RimPower: 3
     - _Stress: 0

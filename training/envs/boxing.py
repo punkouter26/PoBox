@@ -54,6 +54,13 @@ def yaw_quat(yaw: torch.Tensor) -> torch.Tensor:
     return torch.stack([torch.cos(yaw * 0.5), z, z, torch.sin(yaw * 0.5)], dim=-1)
 
 
+def quat_mul(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    aw, ax, ay, az = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
+    bw, bx, by, bz = b[..., 0], b[..., 1], b[..., 2], b[..., 3]
+    return torch.stack([aw * bw - ax * bx - ay * by - az * bz, aw * bx + ax * bw + ay * bz - az * by,
+                        aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw], -1)
+
+
 def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     """Rotate world vectors (..., 3) into the frame that has turned `yaw` about the vertical."""
     c, s = torch.cos(yaw), torch.sin(yaw)
@@ -61,15 +68,19 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
 
 
 class BoxingEnv:
-    TERMS = ["alive", "upright", "height", "face", "range", "close", "hit", "taken", "lin_z", "ang", "act",
-             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko"]
+    TERMS = ["alive", "upright", "height", "face", "range", "close", "hit", "taken", "block", "lin_z", "ang", "act",
+             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style"]
+    MODE = ""          # a subclass that is its own stage of training names it here
 
     def __init__(self, xml_path: str, num_envs: int, device: str = "cuda", seed: int = 0,
                  control_decimation: int = 4, episode_len_s: float = 12.0, action_scale: float = 0.5,
                  action_clip: float = 3.0, nconmax: int = 0, njmax: int = 0, cuda_graph: bool = True,
                  obs_noise: float = 0.0, push_vel: float = 0.0, hit_w: float = 0.6, taken_w: float = 0.5,
                  fall_penalty: float = 4.0, ko_bonus: float = 4.0, range_m: float = 0.78, hit_cap: float = 9.0,
-                 verbose: bool = False):
+                 survivor_bootstrap: bool = False, daze: bool = False, daze_tau: float = 2.5,
+                 daze_lo: float = 14.0, daze_hi: float = 36.0, daze_weak: float = 0.45, daze_body: float = 0.3,
+                 legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
+                 handover: dict = None, handover_share: float = 0.15):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -84,6 +95,25 @@ class BoxingEnv:
         self.push_vel = push_vel
         self.hit_w, self.taken_w = hit_w, taken_w
         self.fall_penalty, self.ko_bonus = fall_penalty, ko_bonus
+        # What the end of an episode means to the fighter left standing when the other one falls. Off, it
+        # is an ending like any other, and that turned out to be a reason never to put anybody down: a
+        # fighter earns about 0.8 a step just for standing in range, an episode has hundreds of steps
+        # left in it, and the knockdown that ends it early pays 4. The eight-hour match of 2026-10-01
+        # learned exactly that: 1.7 hits a second each, and 0.03 knockdowns a minute. On, the survivor's
+        # episode is cut short rather than ended (its value is carried over, as at a time-out), so a
+        # knockdown costs it nothing and the bonus is all profit.
+        self.survivor_bootstrap = survivor_bootstrap
+        # Being hit has a consequence, the one it has in the game (Sim/Fighter.cs). Every landed punch adds
+        # its closing speed to the daze of the fighter who took it (in full to the head, a share to the
+        # body), and the daze drains away with a time constant of a couple of seconds. Above daze_lo the
+        # joint drives weaken, down to (1 - daze_weak) of their strength at daze_hi; at daze_hi the legs go
+        # altogether for legs_out_s, which puts the fighter on the canvas. Without this a fighter that
+        # stands and trades for ever loses nothing by it, and that is what eight hours of training found.
+        self.daze_on = daze
+        self.daze_tau, self.daze_lo, self.daze_hi = daze_tau, daze_lo, daze_hi
+        self.daze_weak, self.daze_body, self.legs_out_s = daze_weak, daze_body, legs_out_s
+        # Paid to a fighter whose glove or forearm is in the way of a punch coming at its head.
+        self.block_w = block_w
         self.range_m = range_m
         self.hit_cap = hit_cap
         # How far a glove has to come back off the target before it can score again: a punch has a
@@ -97,7 +127,8 @@ class BoxingEnv:
         m = self.m
         self.spar = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "b_pelvis") >= 0
         self.K = 2 if self.spar else 1
-        self.mode = "spar" if self.spar else "bag"
+        self.mode = self.MODE or ("spar" if self.spar else "bag")
+        self._prepare_model(m)
         self.dt = float(m.opt.timestep) * control_decimation
         self.episode_len_s = float(episode_len_s)
         self.max_steps = int(episode_len_s / self.dt)
@@ -153,6 +184,7 @@ class BoxingEnv:
         self.g_torso = L(ids(G, "torso_geom"))
         self.g_glove = L([[mujoco.mj_name2id(m, G, p + f"glove_{s}") for s in "lr"] for p in ("a_", "b_")[: self.K]])
         self.g_foot = L([[mujoco.mj_name2id(m, G, p + f"foot_{s}_geom") for s in "lr"] for p in ("a_", "b_")[: self.K]])
+        self.g_forearm = L([[mujoco.mj_name2id(m, G, p + f"forearm_{s}_geom") for s in "lr"] for p in ("a_", "b_")[: self.K]])
         roots = ids(J, "root")
         self.root_q = [int(m.jnt_qposadr[r]) for r in roots]
         self.root_v = [int(m.jnt_dofadr[r]) for r in roots]
@@ -177,6 +209,42 @@ class BoxingEnv:
         self.r_torso_k = F([size[int(self.g_torso[k]), 0] for k in range(K)])
         self.torso_half_k = F([size[int(self.g_torso[k]), 1] for k in range(K)])
         self.foot_half = F([size[int(self.g_foot[k, 0])] for k in range(K)]).view(1, K, 1, 3)
+        self.r_forearm = F([size[int(self.g_forearm[k, 0]), 0] for k in range(K)]).view(1, K, 1, 1)
+        self.forearm_half = F([size[int(self.g_forearm[k, 0]), 1] for k in range(K)]).view(1, K, 1, 1)
+
+        # A fighter's style: how it is paid, fighter by fighter, from its own config (rig_to_mjcf.py copies
+        # it out of the rig file). Nothing here changes what a hit is or what it does to the one who takes
+        # it: two fighters in one ring are paid differently for the same exchange, and that is what makes
+        # one a brawler and the other a counter-puncher. A config with no style is the plain boxer.
+        def style(key: str, default: float) -> torch.Tensor:
+            return F([float(c.get("style", {}).get(key, default)) for c in self.cfgs])      # (K,)
+
+        self.s_hit = style("hit", 1.0)             # what landing a punch is worth, as a multiple
+        self.s_head, self.s_body = style("head", 1.5), style("body", 1.0)
+        self.s_hand = torch.stack([style("hand_l", 1.0), style("hand_r", 1.0)], -1)          # (K, 2)
+        self.s_power = style("power", 1.0)         # above 1 a hard punch is worth more than its speed; below 1, less
+        self.s_pace = style("pace_s", 0.6)         # the gap between punches that is paid in full
+        self.s_taken = style("taken", 1.0)         # what being hit costs, as a multiple
+        self.s_block = style("block_w", block_w)
+        self.s_counter = style("counter", 1.0)     # a punch landed within a second of stopping one
+        self.s_range = style("range_m", range_m)
+        self.s_press = style("press", 0.0)         # paid for walking in on the target from outside its range
+        self.s_crowd = style("crowd", 0.0)         # charged for standing closer than its range
+        self.s_energy = style("energy", 1.0)
+        # Where each fighter's head, body and gloves are from its pelvis when it stands in its guard, in
+        # its own heading: what a stand-in for it looks like to the other one (the game's MujocoRing keeps
+        # the same four offsets for the same purpose).
+        self.guard_head, self.guard_body, self.guard_glove = [], [], []
+        for k in range(K):
+            pel = int(self.pelvis[k])
+            yaw0 = float(quat_yaw(torch.tensor(d0.xquat[pel], dtype=torch.float32)))
+            c0, s0 = math.cos(yaw0), math.sin(yaw0)
+            rel0 = lambda p: [c0 * (p[0] - d0.xpos[pel][0]) + s0 * (p[1] - d0.xpos[pel][1]),
+                              -s0 * (p[0] - d0.xpos[pel][0]) + c0 * (p[1] - d0.xpos[pel][1]), p[2] - d0.xpos[pel][2]]
+            self.guard_head.append(rel0(d0.geom_xpos[int(self.g_head[k])]))
+            self.guard_body.append(rel0(d0.geom_xpos[int(self.g_torso[k])]))
+            self.guard_glove.append([rel0(d0.geom_xpos[int(self.g_glove[k, i])]) for i in range(2)])
+        self.guard_head, self.guard_body, self.guard_glove = F(self.guard_head), F(self.guard_body), F(self.guard_glove)
 
         if not self.spar:
             self.bag_q = int(m.jnt_qposadr[mujoco.mj_name2id(m, J, "bag_swing")])
@@ -192,7 +260,7 @@ class BoxingEnv:
         self.stand_height = torch.stack([key[q + 2] for q in self.root_q])   # (K,)
         self.joint_lo = F([c["lower"] for c in self.cfgs])               # (K, A)
         self.joint_hi = F([c["upper"] for c in self.cfgs])
-        self.qvel_limit = torch.tensor(self.cfg["velocity_limit"], device=device, dtype=torch.float32)
+        self.qvel_limit = F([c["velocity_limit"] for c in self.cfgs])    # (K, A): an old fighter's joints are slower
         leg = [i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
         self.leg_idx = L(leg)
 
@@ -212,19 +280,42 @@ class BoxingEnv:
         self.prev_body = z(N, K, 3)
         self.head_vel = z(N, K, 3)                                               # target head velocity, world
         self.prev_foot_xy = z(N, K, 2, 2)
+        self.daze = z(N, K)
+        self.legs_out = z(N, K)                                                  # seconds the legs stay gone
+        self.drive_scale = torch.ones(N, K, device=device)                       # share of joint drive strength left
+        self.prev_block = torch.zeros(N, K, 2, dtype=torch.bool, device=device)
+        self.since_block = torch.full((N, K), 99.0, device=device)               # seconds since this fighter stopped a punch
         self.gravity_world = torch.tensor([0.0, 0.0, -1.0], device=device)
         self._acc = {k: torch.zeros((), device=device) for k in
                      ("ret_sum", "len_sum", "fell_sum", "done_n", "steps", "upright_sum", "dist_sum",
                       "hits_head", "hits_body", "strength_sum", "strength_max", "glove_speed", "power_sum",
-                      "sat_sum", "ko_sum")}
+                      "sat_sum", "ko_sum", "daze_sum", "weak_sum")}
         self._acc.update({f"rt_{t}": torch.zeros((), device=device) for t in self.TERMS})
         # The same counts kept per fighter, for a match between two different ones.
-        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret")}
+        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head")}
+        # Carrying on after a knockdown: a share of a fighter's episodes begin in a state its own get-up
+        # policy left its body in (tools/make_handover_bank.py), not in its guard. `handover` maps a
+        # fighter's name to that file; a fighter with no file starts every episode in its guard, as before.
+        self.handover_share = handover_share
+        self.bank = [None] * self.K
+        for k, name in enumerate(self.names):
+            path = (handover or {}).get(name)
+            if path:
+                z = np.load(path)
+                self.bank[k] = {key: torch.tensor(z[key], device=device, dtype=torch.float32) for key in ("joint", "jvel", "z", "tilt", "lin", "ang")}
+        self._init_extra()
 
         self._step_graph = None
         self._fwd_graph = None
         self._capture_graphs()
         self.reset()
+
+    # ---- for a subclass that is another stage of training ---------------------------------------
+    def _prepare_model(self, m) -> None:
+        """Changes to the model before it goes to the GPU."""
+
+    def _init_extra(self) -> None:
+        """State of its own, made before the first reset."""
 
     # ---- CUDA graphs ---------------------------------------------------------------------------
     def _capture_graphs(self) -> None:
@@ -297,6 +388,20 @@ class BoxingEnv:
             q[:, rq + 3:rq + 7] = yaw_quat(yaw)
             q[:, self.jq[k]] = self.default_joint[k] + self._u(N, A, lo=-0.06, hi=0.06)
             v[:, rv:rv + 2] = self._u(N, 2, lo=-0.15, hi=0.15)
+            b = self.bank[k]
+            if b is not None:
+                pick = torch.randint(0, b["z"].shape[0], (N,), device=self.device, generator=self.rng)
+                use = self._u(N) < self.handover_share
+                u1 = use[:, None]
+                q[:, self.jq[k]] = torch.where(u1, b["joint"][pick], q[:, self.jq[k]])
+                q[:, rq + 2] = torch.where(use, b["z"][pick] + 0.002, q[:, rq + 2])
+                q[:, rq + 3:rq + 7] = torch.where(u1, quat_mul(yaw_quat(yaw), b["tilt"][pick]), q[:, rq + 3:rq + 7])
+                c, s = torch.cos(yaw), torch.sin(yaw)
+                lin = b["lin"][pick]
+                world = torch.stack([c * lin[:, 0] - s * lin[:, 1], s * lin[:, 0] + c * lin[:, 1], lin[:, 2]], -1)
+                v[:, rv:rv + 3] = torch.where(u1, world, v[:, rv:rv + 3])
+                v[:, rv + 3:rv + 6] = torch.where(u1, b["ang"][pick], v[:, rv + 3:rv + 6])
+                v[:, self.jv[k]] = torch.where(u1, b["jvel"][pick], v[:, self.jv[k]])
         return q, v
 
     def _apply_reset(self, mask: torch.Tensor) -> None:
@@ -317,6 +422,11 @@ class BoxingEnv:
         self.prev_closing = torch.where(mask[:, None, None, None], torch.zeros_like(self.prev_closing), self.prev_closing)
         self.since_hit = torch.where(m1, torch.full_like(self.since_hit, 99.0), self.since_hit)
         self.head_vel = torch.where(m3, torch.zeros_like(self.head_vel), self.head_vel)
+        self.daze = torch.where(m1, torch.zeros_like(self.daze), self.daze)
+        self.legs_out = torch.where(m1, torch.zeros_like(self.legs_out), self.legs_out)
+        self.drive_scale = torch.where(m1, torch.ones_like(self.drive_scale), self.drive_scale)
+        self.prev_block = torch.where(m3, torch.zeros_like(self.prev_block), self.prev_block)
+        self.since_block = torch.where(m1, torch.full_like(self.since_block, 99.0), self.since_block)
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of
@@ -354,9 +464,11 @@ class BoxingEnv:
         if self.spar:
             # Each fighter's target is the other one.
             g["t_head"], g["t_body"], g["t_axis"] = head.flip(1), tc.flip(1), tax.flip(1)
+            g["opp_glove"], g["opp_yaw"] = g["glove"].flip(1), g["yaw"].flip(1)
             # The sizes are the other fighter's, which in a match between two bodies are not one's own.
             shape = lambda t: t.flip(0).view(1, self.K, 1)
             g["t_r_head"], g["t_r_body"] = shape(self.r_head_k), shape(self.r_torso_k)
+            g["own_r_head"] = self.r_head_k.view(1, self.K, 1)
             g["t_half_head"], g["t_half"] = 0.0, shape(self.torso_half_k)   # a head is a ball, a body a capsule
         else:
             axis = self.geom_xmat[:, self.g_bag][:, :, 2]                  # (N,3)
@@ -391,8 +503,8 @@ class BoxingEnv:
         head_vel = self.head_vel - lin_w
         own_gloves = to_heading(g["glove"] - pos[:, :, None], yaw[:, :, None]).reshape(N, K, 6)
         if self.spar:
-            opp_gloves = to_heading(g["glove"].flip(1) - pos[:, :, None], yaw[:, :, None]).reshape(N, K, 6)
-            dyaw = yaw.flip(1) - yaw
+            opp_gloves = to_heading(g["opp_glove"] - pos[:, :, None], yaw[:, :, None]).reshape(N, K, 6)
+            dyaw = g["opp_yaw"] - yaw
             facing = torch.stack([torch.cos(dyaw), torch.sin(dyaw)], -1)
         else:
             opp_gloves = torch.zeros(N, K, 6, device=self.device)
@@ -410,13 +522,23 @@ class BoxingEnv:
         return torch.nan_to_num(obs).clamp(-100.0, 100.0).reshape(N * K, self.obs_dim)
 
     # ---- step ----------------------------------------------------------------------------------
+    def _drive(self, action: torch.Tensor) -> None:
+        """Joint targets from an action (N, K, A). A weakened fighter is asked for a point part of the way
+        from where each joint is to where the policy wants it: the spring is weaker, the damping is not.
+        The game's MujocoRing does exactly this with the same number."""
+        N, K, A = self.N, self.K, self.A
+        want = (self.default_joint + action * self.action_scale).clamp(self.joint_lo, self.joint_hi)
+        if self.daze_on or self.MODE:
+            q = self.qpos[:, self.jq]
+            want = q + self.drive_scale[..., None] * (want - q)
+        self.ctrl.copy_(want.reshape(N, K * A))
+
     def step(self, action: torch.Tensor):
         N, K, A = self.N, self.K, self.A
         action = action.clamp(-self.action_clip, self.action_clip).reshape(N, K, A)
         self.prev_action = self.last_action
         self.last_action = action
-        want = self.default_joint + action * self.action_scale
-        self.ctrl.copy_(want.clamp(self.joint_lo, self.joint_hi).reshape(N, K * A))
+        self._drive(action)
         if self.push_vel > 0.0:
             # An occasional shove, about once every four seconds per fighter.
             for rv in self.root_v:
@@ -477,9 +599,50 @@ class BoxingEnv:
         # with the square of anything quicker: five pats a second earn a third of what three punches in
         # two seconds do. (The second rehearsal settled on exactly those pats while the fall-off was linear.)
         pace = (self.since_hit / 0.6).clamp(0.0, 1.0).pow(2).clamp_min(0.05)
-        dealt = strength.sum(-1) * pace                                        # (N,K)
-        self.since_hit = torch.where(dealt > 0.0, torch.zeros_like(self.since_hit), self.since_hit + self.dt)
-        taken = dealt.flip(1) if self.spar else torch.zeros_like(dealt)
+        plain = strength.sum(-1) * pace                                        # (N,K) what they are worth to anybody
+        # The same punches as this fighter's own style prices them: which zone, which hand, how hard, how
+        # often, and whether it has just stopped one. With no style this is `plain` exactly.
+        k1 = lambda t: t.view(1, K, 1)
+        worth = landed.float() * arriving * (arriving / 6.0).clamp_min(0.1).pow(k1(self.s_power) - 1.0) \
+            * torch.where(zone == 0, k1(self.s_head), k1(self.s_body)) * self.s_hand.view(1, K, 2)
+        own_pace = (self.since_hit / self.s_pace).clamp(0.0, 1.0).pow(2).clamp_min(0.05)
+        dealt = worth.sum(-1) * own_pace * torch.where(self.since_block < 1.0, self.s_counter, torch.ones_like(self.s_counter))
+        self.since_hit = torch.where(plain > 0.0, torch.zeros_like(self.since_hit), self.since_hit + self.dt)
+        taken = plain.flip(1) if self.spar else torch.zeros_like(plain)
+
+        # ---- what being hit does to a fighter, and what stopping a punch is worth
+        legs_went = torch.zeros(N, K, dtype=torch.bool, device=self.device)
+        blocked = torch.zeros(N, K, 2, dtype=torch.bool, device=self.device)
+        stopped = torch.zeros(N, K, device=self.device)
+        if self.spar:
+            if self.daze_on:
+                received = (landed.float() * arriving * torch.where(zone == 0, 1.0, self.daze_body)).sum(-1).flip(1)
+                self.daze = self.daze * math.exp(-self.dt / self.daze_tau) + received
+                legs_went = (self.daze >= self.daze_hi) & (self.legs_out <= 0.0)
+                self.legs_out = torch.where(legs_went, torch.full_like(self.legs_out, self.legs_out_s),
+                                            (self.legs_out - self.dt).clamp_min(0.0))
+                self.daze = torch.where(legs_went, torch.zeros_like(self.daze), self.daze)
+                weak = 1.0 - self.daze_weak * ((self.daze - self.daze_lo) / (self.daze_hi - self.daze_lo)).clamp(0.0, 1.0)
+                self.drive_scale = torch.where(self.legs_out > 0.0, torch.full_like(weak, 0.04), weak)
+            # A block: the other fighter's glove, coming at this one's head at punching speed, is met by a
+            # glove or a forearm before it gets there.
+            theirs = glove.flip(1)                                             # (N,K,2,3) the gloves coming at me
+            coming = speed[..., 0].flip(1)                                     # their closing speed on my head
+            near_head = (d_head.flip(1) - g["own_r_head"]) < 0.45
+            to_glove = (theirs[:, :, :, None] - glove[:, :, None]).norm(dim=-1).min(-1).values       # (N,K,2)
+            fc = self.geom_xpos[:, self.g_forearm]                             # (N,K,2,3) my forearms
+            fax = self.geom_xmat[:, self.g_forearm][..., :, 2]
+            off = theirs[:, :, :, None] - fc[:, :, None]                       # (N,K,their glove,my forearm,3)
+            along = (off * fax[:, :, None]).sum(-1)
+            along = torch.maximum(torch.minimum(along, self.forearm_half), -self.forearm_half)
+            to_arm = (off - fax[:, :, None] * along[..., None]).norm(dim=-1).min(-1).values
+            r_their = self.r_glove.flip(1)
+            touching = (to_glove < r_their + self.r_glove + 0.03) | (to_arm < r_their + self.r_forearm[..., 0] + 0.03)
+            blocked = touching & (coming > 2.0) & near_head
+            stopped = (coming * blocked.float()).sum(-1)
+        new_block = blocked & ~self.prev_block
+        self.prev_block = blocked
+        self.since_block = torch.where(new_block.any(-1), torch.zeros_like(self.since_block), self.since_block + self.dt)
 
         # ---- where the fighter is relative to its target
         to_t = g["t_body"] - pos
@@ -504,15 +667,20 @@ class BoxingEnv:
         r["upright"] = 0.25 * upright.clamp_min(0.0)
         r["height"] = -1.0 * (self.stand_height - 0.08 - pos[..., 2]).clamp_min(0.0)
         r["face"] = 0.25 * face
-        r["range"] = 0.3 * torch.exp(-((dist - self.range_m) / 0.35) ** 2)
+        r["range"] = 0.3 * torch.exp(-((dist - self.s_range) / 0.35) ** 2)
         r["close"] = 0.03 * reaching
-        r["hit"] = self.hit_w * dealt
-        r["taken"] = -self.taken_w * self.hit_w * taken
+        r["hit"] = self.hit_w * self.s_hit * dealt
+        r["taken"] = -self.taken_w * self.s_taken * self.hit_w * taken
+        r["block"] = self.s_block * stopped
+        # Footwork that belongs to a style: one fighter is paid to walk in, another charged for being crowded.
+        toward = (lin_w[..., :2] * to_t[..., :2]).sum(-1) / dist.clamp_min(0.1)
+        r["style"] = self.s_press * toward.clamp(-1.0, 1.0) * (dist > self.s_range).float() \
+            - self.s_crowd * (self.s_range - 0.12 - dist).clamp_min(0.0)
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * (action ** 2).sum(-1)
         r["rate"] = -0.01 * ((action - self.prev_action) ** 2).sum(-1)
-        r["energy"] = -2.5e-4 * (tau * jv).abs().clamp_max(2000.0).sum(-1)
+        r["energy"] = -2.5e-4 * self.s_energy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)
         r["limit"] = -0.5 * ((self.joint_lo + 0.05 - jp).clamp_min(0.0) + (jp - self.joint_hi + 0.05).clamp_min(0.0)).sum(-1)
@@ -561,8 +729,13 @@ class BoxingEnv:
         a["power_sum"] += (tau * jv).abs().sum(-1).clamp_max(20000.0).mean()
         a["sat_sum"] += (action.abs() >= 0.99 * self.action_clip).float().mean()
         a["ko_sum"] += (r["ko"] >= self.ko_bonus).float().sum()
+        a["daze_sum"] += self.daze.mean()
+        a["weak_sum"] += (self.drive_scale < 0.999).float().mean()
         ka = self._kacc
+        ka["blocks"] += new_block.float().sum((0, 2))
+        ka["legs"] += legs_went.float().sum(0)
         ka["hits"] += landed.float().sum((0, 2))
+        ka["head"] += to_the_head.float().sum((0, 2))
         ka["speed"] += (landed.float() * arriving).sum((0, 2))
         ka["fell"] += (fell.float() * df[:, None]).sum(0)
         ka["ko"] += (r["ko"] >= self.ko_bonus).float().sum(0)
@@ -576,7 +749,10 @@ class BoxingEnv:
         self._reseed_trackers(done)
         self._obs = self._observe(self._geometry())
         expand = lambda x: x[:, None].expand(N, K).reshape(N * K)
-        return self._obs, reward.reshape(N * K), expand(done), expand(timeout & ~any_fell)
+        cut_short = expand(timeout & ~any_fell)
+        if self.spar and self.survivor_bootstrap:
+            cut_short = cut_short | (any_fell[:, None] & ~fell).reshape(N * K)
+        return self._obs, reward.reshape(N * K), expand(done), cut_short
 
     def get_stats(self) -> Dict[str, float]:
         a = {k: v.item() for k, v in self._acc.items()}
@@ -598,6 +774,12 @@ class BoxingEnv:
             "power": a["power_sum"] / s,
             "act_sat": a["sat_sum"] / s,
             "knockdowns_per_min": a["ko_sum"] / (self.N * max(1.0, self.K - 1)) / (s * self.dt) * 60.0,
+            # Punches stopped on a glove or a forearm, per fighter per second; how dazed a fighter is on
+            # average; and the share of the time a fighter's drives are weakened by it.
+            "blocks_per_s": float(self._kacc["blocks"].sum().item()) / (s * self.dt * self.N * self.K),
+            "legs_gone_per_min": float(self._kacc["legs"].sum().item()) / (s * self.dt * self.N * self.K) * 60.0,
+            "daze": a["daze_sum"] / s,
+            "weak_share": a["weak_sum"] / s,
         }
         out.update({f"rt_{t}": a[f"rt_{t}"] / s for t in self.TERMS})
         if self.hetero:
@@ -606,9 +788,12 @@ class BoxingEnv:
             for i, name in enumerate(self.names):
                 out[f"{name}_hits_per_s"] = ka["hits"][i] / seconds
                 out[f"{name}_hit_speed"] = ka["speed"][i] / max(1.0, ka["hits"][i])
+                out[f"{name}_head_share"] = ka["head"][i] / max(1.0, ka["hits"][i])
                 # Of the episodes that ended, the share that ended with this fighter on the floor.
                 out[f"{name}_falls"] = ka["fell"][i] / n
                 out[f"{name}_knockdowns_per_min"] = ka["ko"][i] / seconds * 60.0
+                out[f"{name}_blocks_per_s"] = ka["blocks"][i] / seconds
+                out[f"{name}_legs_gone_per_min"] = ka["legs"][i] / seconds * 60.0
                 out[f"{name}_reward_per_step"] = ka["ret"][i] / (s * self.N)
         for v in list(self._acc.values()) + list(self._kacc.values()):
             v.zero_()

@@ -9,7 +9,14 @@
         bottom-left   DEBUG
         bottom-right  the version
 
-    Between them, top to bottom: the scoreboard, the picture, the dock (commentary line and one graph).
+    Between them, top to bottom: the scoreboard, the picture, the dock (one graph).
+
+    The scoreboard is three rows. The names sit on the health bars with the clock between them; under
+    that the win-probability bar; under that three chips, each a pair of numbers either side of an icon
+    (landed, hardest hit, and a third that cycles on a tap). In the picture's top corners are two small
+    pods, one a fighter: where it has been hit, and where its balance is. The commentary is a caption
+    over the bottom of the picture that goes away when it has nothing to say.
+
     The menu, the debug panel and the results card are absolutely positioned and open over that; nothing
     here scrolls and nothing pushes anything else off the screen. HudView.cs fills in the numbers.
 
@@ -34,28 +41,23 @@
 
             <ui:VisualElement name="board" class="board" picking-mode="Ignore">
                 <ui:VisualElement class="board-row" picking-mode="Ignore">
-                    <ui:VisualElement class="name name--red" picking-mode="Ignore">
-                        <ui:Label name="red-name" class="name-text" text="RED" picking-mode="Ignore" />
-                        <ui:Label name="red-badge" class="badge" text="SCRIPTED" picking-mode="Ignore" />
+                    <ui:VisualElement class="plate plate--red" picking-mode="Ignore">
+                        <ui:VisualElement name="red-hp" class="plate-fill plate-fill--red" picking-mode="Ignore" />
+                        <ui:Label name="red-name" class="plate-name" text="RED" picking-mode="Ignore" />
+                        <ui:Label name="red-badge" class="plate-rank" text="#1" picking-mode="Ignore" />
+                        <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                        <ui:Label name="red-hp-text" class="plate-hp" text="100" picking-mode="Ignore" />
                     </ui:VisualElement>
                     <ui:VisualElement class="clock" picking-mode="Ignore">
                         <ui:Label name="round" class="clock-round" text="R1" picking-mode="Ignore" />
                         <ui:Label name="clock" class="clock-time" text="0:45" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <ui:VisualElement class="name name--blue" picking-mode="Ignore">
-                        <ui:Label name="blue-name" class="name-text" text="BLUE" picking-mode="Ignore" />
-                        <ui:Label name="blue-badge" class="badge" text="SCRIPTED" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                </ui:VisualElement>
-
-                <ui:VisualElement class="bars" picking-mode="Ignore">
-                    <ui:VisualElement class="hp hp--red" picking-mode="Ignore">
-                        <ui:VisualElement name="red-hp" class="hp-fill hp-fill--red" picking-mode="Ignore" />
-                        <ui:Label name="red-hp-text" class="hp-text hp-text--l" text="100" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="hp hp--blue" picking-mode="Ignore">
-                        <ui:VisualElement name="blue-hp" class="hp-fill hp-fill--blue" picking-mode="Ignore" />
-                        <ui:Label name="blue-hp-text" class="hp-text hp-text--r" text="100" picking-mode="Ignore" />
+                    <ui:VisualElement class="plate plate--blue" picking-mode="Ignore">
+                        <ui:VisualElement name="blue-hp" class="plate-fill plate-fill--blue" picking-mode="Ignore" />
+                        <ui:Label name="blue-name" class="plate-name" text="BLUE" picking-mode="Ignore" />
+                        <ui:Label name="blue-badge" class="plate-rank" text="#2" picking-mode="Ignore" />
+                        <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                        <ui:Label name="blue-hp-text" class="plate-hp" text="100" picking-mode="Ignore" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 
@@ -66,39 +68,48 @@
                     <ui:Label name="momentum-blue" class="momentum-text momentum-text--r" text="50%" picking-mode="Ignore" />
                 </ui:VisualElement>
 
-                <ui:VisualElement name="tape" class="tape" picking-mode="Ignore">
-                    <ui:VisualElement class="tape-row" picking-mode="Ignore">
-                        <ui:Label name="landed-red" class="tape-val tape-val--l" text="0/0" picking-mode="Ignore" />
-                        <ui:VisualElement class="tape-key" picking-mode="Ignore">
-                            <PoBox.UI.Glyph kind="Glove" class="glyph" />
-                            <ui:Label class="tape-code" text="LANDED" picking-mode="Ignore" />
-                        </ui:VisualElement>
-                        <ui:Label name="landed-blue" class="tape-val tape-val--r" text="0/0" picking-mode="Ignore" />
+                <ui:VisualElement name="tape" class="chips" picking-mode="Ignore">
+                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                        <ui:Label name="landed-red" class="stat-val stat-val--l" text="0/0" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph kind="Glove" class="glyph" />
+                        <ui:Label name="landed-blue" class="stat-val stat-val--r" text="0/0" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <ui:VisualElement class="tape-row" picking-mode="Ignore">
-                        <ui:Label name="peak-red" class="tape-val tape-val--l" text="0 N·s" picking-mode="Ignore" />
-                        <ui:VisualElement class="tape-key" picking-mode="Ignore">
-                            <PoBox.UI.Glyph kind="Burst" class="glyph" />
-                            <ui:Label class="tape-code" text="PEAK" picking-mode="Ignore" />
-                        </ui:VisualElement>
-                        <ui:Label name="peak-blue" class="tape-val tape-val--r" text="0 N·s" picking-mode="Ignore" />
+                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                        <ui:Label name="peak-red" class="stat-val stat-val--l" text="0 N·s" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph kind="Burst" class="glyph" />
+                        <ui:Label name="peak-blue" class="stat-val stat-val--r" text="0 N·s" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <ui:Button name="cycle" class="tape-row tape-row--tap">
-                        <ui:Label name="cycle-red" class="tape-val tape-val--l" text="0.0 kJ" picking-mode="Ignore" />
-                        <ui:VisualElement class="tape-key tape-key--tap" picking-mode="Ignore">
-                            <PoBox.UI.Glyph name="cycle-glyph" kind="Bolt" class="glyph" />
-                            <ui:Label name="cycle-code" class="tape-code" text="ENERGY" picking-mode="Ignore" />
-                        </ui:VisualElement>
-                        <ui:Label name="cycle-blue" class="tape-val tape-val--r" text="0.0 kJ" picking-mode="Ignore" />
+                    <ui:Button name="cycle" class="stat stat--tap">
+                        <ui:Label name="cycle-red" class="stat-val stat-val--l" text="0.0 kJ" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph name="cycle-glyph" kind="Bolt" class="glyph glyph--tap" />
+                        <ui:Label name="cycle-blue" class="stat-val stat-val--r" text="0.0 kJ" picking-mode="Ignore" />
                     </ui:Button>
                 </ui:VisualElement>
             </ui:VisualElement>
 
+            <ui:VisualElement name="pod-red" class="pod pod--red" picking-mode="Ignore">
+                <PoBox.UI.HitMap name="hit-red" class="hitmap" />
+                <PoBox.UI.BalanceGauge name="bal-red" class="balance" />
+            </ui:VisualElement>
+            <ui:VisualElement name="pod-blue" class="pod pod--blue" picking-mode="Ignore">
+                <PoBox.UI.HitMap name="hit-blue" class="hitmap" mirror="true" />
+                <PoBox.UI.BalanceGauge name="bal-blue" class="balance" />
+            </ui:VisualElement>
+
             <ui:Label name="banner" class="banner hidden" text="ROUND 1" picking-mode="Ignore" />
-            <ui:Label name="replay-tag" class="replay-tag hidden" text="REPLAY" picking-mode="Ignore" />
+
+            <ui:VisualElement name="walkon" class="walkon hidden" picking-mode="Ignore">
+                <ui:VisualElement name="walkon-bar" class="walkon-bar" picking-mode="Ignore" />
+                <ui:VisualElement class="walkon-text" picking-mode="Ignore">
+                    <ui:Label name="walkon-corner" class="walkon-corner" text="RED CORNER" picking-mode="Ignore" />
+                    <ui:Label name="walkon-name" class="walkon-name" text="RED" picking-mode="Ignore" />
+                    <ui:Label name="walkon-detail" class="walkon-detail" text="" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:Label name="ticker" class="ticker" text="" picking-mode="Ignore" />
 
             <ui:VisualElement name="dock" class="dock" picking-mode="Ignore">
-                <ui:Label name="ticker" class="ticker" text="" picking-mode="Ignore" />
                 <ui:VisualElement name="strip" class="strip">
                     <ui:VisualElement class="strip-head" picking-mode="Ignore">
                         <ui:Label name="strip-title" class="strip-title" text="EXCITEMENT" picking-mode="Ignore" />
@@ -117,24 +128,21 @@
                     <ui:VisualElement class="icon icon--trophy res-icon" picking-mode="Ignore" />
                     <ui:VisualElement class="res-title" picking-mode="Ignore">
                         <ui:Label name="res-winner" class="res-winner" text="RED WINS" picking-mode="Ignore" />
-                        <ui:Label name="res-method" class="res-method" text="POINTS 0-0" picking-mode="Ignore" />
+                        <ui:Label name="res-method" class="res-method" text="UNANIMOUS DECISION" picking-mode="Ignore" />
                     </ui:VisualElement>
                     <ui:Label name="res-elo" class="badge badge--big" text="+0 ELO" picking-mode="Ignore" />
                 </ui:VisualElement>
-                <ui:VisualElement name="res-tape" class="tape tape--card" picking-mode="Ignore" />
+                <ui:VisualElement name="res-judges" class="judges" picking-mode="Ignore" />
+                <ui:VisualElement class="res-mid" picking-mode="Ignore">
+                    <PoBox.UI.HitMap name="res-hit-red" class="res-hitmap" />
+                    <ui:VisualElement name="res-tape" class="tape tape--card" picking-mode="Ignore" />
+                    <PoBox.UI.HitMap name="res-hit-blue" class="res-hitmap" mirror="true" />
+                </ui:VisualElement>
                 <PoBox.UI.Sparkline name="res-graph" class="res-graph" />
-                <ui:Label name="res-caption" class="res-caption" text="" picking-mode="Ignore" />
-                <PoBox.UI.Scrubber name="res-scrub" />
                 <ui:VisualElement class="res-actions" picking-mode="Ignore">
-                    <ui:Button name="res-prev" class="btn btn--icon">
-                        <ui:VisualElement class="icon icon--prev" picking-mode="Ignore" />
-                    </ui:Button>
-                    <ui:Button name="res-play" class="btn btn--tool">
-                        <ui:VisualElement class="icon icon--video" picking-mode="Ignore" />
-                        <ui:Label name="res-play-text" class="btn-word" text="PAUSE" picking-mode="Ignore" />
-                    </ui:Button>
-                    <ui:Button name="res-next-clip" class="btn btn--icon">
-                        <ui:VisualElement class="icon icon--next" picking-mode="Ignore" />
+                    <ui:Button name="res-boxers" class="btn btn--tool">
+                        <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
+                        <ui:Label class="btn-word" text="BOXERS" picking-mode="Ignore" />
                     </ui:Button>
                     <ui:Button name="res-next" class="btn btn--primary res-go" text="NEXT BOUT" />
                 </ui:VisualElement>
@@ -167,10 +175,14 @@
                     </ui:VisualElement>
                     <ui:Label class="label-micro page-label" text="SPEED" picking-mode="Ignore" />
                     <ui:VisualElement class="grid" picking-mode="Ignore">
-                        <ui:Button name="spd-quarter" class="btn grid-4" text="0.25x" />
-                        <ui:Button name="spd-half" class="btn grid-4" text="0.5x" />
-                        <ui:Button name="spd-one" class="btn grid-4" text="1x" />
-                        <ui:Button name="spd-two" class="btn grid-4" text="2x" />
+                        <ui:Button name="spd-one" class="btn grid-2" text="1x" />
+                        <ui:Button name="spd-two" class="btn grid-2" text="2x" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="grid grid--last" picking-mode="Ignore">
+                        <ui:Button name="m-boxers" class="btn btn--tool grid-2">
+                            <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
+                            <ui:Label class="btn-word" text="CHANGE BOXERS" picking-mode="Ignore" />
+                        </ui:Button>
                     </ui:VisualElement>
                 </ui:VisualElement>
 
@@ -179,10 +191,6 @@
                 <ui:VisualElement name="page-settings" class="page hidden" picking-mode="Ignore">
                     <ui:VisualElement class="grid" picking-mode="Ignore">
                         <ui:Button name="s-sound" class="btn grid-2" text="SOUND ON" />
-                        <ui:Button name="s-heat" class="btn grid-2" text="HEAT MAP ON" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="grid" picking-mode="Ignore">
-                        <ui:Button name="s-slow" class="btn grid-2" text="SLOW-MO ON" />
                         <ui:Button name="s-quality" class="btn grid-2" text="QUALITY PC" />
                     </ui:VisualElement>
                     <ui:VisualElement class="grid" picking-mode="Ignore">

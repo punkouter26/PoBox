@@ -149,22 +149,22 @@
         </body>
       </body>
     </body>
-      <geom name="rope_n_0" type="capsule" fromto="-3.05 3.05 0.45 3.05 3.05 0.45" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_s_0" type="capsule" fromto="-3.05 -3.05 0.45 3.05 -3.05 0.45" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_e_0" type="capsule" fromto="3.05 -3.05 0.45 3.05 3.05 0.45" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_w_0" type="capsule" fromto="-3.05 -3.05 0.45 -3.05 3.05 0.45" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_n_1" type="capsule" fromto="-3.05 3.05 0.75 3.05 3.05 0.75" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_s_1" type="capsule" fromto="-3.05 -3.05 0.75 3.05 -3.05 0.75" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_e_1" type="capsule" fromto="3.05 -3.05 0.75 3.05 3.05 0.75" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_w_1" type="capsule" fromto="-3.05 -3.05 0.75 -3.05 3.05 0.75" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_n_2" type="capsule" fromto="-3.05 3.05 1.05 3.05 3.05 1.05" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_s_2" type="capsule" fromto="-3.05 -3.05 1.05 3.05 -3.05 1.05" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_e_2" type="capsule" fromto="3.05 -3.05 1.05 3.05 3.05 1.05" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_w_2" type="capsule" fromto="-3.05 -3.05 1.05 -3.05 3.05 1.05" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_n_3" type="capsule" fromto="-3.05 3.05 1.35 3.05 3.05 1.35" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_s_3" type="capsule" fromto="-3.05 -3.05 1.35 3.05 -3.05 1.35" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_e_3" type="capsule" fromto="3.05 -3.05 1.35 3.05 3.05 1.35" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
-    <geom name="rope_w_3" type="capsule" fromto="-3.05 -3.05 1.35 -3.05 3.05 1.35" size="0.03" solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+      <geom name="rope_n_0" type="capsule" fromto="-3.05 3.05 0.45 3.05 3.05 0.45" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_s_0" type="capsule" fromto="-3.05 -3.05 0.45 3.05 -3.05 0.45" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_e_0" type="capsule" fromto="3.05 -3.05 0.45 3.05 3.05 0.45" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_w_0" type="capsule" fromto="-3.05 -3.05 0.45 -3.05 3.05 0.45" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_n_1" type="capsule" fromto="-3.05 3.05 0.75 3.05 3.05 0.75" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_s_1" type="capsule" fromto="-3.05 -3.05 0.75 3.05 -3.05 0.75" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_e_1" type="capsule" fromto="3.05 -3.05 0.75 3.05 3.05 0.75" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_w_1" type="capsule" fromto="-3.05 -3.05 0.75 -3.05 3.05 0.75" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_n_2" type="capsule" fromto="-3.05 3.05 1.05 3.05 3.05 1.05" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_s_2" type="capsule" fromto="-3.05 -3.05 1.05 3.05 -3.05 1.05" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_e_2" type="capsule" fromto="3.05 -3.05 1.05 3.05 3.05 1.05" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_w_2" type="capsule" fromto="-3.05 -3.05 1.05 -3.05 3.05 1.05" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_n_3" type="capsule" fromto="-3.05 3.05 1.35 3.05 3.05 1.35" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_s_3" type="capsule" fromto="-3.05 -3.05 1.35 3.05 -3.05 1.35" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_e_3" type="capsule" fromto="3.05 -3.05 1.35 3.05 3.05 1.35" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
+    <geom name="rope_w_3" type="capsule" fromto="-3.05 -3.05 1.35 -3.05 3.05 1.35" size="0.03" solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>
     <geom name="post_ne" type="capsule" fromto="3.05 3.05 0 3.05 3.05 1.45" size="0.07" contype="3" conaffinity="3" rgba="0.3 0.3 0.35 1"/>
     <geom name="post_nw" type="capsule" fromto="-3.05 3.05 0 -3.05 3.05 1.45" size="0.07" contype="3" conaffinity="3" rgba="0.3 0.3 0.35 1"/>
     <geom name="post_se" type="capsule" fromto="3.05 -3.05 0 3.05 -3.05 1.45" size="0.07" contype="3" conaffinity="3" rgba="0.3 0.3 0.35 1"/>

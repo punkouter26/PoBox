@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: the defend rung</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:17px; margin:22px 0 6px; }
+  p { margin:10px 0; max-width:74ch; }
+  a { color:#8ff0c8; }
+  .dim { color:var(--dim); }
+  .chart { margin:16px 0; }
+  .chart img { display:block; width:100%; max-width:1000px; height:auto; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin:14px 0; }
+  .level { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .level h4 { margin:0 0 6px; font-size:13px; letter-spacing:.08em; color:var(--warn); }
+  .level p { margin:0; }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:80ch; }
+  .verdict.bad { border-left-color:var(--red); }
+  .verdict.flat { border-left-color:var(--warn); }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:980px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: the defend rung</h1>
+  <p class="dim">1 October 2026 · 20:59 to 23:08 · two runs from the eight-hour match's final policies, compared with it · charts are screenshots of TensorBoard</p>
+
+  <p><b>In short.</b> The eight-hour match left Matt and Zombie standing in range and trading a punch and
+     a half a second each, with no defence and no knockdowns, because nothing in their world punished
+     being hit. This rung gave being hit a consequence, the <i>daze rule</i>: punches to the head add up,
+     a dazed fighter's legs weaken, and enough of it takes the legs away. It also pays a fighter for
+     stopping a punch on its gloves. The first attempt went well for eleven minutes and then fell apart;
+     the second, with the cause of that removed, ran its 2,400 iterations in 88 minutes and ended far better than it began, with one thing undone: Zombie learned to stop punches and Matt did not.</p>
+
+  <table>
+    <tr><th>Run</th><th>When</th><th>Length</th><th>What it was</th><th>Outcome</th></tr>
+    <tr><td><code>match</code></td><td>09:48 to 17:39</td><td>381 min</td><td>the eight-hour match: no consequence for being hit</td><td>in the game until tonight</td></tr>
+    <tr><td><code>defend_a</code></td><td>20:59 to 21:39</td><td>39 min</td><td>the daze rule and the block payment, started as earlier follow-ups were: exploration noise reset to 0.30, entropy bonus on, knockdown bonus 10</td><td><b>rejected</b>: good to iteration 10,500, then the noise ran away</td></tr>
+    <tr><td><code>defend</code></td><td>21:40 to 23:08</td><td>88 min</td><td>the same rule, from <code>defend_a</code>'s iteration 10,500, with the noise held under 0.32, no entropy bonus, a gentle learning rate, knockdown bonus 6</td><td><b>accepted</b>: in the game since 23:10</td></tr>
+  </table>
+
+  <h2>The numbers, start and end</h2>
+  <table>
+    <tr><th></th><th class="num">match, under the new rule<br><span class="dim">(where both runs began)</span></th><th class="num">defend_a at its end<br><span class="dim">(rejected)</span></th><th class="num">defend at its end</th></tr>
+    <tr><td>Episodes that ended with a fighter on the canvas</td><td class="num">58%</td><td class="num">27%</td><td class="num">7%</td></tr>
+    <tr><td>&nbsp;&nbsp;Matt down</td><td class="num">40%</td><td class="num">14%</td><td class="num">7%</td></tr>
+    <tr><td>&nbsp;&nbsp;Zombie down</td><td class="num">19%</td><td class="num">13%</td><td class="num">under 1%</td></tr>
+    <tr><td>Knockdowns a minute</td><td class="num">2.98</td><td class="num">0.96</td><td class="num">0.31</td></tr>
+    <tr><td>Matt's legs taken by the daze, a minute (Zombie's: never, in any column)</td><td class="num">0.01</td><td class="num">0.75</td><td class="num">1.26</td></tr>
+    <tr><td>Punches landed a second, each fighter</td><td class="num">0.71</td><td class="num">1.04</td><td class="num">1.34</td></tr>
+    <tr><td>Speed of a landed punch</td><td class="num">6.6 m/s</td><td class="num">7.0 m/s</td><td class="num">8.3 m/s</td></tr>
+    <tr><td>&nbsp;&nbsp;Matt's</td><td class="num">4.4 m/s</td><td class="num">6.0 m/s</td><td class="num">8.0 m/s</td></tr>
+    <tr><td>Punches stopped on the guard a second, each fighter</td><td class="num">0.20</td><td class="num">0.44</td><td class="num">0.76</td></tr>
+    <tr><td>&nbsp;&nbsp;Zombie</td><td class="num">0.27</td><td class="num">0.71</td><td class="num">1.50</td></tr>
+    <tr><td>&nbsp;&nbsp;Matt</td><td class="num">0.14</td><td class="num">0.17</td><td class="num">0.01</td></tr>
+    <tr><td>Exploration noise</td><td class="num">0.30</td><td class="num">0.65</td><td class="num">0.16</td></tr>
+    <tr><td>Mechanical power, each fighter</td><td class="num">1,290 W</td><td class="num">1,800 W</td><td class="num">690 W</td></tr>
+    <tr><td>Reward a step, Matt / Zombie</td><td class="num">+0.21 / +0.28</td><td class="num">+0.30 / -0.35</td><td class="num">+0.69 / +0.78</td></tr>
+    <tr><td>Return an episode</td><td class="num">30</td><td class="num">-14</td><td class="num">430</td></tr>
+  </table>
+  <p class="dim">Each figure is an average over the training worlds (2,048 rings) with the exploration noise on, as the trainer logs it.
+     "Down" is the share of twelve-second episodes that ended with that fighter on the canvas.</p>
+
+  <h2>Chart 1: punches stopped on the guard</h2>
+  <div class="chart"><img src="img/31_tb_blocks.png" alt="TensorBoard: blocks per second for defend_a and defend"></div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>When someone tries to bop you, you can put your hands up. The line going up means the boxers put their hands up more and more.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>This counts how many punches a second a boxer catches on its gloves or arms instead of on its head. Before tonight nobody bothered, because getting hit cost nothing. Now it costs something, so they started doing it, and the line climbs.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p><code>env/blocks_per_s</code>: per fighter per second, the number of times an opponent's glove closing on the head at over 2 m/s, within 45 cm of it, is met by the fighter's own glove or forearm. The eight-hour match has no curve because the measure did not exist. In <code>defend_a</code> it rose from 0.20 to 0.45 by iteration 10,500; <code>defend</code> took it from there to 0.76. That average hides the split: Zombie 1.50 a second, Matt 0.01.</p></div>
+  </div>
+
+  <h2>Chart 2: knockdowns</h2>
+  <div class="chart"><img src="img/32_tb_knockdowns.png" alt="TensorBoard: knockdowns per minute for match, defend_a and defend"></div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>This is how often a boxer gets bopped so much it falls on its bottom. Before: never. Now: sometimes.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>A knockdown is when one boxer hits the other and the other goes down straight afterwards. In the long run this morning that almost never happened, so the line lies flat on the floor. With the new rule a boxer that takes a lot of punches to the head gets wobbly, and wobbly boxers fall, so the line jumps up.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p><code>env/knockdowns_per_min</code>: falls within a second and a half of a punch from the other fighter, per ring per minute. The match sat at 0.03 to 0.04. Under the new rule the same policies began at 3.0; <code>defend_a</code> had that at 0.40 by iteration 10,500 and let it back up to 0.96; <code>defend</code> ended at 0.31, about eight times the match's rate and a tenth of where the rule started them.</p></div>
+  </div>
+
+  <h2>Chart 3: exploration noise, and why the first attempt failed</h2>
+  <div class="chart"><img src="img/33_tb_noise.png" alt="TensorBoard: action standard deviation for both fighters in defend_a and defend"></div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>To learn, the boxers wiggle a bit to try new things. One line shows them wiggling more and more until they could hardly box. The other shows them wiggling less and less, which is right.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>The boxers learn by trying things slightly differently each time, like shaking a little on purpose. A little shaking helps you find better moves. In the first try the shaking kept growing, and a boxer that shakes that much punches badly and wastes its strength. In the second try we put a limit on the shaking, and it settled down by itself.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p><code>ppo_&lt;fighter&gt;/action_std</code>: the standard deviation of the Gaussian policy. In <code>defend_a</code> it rose from 0.30 to 0.65 in forty minutes while the charges for power and jerky actions doubled and Zombie's reward per step went from +0.63 to -0.37. With knockdowns twenty times as frequent, and each worth a one-off bonus of 10, the value loss was about ten times the match's; with advantage estimates that noisy the policy gradient stopped pulling the noise down and the entropy bonus was the only steady force on it. <code>defend</code> has no entropy bonus, a ceiling of 0.32 on the noise and of 5e-4 on the learning rate, and a bonus of 6: the noise went from 0.29 to 0.16 by itself, power from 980 W to 690 W, and both fighters' reward a step rose (Matt 0.55 to 0.69, Zombie 0.55 to 0.78).</p></div>
+  </div>
+
+  <h2>Better or worse than before, and why</h2>
+  <div class="verdict">
+    <b>Better than where it started, and better than the first attempt.</b> Under the new rule the match
+    policies went down in 58% of episodes; at the end of <code>defend</code> 7%. Knockdowns fell from 3.0 a
+    minute to 0.31, punches landed rose from 0.7 to 1.3 a second each and got faster (6.6 to 8.3 m/s),
+    and the fighters do it on half the power. Why: being hit now costs something, so a policy that keeps
+    its head out of the way, or its gloves in the way, earns more than one that trades.
+  </div>
+  <div class="verdict flat">
+    <b>One fighter learned to defend. The other did not.</b> Every punch stopped on a guard is stopped by
+    Zombie (1.50 a second). Matt stops one in a hundred seconds, fewer than before the rung. The reason is
+    in where the punches go: Zombie's land on Matt's head and Matt's land on Zombie's body, which counts
+    three tenths as much towards the daze, so Zombie is never in danger and Matt always is. Matt answered by
+    hitting harder (4.4 to 8.0 m/s), not by covering up. Matt's legs are taken by the daze 1.26 times a
+    minute at the end, more than at the start of the run it resumed from (0.35), because Zombie got
+    better too.
+  </div>
+  <div class="verdict flat">
+    <b>Against this morning's match, it is a different fight, not a better score.</b> The match ended at
+    1.5 punches a second each at 7.5 m/s, 0.04 knockdowns a minute and a fighter down in about 1% of
+    episodes, in a world where a punch cost nothing. <code>defend</code> ends at 1.3 a second at 8.3 m/s,
+    0.31 knockdowns a minute and 7%. The returns (517 then, 430 now) are not comparable: the reward
+    has terms now that it did not have then.
+  </div>
+  <div class="verdict">
+    <b>In the game.</b> Checked two ways after the run. In plain C MuJoCo with the game's ropes and the
+    daze rule, ten rounds of 45 seconds (<code>training/tools/eval_ring.py</code>): neither fighter fell;
+    Matt's legs were taken ten times, Zombie's never; every one of Zombie's punches was to the head and
+    none of Matt's. In the game, one full bout at 23:27: Matt was put down once a round, each time by the
+    daze reaching the line, Zombie never, and it went the distance, Zombie by unanimous decision, 30-24
+    on all three cards. The game is harsher than the trainer here: in training a fighter whose legs
+    are taken for 0.7 s keeps its feet about three times in four; in the game it is a knockdown and a
+    count every time.
+  </div>
+
+  <h2>What did not get trained</h2>
+  <div class="verdict flat">
+    <b>The get-up policy.</b> The second rung queued for tonight, in which each fighter learns to stand
+    back up after a knockdown (<code>training/envs/getup.py</code>), did not run: before it could start the
+    owner gave the GPU to another session's eight-hour run of five new boxers. The stage is written and
+    smoke-tested (put through it, the match policies end on the canvas in about nine episodes in ten and
+    are back on their feet at the end of about one in a hundred of those), and the game is ready for its
+    policy. Until it is trained the referee stands a downed fighter up, as before.
+    <code>training\tools\rungs.ps1 -Only getup</code> runs it: 5,400 iterations, about two and a half hours.
+  </div>
+</main>
+</body>
+</html>

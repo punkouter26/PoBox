@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: the teeth are the ring announcer, before and after</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .wide { max-width:900px; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .tag.new { background:#1d2f4d; color:#a9c8ff; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  .box { position:absolute; border:3px solid var(--warn); border-radius:10px; box-shadow:0 0 0 2px #000a; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: the teeth are the ring announcer</h1>
+  <p class="dim">1 October 2026 · the arena before and after, with what changed marked on the pictures</p>
+  <div class="note">This page shows the announcer as it was first built. On 2 October the owner chose a different
+     behaviour: the teeth appear only for the boxers' introductions and the winner, and are hauled away in
+     between. See <a href="2026-10-02-teeth-announcer-intros.html" style="color:#a9c8ff">2026-10-02-teeth-announcer-intros.html</a>.</div>
+
+  <p>The owner asked for the teeth (<code>2025_TeethUpper.ply</code> and <code>2025_TeethLower.ply</code>, two
+     dental scans) to be the boxing ring's announcer. They now hang over the middle of the ring on a cable, where
+     an announcer's microphone hangs, and they talk: the jaw opens and shuts with what is being said.</p>
+
+  <h2>The ring, before and after</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE · 22:31</span>
+      <div class="shot">
+        <img src="img/26_teeth_before.png" alt="The ring a few seconds into round one: two boxers, the crowd, nothing above them">
+        <span class="pin" style="left:68%; top:24%">A</span>
+      </div>
+    </div>
+    <div>
+      <span class="tag after">AFTER · 22:35</span>
+      <div class="shot">
+        <img src="img/27_teeth_after.png" alt="The same ring with a large pair of teeth hanging above the boxers, mouth open">
+        <span class="box" style="left:51%; top:19.5%; width:35%; height:14.5%"></span>
+        <span class="pin" style="left:88%; top:19%">1</span>
+        <span class="pin" style="left:69.5%; top:9%">2</span>
+        <span class="pin" style="left:60%; top:35%">3</span>
+      </div>
+    </div>
+  </div>
+  <ol class="legend" type="A">
+    <li>Before: nothing over the ring. The commentary was a line of text at the bottom of the screen and nobody said it.</li>
+  </ol>
+  <ol class="legend">
+    <li>The teeth, twelve times life size (about 90 cm across), in the scanner's own colours. They turn to face
+        whichever camera is live.</li>
+    <li>The cable they hang from. They rest 3.3 m above the canvas and come down to 2.45 m to speak.</li>
+    <li>The mouth is open because it is speaking: in this picture it is in the middle of a line.</li>
+  </ol>
+  <p>The two pictures are a few seconds into round one of two different bouts, so the boxers and the camera are
+     not in the same place. Nothing on the HUD moved; the announcer is an object in the hall, not part of the
+     interface.</p>
+
+  <h2>What it says, and when</h2>
+  <table>
+    <tr><th>When</th><th>Aloud</th></tr>
+    <tr><td>The boxers are shown in their corners</td><td>"In the red corner! MATT! And in the blue corner! ZOMBIE!"</td></tr>
+    <tr><td>A round starts</td><td>"Round one!" (two, three)</td></tr>
+    <tr><td>A boxer goes down</td><td>"Down!"</td></tr>
+    <tr><td>The bout ends</td><td>"And the winner is! ZOMBIE!", or "It is a draw!"</td></tr>
+    <tr><td>Any other line of commentary (the text at the bottom)</td><td>Nothing: it mouths the line, a syllable at a time, for as long as the line would take to say</td></tr>
+  </table>
+  <p>The voice is the speech synthesiser that comes with Windows (the voice called David), recorded once into
+     fifteen short files: eight phrases and a name for each of the seven boxers, the five now in training
+     included. While a recording plays, the jaw follows its loudness.</p>
+
+  <h2>Where it is not seen</h2>
+  <div class="pair">
+    <div>
+      <span class="tag after">AFTER · a close shot</span>
+      <div class="shot">
+        <img src="img/28_teeth_close_shot.png" alt="A close camera on the two boxers trading; the teeth are above the top of the picture">
+      </div>
+    </div>
+    <div>
+      <p>The cameras cut close when punches land, and a close shot has no room above the boxers' heads: the teeth
+         are out of the picture, as here. They are seen in the wide shots, at the walk-on and at the result,
+         which is when an announcer speaks.</p>
+      <div class="note">Not checked: nobody has listened to it. The recordings exist and the game plays them (the
+         jaw was open and moving in play), but what it sounds like through speakers, and how loud it is beside
+         the crowd, has to be judged by ear.</div>
+    </div>
+  </div>
+
+  <h2>How the scans became a model</h2>
+  <div class="shot wide">
+    <img src="img/29_teeth_model_views.png" alt="Three views of the converted model as dots: front, side and top, with a red cross at the hinge">
+  </div>
+  <p>The scans arrive in the scanner's own position, in millimetres, 320,000 and 382,000 triangles. A script
+     (<code>training/tools/teeth_to_glb.py</code>, run by Blender) works out which way they face from their shape:
+     up is the thin direction, left to right is the direction the arch mirrors itself in, and the front is the
+     closed end of the U. It stands them upright, thins each to 30,000 triangles, and puts the origin of both
+     where a jaw's hinge is (the red cross: behind and above the back teeth), so the lower jaw opens by turning
+     about one axis.</p>
+
+  <h2>Changing it</h2>
+  <table>
+    <tr><th>To</th><th>Do</th></tr>
+    <tr><td>Move it, resize it, change the heights or how wide it opens</td><td>Edit <code>Assets/Announcer/TeethAnnouncer.prefab</code> (the numbers are on the TeethAnnouncer component), or the object in the Arena scene</td></tr>
+    <tr><td>Turn the voice off</td><td>Untick <b>Speak Aloud</b> on the component; it then mouths everything</td></tr>
+    <tr><td>Add a boxer's name, or change the voice</td><td>Add a line to <code>Assets/Announcer/make_voice.ps1</code>, run it with Windows PowerShell, then menu <b>PoBox / Announcer / Rebuild Prefab</b></td></tr>
+    <tr><td>Use other scans</td><td>Run <code>teeth_to_glb.py</code> on them (the command is at the top of the file), then Rebuild Prefab</td></tr>
+  </table>
+  <p class="dim">It is added to the arena each time the arena is built (it subscribes to the builder's
+     <code>BuildingArena</code> event), so <b>PoBox / Build Everything</b> keeps it.</p>
+</main>
+</body>
+</html>

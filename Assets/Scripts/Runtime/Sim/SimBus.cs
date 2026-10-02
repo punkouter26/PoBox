@@ -24,12 +24,13 @@ namespace PoBox.Sim
         public float gloveSpeed;    // m/s at first touch
         public float damage;        // health points taken, filled in by the victim
         public bool clean;          // head or body rather than arms
+        public Vector3 velocity;    // the glove's own velocity at first touch, m/s (which way the sweat flies)
         public float time;          // bout clock, seconds
     }
 
     /// <summary>
     /// The one place the broadcast layer listens. The simulation raises what happened; the cameras, the
-    /// effects, the sound, the commentary, the replay and the HUD each subscribe to what they need, so none
+    /// effects, the sound, the commentary and the HUD each subscribe to what they need, so none
     /// of them knows about any of the others.
     /// </summary>
     public static class SimBus
@@ -39,9 +40,11 @@ namespace PoBox.Sim
         public static event Action<Fighter, HitEvent> Knockdown;
         public static event Action<Fighter> GotUp;
         public static event Action<Vector3, float> FloorImpact;      // point, impulse N s
+        public static event Action<Vector3, float> FootStep;         // where a foot came down, how fast it was moving m/s
         public static event Action<BoutPhase, BoutPhase> PhaseChanged; // from, to
         public static event Action<string, int> Line;                // commentary text, priority
 
+        public static void RaiseFootStep(Vector3 p, float speed) => FootStep?.Invoke(p, speed);
         public static void RaiseHit(in HitEvent e) => Hit?.Invoke(e);
         public static void RaisePunch(Fighter f, PunchType t, int hand) => PunchThrown?.Invoke(f, t, hand);
         public static void RaiseKnockdown(Fighter f, in HitEvent cause) => Knockdown?.Invoke(f, cause);
@@ -56,7 +59,7 @@ namespace PoBox.Sim
         static void Reset()
         {
             Hit = null; PunchThrown = null; Knockdown = null; GotUp = null;
-            FloorImpact = null; PhaseChanged = null; Line = null;
+            FloorImpact = null; FootStep = null; PhaseChanged = null; Line = null;
         }
     }
 }

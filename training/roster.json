@@ -1,0 +1,54 @@
+{
+  "about": "The boxers built from the owner's meshes on 2026-10-01, and what makes each one itself. tools/build_roster.py reads this. 'age' is muscle strength beside a trained adult's and 'speed' is joint speed beside one's (1.0 = the same); strength also follows the square of height. 'style' is how the boxer is paid in training: the keys are listed in envs/boxing.py where they are read.",
+  "veterans": ["matt", "zombie"],
+  "boxers": {
+    "trump": {
+      "display": "TRUMP",
+      "glb": "../TRUMP_Rigged.glb",
+      "height": 1.90,
+      "persona": "brawler",
+      "says": "comes forward, big slow shots to the head, little guard",
+      "age": 1.0,
+      "speed": 1.0,
+      "style": {"head": 1.8, "body": 0.8, "power": 1.8, "pace_s": 0.9, "taken": 0.4, "block_w": 0.0, "range_m": 0.72, "press": 0.25, "energy": 0.8}
+    },
+    "grandma": {
+      "display": "GRANDMA",
+      "glb": "../RIGGED_Grandma.glb",
+      "persona": "counter-puncher",
+      "says": "tight guard, stops the punch, answers with quick shots to the body",
+      "age": 0.6,
+      "speed": 0.75,
+      "style": {"head": 1.0, "body": 1.6, "pace_s": 0.5, "taken": 1.4, "block_w": 0.08, "counter": 1.8, "range_m": 0.80, "energy": 1.2}
+    },
+    "grandpa": {
+      "display": "GRANDPA",
+      "glb": "../RIGGED_Grandpa.glb",
+      "persona": "out-boxer",
+      "says": "stays at the end of his reach, patient, works behind the left hand",
+      "age": 0.6,
+      "speed": 0.75,
+      "style": {"hand_l": 1.4, "hand_r": 0.8, "pace_s": 0.8, "taken": 1.0, "block_w": 0.04, "range_m": 0.90, "crowd": 0.5, "energy": 1.3},
+      "style_note": "2026-10-02 04:00, after round 3: taken 1.4 -> 1.0 and crowd 0.8 -> 0.5. As first written he stopped punching in two sessions out of three (with Grandma, then with Lil Matt): a boxer charged that much for a punch taken, at a range few opponents can reach, does best by doing nothing."
+    },
+    "nick": {
+      "display": "NICK",
+      "glb": "../RIGGED_Nick.glb",
+      "persona": "swarmer",
+      "says": "always closing, many light fast punches",
+      "age": 1.0,
+      "speed": 1.0,
+      "style": {"head": 1.3, "body": 1.2, "power": 0.7, "pace_s": 0.3, "taken": 0.6, "range_m": 0.66, "press": 0.3, "energy": 0.6}
+    },
+    "lilmatt": {
+      "display": "LIL MATT",
+      "glb": "../RIGGED_Matt.glb",
+      "persona": "body puncher",
+      "says": "gets inside and digs to the body with the right hand",
+      "age": 1.0,
+      "speed": 1.0,
+      "style": {"head": 0.9, "body": 1.9, "hand_l": 0.9, "hand_r": 1.3, "power": 1.2, "pace_s": 0.55, "taken": 0.9, "block_w": 0.03, "range_m": 0.70, "press": 0.25},
+      "style_note": "2026-10-02 04:00, after round 3: press 0.25 added. He has the shortest arms in the roster and was paid nothing for walking in, so against Grandpa, who stands off, he landed 0.01 punches a second all session."
+    }
+  }
+}

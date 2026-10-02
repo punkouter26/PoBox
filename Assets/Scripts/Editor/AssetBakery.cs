@@ -28,8 +28,9 @@ namespace PoBox.EditorTools
         public const string UiDir = "Assets/UI";
         public const string PanelPath = UiDir + "/PoBoxPanel.asset";
         public const string HudUxml = UiDir + "/Hud.uxml";
+        public const string MenuUxml = UiDir + "/Menu.uxml";
+        public const string PortraitDir = UiDir + "/Portraits";
         public const string LookPath = SettingsDir + "/Arena_Volume.asset";
-        public const string ReplayLookPath = SettingsDir + "/Replay_Volume.asset";
 
         public static void EnsureFolder(string path)
         {
@@ -79,6 +80,28 @@ namespace PoBox.EditorTools
         }
 
         /// <summary>
+        /// Lays a fine weave over a material as a detail normal map, tiled many times across it: the cloth
+        /// of the canvas, which the printed design on it is far too coarse to carry.
+        /// </summary>
+        public static void Weave(Material m, string normalMapPath, float tiling, float strength)
+        {
+            var importer = AssetImporter.GetAtPath(normalMapPath) as TextureImporter;
+            if (importer == null) { Debug.LogWarning($"[PoBox] {normalMapPath} is missing; the canvas stays smooth."); return; }
+            if (importer.textureType != TextureImporterType.NormalMap || importer.wrapMode != TextureWrapMode.Repeat)
+            {
+                importer.textureType = TextureImporterType.NormalMap;
+                importer.wrapMode = TextureWrapMode.Repeat;
+                importer.SaveAndReimport();
+            }
+            var normal = AssetDatabase.LoadAssetAtPath<Texture2D>(normalMapPath);
+            m.SetTexture("_DetailNormalMap", normal);
+            m.SetFloat("_DetailNormalMapScale", strength);
+            m.SetTextureScale("_DetailAlbedoMap", new Vector2(tiling, tiling));
+            m.EnableKeyword("_DETAIL_MULX2");
+            EditorUtility.SetDirty(m);
+        }
+
+        /// <summary>
         /// A transparent particle material. Surface 1 is transparent; blend 0 is alpha, 2 is additive. The
         /// keywords and the blend factors have to be set by hand: the inspector normally does it.
         /// </summary>
@@ -107,25 +130,6 @@ namespace PoBox.EditorTools
             Material m = Mat("Fighter_Overlay", "PoBox/FighterOverlay");
             m.SetFloat("_RimPower", 3f);
             m.SetFloat("_RimIntensity", 0.55f);
-            m.SetFloat("_StressGain", 2.2f);
-            EditorUtility.SetDirty(m);
-            return m;
-        }
-
-        /// <summary>
-        /// The same overlay, set to draw through whatever is in front of it and to show nothing but joint
-        /// stress. It goes on the simple shapes inside a skinned fighter's limbs: the mesh is one renderer
-        /// and cannot be coloured limb by limb, so the limb's own shape glows through it instead.
-        /// </summary>
-        public static Material StressXray()
-        {
-            Material m = Mat("Fighter_StressXray", "PoBox/FighterOverlay");
-            m.SetFloat("_RimIntensity", 0f);
-            m.SetFloat("_StressGain", 1.6f);
-            m.SetFloat("_SweatGain", 0f);
-            m.SetFloat("_BruiseGain", 0f);
-            m.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
-            m.renderQueue = (int)RenderQueue.Transparent + 20;
             EditorUtility.SetDirty(m);
             return m;
         }
@@ -204,9 +208,8 @@ namespace PoBox.EditorTools
 
                 float dx = u - 0.5f, dy = v - 0.5f;
                 float r = Mathf.Sqrt(dx * dx + dy * dy);
-                if (r < 0.19f && r > 0.175f) c = line;                    // roundel ring
-                else if (r < 0.175f) c = Color.Lerp(c, new Color(0.12f, 0.20f, 0.36f), 0.7f);
-                if (Mathf.Abs(dx) < 0.012f && Mathf.Abs(dy) < 0.09f && r < 0.17f) c = line;   // a plain mark, no lettering
+                // A darker disc in the middle, for the promoter's mark to be laid on as a decal.
+                if (r < 0.2f) c = Color.Lerp(c, new Color(0.12f, 0.20f, 0.36f), 0.7f * Mathf.SmoothStep(0.2f, 0.185f, r));
 
                 float edge = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
                 if (edge > 0.455f && edge < 0.47f) c = line;               // border
@@ -358,7 +361,7 @@ namespace PoBox.EditorTools
             return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
         }
 
-        static void WriteWav(string fullPath, float[] samples, int rate)
+        public static void WriteWav(string fullPath, float[] samples, int rate)
         {
             using (var ms = new MemoryStream())
             using (var w = new BinaryWriter(ms))
@@ -445,36 +448,6 @@ namespace PoBox.EditorTools
             return p;
         }
 
-        /// <summary>Blended in over the house look for slow motion and replays: the crowd falls out of focus, movement smears.</summary>
-        public static VolumeProfile ReplayLook()
-        {
-            VolumeProfile p = Profile(ReplayLookPath);
-
-            var dof = p.Add<DepthOfField>(true);
-            dof.mode.Override(DepthOfFieldMode.Gaussian);
-            dof.gaussianStart.Override(7f);
-            dof.gaussianEnd.Override(16f);
-            dof.gaussianMaxRadius.Override(1.2f);
-
-            var blur = p.Add<MotionBlur>(true);
-            blur.quality.Override(MotionBlurQuality.Medium);
-            blur.intensity.Override(0.35f);
-
-            var vignette = p.Add<Vignette>(true);
-            vignette.intensity.Override(0.44f);
-            vignette.smoothness.Override(0.5f);
-
-            var colour = p.Add<ColorAdjustments>(true);
-            colour.postExposure.Override(0.25f);
-            colour.contrast.Override(20f);
-            colour.saturation.Override(-10f);
-
-            var ca = p.Add<ChromaticAberration>(true);
-            ca.intensity.Override(0.12f);
-
-            Persist(p);
-            return p;
-        }
 
         // ---------------------------------------------------------------- UI
 

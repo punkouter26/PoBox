@@ -1,2 +1,3 @@
-policy.onnx copied from training/checkpoints/match/latest_matt.onnx
-written 2026-10-01 14:07:06
+policy.onnx copied from training/checkpoints/defend/latest_matt.onnx
+written 2026-10-01 23:08:03
+no get-up policy

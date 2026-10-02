@@ -1,0 +1,4 @@
+Impact Sounds (1.0) by Kenney (www.kenney.nl), CC0 1.0.
+Downloaded 2026-10-01 from https://kenney.nl/assets/impact-sounds (the official zip).
+Used here: impactPunch_heavy, impactPunch_medium, impactSoft_heavy, impactSoft_medium (the layers of a
+punch) and footstep_carpet (boots on the canvas). The licence text is License.txt beside this file.

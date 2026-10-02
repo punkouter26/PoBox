@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: the sixty-minute follow-up to the Matt v Zombie run</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:17px; margin:22px 0 6px; }
+  p { margin:10px 0; max-width:74ch; }
+  .dim { color:var(--dim); }
+  .charts { display:flex; flex-wrap:wrap; gap:18px; margin:16px 0; }
+  .charts figure { flex:1 1 420px; margin:0; }
+  .charts img { display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  figcaption { color:var(--dim); font-size:14px; margin-top:6px; }
+  figcaption b { color:var(--ink); }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin:14px 0; }
+  .level { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .level h4 { margin:0 0 6px; font-size:13px; letter-spacing:.08em; color:var(--warn); }
+  .level p { margin:0; }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:80ch; }
+  .verdict.bad { border-left-color:var(--red); }
+  .verdict.flat { border-left-color:var(--warn); }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:980px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .key span { display:inline-block; width:12px; height:12px; border-radius:50%; margin:0 6px 0 14px; vertical-align:-1px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: the sixty-minute follow-up</h1>
+  <p class="dim">1 October 2026 · 17:43 to 18:45 · two short runs from the end of the eight-hour Matt v Zombie run, compared with it · charts are screenshots of TensorBoard</p>
+
+  <p><b>In short.</b> The eight-hour run (its own report:
+     <a href="2026-10-01-training-matt-v-zombie.html" style="color:#8ff0c8">Matt v Zombie: the eight-hour training run</a>)
+     left two fighters who stand, hold range and land about three punches every two seconds each, with
+     no defence and no knockdowns, and it had stopped improving after about three hours. Sixty more
+     minutes were spent on two changes meant to get knockdowns and defence. One made things worse and
+     was stopped; the other changed nothing that matters. The game is still using the eight-hour run's
+     final policies.</p>
+
+  <table>
+    <tr><th>Run</th><th>When</th><th>Length</th><th>What it was</th><th>Outcome</th></tr>
+    <tr><td>bag_matt, bag_zombie</td><td>09:48 to 11:18</td><td>45 min each</td><td>each fighter alone with a heavy bag</td><td>both stand unaided and hit the bag</td></tr>
+    <tr><td><b>match</b></td><td>11:18 to 17:39</td><td>6 h 21 min</td><td>the two in one ring, a policy each; 1.0 billion fighter-steps</td><td>the fighters in the game</td></tr>
+    <tr><td><b>match2</b></td><td>17:43 to 18:15</td><td>31 min, stopped</td><td>from match's end: knockdown fix, and being hit priced as high as hitting</td><td>both stopped punching; rejected</td></tr>
+    <tr><td><b>match3</b></td><td>18:16 to 18:45</td><td>29 min</td><td>from match's end: the knockdown fix only</td><td>no real change; not imported</td></tr>
+  </table>
+
+  <p class="key">In every chart:<span style="background:#ff7043"></span>match (the eight hours)<span style="background:#0077bb"></span>match2<span style="background:#cc3311"></span>match3.
+     The bottom axis is training iterations: the eight-hour run is 0 to 10,193, and both follow-ups start where it ended.</p>
+
+  <h2>1. Hits per second</h2>
+  <div class="charts">
+    <figure><img src="img/20_tb_hits_all.png" alt="TensorBoard: hits per second, all three runs">
+      <figcaption><b>The whole day.</b> The eight-hour run climbs for three hours and then sits at about 1.5.</figcaption></figure>
+    <figure><img src="img/21_tb_hits_followups.png" alt="TensorBoard: hits per second, the two follow-up runs">
+      <figcaption><b>The two follow-ups, zoomed in.</b> Blue (match2) falls away after iteration 10,700; red (match3) climbs back to 1.5.</figcaption></figure>
+  </div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>This line is how many times a boxer bops the other one. Up is more bops. The orange line goes up, up, then stays. The blue line falls down: those two got scared and stopped bopping.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>It counts punches that really land, per fighter, each second. At first they could not reach each other, so it was zero. They learned to land about one and a half a second and then could not do better. In the blue run we made getting hit hurt their score much more, and they worked out that the safest thing was not to fight.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>Landed hits per fighter per second: a glove arriving at head or body at over 1 m/s after a 30 cm wind-up. The match reaches 1.5 by hour 3 and is flat after (1.50, 1.53, 1.68, 1.60, 1.46 for hours 2 to 6). match2 priced a hit taken at the full value of a hit landed; the rate held at 1.1 for 20 minutes, then fell to 0.22 while reward per episode rose from 330 to 364. match3 kept the old price and is back at 1.51.</p></div>
+  </div>
+  <div class="verdict bad"><b>match2: worse.</b> Making every exchange worth nothing, with punching still costing energy, made not punching the best policy. Stopped at 31 minutes and marked rejected so it cannot be imported by accident.</div>
+  <div class="verdict flat"><b>match3: the same.</b> 1.51 hits a second over its last 100 iterations against 1.53 for the eight-hour run. The punches are a little faster (8.3 m/s against 7.5), mostly Matt's, which had slowed in the eight-hour run's last hour.</div>
+
+  <h2>2. Knockdowns per minute</h2>
+  <div class="charts">
+    <figure><img src="img/22_tb_knockdowns_all.png" alt="TensorBoard: knockdowns per minute, all three runs">
+      <figcaption><b>The whole day.</b> A burst at the very start, while the fighters were still learning to stand next to each other, then a floor of about 0.05.</figcaption></figure>
+    <figure><img src="img/23_tb_knockdowns_followups.png" alt="TensorBoard: knockdowns per minute, the two follow-up runs">
+      <figcaption><b>The two follow-ups.</b> Both spike in the first two minutes (the fighters were shaken by extra exploration noise) and settle near where the eight-hour run was.</figcaption></figure>
+  </div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>This line is how often a boxer gets knocked over. It is nearly on the floor. Almost nobody falls down. We wanted it to go up. It did not.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>It counts how often one fighter puts the other on the floor right after hitting them. It is about once every twenty minutes of boxing, which is almost never. We found a reason the fighters might not be trying, and fixed it, but the number stayed the same. So that was not the real reason.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>Falls by the opponent within 1.5 s of being hit, per minute. The match averages 0.04 to 0.05 from hour 1 on. The reward did discourage knockdowns: a fall ended the episode for both, so the fighter who caused it lost the rest of the episode's income (about 0.8 a step) for a bonus of 4. match3 removed that loss and raised the bonus to 10: 0.045 a minute, unchanged. With 1.5 hits a second almost any fall follows a hit, so this chart is really the fall rate under another name.</p></div>
+  </div>
+  <div class="verdict flat"><b>match3: the same (0.045 against 0.040).</b> The incentive was wrong and is now right, but it was not what was holding knockdowns back. The likelier reason: a punch from an 80 kg fighter's arm does not carry enough to put another balanced 80 kg fighter on the floor. In the game, knockdowns come from the damage rules (a hurt fighter's joints weaken), and training has no such rule. That is what a next run would have to add.</div>
+  <div class="verdict bad"><b>match2: briefly higher, for the wrong reason.</b> 0.12 to 0.15 a minute in its first 20 minutes, alongside a fall rate three times the eight-hour run's. The fighters were less steady, not hitting harder.</div>
+
+  <h2>3. Fall rate</h2>
+  <div class="charts">
+    <figure><img src="img/24_tb_falls_all.png" alt="TensorBoard: fall rate, all three runs">
+      <figcaption><b>The whole day.</b> Share of episodes that ended with somebody on the floor.</figcaption></figure>
+    <figure><img src="img/25_tb_falls_followups.png" alt="TensorBoard: fall rate, the two follow-up runs">
+      <figcaption><b>The two follow-ups.</b> Both start high and come down within three minutes; red (match3) settles lower than blue.</figcaption></figure>
+  </div>
+  <div class="levels">
+    <div class="level"><h4>FOR A TODDLER</h4><p>This line is how often a boxer falls over all by itself. Down is good. It goes down fast and stays down. They are good at standing up.</p></div>
+    <div class="level"><h4>FOR A CHILD</h4><p>Each practice fight lasts twelve seconds. This is how many of them end early because someone fell. When two fighters who had only ever hit a bag first met, they fell over all the time. A few minutes later they almost never did. Each follow-up starts with a wobble because we made them try new things again.</p></div>
+    <div class="level"><h4>FOR AN ADULT</h4><p>Share of 12-second episodes ending in a fall, with exploration noise, sensor noise and random shoves on. The match averages 0.10 over its first hour and 0.013 at the end. Each follow-up reset the exploration noise from 0.25 to 0.30, which put the rate at 0.7 for the first minute; match3 is back at 0.013, match2 was at 0.02 when stopped. Without noise the eight-hour policies do not fall at all (table below).</p></div>
+  </div>
+  <div class="verdict"><b>Both follow-ups: as good as before.</b> Standing was never in danger. This is the chart that says the policies are safe to put in the game.</div>
+
+  <h2>The policies with the noise off, and in Unity</h2>
+  <table>
+    <tr><th>Where</th><th>Policies</th><th class="num">Fall rate</th><th class="num">Hits a second, each</th><th class="num">Knockdowns a minute</th></tr>
+    <tr><td>MuJoCo, 300 s (25 episodes), no exploration noise</td><td>match (eight hours)</td><td class="num">0.00</td><td class="num">1.54 at 7.7 m/s</td><td class="num">0.00</td></tr>
+    <tr><td>MuJoCo, 300 s (25 episodes), no exploration noise</td><td>match3</td><td class="num">0.04 (one episode: Zombie went down)</td><td class="num">1.53 at 8.8 m/s</td><td class="num">0.20 (that one fall)</td></tr>
+    <tr><td>Plain C MuJoCo, the library the game loads, 300 s (25 episodes)</td><td>match and match3</td><td class="num">0.00 for both</td><td class="num">not counted by this tool</td><td class="num">not counted</td></tr>
+    <tr><td>Unity, 300 s of the same episodes (25 of them)</td><td>match (eight hours)</td><td class="num">0.00</td><td class="num">Matt 1.25, Zombie 1.48</td><td class="num">scoring off for this test</td></tr>
+  </table>
+  <p>With the noise off, match3 lands as often as the eight-hour policies and its gloves arrive faster
+     (8.8 m/s against 7.7). It also produced one knockdown in its 25 episodes where the eight-hour
+     policies produced none; the same policies in the plain C library did not fall at all, so that is
+     one event, not a trend.</p>
+  <p>The Unity row is the transfer check run in the editor at 18:21: the fight is stepped by
+     MuJoCo inside Unity, and the numbers agree with MuJoCo's own. The scorekeeper's four numbers were
+     re-measured from that session (823 hits): a punch counts from 4.8 N·s, and a fighter is rocked at
+     22.9 and goes down at 23.4 (impulse times zone weight).</p>
+
+  <h2>What is in the game, and what next</h2>
+  <p><b>In the game now:</b> the eight-hour run's final policies (iteration 10,193) for both fighters,
+     as they were before the follow-up. match3's land as often and a little faster; in the game the
+     scorekeeper's numbers are re-measured from whichever policies are in it, so faster gloves alone
+     would not change how a bout reads, and they were not swapped in. match2's are marked rejected.</p>
+  <p><b>What the sixty minutes bought:</b> two answers. Pricing a hit taken as high as a hit landed
+     does not teach defence here; it teaches the fighters to stop. And the missing knockdowns are not
+     an incentive problem.</p>
+  <p><b>What a next run should change:</b> put the game's "hurt" rule into training, so a heavy shot to
+     the head weakens the legs for a moment and a knockdown becomes something a fighter can cause and
+     has to guard against; and price a hit taken somewhere between a half and the full value (0.5
+     trades blows for ever, 1.0 stops the fight).</p>
+
+  <p class="dim">Numbers are from training/logs/match.csv, match2.csv and match3.csv; "last 100
+     iterations" means the mean of the final 100 rows. Charts: TensorBoard's SCALARS page, smoothing 0.6.</p>
+</main>
+</body>
+</html>

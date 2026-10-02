@@ -8,7 +8,7 @@ namespace PoBox.EditorTools
     /// <summary>
     /// Builds a fighter out of primitives: thirteen articulation links, 72 kg in human proportions, with
     /// joint ranges, drive strengths and torque limits taken from what a person can do rather than from
-    /// what is convenient. Also builds its replay puppet, which is the same shapes with no physics.
+    /// what is convenient.
     ///
     /// This body is the stand-in. The house rule is that the trained fighter's rig comes from the owner's
     /// skinned mesh, read into MuJoCo and mirrored here; when that exists it replaces what this file
@@ -348,32 +348,6 @@ namespace PoBox.EditorTools
             skin.trails = trails;
             skin.rimColor = look.rim;
             return fighter;
-        }
-
-        /// <summary>
-        /// The replay puppet: the same shapes, nothing physical, every bone a direct child of the root so
-        /// the replay can place each one in world space without caring about the order.
-        /// </summary>
-        public static FighterSkin BuildPuppet(string name, Look look, Transform parent)
-        {
-            List<Link> links = Links();
-            var root = new GameObject(name);
-            root.transform.SetParent(parent, false);
-            var skin = root.AddComponent<FighterSkin>();
-            var skinParts = new FighterSkin.Part[links.Count];
-
-            for (int i = 0; i < links.Count; i++)
-            {
-                var go = new GameObject(links[i].name);
-                go.transform.SetParent(root.transform, false);
-                go.transform.localPosition = links[i].pivot;
-                Renderer[] renderers = AddGeoms(go.transform, links[i], look, false, out _, out _);
-                skinParts[i] = new FighterSkin.Part { bone = go.transform, renderers = renderers };
-            }
-
-            skin.parts = skinParts;
-            skin.rimColor = look.rim;
-            return skin;
         }
     }
 }

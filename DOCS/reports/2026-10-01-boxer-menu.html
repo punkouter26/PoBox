@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: choosing the boxers, UI before and after</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .tag.new { background:#1d2f4d; color:#a9c8ff; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .ok { color:var(--accent); font-weight:700; }
+  .no { color:#ffb4a8; font-weight:700; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: choosing the boxers</h1>
+  <p class="dim">1 October 2026 · the interface before and after, with what changed marked on the pictures</p>
+
+  <p>Three things were asked for: take slow motion and replays out of the game, take out the glow that
+     lit a joint up when it was working hard, and add a first screen where the two boxers are chosen.
+     Every "before" picture below was taken that afternoon, just before the change; every "after"
+     picture just after it. Letters mark what went, numbers mark what is there now.</p>
+
+  <h2>The new first screen</h2>
+  <div class="pair">
+    <div>
+      <span class="tag new">NEW · the app now starts here</span>
+      <div class="shot">
+        <img src="img/11_boxer_menu.png" alt="The boxer menu: two columns of cards, a pairing line and a FIGHT button">
+        <span class="pin" style="left:25%; top:12.5%">1</span>
+        <span class="pin" style="left:6%; top:16%">2</span>
+        <span class="pin" style="left:94%; top:16%">3</span>
+        <span class="pin" style="left:24%; top:45%">4</span>
+        <span class="pin" style="left:50%; top:85.3%">5</span>
+        <span class="pin" style="left:50%; top:91.5%">6</span>
+      </div>
+    </div>
+    <div>
+      <span class="tag new">WHAT IS ON IT</span>
+      <ol class="legend">
+        <li>One column for each corner. Every trained boxer has a card in both.</li>
+        <li>The boxer picked for a corner: full brightness, with a border in the corner's colour.</li>
+        <li>A boxer not picked for that corner: dimmed. Tap it to pick it.</li>
+        <li>Name, height and weight, read from the body the boxer was trained in. The picture is the boxer itself, photographed in the ring with its gloves off.</li>
+        <li>The pairing as it stands, each name in its corner's colour.</li>
+        <li>FIGHT loads the ring with those two.</li>
+      </ol>
+      <p>The two corners always hold different boxers. Tapping the boxer who is already in the other
+         corner swaps the two over, so with Matt and Zombie the choice is who is red and who is blue.
+         The last pair fought is remembered for next time.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Why a boxer cannot fight a copy of itself.</b> It was built and tried. Two Zombies fight
+    properly. Two Matts do not: each waits for the other to come to it, the two settle into a
+    perfectly matched stand-off, and in 90 seconds of bout time neither threw a punch. Rather than
+    offer a pairing that does nothing, the menu keeps the corners different.
+  </div>
+
+  <h2>The fight: no glow on the joints</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/12_fight_before.png" alt="The fight with amber glowing shapes on both fighters">
+        <span class="pin" style="left:66%; top:45%">A</span>
+        <span class="pin" style="left:63%; top:58%">B</span>
+        <span class="pin" style="left:34%; top:50%">C</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>An amber shape glowing through Zombie's chest: the joint under it was near its torque limit.</li>
+        <li>The same through its thigh.</li>
+        <li>And through Matt's back and upper arm.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/13_fight_after.png" alt="The fight with no glow on either fighter">
+        <span class="pin" style="left:62%; top:47%">1</span>
+        <span class="pin" style="left:50%; top:20.5%">2</span>
+      </div>
+      <ol class="legend">
+        <li>Nothing is drawn over the fighters but their gloves. The glow, the shapes that carried it and the shader code for it are gone.</li>
+        <li>The scoreboard is unchanged. Joint stress is still measured and can still be read as a number here (tap this row) and in the commentary line; only the light is gone.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>The result card: no replay</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/14_results_before.png" alt="Result card with a replay caption, scrubber and replay buttons">
+        <span class="pin" style="left:50%; top:38%">A</span>
+        <span class="pin" style="left:36%; top:79%">B</span>
+        <span class="pin" style="left:24%; top:84%">C</span>
+        <span class="pin" style="left:84%; top:86.8%">D</span>
+        <span class="pin" style="left:22%; top:91.2%">E</span>
+        <span class="pin" style="left:68%; top:91.2%">F</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>The picture was a slow-motion highlight reel of the bout's three best hits, on a loop.</li>
+        <li>A marker on the momentum graph for each of those hits.</li>
+        <li>Which clip was playing, and what it was.</li>
+        <li>A scrubber to drag through the clip by hand.</li>
+        <li>Previous clip, pause, next clip.</li>
+        <li>NEXT BOUT, counting down.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/15_results_after.png" alt="Result card with two buttons: BOXERS and REMATCH">
+        <span class="pin" style="left:50%; top:45%">1</span>
+        <span class="pin" style="left:50%; top:85%">2</span>
+        <span class="pin" style="left:14.5%; top:91.2%">3</span>
+        <span class="pin" style="left:61%; top:91.2%">4</span>
+      </div>
+      <ol class="legend">
+        <li>The picture is the ring as the bout ended. Nothing is replayed.</li>
+        <li>The momentum graph of the bout, with no markers on it.</li>
+        <li>BOXERS: back to the first screen to choose another pair.</li>
+        <li>REMATCH: the same two again, counting down to doing it by itself. (It said NEXT BOUT; with the boxers chosen by hand, the next bout is a rematch.)</li>
+      </ol>
+      <p>The card is 110 reference pixels shorter, so more of the ring shows above it. Between rounds,
+         where a replay of the round's best hit used to play for up to nine seconds, there is now a
+         three-second pause.</p>
+    </div>
+  </div>
+
+  <h2>The menu, MATCH tab: no slow speeds, and a way back</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/16_match_menu_before.png" alt="Match menu with four speed buttons">
+        <span class="pin" style="left:15%; top:30.3%">A</span>
+        <span class="pin" style="left:38%; top:30.3%">B</span>
+        <span class="pin" style="left:50%; top:62%">C</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>0.25x: the whole fight at quarter speed.</li>
+        <li>0.5x: half speed.</li>
+        <li>The picture itself, caught mid slow motion: the close-up, the blurred crowd and the soft focus that came on after a heavy hit.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/17_match_menu_after.png" alt="Match menu with two speed buttons and a CHANGE BOXERS button">
+        <span class="pin" style="left:50%; top:30.3%">1</span>
+        <span class="pin" style="left:50%; top:35.9%">2</span>
+      </div>
+      <ol class="legend">
+        <li>SPEED is normal or double. Nothing in the game runs slower than real time any more, by hand or by itself.</li>
+        <li>CHANGE BOXERS: leaves the bout and goes back to the first screen.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>The menu, SETTINGS tab: two switches fewer</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/18_settings_before.png" alt="Settings with six buttons including HEAT MAP and SLOW-MO">
+        <span class="pin" style="left:73%; top:14.6%">A</span>
+        <span class="pin" style="left:27%; top:19.6%">B</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>HEAT MAP: the joint glow, on or off.</li>
+        <li>SLOW-MO: the slow motion after a heavy hit, on or off.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/19_settings_after.png" alt="Settings with four buttons">
+        <span class="pin" style="left:50%; top:14.6%">1</span>
+      </div>
+      <ol class="legend">
+        <li>Four settings are left: sound, quality, frame rate, and resetting the ladder. There is nothing to switch off for features that no longer exist.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>What was checked</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td>One-screen audit of the first screen at 720x1280, 1080x1920 and 1080x2400</td><td><span class="ok">pass</span>: nothing off the screen, nothing scrolls, no text under 26 px, nothing cut off</td></tr>
+    <tr><td>One-screen audit of the fight, the three menu tabs and the debug panel</td><td><span class="ok">pass</span> at all three sizes</td></tr>
+    <tr><td>One-screen audit of the result card at 1080x1920</td><td><span class="ok">pass</span></td></tr>
+    <tr><td>Play-mode tests</td><td><span class="ok">8 of 8 pass</span> (four are new: the first screen at three sizes, and the ring fielding the pair that was picked)</td></tr>
+    <tr><td>Matt red v Zombie blue, from the menu</td><td><span class="ok">fights</span>, simulated in MuJoCo, both on their feet</td></tr>
+    <tr><td>Zombie red v Matt blue, from the menu</td><td><span class="ok">fights</span>; a full three rounds ended MATT on points, 102 to 47</td></tr>
+    <tr><td>Zombie v Zombie (tried, then not offered)</td><td>fought, with two knockdowns in 94 seconds</td></tr>
+    <tr><td>Matt v Matt (tried, then not offered)</td><td><span class="no">no fight</span>: 0 punches thrown by either in 92 seconds, and again when started 1.2 m apart</td></tr>
+  </table>
+
+  <p class="dim">Pictures: 720 px wide copies of 1080x1920 captures from the editor, taken with the
+     project's own capture tool. The boxers' policies in these pictures are the snapshot of the match
+     run imported at 14:07 on 1 October, not the finished run.</p>
+</main>
+</body>
+</html>

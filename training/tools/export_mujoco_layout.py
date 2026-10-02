@@ -44,9 +44,11 @@ def with_ropes(text: str, half: float) -> str:
     for i, h in enumerate(ROPE_HEIGHTS):
         for name, a, b in (("n", (-half, half), (half, half)), ("s", (-half, -half), (half, -half)),
                            ("e", (half, -half), (half, half)), ("w", (-half, -half), (-half, half))):
-            # A rope gives: a slower contact than the default, so a body leaning on it is let down, not bounced.
+            # A rope gives: a much slower contact than the default, so a body leaning on it sinks in by a
+            # hand's width and is let down, not bounced. That sinking in is what the game draws as the rope
+            # bowing (Fx/RopeFlex.cs).
             g.append(f'    <geom name="rope_{name}_{i}" type="capsule" fromto="{a[0]} {a[1]} {h} {b[0]} {b[1]} {h}" size="0.03" '
-                     f'solref="0.05 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>')
+                     f'solref="0.2 1" contype="3" conaffinity="3" rgba="0.86 0.86 0.84 1"/>')
     for name, x, y in (("ne", half, half), ("nw", -half, half), ("se", half, -half), ("sw", -half, -half)):
         g.append(f'    <geom name="post_{name}" type="capsule" fromto="{x} {y} 0 {x} {y} 1.45" size="0.07" contype="3" conaffinity="3" rgba="0.3 0.3 0.35 1"/>')
     assert "</worldbody>" in text
@@ -78,13 +80,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", default="matt")
     ap.add_argument("--b", default="zombie")
+    ap.add_argument("--android", action="store_true",
+                    help="write <a>_vs_<b>_layout_android.json instead: the same layout for whichever version of MuJoCo "
+                         "this Python is running, which must be the one in the phone's library (joanllobera/mujoco-bin)")
     args = ap.parse_args()
 
     stem = os.path.join(HERE, "models", f"{args.a}_vs_{args.b}")
     cfg = json.load(open(stem + "_policy_config.json", encoding="utf-8"))
     half = float(cfg.get("ring_half", 3.05))
     xml = with_ropes(open(stem + "_spar.xml", encoding="utf-8").read(), half)
-    open(stem + "_ring.xml", "w", encoding="utf-8").write(xml)
+    if not args.android:
+        open(stem + "_ring.xml", "w", encoding="utf-8").write(xml)
 
     m = mujoco.MjModel.from_xml_string(xml)
     d = mujoco.MjData(m)
@@ -118,6 +124,12 @@ def main() -> None:
             "kp": [float(m.actuator_gainprm[a, 0]) for a in acts],
             "kv": [float(-m.actuator_biasprm[a, 2]) for a in acts],
             "limit": [float(m.actuator_forcerange[a, 1]) for a in acts],
+            # What a punch is measured against (MujocoRing.TrackGlovesAndFeet): the body capsule's half
+            # length, and the radii of head, body and glove.
+            "torso_half": float(m.geom_size[gid("torso_geom")][1]),
+            "r_head": float(m.geom_size[gid("head_geom")][0]),
+            "r_torso": float(m.geom_size[gid("torso_geom")][0]),
+            "r_glove": float(m.geom_size[gid("glove_l")][0]),
         })
 
     pelvis = fighters[0]["pelvis"]
@@ -130,15 +142,20 @@ def main() -> None:
         "off_actuator_force": pointer_offset(d, d.actuator_force),
         # In mjModel, not mjData: which layer each shape is on and which layers it collides with.
         "off_geom_contype": pointer_offset(m, m.geom_contype), "off_geom_conaffinity": pointer_offset(m, m.geom_conaffinity),
+        # The bits mj_getState and mj_setState take, which have moved between versions of MuJoCo.
+        "state_qpos": int(mujoco.mjtState.mjSTATE_QPOS), "state_qvel": int(mujoco.mjtState.mjSTATE_QVEL),
+        "state_ctrl": int(mujoco.mjtState.mjSTATE_CTRL),
         "fighters": fighters,
         "key_qpos": [float(x) for x in m.key_qpos[0]],
         # A position Unity can check the offsets against before it trusts them: fighter A's left glove in the keyframe.
         "check_geom": fighters[0]["glove_l"], "check_xpos": [float(x) for x in d.geom_xpos[fighters[0]["glove_l"]]],
         "check_body_xpos": [float(x) for x in d.xpos[pelvis]],
     }
-    json.dump(layout, open(stem + "_layout.json", "w", encoding="utf-8"), indent=1)
-    print(f"wrote {stem}_ring.xml: {m.ngeom} shapes, {m.nbody} bodies")
-    print(f"wrote {stem}_layout.json: MuJoCo {layout['mujoco']} (mj_version {layout['version_number']}), nq {m.nq} nv {m.nv} nu {m.nu}; "
+    out = stem + ("_layout_android.json" if args.android else "_layout.json")
+    json.dump(layout, open(out, "w", encoding="utf-8"), indent=1)
+    if not args.android:
+        print(f"wrote {stem}_ring.xml: {m.ngeom} shapes, {m.nbody} bodies")
+    print(f"wrote {out}: MuJoCo {layout['mujoco']} (mj_version {layout['version_number']}), nq {m.nq} nv {m.nv} nu {m.nu}; "
           f"pointers at xpos {layout['off_xpos']}, xquat {layout['off_xquat']}, geom_xpos {layout['off_geom_xpos']}, geom_xmat {layout['off_geom_xmat']}, actuator_force {layout['off_actuator_force']}")
     print(f"library: {os.path.join(os.path.dirname(mujoco.__file__), 'mujoco.dll')}")
 

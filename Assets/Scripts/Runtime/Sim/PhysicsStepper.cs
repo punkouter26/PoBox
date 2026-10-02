@@ -6,7 +6,7 @@ namespace PoBox.Sim
     /// <summary>
     /// Steps the physics by hand, once per fixed update, after every other script has had its turn.
     ///
-    /// Two reasons. Freezing the world for a replay becomes "do not step", with nothing to switch on and
+    /// Two reasons. Freezing the world between rounds becomes "do not step", with nothing to switch on and
     /// off. And the step can be timed with a stopwatch, which is the only honest physics cost there is to
     /// show: the engine's own profiler markers for the physics update read zero outside the profiler.
     ///

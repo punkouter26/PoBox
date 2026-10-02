@@ -25,7 +25,7 @@ namespace PoBox.Rl
         [Serializable]
         public struct Aim { public string bone, towardBone, body, towardBody; }
 
-        [Tooltip("The object the physics links (or the replay puppet's bones) live under.")]
+        [Tooltip("The object the physics links live under.")]
         public Transform rigRoot;
         public GameObject skin;
         [Tooltip("Physics body name -> skeleton bone name.")]

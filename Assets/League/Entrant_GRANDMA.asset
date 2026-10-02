@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4962e0ee6beed8b4a94dbccf2ddcadaa, type: 3}
+  m_Name: Entrant_GRANDMA
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.League.PolicyProfile
+  displayName: GRANDMA
+  generation: 823
+  checkpoint: {fileID: 5022602860645237092, guid: 736d0dce3eaa0394b9f441f8385995ec, type: 3}
+  trunks: {r: 1, g: 1, b: 1, a: 1}
+  aggression: 0.5
+  range: 0.95
+  footSpeed: 0.9
+  combo: 0.3
+  hookBias: 0.25
+  bodyBias: 0.15
+  uppercutBias: 0.1
+  headMovement: 0.4
+  guard: 0.5

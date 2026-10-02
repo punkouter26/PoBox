@@ -41,7 +41,11 @@ namespace PoBox.UI
             }
         }
 
-        public static Report Check(VisualElement root)
+        /// <summary>The anchors the first screen has: it carries no frame rate, menu or debug chip.</summary>
+        public static readonly string[] MenuAnchors = { "title", "version" };
+
+        /// <param name="anchors">Which of the five frame anchors this screen is expected to have. Null is all of them.</param>
+        public static Report Check(VisualElement root, string[] anchors = null)
         {
             var report = new Report();
             if (root == null || root.panel == null) { report.anchors.Add("no panel"); return report; }
@@ -54,11 +58,12 @@ namespace PoBox.UI
             // The corners are the corners of the safe area: on a phone with a notch the frame sits inside it.
             VisualElement safe = root.Q<VisualElement>("safe");
             Rect frame = safe != null && safe.worldBound.width > 1f ? safe.worldBound : screen;
-            Anchor(root, "title", frame, report, left: true, top: true);
-            Anchor(root, "fps", frame, report, centre: true, top: true);
-            Anchor(root, "menu", frame, report, right: true, top: true);
-            Anchor(root, "debug", frame, report, left: true, bottom: true);
-            Anchor(root, "version", frame, report, right: true, bottom: true);
+            bool Has(string name) => anchors == null || System.Array.IndexOf(anchors, name) >= 0;
+            if (Has("title")) Anchor(root, "title", frame, report, left: true, top: true);
+            if (Has("fps")) Anchor(root, "fps", frame, report, centre: true, top: true);
+            if (Has("menu")) Anchor(root, "menu", frame, report, right: true, top: true);
+            if (Has("debug")) Anchor(root, "debug", frame, report, left: true, bottom: true);
+            if (Has("version")) Anchor(root, "version", frame, report, right: true, bottom: true);
             return report;
         }
 

@@ -38,3 +38,11 @@ Rules for AI agents working in this Unity project (UNITY_AGENT).
 - Creatures should move realistically, with Earth gravity, realistic joint movement, and mass according to their size.
 - Joints should move at a speed and a force that resemble real humans (if the trained agent is the human).
 - Make sure all body parts of all creatures accurately collide with each other, and that creatures cannot pass through each other or anything in the environment.
+
+## Self-collision
+
+- Every creature collides with itself using simple shapes (capsules, boxes, spheres) fitted inside its skinned mesh. Never use the visual mesh or the bones as colliders.
+- All body-part pairs collide except parent–child pairs and pairs that overlap in the default standing pose; joint limits handle those.
+- Before training, verify that no pair touches in the T-pose, the default stance and a normal arm and leg swing.
+- Self-contact never ends an episode. If the policy leans on it, add a small self-contact force penalty.
+- Train a new skill from a warm start (a brain trained without self-collision, or the previous rung) rather than from scratch.

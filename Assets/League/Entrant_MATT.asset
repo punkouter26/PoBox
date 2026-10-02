@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Entrant_MATT
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.League.PolicyProfile
   displayName: MATT
-  generation: 4650
+  generation: 12900
   checkpoint: {fileID: 5022602860645237092, guid: af00c3c285ed8fe4a918846d665b1906, type: 3}
   trunks: {r: 1, g: 1, b: 1, a: 1}
   aggression: 0.5

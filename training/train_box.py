@@ -32,6 +32,7 @@ from torch.utils.tensorboard import SummaryWriter
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
+from envs.getup import GetUpEnv  # noqa: E402
 from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
 
 
@@ -78,6 +79,10 @@ def main() -> None:
     ap.add_argument("--entropy-coef", type=float, default=0.005)
     ap.add_argument("--desired-kl", type=float, default=0.01)
     ap.add_argument("--lr-adapt", type=float, default=1.2)
+    ap.add_argument("--max-std", type=float, default=0.0,
+                    help="ceiling on the exploration noise. 0 = none. For a rung that refines a working policy: "
+                         "see PPOConfig.max_std for what happens without it")
+    ap.add_argument("--lr-max", type=float, default=1e-2, help="ceiling on the KL-adaptive learning rate")
     ap.add_argument("--init-std", type=float, default=0.5,
                     help="exploration noise at the start. At 0.8 a humanoid holding a pose is shaken off its "
                          "feet inside a second and a half, and spends the run learning to cancel its own noise.")
@@ -89,6 +94,31 @@ def main() -> None:
     ap.add_argument("--taken-w", type=float, default=0.5)
     ap.add_argument("--fall-penalty", type=float, default=4.0)
     ap.add_argument("--ko-bonus", type=float, default=4.0)
+    ap.add_argument("--survivor-bootstrap", action="store_true",
+                    help="the fighter left standing when the other falls has its episode cut short, not ended: "
+                         "without this a knockdown costs the one who lands it the rest of the episode's reward")
+    ap.add_argument("--stage", default="auto", choices=["auto", "getup"],
+                    help="auto: bag or match, read from the model. getup: the fighters in the match model learn to "
+                         "stand back up after a knockdown (envs/getup.py); resume it from the match policies")
+    ap.add_argument("--daze", action="store_true",
+                    help="being hit weakens the joint drives, and enough of it takes the legs away (as in the game)")
+    ap.add_argument("--daze-tau", type=float, default=2.5, help="seconds for the daze to drain to a third")
+    ap.add_argument("--daze-lo", type=float, default=14.0, help="daze at which the drives start to weaken")
+    ap.add_argument("--daze-hi", type=float, default=36.0, help="daze at which the legs go")
+    ap.add_argument("--daze-weak", type=float, default=0.45, help="share of drive strength lost just below --daze-hi")
+    ap.add_argument("--block-w", type=float, default=0.0, help="paid per m/s of a punch stopped on a glove or forearm, per step")
+    ap.add_argument("--slack-hi", type=float, default=2.6, help="getup: longest time the drives stay slack, seconds")
+    ap.add_argument("--shove", type=float, default=2.5, help="getup: the shove that starts an episode, m/s")
+    ap.add_argument("--assist", type=float, default=0.6,
+                    help="getup: the helping hand the stage starts with, as a share of body weight; it comes down by itself")
+    ap.add_argument("--more-iters", type=int, default=0,
+                    help="stop after this many iterations of this run, wherever the count started. 0 = no such limit")
+    ap.add_argument("--freeze", nargs="*", default=[],
+                    help="fighters in a match that box but do not learn: a sparring partner whose policy is to stay "
+                         "as it is. It plays its best punch (no exploration noise) and no latest_* is written for it")
+    ap.add_argument("--career", action="store_true",
+                    help="also chart each learning fighter in TensorBoard as boxer_<name>, on one line that runs through "
+                         "every stage and every opponent it has had (the count is carried in its checkpoint)")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -97,10 +127,17 @@ def main() -> None:
     if not args.keep_old_runs:
         clean_old_runs(tb_root)
 
-    env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
-                    episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
-                    push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w,
-                    fall_penalty=args.fall_penalty, ko_bonus=args.ko_bonus)
+    if args.stage == "getup":
+        env = GetUpEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
+                       cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
+                       slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
+    else:
+        env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
+                        episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
+                        push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w,
+                        fall_penalty=args.fall_penalty, ko_bonus=args.ko_bonus, survivor_bootstrap=args.survivor_bootstrap,
+                        daze=args.daze, daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi,
+                        daze_weak=args.daze_weak, block_w=args.block_w)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     # One learner per distinct fighter. Two copies of the same fighter share one, and it learns from both.
     names = env.names if env.hetero else [env.names[0]]
@@ -122,27 +159,36 @@ def main() -> None:
     for _ in names:
         cfg = PPOConfig(steps_per_env=args.steps, lr=args.lr, desired_kl=args.desired_kl,
                         entropy_coef=args.entropy_coef, minibatches=minibatches, lr_adapt=args.lr_adapt,
-                        init_std=args.init_std)
+                        init_std=args.init_std, max_std=args.max_std, lr_max=args.lr_max)
         learners.append(PPO(D, A, per_learner, device, cfg))
 
+    frozen = [n in args.freeze for n in names]
+    if all(frozen):
+        raise SystemExit("--freeze names every fighter in the model; nobody is left to learn")
+    career = [0] * len(names)          # iterations each fighter has trained for, over all its stages
     start_iter = 0
     if args.resume:
         if len(args.resume) != len(learners):
             raise SystemExit(f"this model has {len(learners)} learner(s) ({', '.join(names)}); --resume needs one checkpoint for each")
-        for name, ppo, path in zip(names, learners, args.resume):
+        for i, (name, ppo, path) in enumerate(zip(names, learners, args.resume)):
             extra = ppo.load(path)
+            career[i] = int(extra.get("career", 0))
             same_stage = extra.get("mode", "") == env.mode and extra.get("fighters", []) == env.names
             if same_stage:
                 start_iter = int(extra.get("iter", 0))
             else:
                 # A new stage is a new optimisation problem: the old run's learning rate has no business in it.
                 ppo.cfg.lr = args.lr
+            ppo.cfg.lr = min(ppo.cfg.lr, args.lr_max)
             print(f"{name}: resumed from {path} ({extra.get('mode', 'unknown stage')}, iteration {extra.get('iter', 0)})")
             if args.reset_std > 0.0:
                 with torch.no_grad():
                     ppo.model.log_std.fill_(float(torch.log(torch.tensor(args.reset_std))))
         if args.reset_std > 0.0:
             print(f"exploration noise reset to {args.reset_std:g}")
+
+    if args.more_iters > 0:
+        args.iters = min(args.iters, start_iter + args.more_iters)
 
     ck_dir = os.path.join(HERE, "checkpoints", run_name)
     os.makedirs(ck_dir, exist_ok=True)
@@ -167,16 +213,24 @@ def main() -> None:
         x = x.reshape(N, K, *x.shape[1:])
         return [x[:, k] for k in range(K)]
 
+    def best_punch(ppo: PPO, o: torch.Tensor) -> torch.Tensor:
+        """A frozen fighter's action: the policy's own choice, as the game plays it."""
+        return ppo.model.actor(ppo.obs_rms.normalize(o, ppo.cfg.obs_clip))
+
+    career_w = [SummaryWriter(os.path.join(tb_root, f"boxer_{n}")) if args.career and not fz else None
+                for n, fz in zip(names, frozen)]
+
     for it in range(start_iter, args.iters):
         t0 = time.time()
         with torch.no_grad():
             for _ in range(args.steps):
-                acts = [ppo.act(o) for ppo, o in zip(learners, split(obs))]
+                acts = [best_punch(ppo, o) if fz else ppo.act(o) for ppo, o, fz in zip(learners, split(obs), frozen)]
                 act = torch.stack(acts, 1).reshape(N * K, A) if env.hetero else acts[0]
                 obs, rew, done, timeout = env.step(act)
-                for ppo, r, d, t in zip(learners, split(rew), split(done), split(timeout)):
-                    ppo.record(r, d, t)
-        all_stats = [ppo.update(o) for ppo, o in zip(learners, split(obs))]
+                for ppo, r, d, t, fz in zip(learners, split(rew), split(done), split(timeout), frozen):
+                    if not fz:
+                        ppo.record(r, d, t)
+        all_stats = [ppo.update(o) for ppo, o, fz in zip(learners, split(obs), frozen) if not fz]
         stats = {k: sum(s[k] for s in all_stats) / len(all_stats) for k in all_stats[0]}
         total_steps += args.steps * N * K
         fps = args.steps * N * K / max(1e-6, time.time() - t0)
@@ -195,20 +249,41 @@ def main() -> None:
         csv_f.flush()
         for k, v in s.items():
             writer.add_scalar(f"env/{k}", v, it)
-        for name, st in zip(names, all_stats):
+        for name, st in zip([n for n, fz in zip(names, frozen) if not fz], all_stats):
             for k, v in st.items():
                 writer.add_scalar(f"ppo{tag(name)}/{k}", v, it)
         writer.add_scalar("perf/fps", fps, it)
+        for i, (name, w) in enumerate(zip(names, career_w)):
+            if w is None:
+                continue
+            career[i] += 1
+            if env.hetero:
+                line = {k: s[f"{name}_{k}"] for k in ("hits_per_s", "hit_speed", "head_share", "falls", "knockdowns_per_min",
+                                                      "blocks_per_s", "reward_per_step")}
+            else:
+                line = {"hits_per_s": s["hits_per_s"], "hit_speed": s["hit_speed"], "head_share": s["head_share"],
+                        "falls": s["fall_rate"]}
+            for k, v in line.items():
+                w.add_scalar(f"career/{k}", v, career[i])
 
-        if it % 10 == 0:
+        if it % 10 == 0 and env.mode == "getup":
+            print(f"it {it:6d} | {fps:7.0f} sps | ret {s['ep_return']:7.2f} | on its feet at the end {s['up_rate']:4.0%}, "
+                  f"from the floor {s['up_rate_from_floor']:4.0%}, unaided {s['up_rate_unaided']:4.0%} in {s['time_to_stand_unaided']:4.1f} s, help {s['assist']:.2f} "
+                  f"| height {s['height']:4.2f} upright {s['upright']:4.2f} "
+                  f"| kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:6.1f} min", flush=True)
+            if env.hetero:
+                print("          " + " | ".join(
+                    f"{n}: up from the floor {s[n + '_up_rate_from_floor']:.0%}, unaided {s[n + '_up_rate_unaided']:.0%}, help {s[n + '_assist']:.2f}" for n in names), flush=True)
+        elif it % 10 == 0:
             print(f"it {it:6d} | {fps:7.0f} sps | ret {s['ep_return']:7.2f} | len {s['ep_len_s']:5.1f}s | fall {s['fall_rate']:4.2f} "
                   f"| hits/s {s['hits_per_s']:5.2f} (head {s['head_share']:3.0%}) at {s['hit_speed']:4.1f} m/s, max {s['hit_speed_max']:4.1f} "
-                  f"| dist {s['distance']:4.2f} | kd/min {s['knockdowns_per_min']:5.2f} "
+                  f"| dist {s['distance']:4.2f} | kd/min {s['knockdowns_per_min']:5.2f} | blocks/s {s['blocks_per_s']:4.2f} | daze {s['daze']:4.1f} "
                   f"| kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:6.1f} min", flush=True)
             if env.hetero:
                 print("          " + " | ".join(
                     f"{n}: {s[n + '_hits_per_s']:.2f} hits/s at {s[n + '_hit_speed']:.1f} m/s, down in {s[n + '_falls']:.0%} of endings, "
-                    f"{s[n + '_knockdowns_per_min']:.2f} knockdowns/min" for n in names), flush=True)
+                    f"{s[n + '_knockdowns_per_min']:.2f} knockdowns/min, {s[n + '_blocks_per_s']:.2f} blocks/s" for n in names), flush=True)
+        if it % 10 == 0:
             with open(status_path, "w", encoding="utf-8") as fh:
                 json.dump({"run": run_name, "mode": env.mode, "fighters": env.names, "iter": it, "hours": hours, "fps": fps,
                            "max_hours": args.max_hours, "updated": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -219,8 +294,15 @@ def main() -> None:
             for k, (name, ppo) in enumerate(zip(names, learners)):
                 ck = os.path.join(ck_dir, f"model_{it + 1:06d}{tag(name)}.pt")
                 ppo.save(ck, {"iter": it + 1, "mode": env.mode, "fighters": env.names, "fighter": name, "obs_dim": D,
-                              "act_dim": A, "action_scale": env.action_scale, "run_name": run_name,
-                              "xml": os.path.abspath(args.xml)})
+                              "act_dim": A, "action_scale": env.action_scale, "run_name": run_name, "career": career[k],
+                              "xml": os.path.abspath(args.xml),
+                              # What the viewer needs to show the policy in the world it was trained in.
+                              "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo,
+                                      "daze_hi": args.daze_hi, "daze_weak": args.daze_weak, "block_w": args.block_w}})
+                if frozen[k]:
+                    # Kept beside its opponent's so the viewer shows the pair that trained; there is no
+                    # latest_* for it, so nothing takes it for a newly trained policy.
+                    continue
                 shutil.copyfile(ck, os.path.join(ck_dir, f"latest{tag(name)}.pt"))
                 try:
                     export_onnx(ppo, os.path.join(ck_dir, f"latest{tag(name)}.onnx"), D)
@@ -243,6 +325,9 @@ def main() -> None:
             break
 
     writer.close()
+    for w in career_w:
+        if w is not None:
+            w.close()
     csv_f.close()
 
 

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Entrant_ZOMBIE
   m_EditorClassIdentifier: PoBox.Runtime::PoBox.League.PolicyProfile
   displayName: ZOMBIE
-  generation: 4650
+  generation: 480
   checkpoint: {fileID: 5022602860645237092, guid: b5a1a38126cc83e4a8cb41d3d79ae009, type: 3}
   trunks: {r: 1, g: 1, b: 1, a: 1}
   aggression: 0.5

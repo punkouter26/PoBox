@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PoBox: the first screen, laid out for a 1080 x 1920 portrait screen like the HUD.
+
+    Top to bottom: the game's name, the heading, the two corners side by side (a card for every boxer in
+    each, built by MenuView.cs), the pairing as it stands, and FIGHT. Nothing scrolls.
+
+    The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Theme.uss" />
+
+    <ui:VisualElement name="root" class="root menu-root" picking-mode="Ignore">
+        <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
+
+            <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
+                <ui:Label name="title" class="chip frame-title" text="POBOX" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:Label name="heading" class="menu-heading" text="CHOOSE THE BOXERS" picking-mode="Ignore" />
+
+            <ui:VisualElement name="picker" class="picker" picking-mode="Ignore">
+                <ui:VisualElement class="pick-col pick-col--red" picking-mode="Ignore">
+                    <ui:Label class="pick-corner pick-corner--red" text="RED CORNER" picking-mode="Ignore" />
+                    <ui:VisualElement name="red-cards" class="pick-cards" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="pick-col pick-col--blue" picking-mode="Ignore">
+                    <ui:Label class="pick-corner pick-corner--blue" text="BLUE CORNER" picking-mode="Ignore" />
+                    <ui:VisualElement name="blue-cards" class="pick-cards" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:Label name="versus" class="versus" text="" picking-mode="Ignore" />
+            <ui:Button name="fight" class="btn btn--primary fight" text="FIGHT" />
+
+            <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

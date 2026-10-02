@@ -1,0 +1,2 @@
+Fabric030 (1K, JPG) from ambientCG (https://ambientcg.com/a/Fabric030), CC0 1.0. Downloaded 2026-10-01.
+Used here: the colour map (as the weave under the ring canvas's printed design) and the OpenGL normal map.

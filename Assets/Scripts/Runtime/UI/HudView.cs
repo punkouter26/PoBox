@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using PoBox.Audio;
 using PoBox.Broadcast;
@@ -14,15 +15,21 @@ namespace PoBox.UI
     /// The whole interface, in one document, on one portrait screen, with nothing that scrolls.
     ///
     /// Five things never move: the game's name top-left, the frame rate top-centre, MENU top-right, DEBUG
-    /// bottom-left and the version bottom-right. Between them: a scoreboard (names, clock, health, a
-    /// tug-of-war momentum bar and a mirrored tale of the tape whose last row cycles through four readings
-    /// on a tap), the picture, and a dock at the bottom with the commentary line and one graph that pages
-    /// sideways between excitement, momentum and frame time.
+    /// bottom-left and the version bottom-right. Between them: a scoreboard of three rows (the names
+    /// written on the health bars with the clock between them; a tug-of-war win-probability bar; three
+    /// chips, each a pair of numbers either side of an icon, the third cycling through five readings on a
+    /// tap), the picture, and a dock at the bottom with one graph that pages sideways between excitement,
+    /// win probability and frame time.
+    ///
+    /// Over the picture: a pod in each top corner showing where that fighter has been hit and where its
+    /// balance is, the commentary as a caption along the bottom that fades when it has nothing to say, and
+    /// during the walk-on each fighter's name across the lower third.
     ///
     /// Everything else opens over that rather than replacing it: the menu is a sheet with three tabs, the
     /// debug readings are a panel that grows out of the DEBUG chip, and the end of a bout is a single sheet
-    /// carrying the result, both fighters' numbers, the momentum graph of the whole bout and the replay
-    /// with its scrubber, while the highlight reel plays in the picture above it.
+    /// carrying the result, the three judges' cards, both fighters' numbers with a hit map each, and the
+    /// win-probability graph of the whole bout. BOXERS, in the menu and on that sheet, goes back to the
+    /// first screen to choose another pair.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class HudView : MonoBehaviour
@@ -34,8 +41,9 @@ namespace PoBox.UI
         public Color blueColor = new Color(0.25f, 0.55f, 1f);
 
         const int StripPages = 3;
-        const int CycleModes = 4;
+        const int CycleModes = 5;
         const int LeagueRows = 6;
+        const int ResultRows = 5;
 
         VisualElement _root, _safe;
 
@@ -48,12 +56,18 @@ namespace PoBox.UI
         // board
         Label _redName, _blueName, _redBadge, _blueBadge, _round, _clock, _redHpText, _blueHpText, _momRed, _momBlue;
         VisualElement _redHp, _blueHp, _momFill, _board;
-        Label _landedRed, _landedBlue, _peakRed, _peakBlue, _cycleRed, _cycleBlue, _cycleCode;
+        Label _landedRed, _landedBlue, _peakRed, _peakBlue, _cycleRed, _cycleBlue;
         Glyph _cycleGlyph;
         int _cycle;
 
         // picture overlays
-        Label _banner, _replayTag;
+        Label _banner, _walkCorner, _walkName, _walkDetail;
+        VisualElement _walkOn;
+        HitMap _hitRed, _hitBlue, _resHitRed, _resHitBlue;
+        BalanceGauge _balRed, _balBlue;
+        AudioDirector _audio;
+        System.Func<int, float> _sampleExcitement, _sampleShare;
+        int _walkShown = -1;
 
         // dock
         VisualElement _dock, _strip;
@@ -66,19 +80,19 @@ namespace PoBox.UI
 
         // results
         VisualElement _results;
-        Label _resWinner, _resMethod, _resElo, _resCaption;
+        Label _resWinner, _resMethod, _resElo;
         Sparkline _resGraph;
-        Scrubber _resScrub;
-        Button _resPlay, _resNext;
-        Label _resPlayText;
-        readonly Label[] _resRed = new Label[4], _resBlue = new Label[4];
+        Button _resNext;
+        readonly Label[] _resRed = new Label[ResultRows], _resBlue = new Label[ResultRows];
+        readonly VisualElement[] _judgeCards = new VisualElement[Judges.Count];
+        readonly Label[] _judgeScores = new Label[Judges.Count];
 
         // menu
         VisualElement _menuSheet;
         readonly Button[] _tabs = new Button[3];
         readonly VisualElement[] _pages = new VisualElement[3];
-        readonly Button[] _camButtons = new Button[4], _speedButtons = new Button[4];
-        Button _sSound, _sHeat, _sQuality, _sFps, _sSlow, _sReset;
+        readonly Button[] _camButtons = new Button[4], _speedButtons = new Button[2];
+        Button _sSound, _sQuality, _sFps, _sReset;
         readonly Label[][] _leagueCells = new Label[LeagueRows][];
         readonly VisualElement[] _leagueRows = new VisualElement[LeagueRows];
         float _resetArmedUntil;
@@ -130,11 +144,16 @@ namespace PoBox.UI
             _landedRed = _root.Q<Label>("landed-red"); _landedBlue = _root.Q<Label>("landed-blue");
             _peakRed = _root.Q<Label>("peak-red"); _peakBlue = _root.Q<Label>("peak-blue");
             _cycleRed = _root.Q<Label>("cycle-red"); _cycleBlue = _root.Q<Label>("cycle-blue");
-            _cycleCode = _root.Q<Label>("cycle-code");
             _cycleGlyph = _root.Q<Glyph>("cycle-glyph");
 
             _banner = _root.Q<Label>("banner");
-            _replayTag = _root.Q<Label>("replay-tag");
+            _walkOn = _root.Q<VisualElement>("walkon");
+            _walkCorner = _root.Q<Label>("walkon-corner");
+            _walkName = _root.Q<Label>("walkon-name");
+            _walkDetail = _root.Q<Label>("walkon-detail");
+            _hitRed = _root.Q<HitMap>("hit-red"); _hitBlue = _root.Q<HitMap>("hit-blue");
+            _balRed = _root.Q<BalanceGauge>("bal-red"); _balBlue = _root.Q<BalanceGauge>("bal-blue");
+            _resHitRed = _root.Q<HitMap>("res-hit-red"); _resHitBlue = _root.Q<HitMap>("res-hit-blue");
 
             _dock = _root.Q<VisualElement>("dock");
             _strip = _root.Q<VisualElement>("strip");
@@ -146,11 +165,9 @@ namespace PoBox.UI
 
             _results = _root.Q<VisualElement>("results");
             _resWinner = _root.Q<Label>("res-winner"); _resMethod = _root.Q<Label>("res-method");
-            _resElo = _root.Q<Label>("res-elo"); _resCaption = _root.Q<Label>("res-caption");
+            _resElo = _root.Q<Label>("res-elo");
             _resGraph = _root.Q<Sparkline>("res-graph");
-            _resScrub = _root.Q<Scrubber>("res-scrub");
-            _resPlay = _root.Q<Button>("res-play"); _resNext = _root.Q<Button>("res-next");
-            _resPlayText = _root.Q<Label>("res-play-text");
+            _resNext = _root.Q<Button>("res-next");
 
             _menuSheet = _root.Q<VisualElement>("menu-sheet");
             string[] tabNames = { "match", "league", "settings" };
@@ -170,6 +187,7 @@ namespace PoBox.UI
             Hook(_root.Q<Button>("cycle"), () => { _cycle = (_cycle + 1) % CycleModes; RefreshCycleKey(); RefreshTape(); });
 
             BuildResultsTape();
+            BuildJudges();
             BuildDebugPanel();
             BuildLeagueRows();
             HookMenu();
@@ -200,9 +218,9 @@ namespace PoBox.UI
             VisualElement host = _root.Q<VisualElement>("res-tape");
             if (host == null) return;
             host.Clear();
-            GlyphKind[] kinds = { GlyphKind.Glove, GlyphKind.Burst, GlyphKind.Bolt, GlyphKind.Heat };
-            string[] codes = { "LANDED", "PEAK", "ENERGY", "DAMAGE" };
-            for (int i = 0; i < 4; i++)
+            GlyphKind[] kinds = { GlyphKind.Glove, GlyphKind.Shield, GlyphKind.Burst, GlyphKind.Bolt, GlyphKind.Heat };
+            string[] codes = { "LANDED", "BLOCKED", "PEAK", "ENERGY", "DAMAGE" };
+            for (int i = 0; i < ResultRows; i++)
             {
                 var row = new VisualElement { pickingMode = PickingMode.Ignore };
                 row.AddToClassList("tape-row");
@@ -236,9 +254,32 @@ namespace PoBox.UI
             return key;
         }
 
+        /// <summary>One card a judge: the judge's name over the score, red's first.</summary>
+        void BuildJudges()
+        {
+            VisualElement host = _root.Q<VisualElement>("res-judges");
+            if (host == null) return;
+            host.Clear();
+            for (int j = 0; j < Judges.Count; j++)
+            {
+                var card = new VisualElement { pickingMode = PickingMode.Ignore };
+                card.AddToClassList("judge");
+                var name = new Label(Judges.Names[j]) { pickingMode = PickingMode.Ignore };
+                name.AddToClassList("judge-name");
+                var score = new Label("-") { pickingMode = PickingMode.Ignore };
+                score.AddToClassList("judge-card");
+                card.Add(name);
+                card.Add(score);
+                host.Add(card);
+                _judgeCards[j] = card;
+                _judgeScores[j] = score;
+            }
+        }
+
         static readonly string[] DebugKeys =
         {
             "FRAME", "WORST", "PHYSICS", "SETPASS", "TRIS", "GC", "MEMORY", "SCALE", "SHOT", "VOICES", "CLOSING", "STRESS",
+            "DAZE", "CRITIC", "SOUND", "USUAL",
         };
 
         void BuildDebugPanel()
@@ -289,6 +330,7 @@ namespace PoBox.UI
         {
             Hook(_root.Q<Button>("m-restart"), () => { if (bout != null) bout.Restart(); CloseMenu(); });
             Hook(_root.Q<Button>("m-next"), () => { if (bout != null) bout.NewBout(); CloseMenu(); });
+            HookBoxers(_root.Q<Button>("m-boxers"));
 
             string[] cams = { "cam-auto", "cam-wide", "cam-orbit", "cam-top" };
             Shot?[] shots = { null, Shot.Wide, Shot.Orbit, Shot.Overhead };
@@ -299,8 +341,8 @@ namespace PoBox.UI
                 Hook(_camButtons[i], () => { if (director != null) director.Pin(shots[index]); RefreshMenu(); });
             }
 
-            string[] speeds = { "spd-quarter", "spd-half", "spd-one", "spd-two" };
-            float[] scales = { 0.25f, 0.5f, 1f, 2f };
+            string[] speeds = { "spd-one", "spd-two" };
+            float[] scales = { 1f, 2f };
             for (int i = 0; i < speeds.Length; i++)
             {
                 int index = i;
@@ -309,14 +351,11 @@ namespace PoBox.UI
             }
 
             _sSound = _root.Q<Button>("s-sound");
-            _sHeat = _root.Q<Button>("s-heat");
             _sQuality = _root.Q<Button>("s-quality");
             _sFps = _root.Q<Button>("s-fps");
-            _sSlow = _root.Q<Button>("s-slow");
             _sReset = _root.Q<Button>("s-reset");
 
             Hook(_sSound, () => { AudioDirector.Muted = !AudioDirector.Muted; SaveSettings(); RefreshMenu(); });
-            Hook(_sHeat, () => { FighterSkin.HeatmapOn = !FighterSkin.HeatmapOn; SaveSettings(); RefreshMenu(); });
             Hook(_sQuality, () =>
             {
                 int n = QualitySettings.names.Length;
@@ -329,7 +368,6 @@ namespace PoBox.UI
                 if (perf != null) perf.SetTargetFps(perf.targetFps >= 60 ? 30 : 60);
                 SaveSettings(); RefreshMenu();
             });
-            Hook(_sSlow, () => { if (director != null) director.slowMotion = !director.slowMotion; SaveSettings(); RefreshMenu(); });
             Hook(_sReset, () =>
             {
                 // Twice, because it throws away every result the ladder has.
@@ -358,16 +396,16 @@ namespace PoBox.UI
 
         void HookResults()
         {
-            if (_resScrub != null) _resScrub.scrubbed += v => { if (ReplaySystem.Instance != null) ReplaySystem.Instance.Scrub(v); };
-            Hook(_resPlay, () =>
-            {
-                ReplaySystem rs = ReplaySystem.Instance;
-                if (rs == null) return;
-                if (!rs.Playing) rs.Replay(); else rs.Paused = !rs.Paused;
-            });
-            Hook(_root.Q<Button>("res-prev"), () => { if (ReplaySystem.Instance != null) ReplaySystem.Instance.Step(-1); });
-            Hook(_root.Q<Button>("res-next-clip"), () => { if (ReplaySystem.Instance != null) ReplaySystem.Instance.Step(1); });
+            HookBoxers(_root.Q<Button>("res-boxers"));
             Hook(_resNext, () => { if (bout != null) bout.NewBout(); });
+        }
+
+        /// <summary>Back to the first screen to choose another pair. Not offered when the build has no such screen.</summary>
+        void HookBoxers(Button b)
+        {
+            if (b == null) return;
+            b.EnableInClassList("hidden", !MatchSelection.HasMenu);
+            b.clicked += () => SceneManager.LoadScene(MatchSelection.MenuScene);
         }
 
         // ------------------------------------------------------------ settings
@@ -375,8 +413,6 @@ namespace PoBox.UI
         void LoadSettings()
         {
             AudioDirector.Muted = PlayerPrefs.GetInt("pobox.muted", 0) == 1;
-            FighterSkin.HeatmapOn = PlayerPrefs.GetInt("pobox.heat", 1) == 1;
-            if (director != null) director.slowMotion = PlayerPrefs.GetInt("pobox.slowmo", 1) == 1;
             PerfTelemetry perf = PerfTelemetry.Instance;
             if (perf != null) perf.SetTargetFps(PlayerPrefs.GetInt("pobox.fps", perf.targetFps));
             RefreshMenu();
@@ -385,8 +421,6 @@ namespace PoBox.UI
         void SaveSettings()
         {
             PlayerPrefs.SetInt("pobox.muted", AudioDirector.Muted ? 1 : 0);
-            PlayerPrefs.SetInt("pobox.heat", FighterSkin.HeatmapOn ? 1 : 0);
-            if (director != null) PlayerPrefs.SetInt("pobox.slowmo", director.slowMotion ? 1 : 0);
             if (PerfTelemetry.Instance != null) PlayerPrefs.SetInt("pobox.fps", PerfTelemetry.Instance.targetFps);
             PlayerPrefs.Save();
         }
@@ -448,13 +482,11 @@ namespace PoBox.UI
                 if (_camButtons[i] != null) _camButtons[i].EnableInClassList("btn--on", pinned == shots[i]);
 
             float scale = bout != null ? bout.userTimeScale : 1f;
-            float[] scales = { 0.25f, 0.5f, 1f, 2f };
+            float[] scales = { 1f, 2f };
             for (int i = 0; i < _speedButtons.Length; i++)
                 if (_speedButtons[i] != null) _speedButtons[i].EnableInClassList("btn--on", Mathf.Approximately(scale, scales[i]));
 
             Toggle(_sSound, "SOUND", !AudioDirector.Muted);
-            Toggle(_sHeat, "HEAT MAP", FighterSkin.HeatmapOn);
-            Toggle(_sSlow, "SLOW-MO", director == null || director.slowMotion);
             if (_sQuality != null)
             {
                 string[] names = QualitySettings.names;
@@ -531,8 +563,9 @@ namespace PoBox.UI
                 _nextFast = now + 0.1f;
                 RefreshClock();
                 RefreshTape();
+                RefreshPods();
                 if (_stripPage == 2) RefreshStrip();
-                if (ResultsOpen) RefreshReplay();
+                if (ResultsOpen) RefreshNext();
             }
 
             if (now >= _nextSlow)
@@ -545,8 +578,15 @@ namespace PoBox.UI
                 if (MenuOpen && now < _resetArmedUntil + 0.3f) RefreshMenu();
             }
 
-            if (_ticker != null) _ticker.style.opacity = Mathf.Clamp01(1.4f - (now - _tickerAt) / 6f);
+            // The caption is there while it is news, and gone after: five seconds, then a second of fading.
+            if (_ticker != null)
+            {
+                float opacity = ResultsOpen || MenuOpen || string.IsNullOrEmpty(_ticker.text) ? 0f : Mathf.Clamp01(6f - (now - _tickerAt));
+                if (!Mathf.Approximately(opacity, _tickerOpacity)) { _tickerOpacity = opacity; _ticker.style.opacity = opacity; }
+            }
         }
+
+        float _tickerOpacity = -1f;
 
         /// <summary>
         /// Tells the cameras which part of the screen is not under interface: from the bottom of the
@@ -580,6 +620,9 @@ namespace PoBox.UI
             bool results = phase == BoutPhase.Results;
             if (_results != null) _results.EnableInClassList("hidden", !results);
             if (_dock != null) _dock.EnableInClassList("hidden", results);
+            // The card carries both hit maps; the pods would say the same thing twice.
+            if (_hitRed != null && _hitRed.parent != null) _hitRed.parent.EnableInClassList("hidden", results);
+            if (_hitBlue != null && _hitBlue.parent != null) _hitBlue.parent.EnableInClassList("hidden", results);
 
             if (results) FillResults();
             if (MenuOpen && _pages[1] != null && !_pages[1].ClassListContains("hidden")) RefreshLeague();
@@ -587,13 +630,20 @@ namespace PoBox.UI
 
         string Badge(Fighter f)
         {
-            string badge = f.profile != null ? f.profile.Badge : "SCRIPTED";
-            if (league != null)
-            {
-                LeagueTable.Row row = league.Find(f.displayName);
-                if (row != null) badge = $"#{league.RankOf(f.displayName)} · {row.elo:0}";
-            }
-            return badge;
+            // The plate has room for the name and a rank; the rating and the rest are on the walk-on card.
+            if (league != null && league.Find(f.displayName) != null) return "#" + league.RankOf(f.displayName);
+            return f.profile != null && f.profile.IsTrained ? "AI" : "BOT";
+        }
+
+        /// <summary>The line under a fighter's name on the walk-on card: rank, rating, record, weight, how long it trained.</summary>
+        string WalkOnDetail(Fighter f)
+        {
+            var s = new System.Text.StringBuilder();
+            LeagueTable.Row row = league != null ? league.Find(f.displayName) : null;
+            if (row != null) s.Append($"#{league.RankOf(f.displayName)} · {row.elo:0} ELO · {row.wins}-{row.losses}-{row.draws}");
+            if (f.totalMass > 0f) s.Append($"{(s.Length > 0 ? " · " : "")}{f.totalMass:0} kg");
+            if (f.profile != null && f.profile.IsTrained) s.Append($" · GEN {f.profile.generation}");
+            return s.ToString();
         }
 
         void RefreshBars()
@@ -620,11 +670,11 @@ namespace PoBox.UI
 
         void RefreshCycleKey()
         {
-            GlyphKind[] kinds = { GlyphKind.Bolt, GlyphKind.Heat, GlyphKind.Balance, GlyphKind.Power };
-            string[] codes = { "ENERGY", "STRESS", "BALANCE", "POWER" };
-            if (_cycleGlyph != null) _cycleGlyph.kind = kinds[_cycle];
-            if (_cycleCode != null) _cycleCode.text = codes[_cycle];
+            if (_cycleGlyph != null) _cycleGlyph.kind = CycleKinds[_cycle];
         }
+
+        // Energy spent, punches stopped on the guard, how dazed, the hardest-working joint, power now.
+        static readonly GlyphKind[] CycleKinds = { GlyphKind.Bolt, GlyphKind.Shield, GlyphKind.Daze, GlyphKind.Heat, GlyphKind.Power };
 
         void RefreshTape()
         {
@@ -643,10 +693,31 @@ namespace PoBox.UI
             switch (_cycle)
             {
                 case 0: return $"{f.stats.energyJ / 1000f:0.0} kJ";
-                case 1: return $"{f.PeakStress * 100f:0}%";
-                case 2: return $"{f.BalanceMargin * 100f:0}%";
+                case 1: return f.stats.blocked.ToString();
+                case 2: return $"{f.Daze01 * 100f:0}%";
+                case 3: return $"{f.PeakStress * 100f:0}%";
                 default: return $"{f.PowerW:0} W";
             }
+        }
+
+        /// <summary>The two pods: where each fighter has been hit, how dazed it is, and its balance.</summary>
+        void RefreshPods()
+        {
+            Fighter red = bout.red, blue = bout.blue;
+            if (red == null || blue == null) return;
+            float scale = HitScale(red, blue);
+            if (_hitRed != null) _hitRed.Set(red.taken, scale, red.Daze01);
+            if (_hitBlue != null) _hitBlue.Set(blue.taken, scale, blue.Daze01);
+            if (_balRed != null) _balRed.Set(red.footOffset, red.footDown, red.CaptureOffset, red.BalanceMargin, red.IsDown && !red.IsRising);
+            if (_balBlue != null) _balBlue.Set(blue.footOffset, blue.footDown, blue.CaptureOffset, blue.BalanceMargin, blue.IsDown && !blue.IsRising);
+        }
+
+        /// <summary>The impulse that is drawn fully hot: the most that has landed on any one part of either fighter, and never less than a few punches' worth.</summary>
+        static float HitScale(Fighter red, Fighter blue)
+        {
+            float most = 40f;
+            for (int i = 0; i < red.taken.Length; i++) most = Mathf.Max(most, Mathf.Max(red.taken[i], blue.taken[i]));
+            return most;
         }
 
         static void Set(Label l, string text)
@@ -656,25 +727,33 @@ namespace PoBox.UI
 
         void RefreshOverlays(float now)
         {
-            ReplaySystem rs = ReplaySystem.Instance;
             string banner = null;
             switch (bout.Phase)
             {
                 case BoutPhase.Intro: banner = "ROUND " + bout.Round; break;
                 case BoutPhase.Count: if (bout.Count > 0) banner = bout.Count.ToString(); break;
             }
+
+            // The walk-on: red's name for the first half of it, blue's for the second.
+            int walk = bout.Phase != BoutPhase.WalkOn ? -1 : bout.PhaseAge < bout.walkOnSeconds * 0.5f ? 0 : 1;
+            if (walk != _walkShown && _walkOn != null)
+            {
+                _walkShown = walk;
+                _walkOn.EnableInClassList("hidden", walk < 0);
+                _walkOn.EnableInClassList("walkon--blue", walk == 1);
+                Fighter f = walk == 0 ? bout.red : walk == 1 ? bout.blue : null;
+                if (f != null)
+                {
+                    Set(_walkCorner, walk == 0 ? "RED CORNER" : "BLUE CORNER");
+                    Set(_walkName, f.displayName);
+                    Set(_walkDetail, WalkOnDetail(f));
+                }
+            }
             if (_banner != null)
             {
                 _banner.EnableInClassList("hidden", banner == null);
                 _banner.EnableInClassList("banner--count", bout.Phase == BoutPhase.Count);
                 if (banner != null) Set(_banner, banner);
-            }
-
-            bool breakReplay = bout.Phase == BoutPhase.RoundBreak && rs != null && rs.Playing && rs.Current != null;
-            if (_replayTag != null)
-            {
-                _replayTag.EnableInClassList("hidden", !breakReplay);
-                if (breakReplay) Set(_replayTag, "REPLAY · " + rs.Current.caption);
             }
         }
 
@@ -709,16 +788,17 @@ namespace PoBox.UI
                     _stripGraph.fillFromBaseline = false;
                     _stripGraph.lineColor = new Color(1f, 0.78f, 0.33f);
                     _stripGraph.fillColor = new Color(1f, 0.78f, 0.33f, 0.16f);
-                    if (ex != null) _stripGraph.Set(i => ex.Sample(ex.excitementHistory, i), ex.HistoryCount, 0f, 1f);
+                    if (ex != null) _stripGraph.Set(_sampleExcitement ??= i => Excitement.Instance.Sample(Excitement.Instance.excitementHistory, i), ex.HistoryCount, 0f, 1f);
                     break;
                 case 1:
-                    Set(_stripTitle, "MOMENTUM");
+                    // The cards, what each has left, and, with trained fighters, what their critics expect.
+                    Set(_stripTitle, ex != null && ex.HasCritic ? "WIN CHANCE · AI" : "WIN CHANCE");
                     Set(_stripValue, $"{Excitement.RedShare * 100f:0}% {(bout.red != null ? bout.red.displayName : "RED")}");
                     _stripGraph.baseline = 0.5f;
                     _stripGraph.fillFromBaseline = true;
                     _stripGraph.lineColor = Color.white;
                     _stripGraph.fillColor = new Color(1f, 1f, 1f, 0.12f);
-                    if (ex != null) _stripGraph.Set(i => ex.Sample(ex.shareHistory, i), ex.HistoryCount, 0f, 1f);
+                    if (ex != null) _stripGraph.Set(_sampleShare ??= i => Excitement.Instance.Sample(Excitement.Instance.shareHistory, i), ex.HistoryCount, 0f, 1f);
                     break;
                 default:
                     Set(_stripTitle, "FRAME TIME");
@@ -737,20 +817,27 @@ namespace PoBox.UI
             PerfTelemetry perf = PerfTelemetry.Instance;
             if (perf == null || _debugValues.Count < DebugKeys.Length) return;
             Fighter red = bout != null ? bout.red : null, blue = bout != null ? bout.blue : null;
-            AudioDirector audio = FindAnyObjectByType<AudioDirector>();
+            if (_audio == null) _audio = FindAnyObjectByType<AudioDirector>();
+            AudioDirector audio = _audio;
+            Excitement ex = Excitement.Instance;
 
             _debugValues[0].text = $"{perf.FrameMs:0.0} ms";
             _debugValues[1].text = $"{perf.WorstMs:0.0} ms";
             _debugValues[2].text = $"{perf.PhysicsMs:0.00} ms";
             _debugValues[3].text = perf.SetPass.ToString();
             _debugValues[4].text = perf.Triangles >= 1000 ? $"{perf.Triangles / 1000f:0.0}k" : perf.Triangles.ToString();
-            _debugValues[5].text = $"{perf.GcKb:0.0} kB";
+            // Averaged: the single-frame figure jumps whenever the editor itself is asked for anything.
+            _debugValues[5].text = $"{perf.GcAverageKb:0.0} kB";
             _debugValues[6].text = $"{perf.MemoryMb:0} MB";
             _debugValues[7].text = $"{perf.RenderScale:0.00}";
             _debugValues[8].text = director != null ? director.Current.ToString() : "-";
             _debugValues[9].text = audio != null ? audio.ActiveVoices.ToString() : "-";
             _debugValues[10].text = Excitement.Instance != null ? $"{Excitement.Instance.ClosingSpeed:0.0} m/s" : "-";
             _debugValues[11].text = red != null && blue != null ? $"{red.PeakStress * 100f:0}% / {blue.PeakStress * 100f:0}%" : "-";
+            _debugValues[12].text = red != null && blue != null ? $"{red.Daze:0} / {blue.Daze:0}" : "-";
+            _debugValues[13].text = ex != null && ex.HasCritic ? $"{ex.CriticEdge:+0.00;-0.00}" : "none";
+            _debugValues[14].text = audio != null ? $"{audio.PeakDb:0} dB" : "-";
+            _debugValues[15].text = ex != null ? $"{ex.UsualImpulse:0.0} N·s" : "-";
         }
 
         // ------------------------------------------------------------ results
@@ -776,12 +863,28 @@ namespace PoBox.UI
 
             Set(_resRed[0], $"{red.stats.landed}/{red.stats.thrown}");
             Set(_resBlue[0], $"{blue.stats.landed}/{blue.stats.thrown}");
-            Set(_resRed[1], $"{red.stats.peakImpulse:0} N·s");
-            Set(_resBlue[1], $"{blue.stats.peakImpulse:0} N·s");
-            Set(_resRed[2], $"{red.stats.energyJ / 1000f:0.0} kJ");
-            Set(_resBlue[2], $"{blue.stats.energyJ / 1000f:0.0} kJ");
-            Set(_resRed[3], $"{red.stats.damageDealt:0}");
-            Set(_resBlue[3], $"{blue.stats.damageDealt:0}");
+            Set(_resRed[1], red.stats.blocked.ToString());
+            Set(_resBlue[1], blue.stats.blocked.ToString());
+            Set(_resRed[2], $"{red.stats.peakImpulse:0} N·s");
+            Set(_resBlue[2], $"{blue.stats.peakImpulse:0} N·s");
+            Set(_resRed[3], $"{red.stats.energyJ / 1000f:0.0} kJ");
+            Set(_resBlue[3], $"{blue.stats.energyJ / 1000f:0.0} kJ");
+            Set(_resRed[4], $"{red.stats.damageDealt:0}");
+            Set(_resBlue[4], $"{blue.stats.damageDealt:0}");
+
+            // The cards. After a decision they are the result; after a stoppage they are how it stood.
+            for (int j = 0; j < Judges.Count; j++)
+            {
+                if (_judgeCards[j] == null) continue;
+                int r = bout.judges.total[j, 0], b = bout.judges.total[j, 1];
+                Set(_judgeScores[j], bout.judges.RoundsScored > 0 ? bout.judges.Card(j) : "-");
+                _judgeCards[j].EnableInClassList("judge--red", r > b);
+                _judgeCards[j].EnableInClassList("judge--blue", b > r);
+            }
+
+            float scale = HitScale(red, blue);
+            if (_resHitRed != null) _resHitRed.Set(red.taken, scale, 0f);
+            if (_resHitBlue != null) _resHitBlue.Set(blue.taken, scale, 0f);
 
             Excitement ex = Excitement.Instance;
             if (_resGraph != null && ex != null)
@@ -791,36 +894,17 @@ namespace PoBox.UI
                 _resGraph.lineColor = Color.white;
                 _resGraph.fillColor = new Color(1f, 1f, 1f, 0.12f);
                 _resGraph.Set(i => ex.Sample(ex.shareHistory, i), ex.HistoryCount, 0f, 1f);
-
-                var marks = new List<float>();
-                ReplaySystem rs = ReplaySystem.Instance;
-                float span = ex.HistoryCount * Excitement.SampleInterval;
-                if (rs != null && span > 0.1f)
-                {
-                    // The graph only holds the last minute; a moment older than that has scrolled off it.
-                    float first = Bout.Clock - span;
-                    foreach (ReplaySystem.Clip c in rs.Highlights)
-                        if (c.boutClock >= first) marks.Add((c.boutClock - first) / span);
-                }
-                _resGraph.SetMarkers(marks);
             }
-            RefreshReplay();
+            RefreshNext();
         }
 
-        void RefreshReplay()
+        /// <summary>The button that starts the next bout, counting down to doing it by itself.</summary>
+        void RefreshNext()
         {
-            ReplaySystem rs = ReplaySystem.Instance;
-            bool has = rs != null && rs.Playing && rs.Current != null;
-            if (_resCaption != null)
-                Set(_resCaption, has ? $"{rs.ClipIndex + 1}/{rs.ClipCount} · {rs.Current.caption}" : rs != null && rs.Highlights.Count == 0 ? "No clean hit worth a replay" : "Replay stopped");
-            if (_resScrub != null)
-            {
-                if (has && !_resScrub.Dragging) _resScrub.value = rs.Position;
-                _resScrub.SetMark(has ? rs.Current.EventAt : -1f);
-            }
-            if (_resPlayText != null) Set(_resPlayText, !has ? "REPLAY" : rs.Paused ? "PLAY" : "PAUSE");
-            if (_resNext != null)
-                Set2(_resNext, bout.autoAdvance ? $"NEXT BOUT {Mathf.CeilToInt(bout.ResultsTimeLeft)}" : "NEXT BOUT");
+            if (_resNext == null) return;
+            // The same two again when the boxers were chosen; the ladder's next pair when they were not.
+            string word = bout.fixedEntrants ? "REMATCH" : "NEXT BOUT";
+            Set2(_resNext, bout.autoAdvance ? $"{word} {Mathf.CeilToInt(bout.ResultsTimeLeft)}" : word);
         }
 
         static void Set2(Button b, string text)

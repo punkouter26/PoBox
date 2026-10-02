@@ -15,6 +15,9 @@
  "off_actuator_force": 161376,
  "off_geom_contype": 2424,
  "off_geom_conaffinity": 2432,
+ "state_qpos": 2,
+ "state_qvel": 4,
+ "state_ctrl": 64,
  "fighters": [
   {
    "name": "matt",
@@ -241,7 +244,11 @@
     260.0,
     220.0,
     60.0
-   ]
+   ],
+   "torso_half": 0.21800877275926306,
+   "r_head": 0.1,
+   "r_torso": 0.085,
+   "r_glove": 0.075
   },
   {
    "name": "zombie",
@@ -468,7 +475,11 @@
     260.0,
     220.0,
     60.0
-   ]
+   ],
+   "torso_half": 0.22799926534969361,
+   "r_head": 0.1,
+   "r_torso": 0.085,
+   "r_glove": 0.075
   }
  ],
  "key_qpos": [

@@ -118,10 +118,8 @@ Label { margin: 0; padding: 0; }
     -unity-background-image-tint-color: var(--ink);
 }
 .icon--trophy { background-image: url("project://database/Assets/UI/Icons/trophy.png"); }
-.icon--video  { background-image: url("project://database/Assets/UI/Icons/video.png"); }
 .icon--return { background-image: url("project://database/Assets/UI/Icons/return.png"); }
 .icon--next   { background-image: url("project://database/Assets/UI/Icons/next.png"); }
-.icon--prev   { background-image: url("project://database/Assets/UI/Icons/next.png"); scale: -1 1; }
 
 /* ------------------------------------------------------------------ frame: the five anchors */
 
@@ -187,10 +185,33 @@ Label { margin: 0; padding: 0; }
 
 .board-row { flex-direction: row; align-items: center; height: 72px; }
 
-.name { flex: 1 1 0; flex-direction: row; align-items: center; overflow: hidden; }
-.name--red { border-left-width: 8px; border-left-color: var(--red); padding-left: 12px; }
-.name--blue { flex-direction: row-reverse; border-right-width: 8px; border-right-color: var(--blue); padding-right: 12px; }
-.name-text { font-size: 38px; -unity-font-style: bold; flex-shrink: 0; }
+/* A name plate is the fighter's health bar: the name and the number are written on it, and the coloured
+   part of it is the health that is left. Each bar is anchored at its own outer edge, so both empty
+   towards the clock. */
+.plate {
+    flex: 1 1 0;
+    height: 72px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    background-color: rgba(255, 255, 255, 0.10);
+    overflow: hidden;
+}
+.plate--blue { flex-direction: row-reverse; }
+.plate-fill { position: absolute; top: 0; bottom: 0; width: 100%; }
+.plate-fill--red { left: 0; background-color: var(--red); }
+.plate-fill--blue { right: 0; background-color: var(--blue); }
+.plate-name { font-size: 38px; -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+.plate-rank {
+    font-size: var(--t-micro);
+    background-color: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 2px 8px;
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+.plate-hp { font-size: var(--t-body); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
 
 .badge {
     font-size: var(--t-micro);
@@ -207,18 +228,7 @@ Label { margin: 0; padding: 0; }
 .clock-round { font-size: 30px; color: var(--warn); -unity-font-style: bold; margin-right: 10px; }
 .clock-time { font-size: 56px; -unity-font-style: bold; }
 
-.bars { flex-direction: row; height: 40px; margin-top: var(--gap-2); }
-.hp { flex: 1 1 0; background-color: rgba(255, 255, 255, 0.08); border-radius: 6px; overflow: hidden; }
-.hp--red { margin-right: 6px; flex-direction: row; }
-.hp--blue { margin-left: 6px; flex-direction: row-reverse; }
-.hp-fill { height: 100%; width: 100%; }
-.hp-fill--red { background-color: var(--red); }
-.hp-fill--blue { background-color: var(--blue); }
-.hp-text { position: absolute; top: 0; bottom: 0; font-size: var(--t-small); -unity-font-style: bold; -unity-text-align: middle-center; }
-.hp-text--l { left: 12px; }
-.hp-text--r { right: 12px; }
-
-/* Tug of war: red's share of the bar is red's chance as it stands. */
+/* Tug of war: red's share of the bar is red's chance of winning as it stands (Sim/Excitement.cs). */
 .momentum { height: 40px; margin-top: var(--gap-2); background-color: var(--blue); border-radius: 6px; overflow: hidden; }
 .momentum-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background-color: var(--red); }
 .momentum-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background-color: rgba(255, 255, 255, 0.9); }
@@ -240,17 +250,50 @@ Label { margin: 0; padding: 0; }
     border-radius: 6px;
     background-color: rgba(0, 0, 0, 0);
 }
-/* The row that cycles on a tap looks pressable, and the whole width of it is the target. */
-.tape-row--tap { background-color: rgba(255, 255, 255, 0.07); }
-.tape-row--tap:active { background-color: rgba(46, 191, 140, 0.25); }
 .tape-val { flex: 1 1 0; font-size: var(--t-body); -unity-font-style: bold; color: var(--ink); }
 .tape-val--l { -unity-text-align: middle-right; padding-right: 20px; }
 .tape-val--r { -unity-text-align: middle-left; padding-left: 20px; }
 .tape-key { width: 250px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
 .glyph { width: 30px; height: 30px; margin-right: 10px; color: var(--ink-dim); }
-.tape-key--tap .glyph { color: var(--accent); }
 .tape-code { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
-.tape-key--tap .tape-code { color: var(--accent); }
+
+/* On the scoreboard the tape is one row of three chips: red's number, an icon, blue's number. The icon is
+   the label. The third chip is pressed to change what it shows, and is tinted to say so. */
+.chips { flex-direction: row; margin-top: var(--gap-2); margin-left: -4px; margin-right: -4px; }
+.stat {
+    flex: 1 1 0;
+    height: 56px;
+    min-height: 56px;
+    margin: 0 4px;
+    padding: 0 8px;
+    border-width: 0;
+    border-radius: var(--radius-sm);
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+.stat--tap { background-color: rgba(46, 191, 140, 0.16); }
+.stat--tap:active { background-color: rgba(46, 191, 140, 0.34); }
+.stat-val { flex: 1 1 0; font-size: var(--t-small); -unity-font-style: bold; color: var(--ink); }
+.stat-val--l { -unity-text-align: middle-right; padding-right: 10px; }
+.stat-val--r { -unity-text-align: middle-left; padding-left: 10px; }
+.stat .glyph { margin: 0; flex-shrink: 0; }
+.glyph--tap { color: var(--accent); }
+
+/* A fighter's pod, in the picture's top corner: where it has been hit, and where its balance is. */
+.pod {
+    position: absolute;
+    top: 320px;
+    width: 132px;
+    padding: 8px;
+    align-items: center;
+    background-color: var(--overlay);
+    border-radius: var(--radius);
+}
+.pod--red { left: var(--gap-4); border-top-width: 6px; border-top-color: var(--red); }
+.pod--blue { right: var(--gap-4); border-top-width: 6px; border-top-color: var(--blue); }
+.hitmap { width: 116px; height: 164px; }
+.balance { width: 116px; height: 78px; margin-top: 4px; border-top-width: 2px; border-top-color: var(--surface-line); }
 
 /* ------------------------------------------------------------------ over the picture */
 
@@ -266,19 +309,42 @@ Label { margin: 0; padding: 0; }
 }
 .banner--count { top: 500px; font-size: 220px; letter-spacing: 0; color: var(--warn); }
 
-.replay-tag {
+/* The walk-on: one corner at a time, named across the lower third of the picture. */
+.walkon {
     position: absolute;
-    top: 448px;
     left: var(--gap-4);
     right: var(--gap-4);
-    height: 56px;
-    background-color: rgba(226, 62, 62, 0.88);
-    border-radius: var(--radius-sm);
-    padding: 0 20px;
-    font-size: var(--t-small);
-    -unity-font-style: bold;
-    -unity-text-align: middle-center;
+    bottom: 520px;
+    height: 196px;
+    flex-direction: row;
+    background-color: var(--overlay);
+    border-radius: var(--radius);
     overflow: hidden;
+}
+.walkon-bar { width: 18px; background-color: var(--red); }
+.walkon--blue .walkon-bar { background-color: var(--blue); }
+.walkon-text { flex: 1 1 0; padding: 10px 24px; justify-content: center; }
+.walkon-corner { font-size: var(--t-small); letter-spacing: 4px; color: var(--ink-dim); }
+.walkon-name { font-size: 76px; -unity-font-style: bold; letter-spacing: 2px; }
+.walkon-detail { font-size: var(--t-small); color: var(--ink-dim); }
+
+/* The commentary: a caption over the bottom of the picture. It fades out when it has nothing new to say,
+   so most of the time it is not there and the picture has that space. */
+.ticker {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    bottom: 308px;
+    height: 56px;
+    font-size: var(--t-body);
+    -unity-text-align: middle-left;
+    background-color: rgba(6, 8, 14, 0.66);
+    border-left-width: 6px;
+    border-left-color: var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 0 18px;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------ dock */
@@ -288,18 +354,6 @@ Label { margin: 0; padding: 0; }
     left: var(--gap-4);
     right: var(--gap-4);
     bottom: var(--frame-clear);
-}
-
-.ticker {
-    height: 56px;
-    font-size: var(--t-body);
-    -unity-text-align: middle-left;
-    background-color: var(--overlay);
-    border-radius: var(--radius-sm);
-    padding: 0 20px;
-    margin-bottom: var(--gap-2);
-    overflow: hidden;
-    white-space: nowrap;
 }
 
 .strip { height: 196px; background-color: var(--overlay); border-radius: var(--radius); padding: 10px 16px 12px 16px; }
@@ -321,32 +375,41 @@ Label { margin: 0; padding: 0; }
     padding: var(--gap-5);
 }
 
-/* Results, numbers and replay on one card. */
+/* Results: who won, how, and both fighters' numbers on one card. */
 .results { bottom: var(--frame-clear); }
 .res-head { flex-direction: row; align-items: center; height: 104px; }
 .res-icon { width: 72px; height: 72px; margin-right: 16px; -unity-background-image-tint-color: var(--warn); }
 .res-title { flex: 1 1 0; }
 .res-winner { font-size: var(--t-display); -unity-font-style: bold; }
 .res-method { font-size: var(--t-body); color: var(--ink-dim); }
-.res-graph { height: 120px; margin-top: var(--gap-3); background-color: rgba(255, 255, 255, 0.04); border-radius: var(--radius-sm); }
-.res-caption {
-    height: 44px;
-    margin-top: 10px;
-    font-size: var(--t-small);
-    color: var(--ink-dim);
-    -unity-text-align: middle-left;
-    overflow: hidden;
-    white-space: nowrap;
+.res-graph { height: 96px; margin-top: var(--gap-3); background-color: rgba(255, 255, 255, 0.04); border-radius: var(--radius-sm); }
+
+/* The three judges' cards, each marked with the colour of the corner it went to. */
+.judges { flex-direction: row; margin-top: var(--gap-3); margin-left: -4px; margin-right: -4px; }
+.judge {
+    flex: 1 1 0;
+    height: 96px;
+    margin: 0 4px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--row);
+    border-radius: var(--radius-sm);
+    border-top-width: 6px;
+    border-top-color: rgba(255, 255, 255, 0.22);
 }
-.res-actions { flex-direction: row; align-items: center; margin-top: var(--gap-2); }
+.judge--red { border-top-color: var(--red); }
+.judge--blue { border-top-color: var(--blue); }
+.judge-name { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
+.judge-card { font-size: var(--t-title); -unity-font-style: bold; }
+
+/* Both fighters' numbers, with each one's hit map beside its column. */
+.res-mid { flex-direction: row; align-items: center; margin-top: var(--gap-3); }
+.res-mid .tape { flex: 1 1 0; margin-top: 0; }
+.res-mid .tape-key { width: 220px; }
+.res-hitmap { width: 116px; height: 176px; flex-shrink: 0; }
+.res-actions { flex-direction: row; align-items: center; margin-top: var(--gap-4); }
 .res-actions .btn { margin-right: var(--gap-2); }
 .res-go { flex: 1 1 0; margin-right: 0; }
-
-.scrub { height: 64px; justify-content: center; }
-.scrub-track { height: 12px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.14); }
-.scrub-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 6px; background-color: var(--accent); }
-.scrub-mark { position: absolute; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; background-color: var(--warn); }
-.scrub-knob { position: absolute; top: 12px; left: 0; width: 40px; height: 40px; border-radius: 20px; background-color: var(--ink); }
 
 /* Menu: one sheet, three tabs. Every page is the same height so the sheet does not jump between them. */
 .menu-sheet { top: var(--frame-clear); }
@@ -369,6 +432,7 @@ Label { margin: 0; padding: 0; }
 .grid { flex-direction: row; margin-top: var(--gap-2); margin-left: -4px; margin-right: -4px; }
 .grid-2 { flex: 1 1 0; margin: 0 4px; }
 .grid-4 { flex: 1 1 0; margin: 0 4px; padding: 0; }
+.grid--last { margin-top: var(--gap-5); }
 
 .lg-row {
     flex-direction: row;
@@ -403,4 +467,90 @@ Label { margin: 0; padding: 0; }
 }
 .dbg-cell { width: 50%; height: 52px; flex-direction: row; align-items: center; padding: 0 8px; }
 .dbg-key { width: 140px; font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); }
-.dbg-val { font-size: 30px; -unity-font-style: bold; }
+/* The value takes the rest of its cell: sized to its text, a count that goes from 99 to 104 is clipped
+   for the frame it takes the layout to catch up, and the one-screen audit says so. */
+.dbg-val { font-size: 30px; -unity-font-style: bold; flex-grow: 1; }
+
+/* ------------------------------------------------------------------ the first screen: choose the boxers */
+
+.menu-root { background-color: var(--scrim); }
+
+.menu-heading {
+    position: absolute;
+    top: var(--frame-clear);
+    left: 0; right: 0;
+    height: 88px;
+    font-size: var(--t-display);
+    -unity-font-style: bold;
+    letter-spacing: 4px;
+    -unity-text-align: middle-center;
+}
+
+/* Two corners side by side, between the heading and the pairing line. */
+.picker {
+    position: absolute;
+    top: 208px;
+    bottom: 344px;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    flex-direction: row;
+}
+.pick-col { flex: 1 1 0; }
+.pick-col--red { margin-right: 6px; }
+.pick-col--blue { margin-left: 6px; }
+.pick-corner {
+    height: 64px;
+    margin-bottom: var(--gap-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--t-body);
+    -unity-font-style: bold;
+    letter-spacing: 3px;
+    -unity-text-align: middle-center;
+}
+.pick-corner--red { background-color: var(--red); }
+.pick-corner--blue { background-color: var(--blue); }
+.pick-cards { flex-grow: 1; }
+
+/* One boxer. The cards share the column, so they are as tall as the number of boxers allows. */
+.pick {
+    flex: 1 1 0;
+    margin: 0 0 var(--gap-2) 0;
+    padding: 0;
+    border-width: 6px;
+    border-color: rgba(255, 255, 255, 0.10);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+    overflow: hidden;
+    opacity: 0.45;
+    transition-property: opacity, border-color;
+    transition-duration: 0.12s;
+}
+.pick:active { opacity: 0.8; }
+.pick--on { opacity: 1; }
+.pick-col--red .pick--on { border-color: var(--red); }
+.pick-col--blue .pick--on { border-color: var(--blue); }
+.pick-portrait { flex-grow: 1; background-color: rgb(20, 24, 34); -unity-background-scale-mode: scale-and-crop; }
+.pick-foot { height: 112px; padding: 0 16px; justify-content: center; background-color: var(--surface); }
+.pick-name { font-size: var(--t-title); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; }
+.pick-detail { font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); -unity-text-align: middle-left; }
+
+.versus {
+    position: absolute;
+    bottom: 240px;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    height: 88px;
+    font-size: var(--t-display);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    -unity-text-align: middle-center;
+}
+.fight {
+    position: absolute;
+    bottom: var(--frame-clear);
+    left: var(--gap-4);
+    right: var(--gap-4);
+    height: 120px;
+    font-size: var(--t-display);
+    letter-spacing: 8px;
+}

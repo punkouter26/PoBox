@@ -26,9 +26,13 @@ Material:
     m_Ints: []
     m_Floats:
     - _Brightness: 0.38
+    - _FlashGain: 9
     - _Height: 0.95
+    - _PhoneGain: 3
     - _Width: 0.62
     m_Colors:
+    - _BlueCorner: {r: 0.2, g: 0.49, b: 0.94, a: 1}
+    - _RedCorner: {r: 0.89, g: 0.24, b: 0.24, a: 1}
     - _SkinColor: {r: 0.72, g: 0.54999995, b: 0.43999997, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

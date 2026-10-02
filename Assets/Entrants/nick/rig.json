@@ -1,0 +1,331 @@
+{
+  "source": "C:/Users/punko/Downloads/PoBox/RIGGED_Nick.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.65,
+  "mass_kg": 57.5,
+  "notes": [
+    "made symmetric: left and right differed by up to 16.2 cm",
+    "arms straightened to a T-pose: they rested 10 degrees below the shoulder line",
+    "mass from the mesh's volume: 58 litres is a body-mass index of 21.1"
+  ],
+  "bones": [
+    {
+      "name": "Hips",
+      "parent": null,
+      "head": [
+        0.0,
+        -0.0204,
+        0.9269
+      ],
+      "tail": [
+        0.0,
+        -0.0178,
+        1.0502
+      ]
+    },
+    {
+      "name": "LeftUpLeg",
+      "parent": "Hips",
+      "head": [
+        0.1002,
+        -0.0125,
+        0.8276
+      ],
+      "tail": [
+        0.1421,
+        0.0191,
+        0.4307
+      ]
+    },
+    {
+      "name": "LeftLeg",
+      "parent": "LeftUpLeg",
+      "head": [
+        0.1421,
+        0.0191,
+        0.4307
+      ],
+      "tail": [
+        0.1627,
+        0.0665,
+        0.1513
+      ]
+    },
+    {
+      "name": "LeftFoot",
+      "parent": "LeftLeg",
+      "head": [
+        0.1627,
+        0.0665,
+        0.1513
+      ],
+      "tail": [
+        0.2179,
+        -0.0134,
+        0.0333
+      ]
+    },
+    {
+      "name": "LeftToeBase",
+      "parent": "LeftFoot",
+      "head": [
+        0.2179,
+        -0.0134,
+        0.0333
+      ],
+      "tail": [
+        0.2344,
+        -0.0374,
+        -0.0021
+      ]
+    },
+    {
+      "name": "RightUpLeg",
+      "parent": "Hips",
+      "head": [
+        -0.1002,
+        -0.0125,
+        0.8276
+      ],
+      "tail": [
+        -0.1421,
+        0.0191,
+        0.4307
+      ]
+    },
+    {
+      "name": "RightLeg",
+      "parent": "RightUpLeg",
+      "head": [
+        -0.1421,
+        0.0191,
+        0.4307
+      ],
+      "tail": [
+        -0.1627,
+        0.0665,
+        0.1513
+      ]
+    },
+    {
+      "name": "RightFoot",
+      "parent": "RightLeg",
+      "head": [
+        -0.1627,
+        0.0665,
+        0.1513
+      ],
+      "tail": [
+        -0.2179,
+        -0.0134,
+        0.0333
+      ]
+    },
+    {
+      "name": "RightToeBase",
+      "parent": "RightFoot",
+      "head": [
+        -0.2179,
+        -0.0134,
+        0.0333
+      ],
+      "tail": [
+        -0.2344,
+        -0.0374,
+        -0.0021
+      ]
+    },
+    {
+      "name": "Spine02",
+      "parent": "Hips",
+      "head": [
+        0.0,
+        -0.0178,
+        1.0502
+      ],
+      "tail": [
+        0.0,
+        -0.0151,
+        1.1735
+      ]
+    },
+    {
+      "name": "Spine",
+      "parent": "Spine01",
+      "head": [
+        0.0,
+        -0.0125,
+        1.2968
+      ],
+      "tail": [
+        0.0,
+        -0.0106,
+        1.3842
+      ]
+    },
+    {
+      "name": "LeftArm",
+      "parent": "LeftShoulder",
+      "head": [
+        0.1641,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        0.4305,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "LeftForeArm",
+      "parent": "LeftArm",
+      "head": [
+        0.4305,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        0.6772,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "LeftHand",
+      "parent": "LeftForeArm",
+      "head": [
+        0.6772,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        0.7572,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "RightArm",
+      "parent": "RightShoulder",
+      "head": [
+        -0.1641,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        -0.4305,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "RightForeArm",
+      "parent": "RightArm",
+      "head": [
+        -0.4305,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        -0.6772,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "RightHand",
+      "parent": "RightForeArm",
+      "head": [
+        -0.6772,
+        0.0056,
+        1.3464
+      ],
+      "tail": [
+        -0.7572,
+        0.0056,
+        1.3464
+      ]
+    },
+    {
+      "name": "neck",
+      "parent": "Spine",
+      "head": [
+        0.0,
+        -0.0106,
+        1.3842
+      ],
+      "tail": [
+        0.0,
+        -0.0091,
+        1.4554
+      ]
+    },
+    {
+      "name": "Head",
+      "parent": "neck",
+      "head": [
+        0.0,
+        -0.0091,
+        1.4554
+      ],
+      "tail": [
+        0.0,
+        -0.0091,
+        1.65
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "Hips",
+    "neck": "neck",
+    "head": "Head",
+    "spine": "Spine02",
+    "torso": "Spine",
+    "thigh_l": "LeftUpLeg",
+    "shin_l": "LeftLeg",
+    "foot_l": "LeftFoot",
+    "toe_l": "LeftToeBase",
+    "upper_arm_l": "LeftArm",
+    "forearm_l": "LeftForeArm",
+    "hand_l": "LeftHand",
+    "thigh_r": "RightUpLeg",
+    "shin_r": "RightLeg",
+    "foot_r": "RightFoot",
+    "toe_r": "RightToeBase",
+    "upper_arm_r": "RightArm",
+    "forearm_r": "RightForeArm",
+    "hand_r": "RightHand"
+  },
+  "all_bones": 24,
+  "radii": {
+    "thigh": 0.0639,
+    "shin": 0.0429,
+    "upper_arm": 0.0419,
+    "forearm": 0.028,
+    "torso": 0.0987,
+    "pelvis": 0.109,
+    "head": 0.0973
+  },
+  "mesh": {
+    "vertices": 11421,
+    "height_m": 1.65,
+    "volume_l": 58.4,
+    "bmi_from_volume": 21.1
+  },
+  "strength": 0.831,
+  "speed": 1.0,
+  "style": {
+    "head": 1.3,
+    "body": 1.2,
+    "power": 0.7,
+    "pace_s": 0.3,
+    "taken": 0.6,
+    "range_m": 0.66,
+    "press": 0.3,
+    "energy": 0.6
+  },
+  "display": "NICK",
+  "persona": "swarmer",
+  "says": "always closing, many light fast punches"
+}

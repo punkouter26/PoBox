@@ -1,9 +1,9 @@
 {
-    "impulseFloor": 2.2228078842163086,
-    "damagePerNs": 0.03867629915475845,
-    "staggerShock": 17.004262924194336,
-    "knockdownShock": 20.18702507019043,
-    "hits": 901,
-    "seconds": 300.3999938964844,
-    "measured": "MATT v ZOMBIE, 2026-10-01 14:12"
+    "impulseFloor": 2.2,
+    "damagePerNs": 0.018,
+    "staggerShock": 0.0,
+    "knockdownShock": 0.0,
+    "hits": 106,
+    "seconds": 46.1,
+    "measured": "MATT v ZOMBIE (defend, iteration 12,900), one round in the game, 2026-10-01 23:15: the busier fighter did 0.99 health a second at 0.0353; set so that it takes about two thirds of the other's health over three rounds"
 }

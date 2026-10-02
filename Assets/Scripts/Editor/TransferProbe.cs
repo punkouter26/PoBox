@@ -89,6 +89,14 @@ namespace PoBox.EditorTools
 
         static TransferProbe()
         {
+            // The scene is rebuilt after a calibration in an open editor, so it carries the new numbers.
+            EditorApplication.playModeStateChanged += state =>
+            {
+                if (state != PlayModeStateChange.EnteredEditMode || !SessionState.GetBool("pobox.probe.rebuild", false)) return;
+                SessionState.SetBool("pobox.probe.rebuild", false);
+                PoBoxBuilder.BuildAll();
+                Debug.Log("PROBE scene rebuilt with the new scoring");
+            };
             if (!SessionState.GetBool(Flag, false)) return;
             EditorApplication.update += Tick;
             string mode = SessionState.GetString(Mode, "match");
@@ -111,8 +119,29 @@ namespace PoBox.EditorTools
             PolicyBrain.Stepped = Stepped;
         }
 
+        /// <summary>Arguments given from inside an open editor, where there is no command line to put them on.</summary>
+        static readonly System.Collections.Generic.Dictionary<string, string> s_given = new System.Collections.Generic.Dictionary<string, string>();
+
+        /// <summary>
+        /// After training: imports the newest policies, spars them for five minutes on the clock with no
+        /// damage and no count, sets the scorekeeper's numbers from how hard they turned out to hit, and
+        /// rebuilds the scene with those numbers. In an open editor it stops playing at the end and leaves
+        /// the editor as it was.
+        /// </summary>
+        [MenuItem("PoBox/Dev/Import Policies And Calibrate Scoring", priority = 40)]
+        public static void ImportAndCalibrate()
+        {
+            if (EditorApplication.isPlaying) { Debug.LogWarning("PROBE stop Play first."); return; }
+            s_given.Clear();
+            s_given["-probeMode"] = "spar";
+            s_given["-probeSeconds"] = "300";
+            s_given["-probeCalibrate"] = "1";
+            Run();
+        }
+
         static string Arg(string name, string fallback)
         {
+            if (s_given.TryGetValue(name, out string given)) return given;
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
@@ -192,7 +221,11 @@ namespace PoBox.EditorTools
             Debug.Log("PROBE end");
             // Headless, the probe is the whole session. In somebody's open editor it only stops playing.
             if (Application.isBatchMode) EditorApplication.Exit(0);
-            else EditorApplication.ExitPlaymode();
+            else
+            {
+                SessionState.SetBool("pobox.probe.rebuild", SessionState.GetString("pobox.probe.calibrate", "") == "1");
+                EditorApplication.ExitPlaymode();
+            }
         }
 
         // ---------------------------------------------------------------- hold and replay
@@ -341,6 +374,7 @@ namespace PoBox.EditorTools
             {
                 f.damagePerNs = 0f;
                 f.staggerShock = f.knockdownShock = 1e9f;
+                f.dazeRule = false;
             }
             if (SessionState.GetString("pobox.probe.ghost", "") == "1")
             {
@@ -465,7 +499,7 @@ namespace PoBox.EditorTools
             float boutSeconds = bout.rounds * 45f;
             s.damagePerNs = 100f / (3f * 45f * Mathf.Max(1e-3f, busiest));
             s.staggerShock = Q(shocks, 0.96f);
-            s.knockdownShock = Mathf.Max(Q(shocks, 0.992f), s.staggerShock * 1.15f);
+            s.knockdownShock = Mathf.Max(Q(shocks, 0.992f), s.staggerShock * 1.01f);
             s.measured = $"{bout.red.displayName} v {bout.blue.displayName}, {DateTime.Now:yyyy-MM-dd HH:mm}";
             File.WriteAllText(Path.Combine(Path.GetDirectoryName(Application.dataPath), EntrantFactory.EntrantsDir, "scoring.json"), JsonUtility.ToJson(s, true));
             Debug.Log($"PROBE scoring from {s.hits} hits in {seconds:0} s: floor {s.impulseFloor:0.0} Ns, {s.damagePerNs:0.000} health per Ns, stagger at {s.staggerShock:0.0}, down at {s.knockdownShock:0.0} " +
@@ -572,6 +606,7 @@ namespace PoBox.EditorTools
             {
                 f.damagePerNs = 0f;
                 f.staggerShock = f.knockdownShock = 1e9f;
+                f.dazeRule = false;
             }
             if (s_pair.ghost)
                 foreach (Collider a in first.GetComponentsInChildren<Collider>())

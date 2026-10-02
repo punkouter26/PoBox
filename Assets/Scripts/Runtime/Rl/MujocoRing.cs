@@ -18,7 +18,7 @@ namespace PoBox.Rl
     ///
     /// So each fighter here has two bodies. The real one is in MuJoCo. The one in the scene is its shadow:
     /// an articulation with gravity and drives switched off, put where the real one is after every step.
-    /// Everything else in the game goes on reading the shadow as before: cameras, skin, replay, and the
+    /// Everything else in the game goes on reading the shadow as before: cameras, skin, and the
     /// glove contacts that score hits. The policy reads the real one.
     ///
     /// Each physics step: joint targets in, one MuJoCo step, the state out, the shadows moved.
@@ -34,6 +34,8 @@ namespace PoBox.Rl
             public int[] jq, jv, geoms;
             public float[] foot_half_l, foot_half_r, default_pos, lower, upper, kp, kv, limit;
             public float stand;
+            [Tooltip("Half the length of the body capsule, and the radii of head, body and glove: what a punch is measured against. Zero in a layout exported before 2026-10-01; the body is then taken as a ball.")]
+            public float torso_half, r_head, r_torso, r_glove;
         }
 
         [Serializable]
@@ -42,6 +44,8 @@ namespace PoBox.Rl
             public string mujoco;
             public int version_number, nq, nv, nu, nbody, ngeom;
             public int off_xpos, off_xquat, off_geom_xpos, off_geom_xmat, off_actuator_force, off_geom_contype, off_geom_conaffinity;
+            [Tooltip("mjtState bits for this version of the library. Zero in an older layout: the values of MuJoCo 3.14.")]
+            public int state_qpos, state_qvel, state_ctrl;
             public float timestep, ring_half;
             public FighterLayout[] fighters;
             public float[] key_qpos;
@@ -53,6 +57,8 @@ namespace PoBox.Rl
         [TextArea(2, 6)] public string xml;
         [Tooltip("Which numbers are which, and where in MuJoCo's data the body positions are.")]
         [TextArea(2, 6)] public string layoutJson;
+        [Tooltip("The same for the library a phone carries (joanllobera/mujoco-bin), which is another version of MuJoCo with its data laid out differently. Empty: phones have no layout and the fighters run on Unity's physics there.")]
+        [TextArea(2, 6)] public string layoutJsonAndroid;
         [Tooltip("The shadow rigs in the scene, in the model's order: fighter A, fighter B.")]
         public MjcfRig[] rigs = new MjcfRig[2];
         [Tooltip("MuJoCo's origin, in the scene: the centre of the ring, at canvas height.")]
@@ -69,11 +75,27 @@ namespace PoBox.Rl
         readonly float[] _driveScale = { 1f, 1f };
         readonly Fighter[] _fighters = new Fighter[2];
         readonly bool[] _ghost = new bool[2];
+        readonly float[] _ghostLinger = new float[2];
+        // A fighter held in its guard while the referee counts over the other one: where, and facing which way.
+        readonly bool[] _held = new bool[2];
+        readonly double[] _holdX = new double[2], _holdY = new double[2], _holdYaw = new double[2];
         readonly Vector3[] _prevHead = new Vector3[2];
         readonly bool[] _hasPrev = new bool[2];
         // Where each fighter's head, body and gloves are from its pelvis when it stands in its guard, in
         // its own heading: what a stand-in for it looks like to the other fighter.
         readonly Vector3[] _guardHead = new Vector3[2], _guardBody = new Vector3[2], _guardGloveL = new Vector3[2], _guardGloveR = new Vector3[2];
+
+        // How hard a punch is, measured as the trainer measures it (training/envs/boxing.py): the glove's
+        // speed along the line to the surface it is closing on, over one control step, the faster of this
+        // step and the one before. Indexed fighter, hand (0 left, 1 right), zone (0 head, 1 body).
+        readonly float[,,] _closing = new float[2, 2, 2], _hitSpeed = new float[2, 2, 2];
+        readonly Vector3[,] _punchGlove = new Vector3[2, 2], _gloveVelocity = new Vector3[2, 2];
+        readonly Vector3[] _punchHead = new Vector3[2], _punchBody = new Vector3[2];
+        readonly Vector3[,] _footAt = new Vector3[2, 2];
+        readonly bool[,] _footDown = new bool[2, 2];
+        readonly bool[] _punchHas = new bool[2];
+        int _steps, _sQPos = MuJoCoNative.StateQPos, _sQVel = MuJoCoNative.StateQVel, _sCtrl = MuJoCoNative.StateCtrl;
+        const float HitCap = 9f;
 
         void Awake()
         {
@@ -92,8 +114,11 @@ namespace PoBox.Rl
 
         void Load()
         {
-            L = JsonUtility.FromJson<Layout>(layoutJson);
+            bool phone = Application.platform == RuntimePlatform.Android;
+            if (phone && string.IsNullOrEmpty(layoutJsonAndroid)) throw new InvalidOperationException("no layout for the phone's MuJoCo library");
+            L = JsonUtility.FromJson<Layout>(phone ? layoutJsonAndroid : layoutJson);
             if (L == null || L.fighters == null || L.fighters.Length != 2) throw new InvalidOperationException("no layout");
+            if (L.state_qpos != 0) { _sQPos = L.state_qpos; _sQVel = L.state_qvel; _sCtrl = L.state_ctrl; }
             if (rigs.Length != 2 || rigs[0] == null || rigs[1] == null) throw new InvalidOperationException("two rigs are needed");
             int version = MuJoCoNative.mj_version();
             if (version != L.version_number) throw new InvalidOperationException($"the library is MuJoCo {version}, the layout was made for {L.version_number}");
@@ -106,8 +131,8 @@ namespace PoBox.Rl
             if (_model == IntPtr.Zero) throw new InvalidOperationException("the model did not compile");
             _data = MuJoCoNative.mj_makeData(_model);
 
-            int nq = MuJoCoNative.mj_stateSize(_model, MuJoCoNative.StateQPos), nv = MuJoCoNative.mj_stateSize(_model, MuJoCoNative.StateQVel);
-            int nu = MuJoCoNative.mj_stateSize(_model, MuJoCoNative.StateCtrl);
+            int nq = MuJoCoNative.mj_stateSize(_model, _sQPos), nv = MuJoCoNative.mj_stateSize(_model, _sQVel);
+            int nu = MuJoCoNative.mj_stateSize(_model, _sCtrl);
             if (nq != L.nq || nv != L.nv || nu != L.nu) throw new InvalidOperationException($"the model has {nq}/{nv}/{nu} numbers, the layout expects {L.nq}/{L.nv}/{L.nu}");
             _state = new double[nq + nv];
             _qpos = new double[nq]; _qvel = new double[nv]; _ctrl = new double[nu];
@@ -174,12 +199,56 @@ namespace PoBox.Rl
             if (!Ready || !Bout.SimRunning) return;
             long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
             for (int k = 0; k < 2; k++)
-                if (_fighters[k] != null) SetGhost(k, _fighters[k].IsDown);
+            {
+                if (_fighters[k] == null) continue;
+                bool ghost = _fighters[k].IsDown;
+                // A fighter that has just got up stays a ghost until the two are a step apart (or three
+                // seconds have gone): given its body back while the other stands inside it, the contact
+                // that follows throws them both across the ring.
+                if (!ghost && _ghost[k])
+                {
+                    _ghostLinger[k] += L.timestep;
+                    Vector3 apart = Body(L.fighters[0].pelvis) - Body(L.fighters[1].pelvis);
+                    apart.z = 0f;
+                    if (apart.magnitude < 0.6f && _ghostLinger[k] < 3f) ghost = true;
+                }
+                if (!ghost) _ghostLinger[k] = 0f;
+                SetGhost(k, ghost);
+            }
+
+            // A held fighter is put back in its guard on its spot before every step: it stands and waits.
+            bool pinned = false;
+            for (int k = 0; k < 2; k++)
+            {
+                if (!_held[k]) continue;
+                FighterLayout f = L.fighters[k];
+                _qpos[f.root_q] = _holdX[k];
+                _qpos[f.root_q + 1] = _holdY[k];
+                _qpos[f.root_q + 2] = f.stand + 0.002;
+                _qpos[f.root_q + 3] = Math.Cos(_holdYaw[k] * 0.5);
+                _qpos[f.root_q + 4] = 0.0;
+                _qpos[f.root_q + 5] = 0.0;
+                _qpos[f.root_q + 6] = Math.Sin(_holdYaw[k] * 0.5);
+                for (int i = 0; i < 6; i++) _qvel[f.root_v + i] = 0.0;
+                for (int i = 0; i < f.jq.Length; i++)
+                {
+                    _qpos[f.jq[i]] = f.default_pos[i];
+                    _qvel[f.jv[i]] = 0.0;
+                    _target[k][i] = f.default_pos[i];
+                }
+                pinned = true;
+            }
+            if (pinned)
+            {
+                Array.Copy(_qpos, 0, _state, 0, _qpos.Length);
+                Array.Copy(_qvel, 0, _state, _qpos.Length, _qvel.Length);
+                MuJoCoNative.mj_setState(_model, _data, _state, _sQPos | _sQVel);
+            }
 
             for (int k = 0; k < 2; k++)
             {
                 FighterLayout f = L.fighters[k];
-                float s = _driveScale[k];
+                float s = _held[k] ? 1f : _driveScale[k];
                 for (int i = 0; i < f.jq.Length; i++)
                 {
                     double want = _target[k][i];
@@ -189,10 +258,11 @@ namespace PoBox.Rl
                     _ctrl[f.ctrl + i] = want;
                 }
             }
-            MuJoCoNative.mj_setState(_model, _data, _ctrl, MuJoCoNative.StateCtrl);
+            MuJoCoNative.mj_setState(_model, _data, _ctrl, _sCtrl);
             MuJoCoNative.mj_step(_model, _data);
             Read();
             for (int k = 0; k < 2; k++) Push(k);
+            if (++_steps % Mathf.Max(1, controlDecimation) == 0) TrackGlovesAndFeet();
 
             float ms = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
             StepMs += (ms - StepMs) * 0.05f;
@@ -200,7 +270,7 @@ namespace PoBox.Rl
 
         void Read()
         {
-            MuJoCoNative.mj_getState(_model, _data, _state, MuJoCoNative.StateQPos | MuJoCoNative.StateQVel);
+            MuJoCoNative.mj_getState(_model, _data, _state, _sQPos | _sQVel);
             Array.Copy(_state, 0, _qpos, 0, _qpos.Length);
             Array.Copy(_state, _qpos.Length, _qvel, 0, _qvel.Length);
             Marshal.Copy(Marshal.ReadIntPtr(_data, L.off_xpos), _xpos, 0, _xpos.Length);
@@ -266,6 +336,40 @@ namespace PoBox.Rl
         public void SetDriveScale(int k, float scale) => _driveScale[k] = Mathf.Clamp01(scale);
 
         /// <summary>
+        /// Holds a fighter in its guard where it stands, looking a given way, until it is released: what the
+        /// fighter left standing does while the referee counts over the other. It replaces showing that
+        /// fighter a stand-in to box, which worked for the policies of the eight-hour match and not for the
+        /// ones trained under the daze rule (they fell over boxing it). A fighter held and then released,
+        /// facing its opponent from a step and a half away with nothing moving, is exactly a training
+        /// episode's first moment, whatever policy it carries.
+        /// </summary>
+        public void Hold(int k, Vector3 facing)
+        {
+            if (!Ready) return;
+            FighterLayout f = L.fighters[k];
+            if (!_held[k])
+            {
+                _held[k] = true;
+                _holdX[k] = _qpos[f.root_q];
+                _holdY[k] = _qpos[f.root_q + 1];
+                // Inside the ropes: a fighter caught leaning on them is stood a step in.
+                double limit = L.ring_half - 0.5;
+                _holdX[k] = Math.Max(-limit, Math.Min(limit, _holdX[k]));
+                _holdY[k] = Math.Max(-limit, Math.Min(limit, _holdY[k]));
+            }
+            if (facing.x * facing.x + facing.z * facing.z > 1e-4f) _holdYaw[k] = Math.Atan2(facing.z, facing.x);
+        }
+
+        public void Release(int k)
+        {
+            _held[k] = false;
+            _hasPrev[0] = _hasPrev[1] = false;
+            _punchHas[0] = _punchHas[1] = false;
+        }
+
+        public bool Held(int k) => _held[k];
+
+        /// <summary>
         /// A fighter that is down for a count still lies on the canvas and against the ropes, but the other
         /// fighter passes through it: led away to a neutral corner, a policy that has never seen a body on
         /// the floor walks straight over this one and goes down with it. Done by moving the downed fighter's
@@ -306,17 +410,84 @@ namespace PoBox.Rl
                 _ctrl[f.ctrl + i] = f.default_pos[i];
             }
             _driveScale[k] = 1f;
+            _held[k] = false;
             SetGhost(k, false);
             _hasPrev[k] = false;
             _hasPrev[1 - k] = false;    // the other fighter's target has just jumped
+            _punchHas[0] = _punchHas[1] = false;
+            Array.Clear(_closing, 0, _closing.Length);
+            Array.Clear(_hitSpeed, 0, _hitSpeed.Length);
             Array.Copy(_qpos, 0, _state, 0, _qpos.Length);
             Array.Copy(_qvel, 0, _state, _qpos.Length, _qvel.Length);
-            MuJoCoNative.mj_setState(_model, _data, _state, MuJoCoNative.StateQPos | MuJoCoNative.StateQVel);
-            MuJoCoNative.mj_setState(_model, _data, _ctrl, MuJoCoNative.StateCtrl);
+            MuJoCoNative.mj_setState(_model, _data, _state, _sQPos | _sQVel);
+            MuJoCoNative.mj_setState(_model, _data, _ctrl, _sCtrl);
             MuJoCoNative.mj_forward(_model, _data);
             Read();
             Push(k);
         }
+
+        // ---------------------------------------------------------------- punches and footsteps
+
+        /// <summary>
+        /// Once a control step: how fast each glove is closing on the other fighter's head and body, as the
+        /// trainer reckons it, and whether a foot has just come down.
+        /// </summary>
+        void TrackGlovesAndFeet()
+        {
+            float dt = L.timestep * Mathf.Max(1, controlDecimation);
+            for (int k = 0; k < 2; k++)
+            {
+                FighterLayout f = L.fighters[k], other = L.fighters[1 - k];
+                Vector3 head = Geom(other.head), body = Geom(other.torso);
+                int m = other.torso * 9;
+                var axis = new Vector3((float)_gmat[m + 2], (float)_gmat[m + 5], (float)_gmat[m + 8]);
+                for (int hand = 0; hand < 2; hand++)
+                {
+                    Vector3 glove = Geom(hand == 0 ? f.glove_l : f.glove_r);
+                    if (_punchHas[k])
+                    {
+                        Vector3 v = (glove - _punchGlove[k, hand]) / dt;
+                        _gloveVelocity[k, hand] = v;
+                        Vector3 vHead = (head - _punchHead[k]) / dt, vBody = (body - _punchBody[k]) / dt;
+                        Vector3 nHead = (head - glove).normalized;
+                        float along = Mathf.Clamp(Vector3.Dot(glove - body, axis), -other.torso_half, other.torso_half);
+                        Vector3 nBody = (body + axis * along - glove).normalized;
+                        // The smaller of "closing on the target" and "moving at all": a target that walks
+                        // into a glove held still has not been punched.
+                        float cHead = Mathf.Min(Vector3.Dot(v - vHead, nHead), Vector3.Dot(v, nHead));
+                        float cBody = Mathf.Min(Vector3.Dot(v - vBody, nBody), Vector3.Dot(v, nBody));
+                        _hitSpeed[k, hand, 0] = Mathf.Clamp(Mathf.Max(cHead, _closing[k, hand, 0]), 0f, HitCap);
+                        _hitSpeed[k, hand, 1] = Mathf.Clamp(Mathf.Max(cBody, _closing[k, hand, 1]), 0f, HitCap);
+                        _closing[k, hand, 0] = cHead;
+                        _closing[k, hand, 1] = cBody;
+                    }
+                    _punchGlove[k, hand] = glove;
+
+                    int foot = hand == 0 ? f.foot_l : f.foot_r;
+                    Vector3 at = Geom(foot);
+                    bool down = Sole(foot, hand == 0 ? f.foot_half_l : f.foot_half_r) < 0.005f;
+                    if (down && !_footDown[k, hand] && _punchHas[k] && _fighters[k] != null && !_fighters[k].IsDown)
+                        SimBus.RaiseFootStep(new Vector3(at.x, 0f, at.y) + centre, ((at - _footAt[k, hand]) / dt).magnitude);
+                    _footDown[k, hand] = down;
+                    _footAt[k, hand] = at;
+                }
+                _punchHead[k] = head;
+                _punchBody[k] = body;
+                _punchHas[k] = true;
+            }
+        }
+
+        /// <summary>The closing speed of a fighter's glove on the other's head or body over the last control step or the one before, m/s, 0 to 9.</summary>
+        public float HitSpeed(int k, int hand, bool head) => _hitSpeed[k, hand, head ? 0 : 1];
+
+        /// <summary>A glove's velocity over the last control step, in the scene's axes.</summary>
+        public Vector3 GloveVelocity(int k, int hand)
+        {
+            Vector3 v = _gloveVelocity[k, hand];
+            return new Vector3(v.x, v.z, v.y);
+        }
+
+        public bool FootDown(int k, int foot) => _footDown[k, foot];
 
         // ---------------------------------------------------------------- the observation
 

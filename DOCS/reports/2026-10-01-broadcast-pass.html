@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: the broadcast pass, UI before and after</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  a { color:#8ff0c8; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .tag.new { background:#1d2f4d; color:#a9c8ff; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:900px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .ok { color:var(--accent); font-weight:700; }
+  .no { color:#ffb4a8; font-weight:700; }
+  .part { color:var(--warn); font-weight:700; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: the broadcast pass</h1>
+  <p class="dim">1 October 2026, evening · the interface before and after, with what changed marked on the pictures · every picture is 1080 x 1920, taken from the running game</p>
+
+  <p>The owner picked twenty items from three lists: seven features, all ten graphics and sound items, and
+     three interface consolidations. This page shows what the screen looked like before and what it looks
+     like now. Letters mark what was there, numbers mark what is there now. What each item turned out
+     to be, including the ones that are not finished, is in the table at the end and in
+     <a href="../README.md">DOCS/README.md</a>; the training that two of the features needed has its own page,
+     <a href="2026-10-01-training-defend.html">the defend rung</a>.</p>
+
+  <h2>The fight</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/30_before_fight_wide.png" alt="The fight before: a five-row scoreboard, a dark hall, the commentary in a bar above the graph">
+        <span class="pin" style="left:50%; top:8%">A</span>
+        <span class="pin" style="left:8%; top:11.2%">B</span>
+        <span class="pin" style="left:50%; top:13.8%">C</span>
+        <span class="pin" style="left:50%; top:18.6%">D</span>
+        <span class="pin" style="left:92%; top:82.5%">E</span>
+        <span class="pin" style="left:30%; top:86%">F</span>
+        <span class="pin" style="left:85%; top:40%">G</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>Names in one row with rank and rating beside them.</li>
+        <li>Health bars in a second row.</li>
+        <li>The momentum bar: who is ahead, worked out from damage and health alone.</li>
+        <li>The tale of the tape: three rows, each with a word in the middle (LANDED, PEAK, ENERGY).</li>
+        <li>The commentary line, a bar that was always there, part of the dock.</li>
+        <li>The excitement graph, which sat at 100% for the whole of every round: trained fighters land three punches a second between them and every one of them pushed it up.</li>
+        <li>The hall: lit only by live lamps, so anything they did not reach was black; plain ropes; a canvas with nothing printed on it.</li>
+      </ol>
+      <p class="dim">Scoreboard 332 px tall. Picture between scoreboard and commentary: 1,120 px.</p>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/30_after_fight_wide.png" alt="The fight after: a three-row scoreboard, two pods in the picture's top corners, a lit hall">
+        <span class="pin" style="left:22%; top:7.9%">1</span>
+        <span class="pin" style="left:50%; top:11.2%">2</span>
+        <span class="pin" style="left:50%; top:14.2%">3</span>
+        <span class="pin" style="left:7.5%; top:21.5%">4</span>
+        <span class="pin" style="left:7.5%; top:28.3%">5</span>
+        <span class="pin" style="left:92%; top:82.5%">6</span>
+        <span class="pin" style="left:30%; top:89%">7</span>
+        <span class="pin" style="left:62%; top:29%">8</span>
+        <span class="pin" style="left:88%; top:38%">9</span>
+        <span class="pin" style="left:78%; top:78%">10</span>
+        <span class="pin" style="left:80%; top:31%">11</span>
+      </div>
+      <ol class="legend">
+        <li><b>One scoreboard row</b> (UI 3). Each name is written on its own health bar, with its rank; the clock is between them. Rating and record moved to the walk-on card.</li>
+        <li><b>Win probability</b> (feature 3). The same bar, now read from the three judges' cards, what each fighter has left, and the two policies' own critics. The debug panel shows the critics' part by itself.</li>
+        <li><b>Three chips</b> (UI 4). Landed, hardest hit, and a third that cycles on a tap (energy, punches blocked, daze, joint stress, power). The icon is the label; the words are gone.</li>
+        <li><b>Hit map</b> (feature 5). Where this fighter has been hit, by impulse: cold grey, amber, red. The ring round the head fills as its daze rises and closes when its legs go.</li>
+        <li><b>Balance gauge</b> (feature 4). Two feet seen from above and a dot for where the body's weight is heading. Green planted, amber on the edge, red outside the feet.</li>
+        <li><b>Commentary as a caption</b> (UI 6). It lies over the picture and fades out five seconds after the last line, so most of the time that strip is picture.</li>
+        <li><b>The dock is the graph alone.</b> Excitement now measures what is out of the ordinary for these two fighters (a flurry, a fighter near the end of its legs), so it has a shape.</li>
+        <li><b>The hall is lit</b> (graphics 3). Baked light and light probes from the ring lamps and six dim house lights, ambient light and reflections from a photograph of a real boxing gym, cookies on the lamps.</li>
+        <li><b>Ropes that bow</b> (graphics 7): one mesh for all sixteen, pushed out by whatever is against them. <b>Crowd</b> (graphics 8): each half wears its corner's colour; cameras flash on a big punch.</li>
+        <li><b>Decals</b> (graphics 4): the promoter's mark printed on the canvas; wet spots and scuffs appear where punches and falls happen and fade.</li>
+        <li><b>Sweat</b> (graphics 6) leaves the head the way the glove was travelling, stretched along its flight.</li>
+      </ol>
+      <p class="dim">Scoreboard 208 px tall. Picture between scoreboard and dock: 1,308 px, 17% more.</p>
+    </div>
+  </div>
+
+  <h2>The walk-on (new)</h2>
+  <div class="pair">
+    <div>
+      <span class="tag new">NEW · five seconds before round 1</span>
+      <div class="shot">
+        <img src="img/30_after_walkon_red.png" alt="Matt alone in the red corner, lit by a follow-spot, with his name across the lower third">
+        <span class="pin" style="left:30%; top:67%">1</span>
+        <span class="pin" style="left:45%; top:35%">2</span>
+        <span class="pin" style="left:36%; top:17%">3</span>
+      </div>
+    </div>
+    <div>
+      <span class="tag new">WHAT IS ON IT</span>
+      <ol class="legend">
+        <li>The name card: corner, name, rank, rating, record, weight and how many iterations the policy has trained. Red for the first half of the walk-on, blue for the second.</li>
+        <li>Each fighter stands in its own corner. A Timeline (Assets/Timeline/WalkOn.playable) cuts between two corner cameras, brings the house lights down and swings a follow-spot onto each fighter. It can be opened and re-cut in the Timeline window.</li>
+        <li>Phone lights in the stands, which also come out for a count and for the result.</li>
+      </ol>
+      <p>Nothing is simulated during the walk-on. At its end the two are stood at their marks and the first
+         round's introduction runs as before.</p>
+    </div>
+  </div>
+
+  <h2>The result card</h2>
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE</span>
+      <div class="shot">
+        <img src="img/30_before_results.png" alt="The result card before: winner, points, four rows of numbers, a graph">
+        <span class="pin" style="left:25%; top:63%">A</span>
+        <span class="pin" style="left:50%; top:74%">B</span>
+        <span class="pin" style="left:50%; top:40%">C</span>
+      </div>
+      <ol class="legend" type="A">
+        <li>The result was "POINTS 105-52": one number a fighter, damage done plus 15 for a knockdown.</li>
+        <li>Four rows of numbers and the momentum graph.</li>
+        <li>The cameras went back to circling the ring.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER</span>
+      <div class="shot">
+        <img src="img/30_after_results.png" alt="The result card after: winner, three judges' cards, numbers with a hit map each side, a graph">
+        <span class="pin" style="left:25%; top:63.5%">1</span>
+        <span class="pin" style="left:50%; top:67.7%">2</span>
+        <span class="pin" style="left:8.5%; top:77%">3</span>
+        <span class="pin" style="left:50%; top:74.3%">4</span>
+        <span class="pin" style="left:50%; top:85.5%">5</span>
+        <span class="pin" style="left:55%; top:32%">6</span>
+      </div>
+      <ol class="legend">
+        <li>How it ended: a knockout with the round and time, or the kind of decision (unanimous, majority, split, or a draw).</li>
+        <li><b>Three judges</b> (feature 7): POWER, VOLUME and CRAFT, each scoring every round 10-9 by what it looks for. The stripe on a card is the colour of the corner it has ahead. After a stoppage the cards show how it stood.</li>
+        <li>Each fighter's hit map for the whole bout, beside its column.</li>
+        <li>A new row: punches each fighter stopped on its gloves and arms.</li>
+        <li>The graph is the win-probability reading over the bout.</li>
+        <li>The winner has a camera of its own and both follow-spots. The pods are hidden: the card carries the same maps.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>A knockdown, and the debug panel</h2>
+  <div class="pair">
+    <div>
+      <span class="tag after">AFTER · the count</span>
+      <div class="shot">
+        <img src="img/30_t5_count.png" alt="Zombie on the canvas with the referee's count at one">
+        <span class="pin" style="left:50%; top:32%">1</span>
+        <span class="pin" style="left:8.5%; top:26.5%">2</span>
+        <span class="pin" style="left:25%; top:82.5%">3</span>
+      </div>
+      <ol class="legend">
+        <li>The count. A knockdown now comes from the rule the fighters are trained under: punches to the head add to a fighter's daze, the daze weakens its legs, and at the line the legs go.</li>
+        <li>The balance gauge of a fighter that is down: the dot is red and off its feet.</li>
+        <li>The commentary says who went down and, when they get up, at what count.</li>
+      </ol>
+    </div>
+    <div>
+      <span class="tag after">AFTER · the debug panel</span>
+      <div class="shot">
+        <img src="img/30_after_debug.png" alt="The debug panel with sixteen readings">
+        <span class="pin" style="left:20%; top:89.8%">1</span>
+        <span class="pin" style="left:49%; top:89.8%">2</span>
+        <span class="pin" style="left:20%; top:92.5%">3</span>
+        <span class="pin" style="left:49%; top:92.5%">4</span>
+      </div>
+      <ol class="legend">
+        <li>DAZE: both fighters' daze, in the trainer's units (the legs go at 42).</li>
+        <li>CRITIC: the two policies' critics against each other, -1 (blue's outlook is better) to +1.</li>
+        <li>SOUND: the finished mix's peak level, measured at the listener (graphics 1 and 10).</li>
+        <li>USUAL: the clean impulse these two usually land; excitement, the crowd and the commentary's "big" are all measured against it.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>One screen, checked</h2>
+  <table>
+    <tr><th>State</th><th class="num">720 x 1280</th><th class="num">1080 x 1920</th><th class="num">1080 x 2400</th></tr>
+    <tr><td>Fight, menu (three tabs), debug panel, three graph pages</td><td class="num ok">pass</td><td class="num ok">pass</td><td class="num ok">pass</td></tr>
+    <tr><td>Walk-on card</td><td class="num dim">not run</td><td class="num ok">pass</td><td class="num dim">not run</td></tr>
+    <tr><td>Result card with judges and hit maps</td><td class="num ok">pass</td><td class="num ok">pass</td><td class="num ok">pass</td></tr>
+    <tr><td>Boxer menu</td><td class="num ok">pass</td><td class="num ok">pass</td><td class="num ok">pass</td></tr>
+  </table>
+  <p>"Pass" is the layout audit: nothing off the screen, nothing that scrolls, no text under 26 px, no
+     label cut off, the five frame anchors in their corners. The first and last rows are play-mode tests
+     (10 of 10 pass, including two new ones for the judges); the other two were run by hand with the
+     <code>layout</code> dev command.</p>
+
+  <h2>The twenty items</h2>
+  <table>
+    <tr><th>Item</th><th>State</th><th>Note</th></tr>
+    <tr><td>F1 defence and knockdowns</td><td class="part">done; one of the two defends</td><td>the daze rule, in training and in the game; see <a href="2026-10-01-training-defend.html">the defend rung</a></td></tr>
+    <tr><td>F2 get-up policy</td><td class="no">built, not trained</td><td>the owner gave the GPU to another session's run before this rung started; the referee still stands a fighter up</td></tr>
+    <tr><td>F3 critic win-probability bar</td><td class="ok">done</td><td>policies now export their critic's value</td></tr>
+    <tr><td>F4 balance gauge</td><td class="ok">done</td><td>capture point against the feet</td></tr>
+    <tr><td>F5 hit map</td><td class="ok">done</td><td>in the pods and on the result card</td></tr>
+    <tr><td>F7 three judges</td><td class="ok">done</td><td>split decisions are possible; two tests</td></tr>
+    <tr><td>F10 Android build</td><td class="part">APK built, never run on a phone</td><td>MuJoCo 3.3.7 for arm64 from joanllobera/mujoco-bin, with its own layout; the policies do not fall in that version either</td></tr>
+    <tr><td>G1 mix</td><td class="part">done, not listened to</td><td>mixer asset, ducking, a meter and limiter on the listener</td></tr>
+    <tr><td>G2 layered impacts</td><td class="ok">done</td><td>recordings from Kenney's impact pack (CC0)</td></tr>
+    <tr><td>G3 baked lighting, cookies, HDRI</td><td class="part">done, without Adaptive Probe Volumes</td><td>a light probe group carries the bake onto the fighters</td></tr>
+    <tr><td>G4 canvas decals</td><td class="ok">done</td><td>logo, wet spots, scuffs</td></tr>
+    <tr><td>G5 bruise and sweat on the meshes</td><td class="ok">done</td><td>marks where punches landed</td></tr>
+    <tr><td>G6 sweat and dust</td><td class="part">done with the Particle System</td><td>not VFX Graph: its graphs cannot be authored from a script</td></tr>
+    <tr><td>G7 ropes that flex</td><td class="part">done, not yet seen bowing</td><td>nobody leaned on a rope in the bouts watched</td></tr>
+    <tr><td>G8 crowd flashes</td><td class="ok">done</td><td>flashes, phone lights, corner colours</td></tr>
+    <tr><td>G9 walk-on and winner shot</td><td class="ok">done</td><td>Timeline and Cinemachine</td></tr>
+    <tr><td>G10 performance pass</td><td class="ok">done</td><td>the game's own code makes 0.1 kB of garbage a frame; the governor was run</td></tr>
+    <tr><td>UI 3, 4, 6</td><td class="ok">done</td><td>scoreboard 332 px to 208 px</td></tr>
+  </table>
+
+  <div class="note">
+    <b>Not shown in a picture, because it cannot be:</b> the sound. A punch is now up to three layers
+    (the slap of the glove, a body thud that grows faster than the slap and drops in pitch, and a gasp
+    from the crowd a moment after a punch harder than usual), the crowd is ducked under a heavy punch,
+    boots are heard on the canvas, and there is a mixer asset with Hits, Crowd and Ring groups. The mix
+    was measured, not listened to: see DOCS/README.md for the numbers. Nobody has heard it yet.
+  </div>
+</main>
+</body>
+</html>

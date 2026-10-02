@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: training manifest</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:78ch; }
+  .dim { color:var(--dim); }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:84ch; }
+  .verdict.bad { border-left-color:var(--red); }
+  .verdict.flat { border-left-color:var(--warn); }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .p0 { color:var(--red); font-weight:700; } .p1 { color:var(--warn); font-weight:700; } .p2 { color:var(--dim); font-weight:700; }
+  code { background:#0a0d13; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: training manifest</h1>
+  <p class="dim">2 October 2026, 00:20 · the plan for "train all boxers until they can do all needed behaviours" · written before any of it was started</p>
+
+  <p><b>In short.</b> Seven boxers. Two (Matt, Zombie) can box and one of them guards; five (Trump, Grandma,
+     Grandpa, Nick, Lil Matt) are half way through learning to box in an eight-hour league that ends about
+     07:05. Nobody can get up after a knockdown, and the game knocks somebody down about once a round. So
+     the work is: let the league finish, then teach all seven to get up, teach Matt to guard, and put every
+     boxer through one exam that says, behaviour by behaviour, whether it can do what a bout needs.</p>
+
+  <div class="verdict flat">
+    <b>This project does not use ML-Agents.</b> The procedure asked for (audit, biomechanics, hardware,
+    manifest, then train) is followed with this project's own parts: the trainer is PPO on MuJoCo Warp
+    (<code>training/train_box.py</code>), as the house rules require, and the game steps the same bodies in
+    MuJoCo. Where the procedure says "behaviour parameters" read <code>models/NAME_policy_config.json</code>;
+    "decision requester" is the control period; "<code>mlagents-learn</code>" is <code>train_box.py</code>.
+  </div>
+
+  <h2>1. Audit: what a policy sees, does and is paid for</h2>
+  <div class="wide"><table>
+    <tr><th>Part</th><th>What it is</th><th>Finding</th></tr>
+    <tr><td>Observation</td><td>100 numbers per boxer, in its own heading frame: trunk velocity and tilt (9), joint angles, joint speeds and last action (63), feet on the canvas and pelvis height (3), the opponent's head, body and head velocity (9), own and opponent's gloves (12), opponent's facing and place in the ring (4). Sensor noise in training.</td><td>The same for every boxer and every stage, so one stage's policy starts the next. Nothing tells a boxer how dazed it is: it can only feel its drives weaken.</td></tr>
+    <tr><td>Action</td><td>21 joint targets, guard pose plus action times 0.5 rad, clipped to 3 and to the joint's range. No action masking: every joint is always driven.</td><td>Reach is 1.5 rad either side of the guard. Enough for a punch; for getting up off the floor it has not been tried.</td></tr>
+    <tr><td>Decision period</td><td>50 Hz (every 4 physics steps of 5 ms).</td><td>Same in the game.</td></tr>
+    <tr><td>Network</td><td>Gaussian policy and critic, one pair per boxer; exported to ONNX with two outputs, <code>actions</code> and <code>value</code>.</td><td>Fine.</td></tr>
+    <tr><td>Boxing reward</td><td>23 terms: standing and facing, range, landing a punch (by zone, hand, power and pace, priced by each boxer's style), being hit, stopping a punch, a knockdown, energy, joint speed and range limits, feet, not leaning on the opponent.</td><td>Being hit only costs something under the daze rule. Matt and Zombie have had 88 minutes of it, the five new boxers will have had about 50.</td></tr>
+    <tr><td>Get-up reward</td><td>13 terms: pelvis and head height, upright trunk, standing; once standing, guard pose, stillness, facing the opponent. A helping force on the trunk that fades as the boxer succeeds; one world in ten never gets it.</td><td><b>Never trained.</b> The largest unknown in this plan.</td></tr>
+    <tr><td>Self-play</td><td>Two different boxers in one ring each learn with their own policy; a veteran can be frozen as a sparring partner.</td><td>Matt's and Zombie's punches settled into a rut: all of Zombie's go to the head, all of Matt's to the body.</td></tr>
+  </table></div>
+
+  <h2>2. Bodies</h2>
+  <div class="wide"><table>
+    <tr><th>Boxer</th><th class="num">kg</th><th class="num">m</th><th class="num">BMI</th><th class="num">strength</th><th class="num">knee / hip / shoulder / elbow, N m</th><th class="num">deep squat, share of knee limit</th><th class="num">elbow / knee, rad/s</th></tr>
+    <tr><td>Matt</td><td class="num">79.5</td><td class="num">1.81</td><td class="num">24.3</td><td class="num">1.00</td><td class="num">260 / 240 / 100 / 70</td><td class="num">49%</td><td class="num">25 / 20</td></tr>
+    <tr><td>Zombie</td><td class="num">80.2</td><td class="num">1.82</td><td class="num">24.3</td><td class="num">1.00</td><td class="num">260 / 240 / 100 / 70</td><td class="num">55%</td><td class="num">25 / 20</td></tr>
+    <tr><td>Trump</td><td class="num">109.4</td><td class="num">1.90</td><td class="num">30.3</td><td class="num">1.10</td><td class="num">287 / 264 / 110 / 77</td><td class="num">65%</td><td class="num">25 / 20</td></tr>
+    <tr><td>Nick</td><td class="num">58.6</td><td class="num">1.65</td><td class="num">21.5</td><td class="num">0.83</td><td class="num">216 / 199 / 83 / 58</td><td class="num">42%</td><td class="num">25 / 20</td></tr>
+    <tr><td>Lil Matt</td><td class="num">81.5</td><td class="num">1.64</td><td class="num">30.4</td><td class="num">0.82</td><td class="num">213 / 196 / 82 / 57</td><td class="num">55%</td><td class="num">25 / 20</td></tr>
+    <tr><td>Grandma</td><td class="num">87.8</td><td class="num">1.70</td><td class="num">30.4</td><td class="num">0.53</td><td class="num">138 / 127 / 53 / 37</td><td class="num"><b>89%</b></td><td class="num">19 / 15</td></tr>
+    <tr><td>Grandpa</td><td class="num">79.8</td><td class="num">1.62</td><td class="num">30.4</td><td class="num">0.48</td><td class="num">125 / 115 / 48 / 34</td><td class="num"><b>92%</b></td><td class="num">19 / 15</td></tr>
+  </table></div>
+  <p>From <code>training/tools/audit_bodies.py</code> (new). Every body is 17 simple shapes inside its mesh, the joint
+     ranges are one human template (knee 0 to 150°, elbow 0 to 150°, hip flexion 120°), gravity is Earth's,
+     and peak torques sit at a trained adult's times each boxer's strength.</p>
+  <div class="verdict flat">
+    <b>Two findings.</b> (1) Grandma and Grandpa need about nine tenths of all their knees can give just to
+    hold a deep squat. They can rise from the canvas only with momentum or their arms, as a frail person
+    does, so their get-up is marked more gently and may take the longest to train. This is the owner's
+    choice of age-realistic strength, not a fault. (2) The trunk and hip drives are soft and under-damped
+    (about 1 to 2 Hz, damping ratio 0.2 to 0.4). It makes a body that sways when hit, which looks right,
+    and every policy so far was trained on it; changing it would throw all of them away. Left as it is.
+  </div>
+
+  <h2>3. Hardware</h2>
+  <div class="wide"><table>
+    <tr><th>Fact</th><th>Measured</th><th>What is done about it</th></tr>
+    <tr><td>One GPU, RTX 2060 6 GB, power-capped by the laptop (73 W, 83 °C, Balanced plan)</td><td>59,000 boxer-steps a second for a pair of boxers in 2,048 rings; 48,000 with other CPU work running; 11,500 with the Unity editor in Play mode</td><td>One training run at a time. No Play mode during a run. <b>Owner:</b> Fn+Q to the performance mode would lift the cap; untested.</td></tr>
+    <tr><td>The league holds the GPU until about 07:05</td><td>3.3 GB, 85% busy</td><td>Nothing of this plan touches the GPU before <code>logs/league.done</code>. A request to run a 20-minute pilot beside it was refused by this session's permission check and was not pursued.</td></tr>
+    <tr><td>Batch</td><td>24 steps × rings per boxer, about 24,600 samples a minibatch, 5 epochs, learning rate steered by KL</td><td>Kept. The first minutes after the league will time 2,048 against 3,072 and 4,096 rings and use the fastest.</td></tr>
+    <tr><td>Single-boxer models are half as fast per boxer</td><td>The bag stage does 29,000 a second in 4,096 worlds</td><td>Get-up is trained in pair models, two boxers a run, passing through each other.</td></tr>
+    <tr><td>CPU: 6 cores, idle</td><td>Plain C MuJoCo steps one boxer about 4,900 times a second on one core</td><td>The exam runs here, beside training. Overnight, a small get-up trainer on one or two cores at idle priority, stopped if it slows the league.</td></tr>
+  </table></div>
+
+  <h2>4. The exam: what "can do all needed behaviours" means</h2>
+  <p>One tool, <code>training/tools/exam.py</code>, in plain C MuJoCo (the library the game runs), in the game's ring,
+     without exploration noise. A boxer passes when every line that applies to it passes against each
+     opponent it is tested with.</p>
+  <div class="wide"><table>
+    <tr><th>Behaviour</th><th>Test</th><th>Pass mark</th></tr>
+    <tr><td>Footing</td><td>Rounds of 45 s, nothing weakening it</td><td>falls by itself no more than once in five minutes</td></tr>
+    <tr><td>Attack</td><td>The same rounds</td><td>lands a punch at least every two seconds, at 4 m/s or more times its own speed factor</td></tr>
+    <tr><td>Guard</td><td>Punches that come at its head at over 2 m/s</td><td>at least three in ten stopped on a glove or forearm, or made to miss. Applies to the boxers whose style pays for a guard (Matt, Zombie, Grandma, Grandpa, Lil Matt); reported for Trump and Nick, who are built without one</td></tr>
+    <tr><td>Chin</td><td>The same rounds under the daze rule</td><td>loses its legs no more than three times in two minutes</td></tr>
+    <tr><td>Getting up</td><td>A knockdown as the game deals one: a shove and two seconds of slack legs, flat on the canvas</td><td>on its feet unaided inside the count: 8 in 10 within 8 s (Grandma, Grandpa: 6 in 10 within 9 s)</td></tr>
+    <tr><td>Carrying on</td><td>The match policy takes over from where the get-up left the body</td><td>still on its feet 3 s later, 9 times in 10</td></tr>
+  </table></div>
+  <p class="dim">The marks are set before the results are known and may turn out to be badly placed; if one is moved, the report will say which and why.</p>
+
+  <h2>5. Manifest</h2>
+  <div class="wide"><table>
+    <tr><th></th><th>Who</th><th>Training</th><th>Objective</th><th>Starts from</th><th class="num">Estimate</th></tr>
+    <tr><td class="p0">P0</td><td>Trump, Grandma, Grandpa, Nick, Lil Matt</td><td>PPO; alone on the bag, then self-play in the ring against each other and a frozen veteran (the league, already running, another session's)</td><td>stand in this body, hit hard, box in its own style; the daze rule in the last two of five rounds</td><td>Matt's bag policy</td><td class="num">8 h, ends about 07:05</td></tr>
+    <tr><td class="p0">P0</td><td>Matt, Zombie</td><td>PPO, get-up stage, one policy each</td><td>stand up from the canvas, return to the guard facing the opponent</td><td>their <code>defend</code> policies</td><td class="num">150 min</td></tr>
+    <tr><td class="p0">P0</td><td>Trump + Nick, Lil Matt + Grandma, Grandpa (+ one partner)</td><td>PPO, get-up stage, three runs</td><td>the same</td><td>their league policies, or the nearest body's finished get-up policy if that transfers faster (tried first, 10 minutes)</td><td class="num">3 × 60 to 150 min</td></tr>
+    <tr><td class="p1">P1</td><td>Matt</td><td>PPO, in the ring against a frozen Zombie, daze rule on</td><td>guard: paid more for a stopped punch and charged more for one taken, through a style of its own</td><td><code>defend</code></td><td class="num">60 min</td></tr>
+    <tr><td class="p1">P1</td><td>Whoever of the five fails Chin or Footing in the exam</td><td>PPO self-play, daze rule on, against the opponent it failed against</td><td>keep its legs</td><td>its league policy</td><td class="num">30 to 45 min a pair</td></tr>
+    <tr><td class="p2">P2</td><td>Whoever fails Carrying on</td><td>PPO, in the ring, episodes that begin where a get-up ends</td><td>box again from a half-set stance</td><td>its newest match policy</td><td class="num">30 min a pair</td></tr>
+    <tr><td class="p2">P2</td><td>Zombie</td><td>none planned</td><td>its punches are all head shots; a body attack would make it less of a one-trick boxer. Not a needed behaviour</td><td></td><td class="num">0</td></tr>
+  </table></div>
+  <p><b>Wall clock.</b> The league to about 07:05, then 6 to 11 hours of GPU for the rest: done between early and
+     late afternoon on 2 October if get-up trains as hoped. Get-up is the item that can overrun; it is run
+     first, on the two veterans, and watched for its first twenty minutes before the others are queued.</p>
+  <p><b>House rules for each run.</b> TensorBoard is up on <a href="http://localhost:6006">localhost:6006</a>;
+     runs nobody compares against are moved to <code>logs/tb_archive</code>; MuJoCo's viewer is opened on each
+     run; self-collision is checked for a boxer before its first run of mine; each run over 30 minutes gets
+     its three charts at three levels in the closing report.</p>
+</main>
+</body>
+</html>

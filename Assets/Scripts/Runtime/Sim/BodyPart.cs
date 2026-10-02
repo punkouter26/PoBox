@@ -28,7 +28,7 @@ namespace PoBox.Sim
 
         /// <summary>Drive torque over the joint's limit, 0..1, fast up and slow down so a punch is visible.</summary>
         [System.NonSerialized] public float stress;
-        /// <summary>Accumulated damage on this part, 0..1. Fades the heat map into a bruise.</summary>
+        /// <summary>Accumulated damage on this part, 0..1. Shown as a bruise.</summary>
         [System.NonSerialized] public float bruise;
 
         void OnCollisionEnter(Collision c)

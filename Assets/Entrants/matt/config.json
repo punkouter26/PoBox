@@ -229,12 +229,12 @@
   },
   "observation_size": 100,
   "trained_by": {
-    "run": "match",
+    "run": "defend",
     "mode": "spar",
     "against": [
       "matt",
       "zombie"
     ],
-    "iterations": 4650
+    "iterations": 12900
   }
 }

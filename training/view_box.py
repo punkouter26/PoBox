@@ -25,6 +25,7 @@ import torch
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
+from envs.getup import GetUpEnv  # noqa: E402
 from ppo import PPO, PPOConfig  # noqa: E402
 
 
@@ -42,8 +43,13 @@ class Player:
         self.xml = xml or extra.get("xml", "")
         if not os.path.exists(self.xml):
             raise SystemExit(f"model file not found: {self.xml!r}. Pass --xml.")
-        self.env = BoxingEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, push_vel=0.0,
-                             action_scale=float(extra.get("action_scale", 0.5)))
+        if extra.get("mode", "") == "getup":
+            # No helping hand: what is watched is what the game will get.
+            self.env = GetUpEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, assist=0.0,
+                                action_scale=float(extra.get("action_scale", 0.5)))
+        else:
+            self.env = BoxingEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, push_vel=0.0,
+                                 action_scale=float(extra.get("action_scale", 0.5)), **extra.get("env", {}))
         self.split = len(ckpts) == 2 and self.env.K == 2
         self.ppos = [PPO(self.env.obs_dim, self.env.A, 1 if self.split else self.env.K, device, PPOConfig()) for _ in ckpts[: 2 if self.split else 1]]
         self.deterministic = deterministic
@@ -135,6 +141,9 @@ def sheet(player: Player, path: str, seconds: float, cols: int = 4, rows: int = 
     Image.fromarray(grid).save(path)
     s = player.env.get_stats()
     print(f"wrote {path}: {seconds:g} s of {player.stage} at iteration {player.iters}, one frame every {every * player.env.dt:.2f} s")
+    if player.stage == "getup":
+        print(f"  on its feet at the end of {s['up_rate_unaided']:.0%} of the falls, {s['time_to_stand_unaided']:.1f} s after the drives came back")
+        return
     print(f"  first episode end at {ended_at if ended_at is not None else 'never'} s | hits/s {s['hits_per_s']:.2f} "
           f"(head {s['head_share']:.0%}) at {s['hit_speed']:.1f} m/s, hardest {s['hit_speed_max']:.1f} | fall rate {s['fall_rate']:.2f} "
           f"| upright {s['upright']:.2f} | distance {s['distance']:.2f} m | glove speed {s['glove_speed']:.1f} m/s")

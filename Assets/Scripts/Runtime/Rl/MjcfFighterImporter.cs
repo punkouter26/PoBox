@@ -22,8 +22,6 @@ namespace PoBox.Rl
         public class Options
         {
             public string prefix = "a_";
-            [Tooltip("Drawn inside each limb and through the skin: glows with joint stress.")]
-            public Material xrayMaterial;
             public Material gloveMaterial;
             public PhysicsMaterial bodyPhysics, solePhysics, leatherPhysics;
             [Tooltip("Each body's mass, centre of mass and inertia as MuJoCo computed them (training/tools/export_reference.py).")]
@@ -374,21 +372,18 @@ namespace PoBox.Rl
             collider.sharedMaterial = glove ? opt.leatherPhysics : foot ? opt.solePhysics : opt.bodyPhysics;
             if (glove) body.glove = collider;
 
-            // What is drawn: the glove as a glove, and every other shape as a stress glow inside the limb.
-            Material material = glove ? opt.gloveMaterial : opt.xrayMaterial;
-            if (material != null && !name.StartsWith("head"))
+            // What is drawn: the glove. Every other shape is under the fighter's own mesh.
+            Material material = glove ? opt.gloveMaterial : null;
+            if (material != null)
             {
                 GameObject v = GameObject.CreatePrimitive(shape);
                 v.name = "vis";
                 Collider vc = v.GetComponent<Collider>();
                 if (Application.isPlaying) UnityEngine.Object.Destroy(vc); else UnityEngine.Object.DestroyImmediate(vc);
                 v.transform.SetParent(holder.transform, false);
-                // A little thinner than the collider, so the glow sits inside the skin rather than on it.
-                v.transform.localScale = glove ? scale * 1.15f : Vector3.Scale(scale, shape == PrimitiveType.Capsule ? new Vector3(0.8f, 1f, 0.8f) : Vector3.one * 0.9f);
+                v.transform.localScale = scale * 1.15f;
                 var mr = v.GetComponent<MeshRenderer>();
-                mr.sharedMaterials = glove && opt.xrayMaterial != null ? new[] { material } : new[] { material };
-                mr.shadowCastingMode = glove ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows = glove;
+                mr.sharedMaterial = material;
                 body.renderers.Add(mr);
             }
             return F(g, "mass", 0f);

@@ -229,12 +229,16 @@
   },
   "observation_size": 100,
   "trained_by": {
-    "run": "match",
+    "run": "g1_zombie",
     "mode": "spar",
     "against": [
       "matt",
-      "zombie"
+      "nick",
+      "lilmatt",
+      "trump",
+      "grandma",
+      "grandpa"
     ],
-    "iterations": 4650
+    "iterations": 480
   }
 }

@@ -20,8 +20,13 @@ namespace PoBox.Diag
 
         public int targetFps = 60;
         [Header("Render-scale governor")]
-        [Tooltip("Off in the editor regardless: it would write to the pipeline asset on disk.")]
+        [Tooltip("Off in the editor unless Govern In Editor is set: it changes the pipeline asset, which in the editor is the one on disk (it is put back when play stops).")]
         public bool governor = true;
+        [Tooltip("Lets the governor run in the editor, to watch it work.")]
+        public bool governInEditor;
+        /// <summary>Times the governor has stepped the render scale down, and up, since play began.</summary>
+        public int StepsDown { get; private set; }
+        public int StepsUp { get; private set; }
         [Range(0.5f, 1f)] public float minScale = 0.6f;
 
         public const int HistoryLength = 120;
@@ -37,6 +42,8 @@ namespace PoBox.Diag
         public long SetPass { get; private set; }
         public long Triangles { get; private set; }
         public float GcKb { get; private set; }
+        /// <summary>Garbage a frame, averaged over the last second or so. The single-frame figure jumps whenever anything is asked of the editor.</summary>
+        public float GcAverageKb { get; private set; }
         public float MemoryMb { get; private set; }
         public float RenderScale { get; private set; } = 1f;
         /// <summary>0 good, 1 watch, 2 bad: the colour of the dot on the debug chip.</summary>
@@ -75,6 +82,15 @@ namespace PoBox.Diag
             if (Instance == this) Instance = null;
         }
 
+        /// <summary>Puts the render scale back where it started.</summary>
+        public void RestoreScale()
+        {
+            if (_asset == null || _originalScale <= 0f) return;
+            RenderScale = _originalScale;
+            _asset.renderScale = _originalScale;
+            _over = 0f; _under = 0f;
+        }
+
         public void SetTargetFps(int fps)
         {
             targetFps = fps;
@@ -99,6 +115,7 @@ namespace PoBox.Diag
             if (_setPass.Valid) SetPass = _setPass.LastValue;
             if (_tris.Valid) Triangles = _tris.LastValue;
             if (_gc.Valid) GcKb = _gc.LastValue / 1024f;
+            GcAverageKb += (GcKb - GcAverageKb) * 0.02f;
             if (_memory.Valid) MemoryMb = _memory.LastValue / (1024f * 1024f);
             // Timed with a stopwatch round the step itself: the engine's physics markers read zero outside the profiler.
             PhysicsMs = Sim.PhysicsStepper.FrameMs;
@@ -108,7 +125,7 @@ namespace PoBox.Diag
 
         void Govern(float ms)
         {
-            if (!governor || _asset == null || Application.isEditor) return;
+            if (!governor || _asset == null || (Application.isEditor && !governInEditor)) return;
             float budget = Budget;
             float dt = Time.unscaledDeltaTime;
 
@@ -121,12 +138,14 @@ namespace PoBox.Diag
                 RenderScale = Mathf.Max(minScale, RenderScale - 0.1f);
                 _asset.renderScale = RenderScale;
                 _over = 0f;
+                StepsDown++;
             }
             else if (_under > 5f && RenderScale < _originalScale)
             {
                 RenderScale = Mathf.Min(_originalScale, RenderScale + 0.05f);
                 _asset.renderScale = RenderScale;
                 _under = 0f;
+                StepsUp++;
             }
         }
 

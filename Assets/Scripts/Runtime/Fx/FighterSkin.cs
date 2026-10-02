@@ -5,13 +5,15 @@ using PoBox.Sim;
 namespace PoBox.Fx
 {
     /// <summary>
-    /// What a fighter looks like, as opposed to what it weighs. Both the live fighter and its replay puppet
-    /// carry one, with their parts in the same order, so the replay can pose a puppet and the joint-stress
-    /// heat map can paint either without knowing which it has.
+    /// What a fighter looks like, as opposed to what it weighs: which renderers are which part of it, where
+    /// its head, chest and pelvis are for the cameras, and the trails behind its gloves.
     ///
-    /// The heat map is per renderer through a property block: each link glows from amber to red as the
-    /// drive torque on the joint above it nears that joint's limit, takes a dull bruise where it has been
-    /// hit, and picks up a wet highlight as the fighter tires. The overlay shader reads the three numbers.
+    /// It also feeds the overlay shader, per renderer through a property block. On the stand-in, whose body
+    /// is one renderer a link, that is a dull bruise on a part that has been hit. On a trained fighter the
+    /// overlay is drawn over the owner's own skinned mesh, and the bruises are marks at the very places the
+    /// punches landed: each is remembered on the link it landed on, and its place in the world is handed to
+    /// the shader every frame, so it moves with the body. Both get a wet highlight as the fighter tires and
+    /// the corner colour as a rim.
     /// </summary>
     public class FighterSkin : MonoBehaviour
     {
@@ -29,59 +31,34 @@ namespace PoBox.Fx
         public Part[] parts = new Part[0];
         [Tooltip("Left glove, right glove.")]
         public TrailRenderer[] trails = new TrailRenderer[0];
-        [Tooltip("The live fighter. Empty on a replay puppet, which is fed by the replay instead.")]
         public Fighter fighter;
         public Color rimColor = Color.white;
         [Tooltip("From the head part's origin to the middle of the head. Zero when the part is already there.")]
         public Vector3 headOffset = new Vector3(0f, 0.12f, 0f);
         [Tooltip("Anything else that is this fighter to look at and is not a part: the skinned mesh.")]
         public Renderer[] extraRenderers = new Renderer[0];
+        [Tooltip("The overlay drawn over the skinned mesh: bruises where punches landed, sweat, the corner's rim.")]
+        public Renderer[] overlayRenderers = new Renderer[0];
         [Tooltip("Glove speed at which the trail starts, m/s.")]
         public float trailSpeed = 4.5f;
+        [Tooltip("How far a bruise spreads from where the punch landed, metres.")]
+        public float bruiseRadius = 0.09f;
 
-        /// <summary>Settings toggle: the joint-stress glow on or off for everybody.</summary>
-        public static bool HeatmapOn = true;
-
-        static readonly int StressId = Shader.PropertyToID("_Stress");
         static readonly int BruiseId = Shader.PropertyToID("_Bruise");
         static readonly int SweatId = Shader.PropertyToID("_Sweat");
         static readonly int RimId = Shader.PropertyToID("_RimColor");
+        static readonly int MarksId = Shader.PropertyToID("_BruiseMarks");
+        static readonly int MarkCountId = Shader.PropertyToID("_BruiseCount");
 
         MaterialPropertyBlock _block;
-        float[] _stress, _bruise;
         BodyPart[] _source;
-        float _sweat;
         bool _visible = true;
+        readonly Vector4[] _marks = new Vector4[Fighter.MaxBruises];
 
         public bool Visible => _visible;
         public Vector3 HeadPoint => parts.Length > Head && parts[Head].bone != null ? parts[Head].bone.TransformPoint(headOffset) : transform.position;
         public Vector3 ChestPoint => parts.Length > Torso && parts[Torso].bone != null ? parts[Torso].bone.TransformPoint(0f, 0.25f, 0f) : transform.position;
         public Vector3 PelvisPoint => parts.Length > Pelvis && parts[Pelvis].bone != null ? parts[Pelvis].bone.position : transform.position;
-
-        void Awake() => Ensure();
-
-        void Ensure()
-        {
-            if (_block == null) _block = new MaterialPropertyBlock();
-            if (_stress == null || _stress.Length != parts.Length)
-            {
-                _stress = new float[parts.Length];
-                _bruise = new float[parts.Length];
-            }
-        }
-
-        public void SetPart(int i, float stress, float bruise)
-        {
-            Ensure();
-            if (i < 0 || i >= _stress.Length) return;
-            _stress[i] = stress;
-            _bruise[i] = bruise;
-        }
-
-        public float StressOf(int i) => _stress != null && i >= 0 && i < _stress.Length ? _stress[i] : 0f;
-        public float BruiseOf(int i) => _bruise != null && i >= 0 && i < _bruise.Length ? _bruise[i] : 0f;
-        public void SetSweat(float sweat) => _sweat = sweat;
-        public float Sweat => _sweat;
 
         public void SetVisible(bool visible)
         {
@@ -90,6 +67,8 @@ namespace PoBox.Fx
                 foreach (Renderer r in p.renderers)
                     if (r != null) r.enabled = visible;
             foreach (Renderer r in extraRenderers)
+                if (r != null) r.enabled = visible;
+            foreach (Renderer r in overlayRenderers)
                 if (r != null) r.enabled = visible;
             foreach (TrailRenderer t in trails)
             {
@@ -102,46 +81,56 @@ namespace PoBox.Fx
 
         void LateUpdate()
         {
-            Ensure();
-            if (fighter != null)
+            if (fighter == null || !_visible) return;
+            if (_block == null) _block = new MaterialPropertyBlock();
+
+            // Matched by bone, not by position in the list: the skin may carry a part the fighter has
+            // no link for (a trained body's head is on its torso link).
+            if (_source == null || _source.Length != parts.Length)
             {
-                // Matched by bone, not by position in the list: the skin may carry a part the fighter has
-                // no link for (a trained body's head is on its torso link).
-                if (_source == null || _source.Length != parts.Length)
-                {
-                    _source = new BodyPart[parts.Length];
-                    for (int i = 0; i < parts.Length; i++)
-                        foreach (BodyPart p in fighter.parts)
-                            if (p != null && p.transform == parts[i].bone) { _source[i] = p; break; }
-                }
+                _source = new BodyPart[parts.Length];
                 for (int i = 0; i < parts.Length; i++)
-                {
-                    if (_source[i] == null) continue;
-                    _stress[i] = _source[i].stress;
-                    _bruise[i] = _source[i].bruise;
-                }
-                _sweat = 1f - fighter.Stamina;
-
-                if (trails.Length >= 2 && _visible)
-                {
-                    if (trails[0] != null) trails[0].emitting = fighter.GloveSpeedL > trailSpeed;
-                    if (trails[1] != null) trails[1].emitting = fighter.GloveSpeedR > trailSpeed;
-                }
+                    foreach (BodyPart p in fighter.parts)
+                        if (p != null && p.transform == parts[i].bone) { _source[i] = p; break; }
             }
-            if (!_visible) return;
 
-            float heat = HeatmapOn ? 1f : 0f;
+            if (trails.Length >= 2)
+            {
+                if (trails[0] != null) trails[0].emitting = fighter.GloveSpeedL > trailSpeed;
+                if (trails[1] != null) trails[1].emitting = fighter.GloveSpeedR > trailSpeed;
+            }
+
+            float sweat = 1f - fighter.Stamina;
             for (int i = 0; i < parts.Length; i++)
             {
-                _block.Clear();
-                _block.SetFloat(StressId, _stress[i] * heat);
-                _block.SetFloat(BruiseId, _bruise[i]);
-                _block.SetFloat(SweatId, _sweat);
-                _block.SetColor(RimId, rimColor);
                 Renderer[] rs = parts[i].renderers;
+                if (rs.Length == 0) continue;
+                _block.Clear();
+                _block.SetFloat(BruiseId, _source[i] != null ? _source[i].bruise : 0f);
+                _block.SetFloat(SweatId, sweat);
+                _block.SetColor(RimId, rimColor);
                 for (int r = 0; r < rs.Length; r++)
                     if (rs[r] != null) rs[r].SetPropertyBlock(_block);
             }
+
+            if (overlayRenderers.Length == 0) return;
+            // Where each mark is now: xyz in the world, w how bad it is. Unused slots are zeroed.
+            int count = Mathf.Min(fighter.bruises.Count, _marks.Length);
+            for (int i = 0; i < _marks.Length; i++)
+            {
+                if (i >= count || fighter.bruises[i].bone == null) { _marks[i] = Vector4.zero; continue; }
+                Fighter.Bruise b = fighter.bruises[i];
+                Vector3 w = b.bone.TransformPoint(b.local);
+                _marks[i] = new Vector4(w.x, w.y, w.z, b.amount);
+            }
+            _block.Clear();
+            _block.SetFloat(BruiseId, 0f);
+            _block.SetFloat(SweatId, sweat);
+            _block.SetColor(RimId, rimColor);
+            _block.SetVectorArray(MarksId, _marks);
+            _block.SetFloat(MarkCountId, count);
+            for (int r = 0; r < overlayRenderers.Length; r++)
+                if (overlayRenderers[r] != null) overlayRenderers[r].SetPropertyBlock(_block);
         }
     }
 }

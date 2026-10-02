@@ -105,6 +105,12 @@ class Fighter:
         self.bones = {b["name"]: b for b in rig["bones"]}
         self.map = rig["map"]
         self.gains = dict(GAINS, **{k: tuple(v) for k, v in rig.get("boxing_gains", {}).items()})
+        # What makes one body not another, all optional and all from the rig file: shapes fitted inside
+        # the fighter's own mesh, and how strong and how quick its muscles are beside a trained adult's
+        # (1.0). A rig with none of them is built exactly as before.
+        self.radii = dict(RADII, **rig.get("radii", {}))
+        self.strength = float(rig.get("strength", 1.0))
+        self.speed = float(rig.get("speed", 1.0))
         self.mass_kg = float(rig.get("mass_kg", 75.0))
         self.joints: List[Dict] = []
         self.actuators: List[str] = []
@@ -141,12 +147,13 @@ class Fighter:
             lo, hi = -hi, -lo
             default = -default
         full = f"{name}_{side}" if side else name
-        kp, kv, fl = JOINT_GAINS.get(name, self.gains[group])
+        kp, kv, fl = (round(x * self.strength, 3) for x in JOINT_GAINS.get(name, self.gains[group]))
         arm = ARMATURE[group]
         self.joints.append({
             "name": full, "group": group, "axis": axis,
             "lower": math.radians(lo), "upper": math.radians(hi), "default": math.radians(default),
-            "kp": kp, "kv": kv, "force_limit": fl, "armature": arm, "velocity_limit": VELOCITY_LIMIT[group],
+            "kp": kp, "kv": kv, "force_limit": fl, "armature": arm,
+            "velocity_limit": round(VELOCITY_LIMIT[group] * self.speed, 3),
         })
         self.actuators.append(
             f'<position name="{self.p}{full}" joint="{self.p}{full}" kp="{kp}" kv="{kv}" forcerange="-{fl} {fl}" '
@@ -156,6 +163,7 @@ class Fighter:
 
     def build(self, pos: Tuple[float, float], yaw: float) -> str:
         L, p = self.lines, self.p
+        RADII = self.radii
         pelvis = self.head("pelvis")
         spine = self.head("spine") if self.has("spine") else self.tail("pelvis")
         neck = self.head("neck") if self.has("neck") else self.tail("torso")
@@ -357,7 +365,11 @@ def fighter_config(rig: Dict, name: str, rig_path: str, a: "Fighter", root_z: fl
         "physics_hz": 200,
         "control_decimation": 4,
         "ring_half": RING_HALF,
-        "radii": {"head": RADII["head"], "torso": RADII["torso"], "glove": RADII["glove"]},
+        "radii": {"head": a.radii["head"], "torso": a.radii["torso"], "glove": a.radii["glove"]},
+        # How this fighter is paid in training (envs/boxing.py reads it); empty for the plain boxer.
+        "style": rig.get("style", {}),
+        "strength": a.strength,
+        "speed": a.speed,
     }
 
 

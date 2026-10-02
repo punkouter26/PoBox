@@ -1,16 +1,17 @@
 // The telemetry a fighter wears.
 //
-// A second material on every fighter renderer, drawn over the lit body. The body underneath stays the
-// stock URP Lit shader (so it takes the ring lights and casts shadows like everything else); this pass adds
-// what the simulation is saying about the link it is on, fed per renderer through a property block:
+// Drawn over the lit body: on the stand-in as a second material on every link's renderer, on a trained
+// fighter as a second skinned renderer over the owner's own mesh. The body underneath keeps its own
+// shader (so it takes the ring lights and casts shadows like everything else); this pass adds what the
+// simulation is saying about the fighter, fed per renderer through a property block:
 //
-//   _Stress   drive torque over the joint's limit, 0..1: amber to red, bright enough to bloom near the limit
-//   _Bruise   accumulated damage on the part, 0..1: darkens and reddens the skin
-//   _Sweat    1 - stamina: a tight wet highlight from the key light
-//   _RimColor the corner colour, as a fresnel edge so the two fighters separate from the crowd
+//   _Bruise        accumulated damage on the whole part, 0..1 (the stand-in, one renderer a link)
+//   _BruiseMarks   up to eight marks where punches landed: xyz in the world, w how bad, 0..1 (trained fighters)
+//   _Sweat         1 - stamina: a tight wet highlight from the key light, and a sheen that grows with it
+//   _RimColor      the corner colour, as a fresnel edge so the two fighters separate from the crowd
 //
 // Blend One OneMinusSrcAlpha: rgb is added light, alpha is how much of the body underneath is taken away,
-// which is what lets one pass both glow and bruise.
+// which is what lets one pass both light an edge and darken a bruise.
 Shader "PoBox/FighterOverlay"
 {
     Properties
@@ -18,15 +19,11 @@ Shader "PoBox/FighterOverlay"
         _RimColor ("Rim colour", Color) = (1, 1, 1, 1)
         _RimPower ("Rim power", Range(0.5, 8)) = 3
         _RimIntensity ("Rim intensity", Range(0, 3)) = 0.55
-        _Stress ("Joint stress 0..1", Range(0, 1)) = 0
-        _StressGain ("Stress glow gain", Range(0, 8)) = 2.2
         _Bruise ("Bruise 0..1", Range(0, 1)) = 0
         _Sweat ("Sweat 0..1", Range(0, 1)) = 0
         _SweatGain ("Sweat highlight gain", Range(0, 2)) = 1
         _BruiseGain ("Bruise gain", Range(0, 2)) = 1
-        // LEqual (4) draws on the surface of the body it sits on. Always (8) draws through whatever is
-        // in front: used for the stress shapes inside a skinned fighter's limbs, which glow through the skin.
-        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("Depth test", Float) = 4
+        _BruiseRadius ("Bruise radius (m)", Range(0.02, 0.3)) = 0.09
     }
     SubShader
     {
@@ -38,7 +35,7 @@ Shader "PoBox/FighterOverlay"
             Tags { "LightMode" = "UniversalForward" }
             Blend One OneMinusSrcAlpha
             ZWrite Off
-            ZTest [_ZTest]
+            ZTest LEqual
             Cull Back
             Offset -1, -1
 
@@ -51,14 +48,17 @@ Shader "PoBox/FighterOverlay"
                 half4 _RimColor;
                 half _RimPower;
                 half _RimIntensity;
-                half _Stress;
-                half _StressGain;
                 half _Bruise;
                 half _Sweat;
                 half _SweatGain;
                 half _BruiseGain;
-                half _ZTest;
+                half _BruiseRadius;
             CBUFFER_END
+
+            // Per renderer, from FighterSkin. Outside the material's buffer: an array in it would stop the
+            // batcher, and a renderer with a property block is not batched anyway.
+            float4 _BruiseMarks[8];
+            float _BruiseCount;
 
             struct Attributes
             {
@@ -71,6 +71,7 @@ Shader "PoBox/FighterOverlay"
                 float4 positionCS : SV_POSITION;
                 float3 normalWS : TEXCOORD0;
                 float3 viewWS : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
             };
 
             Varyings vert(Attributes v)
@@ -80,7 +81,16 @@ Shader "PoBox/FighterOverlay"
                 o.positionCS = TransformWorldToHClip(pw);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.viewWS = GetWorldSpaceNormalizeViewDir(pw);
+                o.positionWS = pw;
                 return o;
+            }
+
+            // A cheap, stable noise for the mottling of a bruise and the beading of sweat.
+            float hash3(float3 p)
+            {
+                p = frac(p * 0.3183099 + 0.1);
+                p *= 17.0;
+                return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
             }
 
             half4 frag(Varyings i) : SV_Target
@@ -92,20 +102,33 @@ Shader "PoBox/FighterOverlay"
 
                 half3 rim = _RimColor.rgb * fresnel * _RimIntensity;
 
-                // Nothing below half the limit, so holding a guard does not light the whole body up;
-                // amber as the joint starts to work, red at the limit.
-                half s = smoothstep(0.5, 1.0, saturate(_Stress));
-                half3 heat = lerp(half3(1.0, 0.62, 0.08), half3(1.0, 0.10, 0.03), s);
-                half3 glow = heat * s * _StressGain * (0.45 + 0.55 * facing);
-
-                // A tight highlight off the key light, growing as the fighter tires.
+                // Sweat: a tight highlight off the key light, beaded, and a sheen at grazing angles, both
+                // growing as the fighter tires.
+                half sweat = saturate(_Sweat);
                 half3 h = normalize(_MainLightPosition.xyz + v);
-                half spec = pow(saturate(dot(n, h)), 90) * _Sweat * 1.6 * _SweatGain;
-                half3 wet = _MainLightColor.rgb * spec;
+                half bead = 0.55 + 0.9 * step(0.72, hash3(floor(i.positionWS * 260.0)));
+                half spec = pow(saturate(dot(n, h)), 90) * sweat * 1.6 * _SweatGain * bead;
+                half3 wet = _MainLightColor.rgb * (spec + fresnel * sweat * 0.10 * _SweatGain);
 
-                half bruise = saturate(_Bruise) * _BruiseGain;
-                half3 colour = rim + glow + wet + half3(0.16, 0.02, 0.05) * bruise;
-                return half4(colour, bruise * 0.45);
+                // Bruises: the whole part's, and the marks where punches landed.
+                half bruise = saturate(_Bruise);
+                half3 tint = half3(0.16, 0.02, 0.05) * bruise;
+                int count = (int)min(_BruiseCount, 8);
+                for (int k = 0; k < count; k++)
+                {
+                    float d = distance(i.positionWS, _BruiseMarks[k].xyz);
+                    // A dark middle and a redder, wider edge: what a day-old knock looks like.
+                    half core = saturate(1.0 - d / (_BruiseRadius * 0.6));
+                    half halo = saturate(1.0 - d / _BruiseRadius);
+                    half mottle = 0.75 + 0.5 * hash3(floor(i.positionWS * 120.0));
+                    half amount = _BruiseMarks[k].w * mottle;
+                    bruise = max(bruise, saturate(core * core * amount * 1.2));
+                    tint += half3(0.20, 0.03, 0.07) * halo * halo * amount * 0.3;
+                }
+                bruise = saturate(bruise * _BruiseGain);
+
+                half3 colour = rim + wet + tint * _BruiseGain;
+                return half4(colour, bruise * 0.55);
             }
             ENDHLSL
         }

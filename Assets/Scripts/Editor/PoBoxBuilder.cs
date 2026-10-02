@@ -19,8 +19,10 @@ using PoBox.UI;
 namespace PoBox.EditorTools
 {
     /// <summary>
-    /// Builds the project's one scene, <c>Assets/Scenes/Arena.unity</c>, from nothing: the ring, the hall,
-    /// the lights, two fighters and their replay puppets, nine cameras, the effects, the sound, the HUD.
+    /// Builds the project's two scenes from nothing. <c>Assets/Scenes/Arena.unity</c>: the ring, the hall,
+    /// the lights (baked and live), every trained boxer dressed for each corner, eleven cameras, the walk-on
+    /// Timeline, the effects, the decals, the sound, the HUD. <c>Assets/Scenes/Menu.unity</c>: the first
+    /// screen, where the two boxers are chosen.
     ///
     /// Everything it makes is a real object saved in the scene, so the ring posts, the lamps, the corners
     /// the fighters start in and the camera lenses can all be moved or re-tuned in the editor afterwards.
@@ -31,6 +33,7 @@ namespace PoBox.EditorTools
     public static class PoBoxBuilder
     {
         public const string ScenePath = "Assets/Scenes/Arena.unity";
+        public const string MenuScenePath = "Assets/Scenes/Menu.unity";
         const float RingHalf = 3.05f;       // rope line
         const float PostAt = 3.2f;
         const float FloorY = -1.2f;         // the hall floor; the canvas is y = 0
@@ -43,6 +46,8 @@ namespace PoBox.EditorTools
         {
             ProjectSetup();
             BuildScene();
+            // Last, so it is the scene left open: pressing Play in the editor then starts where the app does.
+            BuildMenuScene();
         }
 
         /// <summary>The -executeMethod entry point. Exits non-zero on any failure so a script can tell.</summary>
@@ -117,6 +122,9 @@ namespace PoBox.EditorTools
             Physics.defaultSolverIterations = 12;
             Physics.defaultSolverVelocityIterations = 4;
 
+            // Light cookies and the decal renderer feature, on both tiers.
+            StageBakery.PreparePipeline();
+
             AssetDatabase.SaveAssets();
             Debug.Log("[PoBox] project settings applied (Linear, portrait, URP, run in background).");
         }
@@ -139,6 +147,13 @@ namespace PoBox.EditorTools
             var star = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Kenney/star_06.png");
 
             Material canvasMat = AssetBakery.Lit("Canvas", Color.white, 0.12f, 0f, canvasTex);
+            AssetBakery.Weave(canvasMat, "Assets/Textures/AmbientCG/Fabric030_Normal.jpg", 16f, 0.7f);
+            Texture2D lampCookie = StageBakery.LampCookie(), sweepCookie = StageBakery.SweepCookie();
+            Material logoDecal = StageBakery.Decal("Decal_Logo", StageBakery.LogoTexture());
+            Material spotDecal = StageBakery.Decal("Decal_Spot", StageBakery.SpotTexture());
+            Material scuffDecal = StageBakery.Decal("Decal_Scuff", StageBakery.ScuffTexture());
+            Material hallSky = StageBakery.Skybox();
+            UnityEngine.Audio.AudioMixer mixer = StageBakery.Mixer();
             Material apronMat = AssetBakery.Lit("Apron", new Color(0.06f, 0.07f, 0.11f), 0.35f);
             Material floorMat = AssetBakery.Lit("HallFloor", new Color(0.035f, 0.038f, 0.05f), 0.55f);
             Material postMat = AssetBakery.Lit("Post", new Color(0.55f, 0.57f, 0.62f), 0.75f, 0.9f);
@@ -149,6 +164,8 @@ namespace PoBox.EditorTools
             Material trussMat = AssetBakery.Lit("Truss", new Color(0.08f, 0.08f, 0.09f), 0.5f, 0.8f);
             Material lampMat = AssetBakery.Lit("Lamp", new Color(0.1f, 0.1f, 0.1f), 0.2f, 0f, null, new Color(1f, 0.96f, 0.88f) * 2.2f);
             Material crowdMat = AssetBakery.Crowd();
+            crowdMat.SetColor("_RedCorner", Red);
+            crowdMat.SetColor("_BlueCorner", Blue);
             Material overlay = AssetBakery.Overlay();
 
             Material sweatMat = AssetBakery.Particle("Fx_Sweat", dot, true, new Color(0.85f, 0.93f, 1f, 0.9f));
@@ -167,7 +184,6 @@ namespace PoBox.EditorTools
             FighterFactory.Look blueLook = Look(Blue, new Color(0.56f, 0.40f, 0.30f), "Blue", overlay, trailMat, physBody, physSole, physLeather);
 
             VolumeProfile look = AssetBakery.Look();
-            VolumeProfile replayLook = AssetBakery.ReplayLook();
             PanelSettings panel = AssetBakery.Panel();
             PolicyProfile[] profiles = AssetBakery.Profiles();
             Mesh crowdMesh = AssetBakery.CrowdMesh(6.6f, 11, 0.95f, 0.42f, FloorY, 0.64f);
@@ -178,9 +194,14 @@ namespace PoBox.EditorTools
             AssetDatabase.SaveAssets();
 
             // ---- environment
-            RenderSettings.skybox = null;
-            RenderSettings.ambientMode = AmbientMode.Flat;
+            // The hall's ambient light and what shiny things reflect come from a photograph of a real boxing
+            // gym. It is never drawn: the camera clears to black, and the hall beyond the lamps is dark.
+            RenderSettings.skybox = hallSky;
+            RenderSettings.ambientMode = hallSky != null ? AmbientMode.Skybox : AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.075f, 0.085f, 0.12f);
+            RenderSettings.ambientIntensity = 0.45f;
+            RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
+            RenderSettings.reflectionIntensity = 0.55f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogDensity = 0.02f;
@@ -207,12 +228,38 @@ namespace PoBox.EditorTools
             }
 
             float[] ropeHeights = { 0.45f, 0.75f, 1.05f, 1.35f };
+            var drawn = new List<RopeFlex.Rope>();
             foreach (float h in ropeHeights)
             {
-                Rope("Rope_S_" + h, ringRoot, new Vector3(0f, h, -RingHalf), false, ropeMat, physRope);
-                Rope("Rope_N_" + h, ringRoot, new Vector3(0f, h, RingHalf), false, ropeMat, physRope);
-                Rope("Rope_W_" + h, ringRoot, new Vector3(-RingHalf, h, 0f), true, ropeMat, physRope);
-                Rope("Rope_E_" + h, ringRoot, new Vector3(RingHalf, h, 0f), true, ropeMat, physRope);
+                drawn.Add(Rope("Rope_S_" + h, ringRoot, new Vector3(0f, h, -RingHalf), false, physRope));
+                drawn.Add(Rope("Rope_N_" + h, ringRoot, new Vector3(0f, h, RingHalf), false, physRope));
+                drawn.Add(Rope("Rope_W_" + h, ringRoot, new Vector3(-RingHalf, h, 0f), true, physRope));
+                drawn.Add(Rope("Rope_E_" + h, ringRoot, new Vector3(RingHalf, h, 0f), true, physRope));
+            }
+            // What is seen of the ropes: one mesh for all sixteen, which bows where a body is against it.
+            var ropesGo = new GameObject("Ropes (drawn)");
+            ropesGo.transform.SetParent(ringRoot, false);
+            ropesGo.AddComponent<MeshFilter>();
+            ropesGo.AddComponent<MeshRenderer>().sharedMaterial = ropeMat;
+            var ropeFlex = ropesGo.AddComponent<RopeFlex>();
+            ropeFlex.ropes = drawn.ToArray();
+
+            // ---- decals: the promoter's mark in the middle, and a pool of marks for what the fight leaves
+            Transform decals = Group("Decals", env);
+            if (logoDecal != null) Projector("Canvas Logo", decals, logoDecal, new Vector3(0f, 0.03f, 0f), 2.7f, 0f, true);
+            var marksGo = new GameObject("Canvas Marks");
+            marksGo.transform.SetParent(decals, false);
+            var canvasMarks = marksGo.AddComponent<CanvasMarks>();
+            canvasMarks.ringCentre = Vector3.zero;
+            canvasMarks.ringHalf = RingHalf;
+            if (spotDecal != null && scuffDecal != null)
+            {
+                var spots = new List<DecalProjector>();
+                var scuffs = new List<DecalProjector>();
+                for (int i = 0; i < 14; i++) spots.Add(Projector("Wet Spot " + i, marksGo.transform, spotDecal, new Vector3(0f, 0.03f, 0f), 0.3f, 0f, false));
+                for (int i = 0; i < 10; i++) scuffs.Add(Projector("Scuff " + i, marksGo.transform, scuffDecal, new Vector3(0f, 0.03f, 0f), 0.5f, 0f, false));
+                canvasMarks.spots = spots.ToArray();
+                canvasMarks.scuffs = scuffs.ToArray();
             }
 
             Prim(PrimitiveType.Cube, "HallFloor", env, new Vector3(0f, FloorY - 0.1f, 0f), new Vector3(60f, 0.2f, 60f), floorMat);
@@ -235,6 +282,25 @@ namespace PoBox.EditorTools
             key.intensity = 1.25f;
             key.shadows = LightShadows.Soft;
             key.shadowStrength = 0.85f;
+            // Mixed: its shadows and what it does to the fighters are live, what it bounces round the hall is baked.
+            key.lightmapBakeType = LightmapBakeType.Mixed;
+
+            // The house lights: dim, in the roof, never seen directly. Baked only; they are what stops the
+            // stands and the floor beyond the ring being a black hole.
+            Color[] house = { new Color(1f, 0.82f, 0.62f), new Color(0.62f, 0.76f, 1f) };
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * Mathf.PI / 3f + 0.4f;
+                var h = new GameObject("House Light " + i).AddComponent<Light>();
+                h.transform.SetParent(lights, false);
+                h.transform.position = new Vector3(Mathf.Cos(a) * 11f, 7.5f, Mathf.Sin(a) * 11f);
+                h.type = LightType.Point;
+                h.range = 22f;
+                h.intensity = 46f;
+                h.color = house[i % 2];
+                h.shadows = LightShadows.Soft;
+                h.lightmapBakeType = LightmapBakeType.Baked;
+            }
 
             const float rigHeight = 6.2f, rigHalf = 3.3f;
             Prim(PrimitiveType.Cube, "Truss_N", lights, new Vector3(0f, rigHeight + 0.2f, rigHalf), new Vector3(rigHalf * 2f + 0.3f, 0.18f, 0.18f), trussMat, false);
@@ -266,9 +332,43 @@ namespace PoBox.EditorTools
                     spot.intensity = 40f;
                     spot.color = ix * iz > 0 ? warm : cool;
                     spot.shadows = LightShadows.None;
+                    spot.cookie = lampCookie;
+                    spot.lightmapBakeType = LightmapBakeType.Mixed;
                     ringLights.Add(spot);
                 }
             }
+
+            // Two follow-spots, off until the walk-on swings them onto the corners or a winner is found.
+            // Each hangs over the corner opposite the one it lights, so it lights its fighter from the front.
+            var sweeps = new List<Light>();
+            for (int i = 0; i < 2; i++)
+            {
+                float s = i == 0 ? 1f : -1f;
+                var sweep = new GameObject(i == 0 ? "Sweep Red" : "Sweep Blue").AddComponent<Light>();
+                sweep.transform.SetParent(lights, false);
+                sweep.transform.position = new Vector3(s * rigHalf * 0.9f, rigHeight - 0.2f, s * rigHalf * 0.9f);
+                sweep.transform.rotation = Quaternion.LookRotation(new Vector3(-s * 0.72f, 1.2f, -s * 0.72f) - sweep.transform.position);
+                sweep.type = LightType.Spot;
+                sweep.spotAngle = 17f;
+                sweep.innerSpotAngle = 13f;
+                sweep.range = 18f;
+                sweep.intensity = 0f;
+                sweep.color = new Color(1f, 0.97f, 0.92f);
+                sweep.shadows = LightShadows.None;
+                sweep.cookie = sweepCookie;
+                sweep.lightmapBakeType = LightmapBakeType.Realtime;
+                sweeps.Add(sweep);
+            }
+
+            // Light probes over the ring: what carries the baked bounce onto the fighters.
+            var probes = new GameObject("Light Probes").AddComponent<LightProbeGroup>();
+            probes.transform.SetParent(lights, false);
+            var probeAt = new List<Vector3>();
+            foreach (float py in new[] { 0.25f, 1.1f, 2.1f })
+                for (int px = -2; px <= 2; px++)
+                    for (int pz = -2; pz <= 2; pz++)
+                        probeAt.Add(new Vector3(px * 1.6f, py, pz * 1.6f));
+            probes.probePositions = probeAt.ToArray();
 
             // ---- look
             var lookGo = new GameObject("Look");
@@ -278,34 +378,28 @@ namespace PoBox.EditorTools
             volume.priority = 0f;
             volume.sharedProfile = look;
 
-            var replayGo = new GameObject("Replay Look");
-            replayGo.transform.SetParent(env, false);
-            var replayVolume = replayGo.AddComponent<Volume>();
-            replayVolume.isGlobal = true;
-            replayVolume.priority = 10f;
-            replayVolume.weight = 0f;
-            replayVolume.sharedProfile = replayLook;
-
             // ---- corners
             Transform marks = Group("Corners");
             Transform redCorner = Mark("Red Corner", marks, new Vector3(-0.72f, 0f, -0.72f), new Vector3(1f, 0f, 1f));
             Transform blueCorner = Mark("Blue Corner", marks, new Vector3(0.72f, 0f, 0.72f), new Vector3(-1f, 0f, -1f));
             Transform redNeutral = Mark("Red Neutral", marks, new Vector3(-2.1f, 0f, 2.1f), new Vector3(1f, 0f, -1f));
             Transform blueNeutral = Mark("Blue Neutral", marks, new Vector3(2.1f, 0f, -2.1f), new Vector3(-1f, 0f, 1f));
+            // Where each stands for the walk-on: in its own corner, a step out from the post.
+            Transform redStool = Mark("Red Stool", marks, new Vector3(-2.15f, 0f, -2.15f), new Vector3(1f, 0f, 1f));
+            Transform blueStool = Mark("Blue Stool", marks, new Vector3(2.15f, 0f, 2.15f), new Vector3(-1f, 0f, -1f));
 
             // ---- fighters
-            // Trained entrants if there are two of them (Assets/Entrants, filled by PoBox/Import Trained
-            // Entrants); otherwise the scripted stand-ins.
+            // Every trained entrant (Assets/Entrants, filled by PoBox/Import Trained Entrants), each built
+            // twice, once dressed for each corner, and all switched off: the two that the menu picks are
+            // switched on when the scene starts (MatchSetup). With no entrants at all, the scripted stand-ins.
             Transform cast = Group("Fighters");
             string[] entrants = EntrantFactory.Available();
-            // One entrant so far (the other is still on the bag): it fights a copy of itself.
-            if (entrants.Length == 1) entrants = new[] { entrants[0], entrants[0] };
-            bool trained = entrants.Length >= 2;
+            bool trained = entrants.Length >= 1;
             Fighter red, blue;
-            FighterSkin redPuppet, bluePuppet;
+            var boxers = new List<MatchSetup.Boxer>();
+            MatchSetup.Pairing[] rings = null;
             if (trained)
             {
-                Material xray = AssetBakery.StressXray();
                 // Contact as the trainer has it: friction 1 on every shape, and nothing bounces. A sole that
                 // grips a little less than the one the policy learned on is a fighter that slips when it pushes off.
                 PhysicsMaterial asTrained = PhysicsAsset("AsTrained", 1f, 1f, 0f);
@@ -313,19 +407,37 @@ namespace PoBox.EditorTools
                 asTrained.bounceCombine = PhysicsMaterialCombine.Minimum;
                 redLook.body = redLook.sole = redLook.leather = asTrained;
                 blueLook.body = blueLook.sole = blueLook.leather = asTrained;
-                red = EntrantFactory.Build(entrants[0], redCorner.position, redCorner.rotation, redLook, xray, 0, cast, out redPuppet);
-                blue = EntrantFactory.Build(entrants[1], blueCorner.position, blueCorner.rotation, blueLook, xray, 1, cast, out bluePuppet);
-                profiles = new[] { EntrantFactory.Profile(entrants[0]), EntrantFactory.Profile(entrants[1]) };
-                var redBrain = red.GetComponent<Rl.PolicyBrain>();
-                var blueBrain = blue.GetComponent<Rl.PolicyBrain>();
-                redBrain.opponent = blue.mjcf; blueBrain.opponent = red.mjcf;
-                redBrain.ringCentre = blueBrain.ringCentre = Vector3.zero;
-                redBrain.ringHalf = blueBrain.ringHalf = RingHalf;
-                red.ringHalf = blue.ringHalf = RingHalf;
-                // The fight itself runs in MuJoCo when the match model has been exported; these two are then its shadows.
-                bool onMujoco = entrants[0] != entrants[1] && EntrantFactory.AddRing(red, blue, Vector3.zero, cast) != null;
-                Debug.Log($"[PoBox] physics for the trained fighters: {(onMujoco ? "MuJoCo (mujoco.dll)" : "Unity")}");
-                redBrain.neutralSpot = redNeutral.position; blueBrain.neutralSpot = blueNeutral.position;
+
+                var roster = new List<PolicyProfile>();
+                foreach (string entrant in entrants)
+                {
+                    PolicyProfile profile = EntrantFactory.Profile(entrant);
+                    var boxer = new MatchSetup.Boxer
+                    {
+                        name = entrant,
+                        red = EntrantFactory.Build(entrant, redCorner.position, redCorner.rotation, redLook, 0, cast),
+                        blue = EntrantFactory.Build(entrant, blueCorner.position, blueCorner.rotation, blueLook, 1, cast),
+                    };
+                    foreach (Fighter f in new[] { boxer.red, boxer.blue })
+                    {
+                        f.profile = profile;
+                        f.ringHalf = RingHalf;
+                        var brain = f.GetComponent<Rl.PolicyBrain>();
+                        brain.ringCentre = Vector3.zero;
+                        brain.ringHalf = RingHalf;
+                        brain.neutralSpot = (f == boxer.red ? redNeutral : blueNeutral).position;
+                        f.gameObject.SetActive(false);
+                    }
+                    boxers.Add(boxer);
+                    roster.Add(profile);
+                }
+                profiles = roster.ToArray();
+                // Who fights when the arena is opened without the menu: the first against the second.
+                red = boxers[0].red;
+                blue = boxers[Mathf.Min(1, boxers.Count - 1)].blue;
+                // The fight itself runs in MuJoCo; the bodies in the scene are its shadows.
+                rings = EntrantFactory.AddRings(entrants, Vector3.zero, red.mjcf.controlDecimation, cast);
+                Debug.Log($"[PoBox] {entrants.Length} boxer(s) in the arena, {rings.Length} pairing(s) with a MuJoCo match model.");
             }
             else
             {
@@ -338,13 +450,9 @@ namespace PoBox.EditorTools
                     brain.ringCentre = Vector3.zero;
                     brain.ringHalf = RingHalf;
                 }
-                redPuppet = FighterFactory.BuildPuppet("Red Replay Puppet", redLook, cast);
-                bluePuppet = FighterFactory.BuildPuppet("Blue Replay Puppet", blueLook, cast);
-                redPuppet.transform.position = redCorner.position;
-                bluePuppet.transform.position = blueCorner.position;
+                red.opponent = blue; blue.opponent = red;
+                red.profile = profiles[0]; blue.profile = profiles[1];
             }
-            red.opponent = blue; blue.opponent = red;
-            red.profile = profiles[0]; blue.profile = profiles[1];
             FighterSkin redSkin = red.GetComponent<FighterSkin>(), blueSkin = blue.GetComponent<FighterSkin>();
 
             // ---- cameras
@@ -363,6 +471,8 @@ namespace PoBox.EditorTools
             UniversalAdditionalCameraData camData = camera.GetUniversalAdditionalCameraData();
             camData.renderPostProcessing = true;
             camData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
+            // Measures and limits the finished mix.
+            mainGo.AddComponent<AudioMeter>();
 
             CinemachineCamera wide = ShotCam("Shot Wide", cams, 34f);
             CinemachineCamera orbit = ShotCam("Shot Orbit", cams, 34f);
@@ -372,7 +482,9 @@ namespace PoBox.EditorTools
             CinemachineCamera shoulderBlue = ShotCam("Shot Shoulder Blue", cams, 36f);
             CinemachineCamera impact = ShotCam("Shot Impact", cams, 30f);
             CinemachineCamera overhead = ShotCam("Shot Overhead", cams, 44f);
-            CinemachineCamera replay = ShotCam("Shot Replay", cams, 46f);
+            CinemachineCamera walkRed = ShotCam("Shot Walk-on Red", cams, 30f);
+            CinemachineCamera walkBlue = ShotCam("Shot Walk-on Blue", cams, 30f);
+            CinemachineCamera winnerCam = ShotCam("Shot Winner", cams, 32f);
             wide.transform.SetPositionAndRotation(new Vector3(0f, 3f, -7f), Quaternion.Euler(16f, 0f, 0f));
             wide.Priority = 30;
 
@@ -382,11 +494,25 @@ namespace PoBox.EditorTools
             ParticleSystem shock = Particles("Shock Ring", fx, shockMat, 0.2f, 0.24f, 0f, 0f, 0.5f, 0.5f, 0f, 16, ParticleSystemShapeType.Sphere, 0f, 0.001f, true);
             ParticleSystem dust = Particles("Canvas Dust", fx, dustMat, 0.8f, 1.4f, 0.4f, 1.3f, 0.3f, 0.7f, -0.05f, 120, ParticleSystemShapeType.Hemisphere, 0f, 0.25f, true);
             ParticleSystem stars = Particles("Knockdown Stars", fx, starMat, 0.6f, 1.0f, 1.2f, 2.8f, 0.12f, 0.22f, 0.5f, 60, ParticleSystemShapeType.Sphere, 0f, 0.12f, false);
+            // Sweat is drawn stretched along its flight, and stops at the canvas.
+            var sweatRenderer = sweat.GetComponent<ParticleSystemRenderer>();
+            sweatRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+            sweatRenderer.velocityScale = 0.035f;
+            sweatRenderer.lengthScale = 1.6f;
+            var sweatHits = sweat.collision;
+            sweatHits.enabled = true;
+            sweatHits.type = ParticleSystemCollisionType.Planes;
+            sweatHits.mode = ParticleSystemCollisionMode.Collision3D;
+            sweatHits.AddPlane(canvas.transform.parent);          // the ring's own origin: the canvas is y = 0
+            sweatHits.bounce = 0f;
+            sweatHits.dampen = 1f;
+            sweatHits.lifetimeLoss = 1f;
             var impactVfx = fx.gameObject.AddComponent<ImpactVfx>();
             impactVfx.sweat = sweat; impactVfx.shock = shock; impactVfx.dust = dust; impactVfx.stars = stars;
             var mood = fx.gameObject.AddComponent<ArenaMood>();
             mood.ringLights = ringLights.ToArray();
             mood.lampRenderers = lamps.ToArray();
+            mood.sweeps = sweeps.ToArray();
 
             // ---- rules, broadcast, sound, diagnostics
             var boutGo = new GameObject("Bout");
@@ -396,35 +522,46 @@ namespace PoBox.EditorTools
             bout.red = red; bout.blue = blue;
             bout.redCorner = redCorner; bout.blueCorner = blueCorner;
             bout.redNeutral = redNeutral; bout.blueNeutral = blueNeutral;
+            bout.redStool = redStool; bout.blueStool = blueStool;
             bout.league = league;
             if (trained)
             {
                 // A trained policy belongs to its body, and was trained at 200 physics steps a second.
                 bout.fixedEntrants = true;
                 bout.physicsStep = red.mjcf.physicsStep;
-                bout.fixedStepInSlowMotion = true;
+                // With fighters that get up by themselves the count is a real one: ten seconds.
+                if (EntrantFactory.AllCanGetUp(entrants)) bout.countInterval = 1f;
             }
+            mood.bout = bout;
+            ropeFlex.bout = bout;
             boutGo.AddComponent<PhysicsStepper>();
             var excitement = boutGo.AddComponent<Excitement>();
             excitement.bout = bout;
 
             var broadcastGo = new GameObject("Broadcast");
-            var replaySystem = broadcastGo.AddComponent<ReplaySystem>();
-            replaySystem.bout = bout;
-            replaySystem.redLive = redSkin; replaySystem.blueLive = blueSkin;
-            replaySystem.redPuppet = redPuppet; replaySystem.bluePuppet = bluePuppet;
             var director = broadcastGo.AddComponent<BroadcastDirector>();
             director.bout = bout;
             director.mainCamera = camera;
             director.brain = brainComponent;
             director.redLive = redSkin; director.blueLive = blueSkin;
-            director.redPuppet = redPuppet; director.bluePuppet = bluePuppet;
-            director.replayVolume = replayVolume;
             director.ringCentre = Vector3.zero;
             director.ringHalf = RingHalf;
             director.wideCam = wide; director.orbitCam = orbit; director.cornerCam = cornerCam; director.lowCam = low;
             director.shoulderRedCam = shoulderRed; director.shoulderBlueCam = shoulderBlue;
-            director.impactCam = impact; director.overheadCam = overhead; director.replayCam = replay;
+            director.impactCam = impact; director.overheadCam = overhead;
+            director.walkRedCam = walkRed; director.walkBlueCam = walkBlue; director.winnerCam = winnerCam;
+            director.walkOn = StageBakery.WalkOn(bout.walkOnSeconds, broadcastGo, brainComponent, walkRed, walkBlue, lights.gameObject,
+                                                 sweeps[0], sweeps[1], redStool.position, blueStool.position, mood, mood.sweepIntensity);
+            if (trained)
+            {
+                var setup = boutGo.AddComponent<MatchSetup>();
+                setup.boxers = boxers.ToArray();
+                setup.rings = rings;
+                setup.defaultRed = red.mjcf.fighterName;
+                setup.defaultBlue = blue.mjcf.fighterName;
+                setup.bout = bout;
+                setup.director = director;
+            }
             var commentary = broadcastGo.AddComponent<Commentary>();
             commentary.bout = bout;
 
@@ -432,7 +569,18 @@ namespace PoBox.EditorTools
             var audio = audioGo.AddComponent<AudioDirector>();
             audio.bout = bout;
             audio.listener = listener;
-            audio.punchLight = light; audio.punchHeavy = heavy; audio.punchBlocked = blocked;
+            // The layers of a punch are recordings (Kenney's impact pack, CC0), with the synthesised ones
+            // behind them if the recordings are not in the project.
+            const string kenney = "Assets/Audio/Kenney";
+            AudioClip[] slap = StageBakery.Clips(kenney, "impactPunch_medium", 5), slapHeavy = StageBakery.Clips(kenney, "impactPunch_heavy", 5);
+            AudioClip[] thud = StageBakery.Clips(kenney, "impactSoft_heavy", 5), dull = StageBakery.Clips(kenney, "impactSoft_medium", 5);
+            audio.punchLight = slap.Length > 0 ? slap : light;
+            audio.punchHeavy = slapHeavy.Length > 0 ? slapHeavy : heavy;
+            audio.punchBlocked = dull.Length > 0 ? dull : blocked;
+            audio.bodyThud = thud.Length > 0 ? thud : heavy;
+            audio.footsteps = StageBakery.Clips(kenney, "footstep_carpet", 5);
+            audio.crowdGasp = StageBakery.Gasp();
+            audio.mixer = mixer;
             audio.whoosh = AssetBakery.Real("whoosh");
             audio.bodyFall = AssetBakery.Real("sandThud");
             audio.bell = AssetBakery.Real("lapBell");
@@ -460,11 +608,102 @@ namespace PoBox.EditorTools
             hud.redColor = Red;
             hud.blueColor = Blue;
 
+            // Anything another editor script wants in the arena is added now, before the scene is saved and
+            // lit: it is handed the Environment group to hang things under.
+            BuildingArena?.Invoke(env);
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            // The bake needs the scene on disk, and writes its lightmaps beside it.
+            if (BakeOnBuild && StageBakery.BakeLighting()) EditorSceneManager.SaveScene(scene, ScenePath);
+            SetBuildScenes(trained);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[PoBox] built {ScenePath} with {(trained ? "trained entrants " + red.displayName + " and " + blue.displayName : "the scripted stand-ins")}: {red.totalMass:0.0} and {blue.totalMass:0.0} kg, crowd of {crowdMesh.vertexCount / 4}.");
+            Debug.Log($"[PoBox] built {ScenePath} with {(trained ? "the trained boxers " + string.Join(", ", entrants) : "the scripted stand-ins")}; crowd of {crowdMesh.vertexCount / 4}.");
+        }
+
+        /// <summary>
+        /// Raised while the arena is being built, after everything of the builder's own is in it and before
+        /// it is saved and its lighting baked. The argument is the scene's Environment group. An editor
+        /// script subscribes from an [InitializeOnLoad] static constructor to put something of its own in
+        /// the arena without this file being changed.
+        /// </summary>
+        public static event Action<Transform> BuildingArena;
+
+        /// <summary>
+        /// Whether building the arena also bakes its lighting (about a minute on the CPU). Off for the
+        /// headless probes, which build the scene to measure physics and never look at it. Kept per editor.
+        /// </summary>
+        public static bool BakeOnBuild
+        {
+            get => EditorPrefs.GetBool("pobox.bakeOnBuild", true);
+            set => EditorPrefs.SetBool("pobox.bakeOnBuild", value);
+        }
+
+        [MenuItem("PoBox/Bake Arena Lighting", priority = 5)]
+        public static void BakeNow()
+        {
+            if (EditorSceneManager.GetActiveScene().path != ScenePath) EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            if (StageBakery.BakeLighting()) EditorSceneManager.SaveOpenScenes();
+        }
+
+        /// <summary>The menu is the scene the app starts in, when there are boxers to choose between.</summary>
+        static void SetBuildScenes(bool withMenu)
+        {
+            EditorBuildSettings.scenes = withMenu
+                ? new[] { new EditorBuildSettingsScene(MenuScenePath, true), new EditorBuildSettingsScene(ScenePath, true) }
+                : new[] { new EditorBuildSettingsScene(ScenePath, true) };
+        }
+
+        // ---------------------------------------------------------------- menu scene
+
+        /// <summary>
+        /// The first screen: a camera with nothing to look at and one interface document, with a card for
+        /// every trained boxer in each corner's column. Not built when there are no trained boxers; the app
+        /// then starts in the arena with the stand-ins.
+        /// </summary>
+        [MenuItem("PoBox/Build Menu Scene", priority = 3)]
+        public static void BuildMenuScene()
+        {
+            string[] entrants = EntrantFactory.Available();
+            if (entrants.Length == 0)
+            {
+                SetBuildScenes(false);
+                Debug.Log("[PoBox] no trained boxers, so no menu scene: the app starts in the arena.");
+                return;
+            }
+
+            AssetBakery.EnsureFolder("Assets/Scenes");
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            PanelSettings panel = AssetBakery.Panel();
+            var cards = new List<MenuView.Boxer>();
+            foreach (string entrant in entrants) cards.Add(EntrantFactory.Card(entrant));
+
+            var cameraGo = new GameObject("Main Camera") { tag = "MainCamera" };
+            var camera = cameraGo.AddComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.008f, 0.010f, 0.016f);
+            camera.cullingMask = 0;
+            cameraGo.AddComponent<AudioListener>();
+
+            // Switched off while it is put together: the menu draws itself in the editor too, and should
+            // first do so with its boxers already in hand.
+            var menuGo = new GameObject("Menu");
+            menuGo.SetActive(false);
+            var document = menuGo.AddComponent<UIDocument>();
+            document.panelSettings = panel;
+            document.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetBakery.MenuUxml);
+            if (document.visualTreeAsset == null) Debug.LogError("[PoBox] Menu.uxml did not import; the menu will be empty.");
+            var view = menuGo.AddComponent<MenuView>();
+            view.boxers = cards.ToArray();
+            view.redColor = Red;
+            view.blueColor = Blue;
+            menuGo.SetActive(true);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, MenuScenePath);
+            SetBuildScenes(true);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[PoBox] built {MenuScenePath} with {cards.Count} boxer(s) to choose from.");
         }
 
         // ---------------------------------------------------------------- helpers
@@ -530,18 +769,46 @@ namespace PoBox.EditorTools
         }
 
         /// <summary>
-        /// One rope: a thin cylinder to look at, and a fatter capsule to run into, so that a body moving at
-        /// punching speed cannot step through it between two physics steps.
+        /// One rope: a capsule to run into, fat enough that a body moving at punching speed cannot step
+        /// through it between two physics steps, and nothing to look at; what is seen of the ropes is one
+        /// mesh for all of them (<see cref="RopeFlex"/>), and this returns the line that mesh draws for this one.
         /// </summary>
-        static void Rope(string name, Transform parent, Vector3 position, bool alongZ, Material material, PhysicsMaterial physics)
+        static RopeFlex.Rope Rope(string name, Transform parent, Vector3 position, bool alongZ, PhysicsMaterial physics)
         {
-            GameObject go = Prim(PrimitiveType.Cylinder, name, parent, position, new Vector3(0.045f, RingHalf + 0.12f, 0.045f), material, false);
+            float half = RingHalf + 0.12f;
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = position;
             go.transform.localRotation = alongZ ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.Euler(0f, 0f, 90f);
+            go.isStatic = true;
             var capsule = go.AddComponent<CapsuleCollider>();
-            capsule.direction = 1;               // the cylinder's own long axis
-            capsule.radius = 0.04f / 0.045f;     // 4 cm in the world, whatever the visual is scaled to
-            capsule.height = 2f;
+            capsule.direction = 1;
+            capsule.radius = 0.04f;
+            capsule.height = 2f * half;
             capsule.sharedMaterial = physics;
+
+            Vector3 along = alongZ ? Vector3.forward : Vector3.right;
+            // Away from the middle of the ring, flat.
+            var outward = new Vector3(alongZ ? Mathf.Sign(position.x) : 0f, 0f, alongZ ? 0f : Mathf.Sign(position.z));
+            return new RopeFlex.Rope { a = position - along * half, b = position + along * half, outward = outward };
+        }
+
+        /// <summary>
+        /// A decal looking straight down at the canvas. Its box is 6 cm deep and sits on the cloth, so it
+        /// marks the canvas and not the boots standing on it.
+        /// </summary>
+        static DecalProjector Projector(string name, Transform parent, Material material, Vector3 position, float size, float turn, bool on)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(90f, turn, 0f));
+            var d = go.AddComponent<DecalProjector>();
+            d.material = material;
+            d.size = new Vector3(size, size, 0.06f);
+            d.pivot = new Vector3(0f, 0f, 0.03f);
+            d.fadeFactor = 1f;
+            d.enabled = on;
+            return d;
         }
 
         static CinemachineCamera ShotCam(string name, Transform parent, float verticalFov)

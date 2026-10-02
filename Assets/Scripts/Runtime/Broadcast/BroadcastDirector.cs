@@ -1,22 +1,26 @@
 using UnityEngine;
-using UnityEngine.Rendering;
+using UnityEngine.Playables;
 using Unity.Cinemachine;
 using PoBox.Fx;
 using PoBox.Sim;
 
 namespace PoBox.Broadcast
 {
-    public enum Shot { Wide, Orbit, HighCorner, LowRopes, ShoulderRed, ShoulderBlue, Impact, Overhead, Replay }
+    public enum Shot { Wide, Orbit, HighCorner, LowRopes, ShoulderRed, ShoulderBlue, Impact, Overhead, WalkRed, WalkBlue, Winner }
 
     /// <summary>
-    /// The vision mixer. Nine Cinemachine cameras live in the scene; this decides which one is on air and
+    /// The vision mixer. Eleven Cinemachine cameras live in the scene; this decides which one is on air and
     /// where each of them stands.
+    ///
+    /// Before the first bell there is the walk-on: a Timeline in the scene (Assets/Timeline/WalkOn.playable)
+    /// cuts from one corner's close-up to the other's while its lighting tracks bring the house lights down
+    /// and swing a follow-spot onto each fighter. This starts it and stays out of its way. After the last
+    /// bell the winner gets a slow circling shot of their own.
     ///
     /// Which: an ambient rotation whose pace follows the excitement reading (long holds on the wide when
     /// nothing is landing, short ones and over-the-shoulder shots when it is), interrupted by the things
-    /// that must be seen: a clean heavy hit cuts to a close-up of whoever took it and slows time for half a
-    /// second, a knockdown goes to the close-up and then overhead for the count, and a replay takes the
-    /// orbiting replay camera. Everything is a hard cut, as on a broadcast.
+    /// that must be seen: a clean heavy hit cuts to a close-up of whoever took it, and a knockdown goes to
+    /// the close-up and then overhead for the count. Everything is a hard cut, as on a broadcast.
     ///
     /// Where: the game is portrait, and a lens angle is vertical, so a two-shot is framed from the
     /// <i>horizontal</i> angle the screen actually has. Each camera's distance is solved from how far apart
@@ -30,8 +34,7 @@ namespace PoBox.Broadcast
         public Bout bout;
         public Camera mainCamera;
         public CinemachineBrain brain;
-        public FighterSkin redLive, blueLive, redPuppet, bluePuppet;
-        public Volume replayVolume;
+        public FighterSkin redLive, blueLive;
 
         [Header("Shots")]
         public CinemachineCamera wideCam;
@@ -42,7 +45,12 @@ namespace PoBox.Broadcast
         public CinemachineCamera shoulderBlueCam;
         public CinemachineCamera impactCam;
         public CinemachineCamera overheadCam;
-        public CinemachineCamera replayCam;
+        [Tooltip("One fighter in its corner, for the walk-on. The Timeline cuts between them.")]
+        public CinemachineCamera walkRedCam, walkBlueCam;
+        [Tooltip("Circles whoever won.")]
+        public CinemachineCamera winnerCam;
+        [Tooltip("The walk-on sequence. Empty: the two corner shots are simply cut between.")]
+        public PlayableDirector walkOn;
 
         [Header("Framing")]
         public Vector3 ringCentre;
@@ -58,12 +66,9 @@ namespace PoBox.Broadcast
         public float maxHeight = 7.5f;
 
         [Header("Events")]
-        [Tooltip("Impulse of a clean hit that earns the close-up and the slow motion, N s.")]
+        [Tooltip("Impulse of a clean hit that earns the close-up, N s.")]
         public float bigHit = 13f;
         public float impactHold = 1.15f;
-        public bool slowMotion = true;
-        public float slowScale = 0.3f;
-        public float slowSeconds = 0.5f;
         [Tooltip("Camera kick for an impulse of 25 N s, m/s.")]
         public float shakeVelocity = 0.35f;
 
@@ -82,7 +87,7 @@ namespace PoBox.Broadcast
         /// <summary>
         /// Tells the cameras which band of the screen is clear of interface. They frame the fighters to
         /// fit it and aim so the action sits in its middle, so opening the results card over the lower
-        /// half of the screen pushes the replay up into what is left instead of hiding it.
+        /// half of the screen pushes the fighters up into what is left instead of hiding them.
         /// </summary>
         public void SetPictureBand(float top01, float bottom01)
         {
@@ -123,6 +128,7 @@ namespace PoBox.Broadcast
             SimBus.Hit += OnHit;
             SimBus.Knockdown += OnKnockdown;
             SimBus.PunchThrown += OnPunch;
+            SimBus.PhaseChanged += OnPhase;
         }
 
         void OnDisable()
@@ -130,7 +136,20 @@ namespace PoBox.Broadcast
             SimBus.Hit -= OnHit;
             SimBus.Knockdown -= OnKnockdown;
             SimBus.PunchThrown -= OnPunch;
+            SimBus.PhaseChanged -= OnPhase;
             if (Instance == this) Instance = null;
+        }
+
+        void OnPhase(BoutPhase from, BoutPhase to)
+        {
+            if (walkOn == null) return;
+            if (to == BoutPhase.WalkOn)
+            {
+                walkOn.time = 0.0;
+                walkOn.Play();
+                walkOn.Evaluate();
+            }
+            else if (from == BoutPhase.WalkOn) walkOn.Stop();
         }
 
         void Start() => Apply(Shot.Orbit);
@@ -151,7 +170,6 @@ namespace PoBox.Broadcast
             _lastImpactCut = Time.unscaledTime;
             _impactVictim = e.victim;
             Force(Shot.Impact, impactHold);
-            if (bout != null && slowMotion) bout.SlowMo(slowScale, slowSeconds);
         }
 
         void OnKnockdown(Fighter f, HitEvent cause)
@@ -159,7 +177,6 @@ namespace PoBox.Broadcast
             _lastImpactCut = Time.unscaledTime;
             _impactVictim = f;
             Force(Shot.Impact, 1.3f);
-            if (bout != null && slowMotion) bout.SlowMo(0.25f, 1.1f);
             if (_impulse != null) _impulse.GenerateImpulseAtPositionWithVelocity(f.pelvis.transform.position, Vector3.down * shakeVelocity);
         }
 
@@ -182,28 +199,31 @@ namespace PoBox.Broadcast
         {
             if (bout == null || redLive == null || blueLive == null) return;
             float now = Time.unscaledTime;
-            bool replay = ReplaySystem.Instance != null && ReplaySystem.Instance.Playing;
+            // The walk-on Timeline keeps the bout's clock, not its own: it is moved to the phase's age and
+            // evaluated by hand, so the pictures and the name cards cannot drift apart.
+            if (walkOn != null && bout.Phase == BoutPhase.WalkOn)
+            {
+                walkOn.time = bout.PhaseAge;
+                walkOn.Evaluate();
+            }
 
             Shot want = Current;
-            if (replay) want = Shot.Replay;
-            else if (Pinned.HasValue) want = Pinned.Value;
+            if (Pinned.HasValue) want = Pinned.Value;
+            // The walk-on: the Timeline's camera track has the picture. Underneath it, and on their own if
+            // there is no Timeline, the two corner shots, a half each.
+            else if (bout.Phase == BoutPhase.WalkOn) want = bout.PhaseAge < bout.walkOnSeconds * 0.5f ? Shot.WalkRed : Shot.WalkBlue;
+            else if (bout.Phase == BoutPhase.Results) want = bout.Winner != null ? Shot.Winner : Shot.Orbit;
             else if (now < _forcedUntil) want = _forced;
             else if (bout.Phase == BoutPhase.Count && bout.Downed != null) { want = Shot.Overhead; _impactVictim = bout.Downed; }
             else if (bout.Phase != BoutPhase.Fight) want = Shot.Orbit;
-            else if (now >= _nextCut || Current == Shot.Impact || Current == Shot.Overhead || Current == Shot.Replay)
+            else if (now >= _nextCut || Current == Shot.Impact || Current == Shot.Overhead)
             {
                 want = PickAmbient(out float hold);
                 _nextCut = now + hold;
             }
 
             if (want != Current) Apply(want);
-            PlaceAll(replay);
-
-            if (replayVolume != null)
-            {
-                bool cinematic = replay || bout.SlowMotion;
-                replayVolume.weight = Mathf.MoveTowards(replayVolume.weight, cinematic ? 1f : 0f, Time.unscaledDeltaTime * 5f);
-            }
+            PlaceAll();
         }
 
         Shot PickAmbient(out float hold)
@@ -245,7 +265,8 @@ namespace PoBox.Broadcast
             CutCount++;
             Set(wideCam, Shot.Wide); Set(orbitCam, Shot.Orbit); Set(cornerCam, Shot.HighCorner);
             Set(lowCam, Shot.LowRopes); Set(shoulderRedCam, Shot.ShoulderRed); Set(shoulderBlueCam, Shot.ShoulderBlue);
-            Set(impactCam, Shot.Impact); Set(overheadCam, Shot.Overhead); Set(replayCam, Shot.Replay);
+            Set(impactCam, Shot.Impact); Set(overheadCam, Shot.Overhead);
+            Set(walkRedCam, Shot.WalkRed); Set(walkBlueCam, Shot.WalkBlue); Set(winnerCam, Shot.Winner);
         }
 
         void Set(CinemachineCamera cam, Shot shot)
@@ -255,10 +276,9 @@ namespace PoBox.Broadcast
 
         // ------------------------------------------------------------ placing
 
-        void PlaceAll(bool replay)
+        void PlaceAll()
         {
-            FighterSkin red = replay && redPuppet != null ? redPuppet : redLive;
-            FighterSkin blue = replay && bluePuppet != null ? bluePuppet : blueLive;
+            FighterSkin red = redLive, blue = blueLive;
 
             Vector3 rc = red.ChestPoint, bc = blue.ChestPoint;
             Vector3 mid = (rc + bc) * 0.5f;
@@ -342,25 +362,103 @@ namespace PoBox.Broadcast
                 overheadCam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(centre - p, dir));
             }
 
-            // Replay: a slow walk round the moment itself.
-            if (replayCam != null)
+            PlaceWalk(walkRedCam, red, blue);
+            PlaceWalk(walkBlueCam, blue, red);
+
+            // Winner: round and round whoever won, close enough to be about them.
+            if (winnerCam != null && bout != null && Announcer.TeethAnnouncer.Current != null && Announcer.TeethAnnouncer.Current.OnStage)
             {
-                Vector3 focus = _mid;
-                ReplaySystem rs = ReplaySystem.Instance;
-                float turn = 0f;
-                if (replay && rs.Current != null)
-                {
-                    focus = Vector3.Lerp(_mid, rs.Current.focus, 0.6f);
-                    turn = (rs.Position - 0.5f) * 70f + rs.ClipIndex * 55f;
-                }
-                Vector3 around = Quaternion.AngleAxis(turn, Vector3.up) * _side;
-                float d = TwoShotDistance(replayCam, aspect, Mathf.Min(halfWidth, 1.1f), 1.1f);
-                Vector3 p = focus + around * d;
-                // In the ring it shoots from chest height; once it has to stand outside, it goes up over the ropes.
-                bool outside = Mathf.Abs(p.x - ringCentre.x) > ringHalf - 0.2f || Mathf.Abs(p.z - ringCentre.z) > ringHalf - 0.2f;
-                p.y = outside ? OverTheRopes(around, d, 0f) : ringCentre.y + 1.55f;
-                Place(replayCam, p, new Vector3(focus.x, ringCentre.y + 1.0f, focus.z));
+                // While the announcer is down to name the winner the shot is the introduction's: the
+                // announcer in front, the winner beyond it.
+                PlaceIntroduction(winnerCam, bout.Winner == bout.blue ? blue : red, Announcer.TeethAnnouncer.Current);
             }
+            else if (winnerCam != null && bout != null)
+            {
+                // From the side of the ring that has room, swinging slowly to and fro across it: a winner
+                // standing against the ropes is not circled from a hand's width away.
+                FighterSkin winner = bout.Winner == bout.blue ? blue : red;
+                _winnerAngle += dt;
+                Vector3 chest = winner.ChestPoint;
+                Vector3 inward = ringCentre - chest;
+                inward.y = 0f;
+                inward = inward.sqrMagnitude > 0.04f ? inward.normalized : Vector3.forward;
+                Vector3 from = Quaternion.AngleAxis(Mathf.Sin(_winnerAngle * 0.35f) * 38f, Vector3.up) * inward;
+                float tanV = Mathf.Tan(winnerCam.Lens.FieldOfView * 0.5f * Mathf.Deg2Rad);
+                float distance = Mathf.Clamp(0.95f / Mathf.Max(0.01f, tanV * Band), 2.6f, Mathf.Max(2.6f, RopeRoom(chest, from) - 0.3f));
+                Vector3 p = chest + from * distance;
+                p.y = ringCentre.y + 1.6f;
+                Place(winnerCam, p, Vector3.Lerp(chest, winner.PelvisPoint, 0.4f));
+            }
+        }
+
+        float _winnerAngle;
+
+        /// <summary>
+        /// One fighter before the bell, head to hips. The two start a couple of metres apart, face to face,
+        /// so the camera stands well off the line between them, to the fighter's front and side: the other
+        /// one is out of the way, at the edge of the picture or off it.
+        /// </summary>
+        void PlaceWalk(CinemachineCamera cam, FighterSkin who, FighterSkin other)
+        {
+            if (cam == null) return;
+            if (Announcer.TeethAnnouncer.Current != null) { PlaceIntroduction(cam, who, Announcer.TeethAnnouncer.Current); return; }
+            Vector3 chest = who.ChestPoint;
+            Vector3 facing = other.ChestPoint - chest;
+            facing.y = 0f;
+            facing = facing.sqrMagnitude > 0.01f ? facing.normalized : Vector3.forward;
+            // Sixty degrees round from where the fighter is looking, on whichever side has more ring.
+            Vector3 left = Quaternion.AngleAxis(-62f, Vector3.up) * facing, right = Quaternion.AngleAxis(62f, Vector3.up) * facing;
+            Vector3 from = RopeRoom(chest, left) >= RopeRoom(chest, right) ? left : right;
+            // Far enough back for head to hips to fit the band of screen the interface leaves clear.
+            float tanV = Mathf.Tan(cam.Lens.FieldOfView * 0.5f * Mathf.Deg2Rad);
+            float distance = Mathf.Clamp(0.62f / Mathf.Max(0.01f, tanV * Band), 2.4f, 5.5f);
+            Vector3 p = Inside(chest + from * distance, 0.3f);
+            p.y = ringCentre.y + 1.45f;
+            Place(cam, p, Vector3.Lerp(who.HeadPoint, who.PelvisPoint, 0.45f));
+        }
+
+        [Header("The introductions, with the announcer in the picture")]
+        [Tooltip("Metres from the announcer to the camera, on the far side of it from the boxer being introduced.")]
+        public float introBack = 3.3f;
+        [Tooltip("Degrees the camera stands off the line from the boxer through the announcer: it keeps the other boxer, who is in the corner behind the camera, out of the lens, and the announcer off the boxer.")]
+        public float introTurn = 18f;
+        public float introCameraHeight = 1.3f;
+        public float introFieldOfView = 50f;
+        [Tooltip("0 aims at the boxer, 1 at the announcer.")]
+        [Range(0f, 1f)] public float introAim = 0.62f;
+        [Tooltip("Half the announcer's height, metres: its top is put at the top of the clear band of the screen.")]
+        public float introAnnouncerHalf = 0.42f;
+
+        /// <summary>
+        /// A boxer being introduced: the announcer in the foreground over the middle of the ring, the boxer
+        /// in its corner beyond it, to one side and lower in the picture. The camera stands on the far side
+        /// of the announcer, turned off the diagonal so that the other boxer, in the corner at its back, is
+        /// not in front of the lens.
+        /// </summary>
+        void PlaceIntroduction(CinemachineCamera cam, FighterSkin who, Announcer.TeethAnnouncer announcer)
+        {
+            Vector3 teeth = announcer.StagePoint;
+            Vector3 centre = new Vector3(teeth.x, ringCentre.y, teeth.z);
+            Vector3 away = centre - who.ChestPoint;
+            away.y = 0f;
+            away = away.sqrMagnitude > 0.01f ? away.normalized : Vector3.forward;
+            Vector3 left = Quaternion.AngleAxis(-introTurn, Vector3.up) * away, right = Quaternion.AngleAxis(introTurn, Vector3.up) * away;
+            Vector3 from = RopeRoom(centre, left) >= RopeRoom(centre, right) ? left : right;
+            Vector3 p = Inside(centre + from * introBack, 0.3f);
+            p.y = ringCentre.y + introCameraHeight;
+
+            LensSettings lens = cam.Lens;
+            lens.FieldOfView = introFieldOfView;
+            cam.Lens = lens;
+            // Across: between the boxer and the announcer. Up: so that the announcer's top is at the top of
+            // the band of screen the interface leaves clear.
+            Vector3 toTeeth = teeth - p, toBoxer = who.HeadPoint - p;
+            Vector3 flat = Vector3.Slerp(new Vector3(toBoxer.x, 0f, toBoxer.z).normalized, new Vector3(toTeeth.x, 0f, toTeeth.z).normalized, introAim);
+            float tanV = Mathf.Tan(introFieldOfView * 0.5f * Mathf.Deg2Rad);
+            float top = Mathf.Atan2(teeth.y + introAnnouncerHalf - p.y, new Vector2(toTeeth.x, toTeeth.z).magnitude);
+            float above = Mathf.Atan((1f - 2f * (_bandTop + 0.02f)) * tanV);
+            float pitch = top - above;
+            cam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(flat + Vector3.up * Mathf.Tan(pitch), Vector3.up));
         }
 
         /// <summary>

@@ -48,8 +48,13 @@ namespace PoBox.Broadcast
             {
                 _lastHitLine = Time.unscaledTime;
                 string where = e.zone == PartKind.Head ? "to the head" : "to the body";
-                string verb = e.impulse >= callImpulse * 2f ? "lands a big" : "lands a";
-                SimBus.Say($"{e.attacker.displayName} {verb} {hand} {punch} {where} · {e.impulse:0} N·s", 1);
+                // Big is big for these two: a fifth harder than they usually land.
+                Excitement ex = Excitement.Instance;
+                bool big = e.impulse >= (ex != null ? ex.UsualImpulse * 1.2f : callImpulse * 2f);
+                string verb = big ? "lands a big" : "lands a";
+                // "A right to the body", not "a right body shot to the body".
+                string what = e.punch == PunchType.Body ? hand : $"{hand} {punch}";
+                SimBus.Say($"{e.attacker.displayName} {verb} {what} {where} · {e.impulse:0} N·s", 1);
             }
             else if (!e.clean && e.impulse >= callImpulse * 1.5f)
             {
@@ -66,7 +71,11 @@ namespace PoBox.Broadcast
                 SimBus.Say($"{f.displayName} loses their feet", 2);
         }
 
-        void OnGotUp(Fighter f) => SimBus.Say($"{f.displayName} beats the count", 2);
+        void OnGotUp(Fighter f)
+        {
+            int count = bout != null ? bout.Count : 0;
+            SimBus.Say(count > 0 ? $"{f.displayName} is up at {count}" : $"{f.displayName} beats the count", 2);
+        }
 
         void Update()
         {

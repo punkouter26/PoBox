@@ -1,0 +1,9 @@
+{
+    "daze": true,
+    "dazeTau": 2.5,
+    "dazeLo": 14.0,
+    "dazeHi": 42.0,
+    "dazeWeak": 0.44999998807907104,
+    "dazeBody": 0.30000001192092896,
+    "source": "r5_trump_v_grandma"
+}

@@ -3,7 +3,7 @@ using UnityEngine.UIElements;
 
 namespace PoBox.UI
 {
-    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power }
+    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze }
 
     /// <summary>
     /// The small icons that stand in for words on the tale of the tape: a glove for punches landed, a burst
@@ -89,6 +89,24 @@ namespace PoBox.UI
                     // A beam on a pivot.
                     p.BeginPath(); p.MoveTo(P(-0.9f, -0.25f)); p.LineTo(P(0.9f, -0.55f)); p.Stroke();
                     p.BeginPath(); p.MoveTo(P(0f, -0.35f)); p.LineTo(P(-0.5f, 0.85f)); p.LineTo(P(0.5f, 0.85f)); p.ClosePath(); p.Fill();
+                    break;
+
+                case GlyphKind.Shield:
+                    // A shield: punches stopped on the guard.
+                    p.BeginPath();
+                    p.MoveTo(P(-0.75f, -0.8f)); p.LineTo(P(0.75f, -0.8f)); p.LineTo(P(0.75f, 0.05f));
+                    p.LineTo(P(0f, 0.95f)); p.LineTo(P(-0.75f, 0.05f));
+                    p.ClosePath(); p.Fill();
+                    break;
+
+                case GlyphKind.Daze:
+                    // Seeing stars: a ring with three dots going round it.
+                    p.BeginPath(); p.Arc(P(0f, 0f), u * 0.5f, 0f, 360f); p.Stroke();
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float a = i * Mathf.PI * 2f / 3f - 0.5f;
+                        p.BeginPath(); p.Arc(P(Mathf.Sin(a) * 0.82f, -Mathf.Cos(a) * 0.82f), u * 0.17f, 0f, 360f); p.Fill();
+                    }
                     break;
 
                 default: // Power: a gauge
