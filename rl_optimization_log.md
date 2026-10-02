@@ -65,3 +65,29 @@ MuJoCo 3.5.0 as in 3.14. The other five bodies did not change. Punching was not 
   3.5.0 replaces the 3.14 library the old binding needs. The tag `pre-retrofit` is the working game.
 - Seen in the other session's `logs/queue.log`, not acted on: `g1_nick` and `p1_matt` ended with
   "Warp CUDA error 719: unspecified launch failure" (`g1_nick` at 0.59 of its 0.6 hours).
+
+## 2026-10-02: walk and turn clips (CPU only, while the other session's queue ran)
+
+`tools/retarget_clips.py` fetches 20 trials of the CMU motion-capture database (free for research and
+commercial use; B. Hahne's BVH conversion, from a mirror) and writes `training/clips/walk_turn.npz`: 271 s at
+50 frames a second, the 21 joint angles and the pelvis's path in leg lengths, one file for every boxer.
+
+| What | Trials | Seconds |
+|---|---|---|
+| walk, 1.1 to 1.7 m/s on Matt's legs | 07_01, 08_01, 16_15, 35_01 | 12 |
+| slow walk, 0.6 to 1.0 m/s; one that stops | 69_01, 07_04, 16_33 | 10 |
+| veer left, veer right | 16_11, 16_13 | 8 |
+| 90-degree turn, left and right | 16_17, 69_24, 16_19, 69_20 | 16 |
+| turn in place, both ways (a full turn each) | 69_16, 69_18 | 18 |
+| walk and turn, repeated; walk, turn in place | 69_06, 69_13 | 83 |
+| walk backwards and turn | 69_34 | 40 |
+| walk sideways and turn, both ways | 69_42, 69_48 | 84 |
+
+Checked on Matt's body with MuJoCo's own kinematics: the thighs, shins and upper arms point where the
+capture's do to 0.01 degree (the capture's knee and elbow are hinges, like ours), and the check fails by 11
+to 170 degrees when the sign of a hip, knee or shoulder angle is flipped. Up to 1.1% of joint samples were
+outside the boxers' ranges and were clipped. The lower foot is 4 degrees toes-down at the median in a walk.
+
+Two things to know when the style reward is written. The capture walks with its knees a little bent (never
+straighter than 16 degrees in 16_17), which suits a boxer. Its arms hang and swing; a boxer's are in the
+guard, so the reward should look at the legs, the pelvis and the trunk only. The ankle's roll is left at zero.

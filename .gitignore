@@ -90,3 +90,5 @@ Tools/MuJoCo/*.err
 # MuJoCo 3.5.0 for Python, the version Unity runs (pip install --no-deps --target): PYTHONPATH points here
 # for reference runs and the exam.
 /training/.mj350/
+# CMU motion-capture BVH files fetched by training/tools/retarget_clips.py; the retargeted clips/walk_turn.npz is versioned.
+/training/clips/cmu/
