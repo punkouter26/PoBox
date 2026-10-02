@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
 from envs.getup import GetUpEnv  # noqa: E402
+from envs.footwork import FootworkEnv  # noqa: E402
 from ppo import PPO, PPOConfig  # noqa: E402
 
 
@@ -47,6 +48,10 @@ class Player:
             # No helping hand: what is watched is what the game will get.
             self.env = GetUpEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, assist=0.0,
                                 action_scale=float(extra.get("action_scale", 0.5)))
+        elif extra.get("mode", "") == "footwork":
+            # The file's own body, and everything that is thrown at it in training.
+            self.env = FootworkEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, randomise=0.0,
+                                   action_scale=float(extra.get("action_scale", 0.5)))
         else:
             self.env = BoxingEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, push_vel=0.0,
                                  action_scale=float(extra.get("action_scale", 0.5)), **extra.get("env", {}))
@@ -97,6 +102,8 @@ class Player:
         the line between the fighter and its target, so neither hides the other."""
         ids = [mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_BODY, p + "pelvis") for p in ("a_", "b_")[: self.env.K]]
         a = np.array(self.d.xpos[ids[0]])
+        if self.env.MODE == "footwork":     # alone: the camera looks at the boxer, from one side
+            return np.array([a[0], a[1], 1.0]), 135.0
         b = np.array(self.d.xpos[ids[1]]) if self.env.K == 2 else np.array([0.0, 0.0, a[2]])   # the bag hangs at the origin
         c = 0.5 * (a + b)
         c[2] = 1.0
