@@ -107,6 +107,7 @@ def main() -> None:
     ap.add_argument("--turn-share", type=float, default=0.25, help="footwork: share that are a turn to face the stand-in")
     ap.add_argument("--disturb", type=float, default=1.0, help="footwork: size of the shoves and speed of the cubes; 0 is none")
     ap.add_argument("--randomise", type=float, default=0.15, help="footwork: each world's body is within this of the file's")
+    ap.add_argument("--rsi", type=float, default=0.0, help="footwork: share of walks begun at a moment of a walking clip")
     ap.add_argument("--style-w", type=float, default=0.0,
                     help="footwork: what a moment the judge takes for a walking clip's is paid (style.py); 0 is no judge")
     ap.add_argument("--daze", action="store_true",
@@ -144,7 +145,7 @@ def main() -> None:
         env = FootworkEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                           episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                           fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
-                          disturb=args.disturb, randomise=args.randomise)
+                          disturb=args.disturb, randomise=args.randomise, rsi=args.rsi)
     else:
         env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,

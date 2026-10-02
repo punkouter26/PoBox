@@ -33,7 +33,7 @@ import numpy as np
 import torch
 import warp as wp
 
-from .boxing import BoxingEnv, to_heading, yaw_quat
+from .boxing import BoxingEnv, quat_mul, quat_yaw, to_heading, yaw_quat
 
 STAND, WALK, TURN = 0, 1, 2
 CMD = 3                      # numbers of command on the end of the observation
@@ -45,8 +45,13 @@ class FootworkEnv(BoxingEnv):
     MODE = "footwork"
 
     def __init__(self, xml_path: str, num_envs: int, walk_share: float = 0.5, turn_share: float = 0.25,
-                 disturb: float = 1.0, randomise: float = 0.15, shove_every_s: float = 3.0, cube_every_s: float = 3.0, **kw):
+                 disturb: float = 1.0, randomise: float = 0.15, shove_every_s: float = 3.0, cube_every_s: float = 3.0,
+                 rsi: float = 0.0, **kw):
         self.walk_share, self.turn_share = walk_share, turn_share
+        # The share of walks that begin at a moment of a walking clip (style.py), legs and trunk as the clip has
+        # them and the arms in the guard, with the clip's own velocity as the command: a boxer that has only ever
+        # stood does not find walking by trying things at random, but one put in mid-stride learns to carry on.
+        self.rsi = rsi
         self.disturb, self.randomise = disturb, randomise
         self.shove_every_s, self.cube_every_s = shove_every_s, cube_every_s
         kw["push_vel"] = 0.0          # shoves here are forces, not jumps in velocity
@@ -94,6 +99,16 @@ class FootworkEnv(BoxingEnv):
             self.cube_park = self.default_qpos[self.cube_qi]
             self.cube_left = z(N, self.C)                # seconds a cube in play has left
             self.next_cube = torch.zeros(N, dtype=torch.long, device=dev)
+        if self.rsi > 0.0 and K == 1:
+            from style import clip_features
+            feats, states = clip_features(m, order)
+            self.clip_q = torch.tensor(np.stack([q for q, _ in states]), device=dev, dtype=torch.float32)
+            self.clip_v = torch.tensor(np.stack([v for _, v in states]), device=dev, dtype=torch.float32)
+            f = torch.tensor(feats, device=dev)
+            leg = float(self.leg_len[0])
+            self.clip_cmd = torch.stack([(f[:, 31] * leg).clamp(-0.4, 1.0), (f[:, 32] * leg).clamp(-0.4, 0.4), f[:, 36].clamp(-1.0, 1.0)], -1)
+        else:
+            self.rsi = 0.0
         self._randomise()
 
         self._f = {k: torch.zeros((), device=dev) for k in
@@ -156,6 +171,22 @@ class FootworkEnv(BoxingEnv):
             bearing = yaw + torch.where(turn, self._u(N, lo=-math.pi, hi=math.pi), self._u(N, lo=-0.4, hi=0.4))
             dist = torch.where(turn, self._u(N, lo=0.9, hi=2.0), self._u(N, lo=1.0, hi=1.6))
             opp.append(spot + torch.stack([torch.cos(bearing), torch.sin(bearing)], -1) * dist[:, None])
+            if self.rsi > 0.0:
+                clip = (self._new_kind[:, k] == WALK) & (self._u(N) < self.rsi)
+                at = torch.randint(0, self.clip_q.shape[0], (N,), device=dev, generator=self.rng)
+                cq, cv = self.clip_q[at], self.clip_v[at]
+                turn = yaw - quat_yaw(cq[:, rq + 3:rq + 7])           # the clip turned to face the episode's way
+                c1 = clip[:, None]
+                q[:, rq + 2] = torch.where(clip, cq[:, rq + 2], q[:, rq + 2])
+                q[:, rq + 3:rq + 7] = torch.where(c1, quat_mul(yaw_quat(turn), cq[:, rq + 3:rq + 7]), q[:, rq + 3:rq + 7])
+                c, s_ = torch.cos(turn), torch.sin(turn)
+                lin = torch.stack([c * cv[:, rv] - s_ * cv[:, rv + 1], s_ * cv[:, rv] + c * cv[:, rv + 1], cv[:, rv + 2]], -1)
+                v[:, rv:rv + 3] = torch.where(c1, lin, v[:, rv:rv + 3])
+                v[:, rv + 3:rv + 6] = torch.where(c1, cv[:, rv + 3:rv + 6], v[:, rv + 3:rv + 6])
+                legs = self.jq[k][self.style_idx]
+                q[:, legs] = torch.where(c1, cq[:, legs], q[:, legs])
+                v[:, self.jv[k][self.style_idx]] = torch.where(c1, cv[:, self.jv[k][self.style_idx]], v[:, self.jv[k][self.style_idx]])
+                self._new_cmd[:, k] = torch.where(c1, self.clip_cmd[at] * self.quick[k], self._new_cmd[:, k])
         self._new_opp = torch.stack(opp, 1)
         return q, v
 
