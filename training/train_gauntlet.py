@@ -37,6 +37,7 @@ from torch.utils.tensorboard import SummaryWriter
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
+from envs.match import MatchEnv  # noqa: E402
 from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
 
 
@@ -87,6 +88,9 @@ def main() -> None:
     ap.add_argument("--handover", default="", help="states the learner's get-up policy leaves it in (tools/make_handover_bank.py); "
                                                    "a share of its episodes begin in one")
     ap.add_argument("--handover-share", type=float, default=0.15)
+    ap.add_argument("--stage", default="spar", choices=["spar", "match"],
+                    help="match: the retrofit's bodies and its 103-number observation (envs/match.py); give --models models/v2")
+    ap.add_argument("--randomise", type=float, default=0.15, help="match: each world's body is within this of the file's")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -100,12 +104,13 @@ def main() -> None:
     envs, side, foes = [], [], []
     for i, ((opp, ck), n) in enumerate(zip(opponents, counts)):
         xml = pair_xml(args.name, opp, args.models)
-        env = BoxingEnv(xml, int(n), device=dev, seed=args.seed + i, episode_len_s=args.episode_s, obs_noise=args.obs_noise,
+        extra_env = {"randomise": args.randomise} if args.stage == "match" else {}
+        env = (MatchEnv if args.stage == "match" else BoxingEnv)(xml, int(n), device=dev, seed=args.seed + i, episode_len_s=args.episode_s, obs_noise=args.obs_noise,
                         push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w, fall_penalty=args.fall_penalty,
                         ko_bonus=args.ko_bonus, survivor_bootstrap=not args.no_survivor_bootstrap, daze=args.daze,
                         daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
-                        handover_share=args.handover_share)
+                        handover_share=args.handover_share, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -144,7 +149,7 @@ def main() -> None:
     keys = None
     stop_file = os.path.join(HERE, "logs", f"{run}.stop")
     with open(os.path.join(HERE, "logs", f"{run}.args.json"), "w", encoding="utf-8") as fh:
-        json.dump({"argv": sys.argv[1:], "args": vars(args), "mode": "spar", "fighters": [args.name], "against": [o for o, _ in opponents],
+        json.dump({"argv": sys.argv[1:], "args": vars(args), "mode": args.stage, "fighters": [args.name], "against": [o for o, _ in opponents],
                    "started": time.strftime("%Y-%m-%d %H:%M:%S")}, fh, indent=2, sort_keys=True)
 
     def mine(env, k, t):       # the learner's rows of a flat (N*2, ...) tensor
@@ -207,7 +212,7 @@ def main() -> None:
                   + " | ".join(f"{o}: {rows[o]['hits_per_s']:.2f}/s v {rows[o]['their_hits_per_s']:.2f}/s, down {rows[o]['falls']:.0%} v {rows[o]['their_falls']:.0%}" for o in rows)
                   + f" | kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:5.1f} min", flush=True)
             with open(os.path.join(HERE, "logs", f"{run}.status.json"), "w", encoding="utf-8") as fh:
-                json.dump({"run": run, "mode": "spar", "fighters": [args.name], "iter": it, "hours": hours, "fps": sps, "max_hours": args.max_hours,
+                json.dump({"run": run, "mode": args.stage, "fighters": [args.name], "iter": it, "hours": hours, "fps": sps, "max_hours": args.max_hours,
                            "updated": time.strftime("%Y-%m-%d %H:%M:%S"), "ppo": stats, "env": mean, "against": rows}, fh, indent=2)
         stopping = os.path.exists(stop_file) or (args.max_hours > 0.0 and hours >= args.max_hours)
         if (it + 1) % args.save_every == 0 or it + 1 == iters or stopping:
@@ -215,9 +220,9 @@ def main() -> None:
             # The first opponent's policy is kept beside it, so the viewer has a pair to show (as train_box.py
             # does for a frozen partner); there is no latest_* for it, so nothing takes it for a new policy.
             foes[0].save(os.path.join(ck_dir, f"model_{it + 1:06d}_{opponents[0][0]}.pt"),
-                         {"iter": it + 1, "mode": "spar", "fighters": envs[0].names, "fighter": opponents[0][0], "run_name": run,
+                         {"iter": it + 1, "mode": args.stage, "fighters": envs[0].names, "fighter": opponents[0][0], "run_name": run,
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models))})
-            ppo.save(ck, {"iter": it + 1, "mode": "spar", "fighters": envs[0].names, "fighter": args.name, "obs_dim": D, "act_dim": A,
+            ppo.save(ck, {"iter": it + 1, "mode": args.stage, "fighters": envs[0].names, "fighter": args.name, "obs_dim": D, "act_dim": A,
                           "action_scale": envs[0].action_scale, "run_name": run, "career": career, "against": [o for o, _ in opponents],
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models)),
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
@@ -225,10 +230,10 @@ def main() -> None:
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))
             if not args.no_onnx:
                 try:
-                    export_onnx(ppo, os.path.join(ck_dir, f"latest_{args.name}.onnx"), D)
+                    export_onnx(ppo, os.path.join(ck_dir, f"latest_{args.name}.onnx"), D, fixed_batch=args.stage == "match")
                     manifest = dict(envs[0].cfgs[side[0]])
                     manifest.update({"action_scale": envs[0].action_scale, "observation_size": D,
-                                     "trained_by": {"run": run, "mode": "spar", "against": [o for o, _ in opponents], "iterations": it + 1}})
+                                     "trained_by": {"run": run, "mode": args.stage, "against": [o for o, _ in opponents], "iterations": it + 1}})
                     with open(os.path.join(ck_dir, f"latest_{args.name}_policy_config.json"), "w", encoding="utf-8") as fh:
                         json.dump(manifest, fh, indent=2)
                 except Exception as e:
