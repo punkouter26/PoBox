@@ -1,6 +1,6 @@
 # PoBox retrofit: task list
 
-Status: **approved 2026-10-02. Phase 0 and Phase A are done except 0.6. Phase B starts when the other session's training queue has finished (the owner's answer to 0.1).**
+Status: **approved 2026-10-02. Phases 0 and A and the trainer side of C0 are done. Phase B is done for Matt (plugin, prefab, testbed, model check, zero-brain parity) except the HUD (B4); the other six boxers (B10) and the report (B11) are next.**
 What happened, with the numbers, is in `rl_optimization_log.md`.
 
 Tick a task when it is done and verified. Commit to `master` at the end of each numbered group.
@@ -60,7 +60,7 @@ Every rung also has to keep each joint's 99th-percentile speed under its human l
 - [x] 0.4 Create `rl_optimization_log.md`.
 - [x] 0.5 Settle which C MuJoCo the trainer's Python has (it reports 3.14.1; the docs say 3.14.0). Install
       `mujoco==3.5.0` into a side folder (`pip install --target`) for reference runs and the exam.
-- [ ] 0.6 Editor settings through the CLI: No Throttling, Run In Background, auto tick. Run In Background is
+- [x] 0.6 Editor settings through the CLI: No Throttling, Run In Background, auto tick. Run In Background is
       already on; the other two need the editor, which another session was using, so they move to the start of Phase B.
 
 ## Phase A: rig and physics body derivation
@@ -86,22 +86,27 @@ session was training on the old ones at the time. `tools/build_roster.py --all -
 
 ## Phase B: early Unity ingestion and the zero-brain parity test
 
-- [ ] B1 Add `org.mujoco` and `bin.mujoco` at 3.5.0 to `Packages/manifest.json`. Remove the old `mujoco.dll`
+Where things are: the plugin is embedded in `Packages/org.mujoco` (three small changes, marked `PoBox:`); the
+runtime is `Assets/Scripts/Mj` (`MjBoxer`, `MjCubePool`, `MjTestbed`, `ModelFingerprint`, `ReferenceTrajectory`);
+the importer is `Assets/Scripts/Editor/MjRetrofit.cs` (`BuildBoxer(name)`, `Check(name)`); a boxer's prefab and
+its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; the tests are `MjParityTests`.
+
+- [x] B1 Add `org.mujoco` and `bin.mujoco` at 3.5.0 to `Packages/manifest.json`. Remove the old `mujoco.dll`
       (3.14) and `libmujoco.so` (3.3.7) from `Assets/Plugins` so only one library can load. Confirm 3.5.0 loads.
-- [ ] B2 Fixed timestep 0.005 s; Unity physics set to script-stepped and never stepped.
-- [ ] B3 Pilot boxer (Matt): import his MJCF with the plugin's importer, bind his skinned mesh to the `MjBody`
+- [x] B2 Fixed timestep 0.005 s; Unity physics set to script-stepped and never stepped.
+- [x] B3 Pilot boxer (Matt): import his MJCF with the plugin's importer, bind his skinned mesh to the `MjBody`
       transforms, save as a prefab.
 - [ ] B4 Author the testbed scene in the editor: `MjScene` and global settings matching the trainer, a ground
       plane `MjGeom`, a 9:16 camera, a basic HUD with the five anchors.
-- [ ] B5 Cube pool prefab: 8 x (`MjBody` + `MjFreeJoint` + box `MjGeom`), parked. One small script fires and
+- [x] B5 Cube pool prefab: 8 x (`MjBody` + `MjFreeJoint` + box `MjGeom`), parked. One small script fires and
       parks a cube by writing `qpos` and `qvel`. No `Instantiate` or `Destroy`.
-- [ ] B6 Play-mode tests: (a) the testbed holds no `Rigidbody`, `ArticulationBody` or collider; (b) the model
+- [x] B6 Play-mode tests: (a) the testbed holds no `Rigidbody`, `ArticulationBody` or collider; (b) the model
       `MjScene` compiled equals the fingerprint to 1e-6. Fix whatever the plugin dropped (contact exclusions and
       keyframes are the likely ones).
-- [ ] B7 Policy runner: observation built from `mjData` in MuJoCo's frame, inference every fourth step,
+- [x] B7 Policy runner: observation built from `mjData` in MuJoCo's frame, inference every fourth step,
       actions written to `mjData.ctrl` in the trainer's joint order.
-- [ ] B8 Export a dummy ONNX (zero action, which is the guard held by the joint drives).
-- [ ] B9 Zero-brain parity against a C MuJoCo 3.5.0 recording of the same 5 s (guard hold, one cube at 5 m/s at
+- [x] B8 Export a dummy ONNX (zero action, which is the guard held by the joint drives).
+- [x] B9 Zero-brain parity against a C MuJoCo 3.5.0 recording of the same 5 s (guard hold, one cube at 5 m/s at
       2 s): move each joint alone to check index and sign; rest pose; pelvis height within 3 mm and joints within
       0.01 rad over the first second; mass and limits already covered by B6.
 - [ ] B10 Repeat B3 and B6 for the other six boxers.

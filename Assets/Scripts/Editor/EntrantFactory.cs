@@ -303,7 +303,7 @@ namespace PoBox.EditorTools
             return name.ToUpperInvariant();
         }
 
-        static GameObject Mesh(string name)
+        internal static GameObject Mesh(string name)
         {
             foreach (string ext in new[] { ".glb", ".fbx" })
             {
@@ -335,7 +335,7 @@ namespace PoBox.EditorTools
 
         // ---------------------------------------------------------------- build
 
-        static Dictionary<string, string> BoneMap(string rigJson)
+        internal static Dictionary<string, string> BoneMap(string rigJson)
         {
             var map = new Dictionary<string, string>();
             Match block = Regex.Match(rigJson, "\"map\"\\s*:\\s*\\{([^}]*)\\}");
@@ -345,7 +345,8 @@ namespace PoBox.EditorTools
             return map;
         }
 
-        static void ConfigureBinder(SkinBinder binder, Dictionary<string, string> bones)
+        /// <param name="glove">What a glove's object is called, less its side: the old importer's, or the MuJoCo plugin's ("glove_").</param>
+        internal static void ConfigureBinder(SkinBinder binder, Dictionary<string, string> bones, string glove = "geom_glove_")
         {
             void Map(string body, string key)
             {
@@ -365,7 +366,7 @@ namespace PoBox.EditorTools
                 Map($"upper_arm_{s}", $"upper_arm_{s}");
                 Map($"forearm_{s}", $"forearm_{s}");
                 Aim($"upper_arm_{s}", $"forearm_{s}", $"upper_arm_{s}", $"forearm_{s}");
-                Aim($"forearm_{s}", $"hand_{s}", $"forearm_{s}", $"geom_glove_{s}");
+                Aim($"forearm_{s}", $"hand_{s}", $"forearm_{s}", glove + s);
             }
             foreach (string s in new[] { "l", "r" })
             {

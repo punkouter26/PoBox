@@ -179,8 +179,12 @@ class Solo:
         for _ in range(int(round(self.dt / m.opt.timestep))):
             mujoco.mj_step(m, d)
         self.t += self.dt
+        # mj_step leaves where the bodies are (xpos, geom_xpos) one step behind qpos. The Warp stage measures
+        # the stand-in's velocity from them as they are left, and then brings them up to date (its forward
+        # after the step) before it observes. So does this, in that order.
         head = self.stand_in()[0]
         self.head_vel, self.prev_head = (head - self.prev_head) / self.dt, head
+        mujoco.mj_kinematics(m, d)
         up = -(d.xmat[self.pelvis].reshape(3, 3).T @ np.array([0.0, 0.0, -1.0]))[2]
         return bool(d.xpos[self.pelvis][2] < self.stand * 0.6 or up < 0.4)
 

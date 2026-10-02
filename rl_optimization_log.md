@@ -194,3 +194,78 @@ footwork policy as a fixed-batch graph (`ppo.export_onnx(..., fixed_batch=True)`
 - Run folders of the retrofit carry `REJECTED.txt` so the old game's importer passes them over.
 
 **Decision:** the trainer side of C0 is complete. No real training until Phase B's zero-brain parity passes.
+
+## 2026-10-02, 17:09: the gauntlet session's results, and its queue is stopped for good
+
+Written by the gauntlet session (the "other session" of the entries above) for whoever runs C7.
+
+- **The GPU is free.** That session started a second round at 17:04 (`g2_nick`), not knowing of the retrofit,
+  and stopped it at 17:09 when it read `tasks.md`. Its queue runner has exited, its viewer is closed, the
+  remaining `g2_*` jobs are out of `training/logs/queue.json`. `checkpoints/g2_nick` and `checkpoints/p1_matt`
+  carry `REJECTED.txt`. TensorBoard (port 6006, `training/logs/tb`) was left running; it holds `g1_*` and
+  `g1_zombie_old_laptop` (Zombie's earlier gauntlet, written in from its CSV for comparison).
+- **Warm starts for the boxing rungs:** `training/logs/policies.json` names them: `checkpoints/g1_<name>/latest_<name>.pt`
+  for Matt, Nick, Lil Matt, Trump, Grandma and Grandpa, `checkpoints/handoff/latest_zombie.pt` for Zombie. Nick's
+  is from iteration 650 of about 690 (a GPU fault ended his run 30 s early).
+- **Exam of all seven on the old bodies** (`training/handoff/exam_1.log`, C MuJoCo 3.14.1): 0 of 7 pass. Fails:
+  footing Matt (3.11 a minute v Grandpa), Lil Matt, Nick, Zombie (about 1); carrying on for six of seven; guard
+  Lil Matt; chin Trump and Lil Matt. Report: `DOCS/reports/2026-10-02-training-gauntlets.html`.
+- **Three things measured that a gauntlet on the new bodies should expect.**
+  1. A policy can pass in training and fail without noise. Matt against Grandpa, 30 twelve-second episodes in
+     C MuJoCo: 0 falls with noise 0.18, 1 at 0.08, 12 at 0.04, 19 at 0. Check without noise before a run is called done.
+  2. Resetting the noise to 0.04 on a policy trained at 0.18 gave a first-update KL of 256 and the rate went to
+     its floor (1e-05); 100 iterations at that noise changed nothing in the exam.
+  3. Doing the boxers one after another moves the opponents under those already measured: Zombie passed all six
+     lines against the league's policies and fails footing against the gauntlet-trained Nick (0.89 a minute).
+- **Two GPU faults** (nvlddmkm event 13, "SKEDCHECK22_INVALIDATE_ACTIVE_QMD failed") at 14:21:56 and 14:27:27,
+  each killing the run on the GPU; none in the 70 minutes before or the 2.5 hours after. The GPU was at 86 to
+  89 °C with the thermal-throttle flag set throughout, drawing 40 to 75 W of 140. Cause not established.
+
+## 2026-10-02, evening: Phase B for Matt. The plugin, the testbed, and the zero-brain parity test
+
+No training. Unity 6000.6.0f1, `org.mujoco` 3.5.0 (embedded in `Packages/org.mujoco`), `bin.mujoco` 3.5.0.
+
+**What had to be changed in the plugin** (each marked `PoBox:` in its source):
+- `MjMeshFilter.cs`: `Object.GetInstanceID()` is an error in Unity 6000.6 (it was only in a mesh's debug name).
+- `MjGlobalSettings.cs`: the plugin wrote a `passive` flag that MuJoCo 3.5.0 refuses, so no scene with global
+  settings would load; and it knew neither `ls_iterations` nor the `eulerdamp` flag, both of which the trainer sets.
+
+**The model is the trainer's.** `ModelFingerprint.Differences` (Unity) against `models/v2/matt_fingerprint.json`:
+0 differences at 1e-6, by name: sizes, solver options, every body's mass, inertia tensor and centre of mass,
+every joint's axis, range, damping and armature, every shape, every drive's gains and limits and its place in
+the order, the 11 excluded pairs. Before the plugin was patched there were two (`ls_iterations` 50 for 10, and
+the `eulerdamp` flag).
+
+**Zero-brain parity** (`MjParityTests`, play mode; the policy file that always answers zero, a cube at 2 s),
+Unity against `matt_reference_hold.json` from C MuJoCo 3.5.0, 250 control steps:
+
+| Second | Pelvis height | A joint | A torque | An observation |
+|---|---|---|---|---|
+| 1 | 0.000 mm | 5.4e-08 rad | 7.3e-05 N m | 2.5e-06 |
+| 2 | 0.000 mm | 9.6e-08 rad | 3.0e-05 N m | 1.1e-07 |
+| 3 (cube lands) | 0.000 mm | 2.0e-07 rad | 9.9e-05 N m | 1.4e-06 |
+| 4 | 0.000 mm | 6.3e-07 rad | 2.7e-04 N m | 3.6e-06 |
+| 5 (down at 4.58 s) | 0.009 mm | 1.8e-05 rad | 3.0e-03 N m | 6.0e-04 |
+
+The first observation differs by 6.0e-08. The testbed scene holds no Rigidbody, ArticulationBody, Collider or
+Joint, and Unity's physics is set to step only when a script asks (none does).
+
+**Three things found getting there, each of which would have cost a rung of training:**
+1. **The plugin overwrites `mjData.ctrl` after every step** with each `MjActuator`'s own `Control` field. The
+   policy's targets lasted one physics step in four and the boxer folded to a T-pose: joints 1.9 rad out inside
+   the first control step. `MjTestbed` writes the targets again before every step.
+2. **`mj_step` leaves `xpos` and `geom_xpos` one step behind `qpos`.** The Warp stage brings them up to date
+   before it observes (its forward after the step); `tools/footwork_c.py`, like `tools/eval_cmujoco.py` before it,
+   did not, and neither would Unity have. With `mj_kinematics` after the step (and the stand-in's velocity taken
+   before it, as the stage does), the Warp stage and the C runner agree to 4e-06 to 1e-04 after one to five steps
+   of the same random actions, where they were 1e-02 to 1e+00 apart. The old game's fall-rate gap between Warp
+   and C had this in it.
+3. **The config's guard pose was not the keyframe's**: the model's keyframe is written to four places, the
+   config's `default_joint_pos` and `stand_height` were not, 5e-05 rad apart. `rig_to_mjcf.py` now writes both
+   to four places; the v2 configs were rebuilt (the models themselves did not change).
+
+Also: Unity keeps its fixed step as 0.004999993 s and the plugin hands that to MuJoCo; `MjTestbed` sets it to
+1/200 exactly once the model exists.
+
+**Decision:** B1 to B3, B5 to B9 are done for Matt. The HUD (B4), the other six boxers (B10) and the report
+(B11) are next; no training before them.

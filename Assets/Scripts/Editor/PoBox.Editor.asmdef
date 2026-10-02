@@ -9,13 +9,15 @@
         "Unity.RenderPipelines.Core.Editor",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Universal.Editor",
-        "Unity.Timeline"
+        "Unity.Timeline",
+        "PoBox.Mj",
+        "Mujoco.Runtime"
     ],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

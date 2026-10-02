@@ -68,6 +68,8 @@ namespace PoBox.Rl
                 string key = tag != null ? tag.bodyName : t.name;
                 if (!bodies.ContainsKey(key)) bodies[key] = t;
                 if (!bodies.ContainsKey(t.name)) bodies[t.name] = t;
+                // A body of the MuJoCo plugin carries its corner in its name (a_thigh_l); the maps do not.
+                if (t.name.Length > 2 && t.name[1] == '_' && !bodies.ContainsKey(t.name.Substring(2))) bodies[t.name.Substring(2)] = t;
             }
             var bones = new Dictionary<string, Transform>();
             foreach (Transform t in skin.GetComponentsInChildren<Transform>(true))

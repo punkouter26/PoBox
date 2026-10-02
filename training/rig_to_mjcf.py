@@ -369,7 +369,9 @@ def fighter_config(rig: Dict, name: str, rig_path: str, a: "Fighter", root_z: fl
         "rig": os.path.basename(rig_path),
         "source_mesh": rig.get("source", ""),
         "joint_order": [j["name"] for j in a.joints],
-        "default_joint_pos": [j["default"] for j in a.joints],
+        # To four places, as the keyframe in the model is written: the pose a zero action asks for has to be
+        # the pose an episode starts in, to the last digit, wherever either number is read from.
+        "default_joint_pos": [round(j["default"], 4) for j in a.joints],
         "lower": [j["lower"] for j in a.joints],
         "upper": [j["upper"] for j in a.joints],
         "kp": [j["kp"] for j in a.joints],
@@ -379,7 +381,7 @@ def fighter_config(rig: Dict, name: str, rig_path: str, a: "Fighter", root_z: fl
         "velocity_limit": [j["velocity_limit"] for j in a.joints],
         "total_mass_kg": report["mass_kg"],
         "height_m": rig.get("height_m", 0.0),
-        "stand_height": root_z,
+        "stand_height": round(root_z, 4),
         "action_scale": 0.5,
         "action_clip": 3.0,
         "physics_hz": 200,
