@@ -1,0 +1,324 @@
+{
+  "source": "C:/Users/punko/Downloads/PoBox/Assets/Models/Zombie.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.816,
+  "mass_kg": 90.5,
+  "notes": [
+    "made symmetric: left and right differed by up to 1.2 cm",
+    "arms straightened to a T-pose: they rested 68 degrees below the shoulder line",
+    "mass from the mesh's volume: 92 litres is a body-mass index of 27.4",
+    "trunk slimmed to torso 0.106, pelvis 0.100: its own arms touched it",
+    "trunk slimmed to torso 0.100, pelvis 0.094: its own arms touched it"
+  ],
+  "bones": [
+    {
+      "name": "CC_Base_Pelvis",
+      "parent": "CC_Base_Hip",
+      "head": [
+        0.0,
+        0.0,
+        0.8994
+      ],
+      "tail": [
+        0.0,
+        -0.0106,
+        0.873
+      ]
+    },
+    {
+      "name": "CC_Base_L_Thigh",
+      "parent": "CC_Base_Pelvis",
+      "head": [
+        0.102,
+        -0.0106,
+        0.873
+      ],
+      "tail": [
+        0.2551,
+        -0.0817,
+        0.4769
+      ]
+    },
+    {
+      "name": "CC_Base_L_Calf",
+      "parent": "CC_Base_L_Thigh",
+      "head": [
+        0.2551,
+        -0.0817,
+        0.4769
+      ],
+      "tail": [
+        0.3622,
+        0.1081,
+        0.0773
+      ]
+    },
+    {
+      "name": "CC_Base_L_Foot",
+      "parent": "CC_Base_L_Calf",
+      "head": [
+        0.3622,
+        0.1081,
+        0.0773
+      ],
+      "tail": [
+        0.3671,
+        -0.0472,
+        0.0287
+      ]
+    },
+    {
+      "name": "CC_Base_L_ToeBase",
+      "parent": "CC_Base_L_Foot",
+      "head": [
+        0.3671,
+        -0.0472,
+        0.0287
+      ],
+      "tail": [
+        0.3265,
+        -0.0697,
+        0.0292
+      ]
+    },
+    {
+      "name": "CC_Base_R_Thigh",
+      "parent": "CC_Base_Pelvis",
+      "head": [
+        -0.102,
+        -0.0106,
+        0.873
+      ],
+      "tail": [
+        -0.2551,
+        -0.0817,
+        0.4769
+      ]
+    },
+    {
+      "name": "CC_Base_R_Calf",
+      "parent": "CC_Base_R_Thigh",
+      "head": [
+        -0.2551,
+        -0.0817,
+        0.4769
+      ],
+      "tail": [
+        -0.3622,
+        0.1081,
+        0.0773
+      ]
+    },
+    {
+      "name": "CC_Base_R_Foot",
+      "parent": "CC_Base_R_Calf",
+      "head": [
+        -0.3622,
+        0.1081,
+        0.0773
+      ],
+      "tail": [
+        -0.3671,
+        -0.0472,
+        0.0287
+      ]
+    },
+    {
+      "name": "CC_Base_R_ToeBase",
+      "parent": "CC_Base_R_Foot",
+      "head": [
+        -0.3671,
+        -0.0472,
+        0.0287
+      ],
+      "tail": [
+        -0.3265,
+        -0.0697,
+        0.0292
+      ]
+    },
+    {
+      "name": "CC_Base_Waist",
+      "parent": "CC_Base_Hip",
+      "head": [
+        0.0,
+        0.0021,
+        1.0052
+      ],
+      "tail": [
+        0.0,
+        0.0024,
+        1.0581
+      ]
+    },
+    {
+      "name": "CC_Base_Spine02",
+      "parent": "CC_Base_Spine01",
+      "head": [
+        0.0,
+        0.0028,
+        1.1903
+      ],
+      "tail": [
+        0.0,
+        -0.0534,
+        1.4548
+      ]
+    },
+    {
+      "name": "CC_Base_L_Upperarm",
+      "parent": "CC_Base_L_Clavicle",
+      "head": [
+        0.2102,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        0.4749,
+        0.002,
+        1.3628
+      ]
+    },
+    {
+      "name": "CC_Base_L_Forearm",
+      "parent": "CC_Base_L_Upperarm",
+      "head": [
+        0.4749,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        0.7166,
+        0.002,
+        1.3628
+      ]
+    },
+    {
+      "name": "CC_Base_L_Hand",
+      "parent": "CC_Base_L_Forearm",
+      "head": [
+        0.7166,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        0.7966,
+        0.002,
+        1.3628
+      ]
+    },
+    {
+      "name": "CC_Base_NeckTwist01",
+      "parent": "CC_Base_Spine02",
+      "head": [
+        0.0,
+        -0.0534,
+        1.4548
+      ],
+      "tail": [
+        0.0,
+        -0.0849,
+        1.4983
+      ]
+    },
+    {
+      "name": "CC_Base_Head",
+      "parent": "CC_Base_NeckTwist02",
+      "head": [
+        0.0,
+        -0.1163,
+        1.5417
+      ],
+      "tail": [
+        0.0,
+        -0.1163,
+        1.816
+      ]
+    },
+    {
+      "name": "CC_Base_R_Upperarm",
+      "parent": "CC_Base_R_Clavicle",
+      "head": [
+        -0.2102,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        -0.4749,
+        0.002,
+        1.3628
+      ]
+    },
+    {
+      "name": "CC_Base_R_Forearm",
+      "parent": "CC_Base_R_Upperarm",
+      "head": [
+        -0.4749,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        -0.7166,
+        0.002,
+        1.3628
+      ]
+    },
+    {
+      "name": "CC_Base_R_Hand",
+      "parent": "CC_Base_R_Forearm",
+      "head": [
+        -0.7166,
+        0.002,
+        1.3628
+      ],
+      "tail": [
+        -0.7966,
+        0.002,
+        1.3628
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "CC_Base_Pelvis",
+    "neck": "CC_Base_NeckTwist01",
+    "head": "CC_Base_Head",
+    "spine": "CC_Base_Waist",
+    "torso": "CC_Base_Spine02",
+    "thigh_l": "CC_Base_L_Thigh",
+    "shin_l": "CC_Base_L_Calf",
+    "foot_l": "CC_Base_L_Foot",
+    "toe_l": "CC_Base_L_ToeBase",
+    "upper_arm_l": "CC_Base_L_Upperarm",
+    "forearm_l": "CC_Base_L_Forearm",
+    "hand_l": "CC_Base_L_Hand",
+    "thigh_r": "CC_Base_R_Thigh",
+    "shin_r": "CC_Base_R_Calf",
+    "foot_r": "CC_Base_R_Foot",
+    "toe_r": "CC_Base_R_ToeBase",
+    "upper_arm_r": "CC_Base_R_Upperarm",
+    "forearm_r": "CC_Base_R_Forearm",
+    "hand_r": "CC_Base_R_Hand"
+  },
+  "all_bones": 71,
+  "radii": {
+    "thigh": 0.0812,
+    "shin": 0.0535,
+    "upper_arm": 0.0367,
+    "forearm": 0.0299,
+    "torso": 0.1001,
+    "pelvis": 0.0937,
+    "head": 0.125
+  },
+  "mesh": {
+    "vertices": 35095,
+    "height_m": 1.816,
+    "volume_l": 91.9,
+    "bmi_from_volume": 27.4
+  },
+  "strength": 1.007,
+  "speed": 1.0,
+  "style": {},
+  "display": "ZOMBIE",
+  "persona": "veteran",
+  "says": ""
+}

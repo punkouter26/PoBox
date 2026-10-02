@@ -272,6 +272,26 @@ def ring_xml() -> str:
                          for n, pos, size in walls)
 
 
+CUBE_HALF, CUBE_KG = 0.10, 1.0
+
+
+def cube_park(i: int) -> Tuple[float, float, float]:
+    """Where cube i waits: far outside the ring and clear of the floor, so a waiting cube touches nothing."""
+    return 40.0 + 0.5 * i, 40.0, 0.3
+
+
+def cubes_xml(n: int) -> Tuple[str, str]:
+    """The pool of cubes thrown at a fighter, and their part of the keyframe. MuJoCo cannot add a body
+    while it runs, so all of them are in the model from the start. Whoever steps the model holds a
+    waiting cube at cube_park (it is not resting on anything) and throws one by writing its qpos and qvel."""
+    h = CUBE_HALF
+    xml = "\n    ".join(
+        f'<body name="cube_{i}" pos="{fmt(cube_park(i))}"><freejoint name="cube_{i}"/>'
+        f'<geom name="cube_{i}_geom" type="box" size="{h} {h} {h}" mass="{CUBE_KG}" rgba="0.9 0.7 0.2 1"/></body>'
+        for i in range(n))
+    return xml, "".join(f" {fmt(cube_park(i))} 1 0 0 0" for i in range(n))
+
+
 def assemble(name: str, fighters: List[Fighter], bodies: List[str], extra_world: str, keyframe_tail: str) -> str:
     excl = "\n    ".join(f'<exclude body1="{a}" body2="{b}"/>' for f in fighters for a, b in f.exclusions())
     act = "\n    ".join(a for f in fighters for a in f.actuators)
@@ -378,20 +398,24 @@ def key_for(fighter: Fighter, x: float, y: float, yaw: float, root_z: float) -> 
     return f"{x:.4f} {y:.4f} {root_z:.4f} {math.cos(yaw / 2):.5f} 0 0 {math.sin(yaw / 2):.5f} {joint_q}"
 
 
-def build_one(rig: Dict, rig_path: str, name: str, out_dir: str) -> Tuple[float, Dict]:
-    """One fighter's own files: the bag model, a spar against a copy of itself, and its config."""
+def build_one(rig: Dict, rig_path: str, name: str, out_dir: str, cubes: int = 0) -> Tuple[float, Dict]:
+    """One fighter's own files: alone on the floor, the bag model, a spar against a copy of itself, and its config."""
 
     lean = 0.0
+    cube_bodies, cube_key = cubes_xml(cubes)
 
     def make(mode: str, root_z: float) -> Tuple[str, Fighter]:
         a = Fighter(rig, "a_", lean)
+        if mode == "solo":
+            body = [a.build((0.0, 0.0), 0.0), cube_bodies]
+            return assemble(f"{name}_solo", [a], body, "", key_for(a, 0.0, 0.0, 0.0, root_z) + cube_key), a
         if mode == "bag":
-            body = [a.build((-0.75, 0.0), 0.0), bag_xml()]
-            key = key_for(a, -0.75, 0.0, 0.0, root_z) + " 1 0 0 0"   # the bag's ball joint
+            body = [a.build((-0.75, 0.0), 0.0), bag_xml(), cube_bodies]
+            key = key_for(a, -0.75, 0.0, 0.0, root_z) + " 1 0 0 0" + cube_key   # the bag's ball joint
             return assemble(f"{name}_bag", [a], body, "", key), a
         b = Fighter(rig, "b_", lean)
-        body = [a.build((-0.6, 0.0), 0.0), b.build((0.6, 0.0), math.pi)]
-        key = key_for(a, -0.6, 0.0, 0.0, root_z) + " " + key_for(b, 0.6, 0.0, math.pi, root_z)
+        body = [a.build((-0.6, 0.0), 0.0), b.build((0.6, 0.0), math.pi), cube_bodies]
+        key = key_for(a, -0.6, 0.0, 0.0, root_z) + " " + key_for(b, 0.6, 0.0, math.pi, root_z) + cube_key
         return assemble(f"{name}_spar", [a, b], body, ring_xml(), key), a
 
     # Find the lean that puts the weight 47% of the way from heel to toe, by bisection: more lean moves
@@ -410,7 +434,7 @@ def build_one(rig: Dict, rig_path: str, name: str, out_dir: str) -> Tuple[float,
     xml, a = make("bag", 1.0)
     root_z, _ = settle_height(xml, 1, len(a.joints))
     report = {}
-    for mode in ("bag", "spar"):
+    for mode in ("solo", "bag", "spar"):
         xml, a = make(mode, root_z)
         path = os.path.join(out_dir, f"{name}_{mode}.xml")
         with open(path, "w", encoding="utf-8") as f:
@@ -421,7 +445,8 @@ def build_one(rig: Dict, rig_path: str, name: str, out_dir: str) -> Tuple[float,
 
     cfg = fighter_config(rig, name, rig_path, a, root_z, report)
     cfg["stance_lean_deg"] = round(lean, 2)
-    cfg["models"] = {"bag": f"{name}_bag.xml", "spar": f"{name}_spar.xml"}
+    cfg["models"] = {"solo": f"{name}_solo.xml", "bag": f"{name}_bag.xml", "spar": f"{name}_spar.xml"}
+    cfg["cubes"] = cubes
     cfg_path = os.path.join(out_dir, f"{name}_policy_config.json")
     with open(cfg_path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
@@ -434,11 +459,12 @@ def build_one(rig: Dict, rig_path: str, name: str, out_dir: str) -> Tuple[float,
 
 
 def build_versus(rig_a: Dict, name_a: str, z_a: float, cfg_a: Dict,
-                 rig_b: Dict, name_b: str, z_b: float, cfg_b: Dict, out_dir: str) -> None:
+                 rig_b: Dict, name_b: str, z_b: float, cfg_b: Dict, out_dir: str, cubes: int = 0) -> None:
     """The match: two different bodies in one ring, each at its own standing height."""
     a, b = Fighter(rig_a, "a_", cfg_a["stance_lean_deg"]), Fighter(rig_b, "b_", cfg_b["stance_lean_deg"])
-    body = [a.build((-0.6, 0.0), 0.0), b.build((0.6, 0.0), math.pi)]
-    key = key_for(a, -0.6, 0.0, 0.0, z_a) + " " + key_for(b, 0.6, 0.0, math.pi, z_b)
+    cube_bodies, cube_key = cubes_xml(cubes)
+    body = [a.build((-0.6, 0.0), 0.0), b.build((0.6, 0.0), math.pi), cube_bodies]
+    key = key_for(a, -0.6, 0.0, 0.0, z_a) + " " + key_for(b, 0.6, 0.0, math.pi, z_b) + cube_key
     stem = f"{name_a}_vs_{name_b}"
     path = os.path.join(out_dir, f"{stem}_spar.xml")
     with open(path, "w", encoding="utf-8") as f:
@@ -457,19 +483,20 @@ def main() -> None:
     ap.add_argument("--versus", default="", help="a second rig: also writes <name>_vs_<versus-name>_spar.xml, the two in one ring")
     ap.add_argument("--versus-name", default="")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "models"))
+    ap.add_argument("--cubes", type=int, default=0, help="cubes in the pool thrown at the fighter (see cubes_xml)")
     args = ap.parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
 
     with open(args.rig, "r", encoding="utf-8") as f:
         rig_a = json.load(f)
-    z_a, cfg_a = build_one(rig_a, args.rig, args.name, args.out_dir)
+    z_a, cfg_a = build_one(rig_a, args.rig, args.name, args.out_dir, args.cubes)
     if args.versus:
         if not args.versus_name:
             raise SystemExit("--versus needs --versus-name")
         with open(args.versus, "r", encoding="utf-8") as f:
             rig_b = json.load(f)
-        z_b, cfg_b = build_one(rig_b, args.versus, args.versus_name, args.out_dir)
-        build_versus(rig_a, args.name, z_a, cfg_a, rig_b, args.versus_name, z_b, cfg_b, args.out_dir)
+        z_b, cfg_b = build_one(rig_b, args.versus, args.versus_name, args.out_dir, args.cubes)
+        build_versus(rig_a, args.name, z_a, cfg_a, rig_b, args.versus_name, z_b, cfg_b, args.out_dir, args.cubes)
 
 
 if __name__ == "__main__":

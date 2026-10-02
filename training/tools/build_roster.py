@@ -30,10 +30,10 @@ from check_self_collision import check  # noqa: E402
 REFERENCE_HEIGHT = 1.81   # the height the generator's joint strengths were written for (Matt)
 
 
-def build_boxer(name: str, spec: dict, models: str) -> tuple:
-    rig_path = os.path.join(HERE, "rigs", f"{name}.json")
+def build_boxer(name: str, spec: dict, models: str, rigs: str, plots: str, cubes: int) -> tuple:
+    rig_path = os.path.join(rigs, f"{name}.json")
     cmd = [sys.executable, os.path.join(HERE, "glb_to_rig.py"), "--glb", os.path.normpath(os.path.join(HERE, spec["glb"])),
-           "--out", rig_path, "--plot", os.path.join(HERE, "logs", f"fit_{name}.png")]
+           "--out", rig_path, "--plot", os.path.join(plots, f"fit_{name}.png")]
     if spec.get("height"):
         cmd += ["--height", str(spec["height"])]
     if spec.get("mass"):
@@ -53,8 +53,8 @@ def build_boxer(name: str, spec: dict, models: str) -> tuple:
     for attempt in range(10):
         with open(rig_path, "w", encoding="utf-8") as f:
             json.dump(rig, f, indent=2)
-        z, cfg = rig_to_mjcf.build_one(rig, rig_path, name, models)
-        if check(name) == 0:
+        z, cfg = rig_to_mjcf.build_one(rig, rig_path, name, models, cubes)
+        if check(name, models) == 0:
             break
         for part in ("torso", "pelvis"):
             rig["radii"][part] = round(rig["radii"][part] * 0.94, 4)
@@ -68,8 +68,8 @@ def build_boxer(name: str, spec: dict, models: str) -> tuple:
     return rig, z, cfg
 
 
-def veteran(name: str, models: str) -> tuple:
-    with open(os.path.join(HERE, "rigs", f"{name}.json"), "r", encoding="utf-8") as f:
+def veteran(name: str, models: str, rigs: str) -> tuple:
+    with open(os.path.join(rigs, f"{name}.json"), "r", encoding="utf-8") as f:
         rig = json.load(f)
     with open(os.path.join(models, f"{name}_policy_config.json"), "r", encoding="utf-8") as f:
         cfg = json.load(f)
@@ -81,29 +81,36 @@ def main() -> None:
     ap.add_argument("--only", action="append", default=[])
     ap.add_argument("--roster", default=os.path.join(HERE, "roster.json"))
     ap.add_argument("--models", default=os.path.join(HERE, "models"))
+    ap.add_argument("--rigs", default=os.path.join(HERE, "rigs"))
+    ap.add_argument("--plots", default=os.path.join(HERE, "logs"), help="where the pictures of each fit go")
+    ap.add_argument("--cubes", type=int, default=0, help="cubes in the pool of every model (rig_to_mjcf.cubes_xml)")
+    ap.add_argument("--all", action="store_true", help="derive the veterans from their meshes too")
     args = ap.parse_args()
     with open(args.roster, "r", encoding="utf-8") as f:
         roster = json.load(f)
-    os.makedirs(os.path.join(HERE, "logs"), exist_ok=True)
+    for folder in (args.models, args.rigs, args.plots):
+        os.makedirs(folder, exist_ok=True)
 
+    veterans = roster.get("veterans", {})
+    specs = dict(roster["boxers"], **(veterans if args.all else {}))
     built = {}
-    for name, spec in roster["boxers"].items():
+    for name, spec in specs.items():
         if args.only and name not in args.only:
             # Already built on an earlier call: its files are read back, not made again.
-            built[name] = veteran(name, args.models)
+            built[name] = veteran(name, args.models, args.rigs)
         else:
-            built[name] = build_boxer(name, spec, args.models)
-    old = {name: veteran(name, args.models) for name in roster.get("veterans", [])}
+            built[name] = build_boxer(name, spec, args.models, args.rigs, args.plots, args.cubes)
+    old = {name: veteran(name, args.models, args.rigs) for name in veterans if name not in built}
 
     print("\n==== match models", flush=True)
-    new = list(roster["boxers"])
+    new = list(specs)
     pairs = list(itertools.combinations(new, 2)) + [(n, v) for n in new for v in old]
     for a, b in pairs:
         if args.only and a not in args.only and b not in args.only:
             continue
         ra, za, ca = built[a]
         rb, zb, cb = built[b] if b in built else old[b]
-        rig_to_mjcf.build_versus(ra, a, za, ca, rb, b, zb, cb, args.models)
+        rig_to_mjcf.build_versus(ra, a, za, ca, rb, b, zb, cb, args.models, args.cubes)
 
     print("\n==== the roster")
     for name, (rig, z, cfg) in built.items():

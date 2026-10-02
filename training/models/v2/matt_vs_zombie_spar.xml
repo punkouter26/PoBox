@@ -1,0 +1,232 @@
+<mujoco model="matt_vs_zombie_spar">
+  <compiler angle="degree" inertiafromgeom="true" autolimits="true"/>
+  <option timestep="0.005" iterations="10" ls_iterations="10" integrator="implicitfast">
+    <flag eulerdamp="disable"/>
+  </option>
+  <default>
+    <geom contype="1" conaffinity="1" condim="3" friction="1.0 0.005 0.0001" density="1000" margin="0"/>
+    <joint limited="true"/>
+    <position ctrllimited="true"/>
+  </default>
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1=".18 .28 .48" rgb2=".14 .22 .40" width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="6 6" reflectance="0"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="grid" friction="1.0 0.005 0.0001"/>
+    <geom name="rope_n" type="box" pos="0.0000 3.1000 0.7500" size="3.1500 0.0500 0.7500" rgba="0.8 0.8 0.8 0.15"/>
+    <geom name="rope_s" type="box" pos="0.0000 -3.1000 0.7500" size="3.1500 0.0500 0.7500" rgba="0.8 0.8 0.8 0.15"/>
+    <geom name="rope_e" type="box" pos="3.1000 0.0000 0.7500" size="0.0500 3.1500 0.7500" rgba="0.8 0.8 0.8 0.15"/>
+    <geom name="rope_w" type="box" pos="-3.1000 0.0000 0.7500" size="0.0500 3.1500 0.7500" rgba="0.8 0.8 0.8 0.15"/>
+    <body name="a_pelvis" pos="-0.6000 0.0000 0.9733" quat="1.00000 0 0 0.00000">
+      <freejoint name="a_root"/>
+      <geom name="a_pelvis_geom" type="capsule" fromto="0.0000 -0.0700 0.0000 0.0000 0.0700 0.0000" size="0.0976" mass="9.3108" />
+      <geom name="a_pelvis_up" type="capsule" fromto="0.0000 0.0000 0.0000 -0.0008 0.0000 0.0758" size="0.0878" mass="5.3862" />
+      <body name="a_torso" pos="-0.0008 0.0000 0.0958">
+        <joint name="a_abdomen_z" type="hinge" axis="0 0 1" range="-45 45" damping="0.5" armature="0.08" stiffness="0"/>
+        <joint name="a_abdomen_y" type="hinge" axis="0 1 0" range="-60 30" damping="0.5" armature="0.08" stiffness="0"/>
+        <joint name="a_abdomen_x" type="hinge" axis="1 0 0" range="-35 35" damping="0.5" armature="0.08" stiffness="0"/>
+        <geom name="a_torso_geom" type="capsule" fromto="0.0000 0.0000 0.0200 -0.0653 -0.0000 0.4511" size="0.0937" mass="36.7425" />
+        <geom name="a_chest_geom" type="capsule" fromto="-0.0402 -0.1614 0.3530 -0.0402 0.1614 0.3530" size="0.0843" mass="0.5"/>
+        <geom name="a_head_geom" type="sphere" pos="-0.0385 -0.0000 0.6830" size="0.1049" mass="8.3835" />
+        <body name="a_upper_arm_l" pos="-0.0503 0.2018 0.4412">
+          <joint name="a_shoulder_x_l" type="hinge" axis="1 0 0" range="-170 30" damping="0.5" armature="0.03" stiffness="0"/>
+          <joint name="a_shoulder_z_l" type="hinge" axis="0 0 1" range="-110 110" damping="0.5" armature="0.03" stiffness="0"/>
+          <geom name="a_upper_arm_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.2524 0.0000" size="0.0571" mass="2.8980" />
+          <body name="a_forearm_l" pos="0.0000 0.2524 0.0000">
+            <joint name="a_elbow_l" type="hinge" axis="0 0 1" range="-150 0" damping="0.5" armature="0.02" stiffness="0"/>
+            <geom name="a_forearm_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.2567 0.0000" size="0.0408" mass="1.6560" />
+            <geom name="a_glove_l" type="sphere" pos="0.0000 0.3242 0.0000" size="0.0750" mass="0.9040" rgba="0.85 0.2 0.2 1"/>
+          </body>
+        </body>
+        <body name="a_upper_arm_r" pos="-0.0503 -0.2018 0.4412">
+          <joint name="a_shoulder_x_r" type="hinge" axis="1 0 0" range="-30 170" damping="0.5" armature="0.03" stiffness="0"/>
+          <joint name="a_shoulder_z_r" type="hinge" axis="0 0 1" range="-110 110" damping="0.5" armature="0.03" stiffness="0"/>
+          <geom name="a_upper_arm_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 -0.2524 0.0000" size="0.0571" mass="2.8980" />
+          <body name="a_forearm_r" pos="0.0000 -0.2524 0.0000">
+            <joint name="a_elbow_r" type="hinge" axis="0 0 1" range="0 150" damping="0.5" armature="0.02" stiffness="0"/>
+            <geom name="a_forearm_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 -0.2567 0.0000" size="0.0408" mass="1.6560" />
+            <geom name="a_glove_r" type="sphere" pos="0.0000 -0.3242 0.0000" size="0.0750" mass="0.9040" rgba="0.85 0.2 0.2 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="a_thigh_l" pos="0.0008 0.0857 -0.0302">
+        <joint name="a_hip_x_l" type="hinge" axis="1 0 0" range="-40 40" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="a_hip_z_l" type="hinge" axis="0 0 1" range="-35 35" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="a_hip_y_l" type="hinge" axis="0 1 0" range="-120 30" damping="0.5" armature="0.1" stiffness="0"/>
+        <geom name="a_thigh_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4154" size="0.0737" mass="10.3500" />
+        <body name="a_shin_l" pos="0.0000 0.0000 -0.4154">
+          <joint name="a_knee_l" type="hinge" axis="0 1 0" range="0 150" damping="0.5" armature="0.1" stiffness="0"/>
+          <geom name="a_shin_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4309" size="0.0608" mass="4.8128" />
+          <body name="a_foot_l" pos="0.0000 0.0000 -0.4309">
+            <joint name="a_ankle_y_l" type="hinge" axis="0 1 0" range="-20 50" damping="0.5" armature="0.03" stiffness="0"/>
+            <joint name="a_ankle_x_l" type="hinge" axis="1 0 0" range="-25 25" damping="0.5" armature="0.03" stiffness="0"/>
+            <geom name="a_foot_l_geom" type="box" pos="0.0581 0.0000 -0.0700" size="0.1262 0.0450 0.0280" mass="1.5008" friction="1.0 0.005 0.0001"/>
+            <site name="a_foot_l_site" pos="0.0581 0.0000 -0.0700" size="0.01"/>
+          </body>
+        </body>
+      </body>
+      <body name="a_thigh_r" pos="0.0008 -0.0857 -0.0302">
+        <joint name="a_hip_x_r" type="hinge" axis="1 0 0" range="-40 40" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="a_hip_z_r" type="hinge" axis="0 0 1" range="-35 35" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="a_hip_y_r" type="hinge" axis="0 1 0" range="-120 30" damping="0.5" armature="0.1" stiffness="0"/>
+        <geom name="a_thigh_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4154" size="0.0737" mass="10.3500" />
+        <body name="a_shin_r" pos="0.0000 0.0000 -0.4154">
+          <joint name="a_knee_r" type="hinge" axis="0 1 0" range="0 150" damping="0.5" armature="0.1" stiffness="0"/>
+          <geom name="a_shin_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4309" size="0.0608" mass="4.8128" />
+          <body name="a_foot_r" pos="0.0000 0.0000 -0.4309">
+            <joint name="a_ankle_y_r" type="hinge" axis="0 1 0" range="-20 50" damping="0.5" armature="0.03" stiffness="0"/>
+            <joint name="a_ankle_x_r" type="hinge" axis="1 0 0" range="-25 25" damping="0.5" armature="0.03" stiffness="0"/>
+            <geom name="a_foot_r_geom" type="box" pos="0.0581 0.0000 -0.0700" size="0.1262 0.0450 0.0280" mass="1.5008" friction="1.0 0.005 0.0001"/>
+            <site name="a_foot_r_site" pos="0.0581 0.0000 -0.0700" size="0.01"/>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="b_pelvis" pos="0.6000 0.0000 0.8994" quat="0.00000 0 0 1.00000">
+      <freejoint name="b_root"/>
+      <geom name="b_pelvis_geom" type="capsule" fromto="0.0000 -0.0700 0.0000 0.0000 0.0700 0.0000" size="0.0937" mass="8.0010" />
+      <geom name="b_pelvis_up" type="capsule" fromto="0.0000 0.0000 0.0000 -0.0021 0.0000 0.0858" size="0.0843" mass="4.8500" />
+      <body name="b_torso" pos="-0.0021 0.0000 0.1058">
+        <joint name="b_abdomen_z" type="hinge" axis="0 0 1" range="-45 45" damping="0.5" armature="0.08" stiffness="0"/>
+        <joint name="b_abdomen_y" type="hinge" axis="0 1 0" range="-60 30" damping="0.5" armature="0.08" stiffness="0"/>
+        <joint name="b_abdomen_x" type="hinge" axis="1 0 0" range="-35 35" damping="0.5" armature="0.08" stiffness="0"/>
+        <geom name="b_torso_geom" type="capsule" fromto="0.0000 0.0000 0.0200 0.0555 0.0000 0.4396" size="0.1001" mass="32.1275" />
+        <geom name="b_chest_geom" type="capsule" fromto="0.0001 -0.1682 0.2861 0.0001 0.1682 0.2861" size="0.0901" mass="0.5"/>
+        <geom name="b_head_geom" type="sphere" pos="0.1184 0.0000 0.6737" size="0.1250" mass="7.3305" />
+        <body name="b_upper_arm_l" pos="0.0001 0.2102 0.3576">
+          <joint name="b_shoulder_x_l" type="hinge" axis="1 0 0" range="-170 30" damping="0.5" armature="0.03" stiffness="0"/>
+          <joint name="b_shoulder_z_l" type="hinge" axis="0 0 1" range="-110 110" damping="0.5" armature="0.03" stiffness="0"/>
+          <geom name="b_upper_arm_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.2647 0.0000" size="0.0367" mass="2.5340" />
+          <body name="b_forearm_l" pos="0.0000 0.2647 0.0000">
+            <joint name="b_elbow_l" type="hinge" axis="0 0 1" range="-150 0" damping="0.5" armature="0.02" stiffness="0"/>
+            <geom name="b_forearm_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.2417 0.0000" size="0.0299" mass="1.4480" />
+            <geom name="b_glove_l" type="sphere" pos="0.0000 0.3092 0.0000" size="0.0750" mass="0.8260" rgba="0.2 0.45 0.9 1"/>
+          </body>
+        </body>
+        <body name="b_upper_arm_r" pos="0.0001 -0.2102 0.3576">
+          <joint name="b_shoulder_x_r" type="hinge" axis="1 0 0" range="-30 170" damping="0.5" armature="0.03" stiffness="0"/>
+          <joint name="b_shoulder_z_r" type="hinge" axis="0 0 1" range="-110 110" damping="0.5" armature="0.03" stiffness="0"/>
+          <geom name="b_upper_arm_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 -0.2647 0.0000" size="0.0367" mass="2.5340" />
+          <body name="b_forearm_r" pos="0.0000 -0.2647 0.0000">
+            <joint name="b_elbow_r" type="hinge" axis="0 0 1" range="0 150" damping="0.5" armature="0.02" stiffness="0"/>
+            <geom name="b_forearm_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 -0.2417 0.0000" size="0.0299" mass="1.4480" />
+            <geom name="b_glove_r" type="sphere" pos="0.0000 -0.3092 0.0000" size="0.0750" mass="0.8260" rgba="0.2 0.45 0.9 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="b_thigh_l" pos="0.0106 0.1020 -0.0264">
+        <joint name="b_hip_x_l" type="hinge" axis="1 0 0" range="-40 40" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="b_hip_z_l" type="hinge" axis="0 0 1" range="-35 35" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="b_hip_y_l" type="hinge" axis="0 1 0" range="-120 30" damping="0.5" armature="0.1" stiffness="0"/>
+        <geom name="b_thigh_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4306" size="0.0812" mass="9.0500" />
+        <body name="b_shin_l" pos="0.0000 0.0000 -0.4306">
+          <joint name="b_knee_l" type="hinge" axis="0 1 0" range="0 150" damping="0.5" armature="0.1" stiffness="0"/>
+          <geom name="b_shin_l_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4552" size="0.0535" mass="4.2082" />
+          <body name="b_foot_l" pos="0.0000 0.0000 -0.4552">
+            <joint name="b_ankle_y_l" type="hinge" axis="0 1 0" range="-20 50" damping="0.5" armature="0.03" stiffness="0"/>
+            <joint name="b_ankle_x_l" type="hinge" axis="1 0 0" range="-25 25" damping="0.5" armature="0.03" stiffness="0"/>
+            <geom name="b_foot_l_geom" type="box" pos="0.0570 0.0000 -0.0493" size="0.1239 0.0450 0.0280" mass="1.3123" friction="1.0 0.005 0.0001"/>
+            <site name="b_foot_l_site" pos="0.0570 0.0000 -0.0493" size="0.01"/>
+          </body>
+        </body>
+      </body>
+      <body name="b_thigh_r" pos="0.0106 -0.1020 -0.0264">
+        <joint name="b_hip_x_r" type="hinge" axis="1 0 0" range="-40 40" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="b_hip_z_r" type="hinge" axis="0 0 1" range="-35 35" damping="0.5" armature="0.1" stiffness="0"/>
+        <joint name="b_hip_y_r" type="hinge" axis="0 1 0" range="-120 30" damping="0.5" armature="0.1" stiffness="0"/>
+        <geom name="b_thigh_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4306" size="0.0812" mass="9.0500" />
+        <body name="b_shin_r" pos="0.0000 0.0000 -0.4306">
+          <joint name="b_knee_r" type="hinge" axis="0 1 0" range="0 150" damping="0.5" armature="0.1" stiffness="0"/>
+          <geom name="b_shin_r_geom" type="capsule" fromto="0.0000 0.0000 0.0000 0.0000 0.0000 -0.4552" size="0.0535" mass="4.2082" />
+          <body name="b_foot_r" pos="0.0000 0.0000 -0.4552">
+            <joint name="b_ankle_y_r" type="hinge" axis="0 1 0" range="-20 50" damping="0.5" armature="0.03" stiffness="0"/>
+            <joint name="b_ankle_x_r" type="hinge" axis="1 0 0" range="-25 25" damping="0.5" armature="0.03" stiffness="0"/>
+            <geom name="b_foot_r_geom" type="box" pos="0.0570 0.0000 -0.0493" size="0.1239 0.0450 0.0280" mass="1.3123" friction="1.0 0.005 0.0001"/>
+            <site name="b_foot_r_site" pos="0.0570 0.0000 -0.0493" size="0.01"/>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="cube_0" pos="40.0000 40.0000 0.3000"><freejoint name="cube_0"/><geom name="cube_0_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_1" pos="40.5000 40.0000 0.3000"><freejoint name="cube_1"/><geom name="cube_1_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_2" pos="41.0000 40.0000 0.3000"><freejoint name="cube_2"/><geom name="cube_2_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_3" pos="41.5000 40.0000 0.3000"><freejoint name="cube_3"/><geom name="cube_3_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_4" pos="42.0000 40.0000 0.3000"><freejoint name="cube_4"/><geom name="cube_4_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_5" pos="42.5000 40.0000 0.3000"><freejoint name="cube_5"/><geom name="cube_5_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_6" pos="43.0000 40.0000 0.3000"><freejoint name="cube_6"/><geom name="cube_6_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+    <body name="cube_7" pos="43.5000 40.0000 0.3000"><freejoint name="cube_7"/><geom name="cube_7_geom" type="box" size="0.1 0.1 0.1" mass="1.0" rgba="0.9 0.7 0.2 1"/></body>
+  </worldbody>
+  <contact>
+    <exclude body1="a_pelvis" body2="a_torso"/>
+    <exclude body1="a_pelvis" body2="a_thigh_l"/>
+    <exclude body1="a_thigh_l" body2="a_shin_l"/>
+    <exclude body1="a_shin_l" body2="a_foot_l"/>
+    <exclude body1="a_torso" body2="a_upper_arm_l"/>
+    <exclude body1="a_upper_arm_l" body2="a_forearm_l"/>
+    <exclude body1="a_pelvis" body2="a_thigh_r"/>
+    <exclude body1="a_thigh_r" body2="a_shin_r"/>
+    <exclude body1="a_shin_r" body2="a_foot_r"/>
+    <exclude body1="a_torso" body2="a_upper_arm_r"/>
+    <exclude body1="a_upper_arm_r" body2="a_forearm_r"/>
+    <exclude body1="b_pelvis" body2="b_torso"/>
+    <exclude body1="b_pelvis" body2="b_thigh_l"/>
+    <exclude body1="b_thigh_l" body2="b_shin_l"/>
+    <exclude body1="b_shin_l" body2="b_foot_l"/>
+    <exclude body1="b_torso" body2="b_upper_arm_l"/>
+    <exclude body1="b_upper_arm_l" body2="b_forearm_l"/>
+    <exclude body1="b_pelvis" body2="b_thigh_r"/>
+    <exclude body1="b_thigh_r" body2="b_shin_r"/>
+    <exclude body1="b_shin_r" body2="b_foot_r"/>
+    <exclude body1="b_torso" body2="b_upper_arm_r"/>
+    <exclude body1="b_upper_arm_r" body2="b_forearm_r"/>
+  </contact>
+  <actuator>
+    <position name="a_abdomen_z" joint="a_abdomen_z" kp="473.85" kv="22.113" forcerange="-179.01 179.01" ctrlrange="-0.7854 0.7854"/>
+    <position name="a_abdomen_y" joint="a_abdomen_y" kp="473.85" kv="22.113" forcerange="-179.01 179.01" ctrlrange="-1.0472 0.5236"/>
+    <position name="a_abdomen_x" joint="a_abdomen_x" kp="473.85" kv="22.113" forcerange="-179.01 179.01" ctrlrange="-0.6109 0.6109"/>
+    <position name="a_shoulder_x_l" joint="a_shoulder_x_l" kp="168.48" kv="8.424" forcerange="-105.3 105.3" ctrlrange="-2.9671 0.5236"/>
+    <position name="a_shoulder_z_l" joint="a_shoulder_z_l" kp="168.48" kv="8.424" forcerange="-105.3 105.3" ctrlrange="-1.9199 1.9199"/>
+    <position name="a_elbow_l" joint="a_elbow_l" kp="115.83" kv="5.791" forcerange="-73.71 73.71" ctrlrange="-2.6180 0.0000"/>
+    <position name="a_shoulder_x_r" joint="a_shoulder_x_r" kp="168.48" kv="8.424" forcerange="-105.3 105.3" ctrlrange="-0.5236 2.9671"/>
+    <position name="a_shoulder_z_r" joint="a_shoulder_z_r" kp="168.48" kv="8.424" forcerange="-105.3 105.3" ctrlrange="-1.9199 1.9199"/>
+    <position name="a_elbow_r" joint="a_elbow_r" kp="115.83" kv="5.791" forcerange="-73.71 73.71" ctrlrange="0.0000 2.6180"/>
+    <position name="a_hip_x_l" joint="a_hip_x_l" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-0.6981 0.6981"/>
+    <position name="a_hip_z_l" joint="a_hip_z_l" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-0.6109 0.6109"/>
+    <position name="a_hip_y_l" joint="a_hip_y_l" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-2.0944 0.5236"/>
+    <position name="a_knee_l" joint="a_knee_l" kp="631.8" kv="31.59" forcerange="-273.78 273.78" ctrlrange="0.0000 2.6180"/>
+    <position name="a_ankle_y_l" joint="a_ankle_y_l" kp="789.75" kv="31.59" forcerange="-231.66 231.66" ctrlrange="-0.3491 0.8727"/>
+    <position name="a_ankle_x_l" joint="a_ankle_x_l" kp="84.24" kv="4.212" forcerange="-63.18 63.18" ctrlrange="-0.4363 0.4363"/>
+    <position name="a_hip_x_r" joint="a_hip_x_r" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-0.6981 0.6981"/>
+    <position name="a_hip_z_r" joint="a_hip_z_r" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-0.6109 0.6109"/>
+    <position name="a_hip_y_r" joint="a_hip_y_r" kp="631.8" kv="31.59" forcerange="-252.72 252.72" ctrlrange="-2.0944 0.5236"/>
+    <position name="a_knee_r" joint="a_knee_r" kp="631.8" kv="31.59" forcerange="-273.78 273.78" ctrlrange="0.0000 2.6180"/>
+    <position name="a_ankle_y_r" joint="a_ankle_y_r" kp="789.75" kv="31.59" forcerange="-231.66 231.66" ctrlrange="-0.3491 0.8727"/>
+    <position name="a_ankle_x_r" joint="a_ankle_x_r" kp="84.24" kv="4.212" forcerange="-63.18 63.18" ctrlrange="-0.4363 0.4363"/>
+    <position name="b_abdomen_z" joint="b_abdomen_z" kp="453.15" kv="21.147" forcerange="-171.19 171.19" ctrlrange="-0.7854 0.7854"/>
+    <position name="b_abdomen_y" joint="b_abdomen_y" kp="453.15" kv="21.147" forcerange="-171.19 171.19" ctrlrange="-1.0472 0.5236"/>
+    <position name="b_abdomen_x" joint="b_abdomen_x" kp="453.15" kv="21.147" forcerange="-171.19 171.19" ctrlrange="-0.6109 0.6109"/>
+    <position name="b_shoulder_x_l" joint="b_shoulder_x_l" kp="161.12" kv="8.056" forcerange="-100.7 100.7" ctrlrange="-2.9671 0.5236"/>
+    <position name="b_shoulder_z_l" joint="b_shoulder_z_l" kp="161.12" kv="8.056" forcerange="-100.7 100.7" ctrlrange="-1.9199 1.9199"/>
+    <position name="b_elbow_l" joint="b_elbow_l" kp="110.77" kv="5.538" forcerange="-70.49 70.49" ctrlrange="-2.6180 0.0000"/>
+    <position name="b_shoulder_x_r" joint="b_shoulder_x_r" kp="161.12" kv="8.056" forcerange="-100.7 100.7" ctrlrange="-0.5236 2.9671"/>
+    <position name="b_shoulder_z_r" joint="b_shoulder_z_r" kp="161.12" kv="8.056" forcerange="-100.7 100.7" ctrlrange="-1.9199 1.9199"/>
+    <position name="b_elbow_r" joint="b_elbow_r" kp="110.77" kv="5.538" forcerange="-70.49 70.49" ctrlrange="0.0000 2.6180"/>
+    <position name="b_hip_x_l" joint="b_hip_x_l" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-0.6981 0.6981"/>
+    <position name="b_hip_z_l" joint="b_hip_z_l" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-0.6109 0.6109"/>
+    <position name="b_hip_y_l" joint="b_hip_y_l" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-2.0944 0.5236"/>
+    <position name="b_knee_l" joint="b_knee_l" kp="604.2" kv="30.21" forcerange="-261.82 261.82" ctrlrange="0.0000 2.6180"/>
+    <position name="b_ankle_y_l" joint="b_ankle_y_l" kp="755.25" kv="30.21" forcerange="-221.54 221.54" ctrlrange="-0.3491 0.8727"/>
+    <position name="b_ankle_x_l" joint="b_ankle_x_l" kp="80.56" kv="4.028" forcerange="-60.42 60.42" ctrlrange="-0.4363 0.4363"/>
+    <position name="b_hip_x_r" joint="b_hip_x_r" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-0.6981 0.6981"/>
+    <position name="b_hip_z_r" joint="b_hip_z_r" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-0.6109 0.6109"/>
+    <position name="b_hip_y_r" joint="b_hip_y_r" kp="604.2" kv="30.21" forcerange="-241.68 241.68" ctrlrange="-2.0944 0.5236"/>
+    <position name="b_knee_r" joint="b_knee_r" kp="604.2" kv="30.21" forcerange="-261.82 261.82" ctrlrange="0.0000 2.6180"/>
+    <position name="b_ankle_y_r" joint="b_ankle_y_r" kp="755.25" kv="30.21" forcerange="-221.54 221.54" ctrlrange="-0.3491 0.8727"/>
+    <position name="b_ankle_x_r" joint="b_ankle_x_r" kp="80.56" kv="4.028" forcerange="-60.42 60.42" ctrlrange="-0.4363 0.4363"/>
+  </actuator>
+  <keyframe>
+    <key name="stand" qpos="-0.6000 0.0000 0.9536 1.00000 0 0 0.00000 0.0000 0.0000 0.0000 -1.3265 -0.7330 -1.9548 1.3265 0.7330 1.9548 0.0000 0.0000 -0.1759 0.4538 -0.2779 0.0000 0.0000 0.0000 -0.1759 0.4538 -0.2779 0.0000 0.6000 0.0000 0.9688 0.00000 0 0 1.00000 0.0000 0.0000 0.0000 -1.3265 -0.7330 -1.9548 1.3265 0.7330 1.9548 0.0000 0.0000 -0.2267 0.4538 -0.2271 0.0000 0.0000 0.0000 -0.2267 0.4538 -0.2271 0.0000 40.0000 40.0000 0.3000 1 0 0 0 40.5000 40.0000 0.3000 1 0 0 0 41.0000 40.0000 0.3000 1 0 0 0 41.5000 40.0000 0.3000 1 0 0 0 42.0000 40.0000 0.3000 1 0 0 0 42.5000 40.0000 0.3000 1 0 0 0 43.0000 40.0000 0.3000 1 0 0 0 43.5000 40.0000 0.3000 1 0 0 0"/>
+  </keyframe>
+</mujoco>

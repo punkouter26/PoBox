@@ -87,3 +87,6 @@ Tools/MuJoCo/*.err
 # PoBox trainer (training/): checkpoints are hundreds of 5 MB files a run; the policies the game
 # plays are copied to Assets/Entrants by PoBox/Import Trained Entrants. training/logs is covered by [Ll]ogs/.
 /training/checkpoints/
+# MuJoCo 3.5.0 for Python, the version Unity runs (pip install --no-deps --target): PYTHONPATH points here
+# for reference runs and the exam.
+/training/.mj350/

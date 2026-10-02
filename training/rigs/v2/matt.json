@@ -1,0 +1,354 @@
+{
+  "source": "C:/Users/punko/Downloads/PoBox/Assets/Models/Matt.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.857,
+  "mass_kg": 103.5,
+  "notes": [
+    "mass from the mesh's volume: 147 litres is a body-mass index of 42.0, held to 30",
+    "trunk slimmed to torso 0.113, pelvis 0.117: its own arms touched it",
+    "trunk slimmed to torso 0.106, pelvis 0.110: its own arms touched it",
+    "trunk slimmed to torso 0.100, pelvis 0.104: its own arms touched it",
+    "trunk slimmed to torso 0.094, pelvis 0.098: its own arms touched it"
+  ],
+  "bones": [
+    {
+      "name": "Hips",
+      "parent": null,
+      "head": [
+        0.0,
+        -0.0141,
+        0.9733
+      ],
+      "tail": [
+        0.0,
+        -0.0133,
+        1.0691
+      ]
+    },
+    {
+      "name": "Spine",
+      "parent": "Hips",
+      "head": [
+        0.0,
+        -0.0133,
+        1.0691
+      ],
+      "tail": [
+        -0.0,
+        -0.0146,
+        1.1878
+      ]
+    },
+    {
+      "name": "Spine2",
+      "parent": "Spine1",
+      "head": [
+        0.0,
+        0.0035,
+        1.3488
+      ],
+      "tail": [
+        -0.0,
+        0.052,
+        1.5302
+      ]
+    },
+    {
+      "name": "Neck",
+      "parent": "Spine2",
+      "head": [
+        -0.0,
+        0.052,
+        1.5302
+      ],
+      "tail": [
+        -0.0,
+        0.0252,
+        1.6472
+      ]
+    },
+    {
+      "name": "Head",
+      "parent": "Neck",
+      "head": [
+        -0.0,
+        0.0252,
+        1.6472
+      ],
+      "tail": [
+        -0.0,
+        0.0252,
+        1.857
+      ]
+    },
+    {
+      "name": "LeftArm",
+      "parent": "LeftShoulder",
+      "head": [
+        0.2018,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        0.4542,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "LeftForeArm",
+      "parent": "LeftArm",
+      "head": [
+        0.4542,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        0.7109,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "LeftHand",
+      "parent": "LeftForeArm",
+      "head": [
+        0.7109,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        0.8654,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "LeftHandMiddle3",
+      "parent": "LeftHandMiddle2",
+      "head": [
+        0.8454,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        0.8654,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "RightArm",
+      "parent": "RightShoulder",
+      "head": [
+        -0.2018,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        -0.4542,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "RightForeArm",
+      "parent": "RightArm",
+      "head": [
+        -0.4542,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        -0.7109,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "RightHand",
+      "parent": "RightForeArm",
+      "head": [
+        -0.7109,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        -0.8654,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "RightHandMiddle3",
+      "parent": "RightHandMiddle2",
+      "head": [
+        -0.8454,
+        0.037,
+        1.5103
+      ],
+      "tail": [
+        -0.8654,
+        0.037,
+        1.5103
+      ]
+    },
+    {
+      "name": "LeftUpLeg",
+      "parent": "Hips",
+      "head": [
+        0.0857,
+        -0.0149,
+        0.9431
+      ],
+      "tail": [
+        0.0857,
+        -0.0206,
+        0.5277
+      ]
+    },
+    {
+      "name": "LeftLeg",
+      "parent": "LeftUpLeg",
+      "head": [
+        0.0857,
+        -0.0206,
+        0.5277
+      ],
+      "tail": [
+        0.0857,
+        0.0113,
+        0.098
+      ]
+    },
+    {
+      "name": "LeftFoot",
+      "parent": "LeftLeg",
+      "head": [
+        0.0857,
+        0.0113,
+        0.098
+      ],
+      "tail": [
+        0.0857,
+        -0.129,
+        0.022
+      ]
+    },
+    {
+      "name": "LeftToeBase",
+      "parent": "LeftFoot",
+      "head": [
+        0.0857,
+        -0.129,
+        0.022
+      ],
+      "tail": [
+        0.0857,
+        -0.1711,
+        -0.0008
+      ]
+    },
+    {
+      "name": "RightUpLeg",
+      "parent": "Hips",
+      "head": [
+        -0.0857,
+        -0.0149,
+        0.9431
+      ],
+      "tail": [
+        -0.0857,
+        -0.0206,
+        0.5277
+      ]
+    },
+    {
+      "name": "RightLeg",
+      "parent": "RightUpLeg",
+      "head": [
+        -0.0857,
+        -0.0206,
+        0.5277
+      ],
+      "tail": [
+        -0.0857,
+        0.0113,
+        0.098
+      ]
+    },
+    {
+      "name": "RightFoot",
+      "parent": "RightLeg",
+      "head": [
+        -0.0857,
+        0.0113,
+        0.098
+      ],
+      "tail": [
+        -0.0857,
+        -0.129,
+        0.0221
+      ]
+    },
+    {
+      "name": "RightToeBase",
+      "parent": "RightFoot",
+      "head": [
+        -0.0857,
+        -0.129,
+        0.0221
+      ],
+      "tail": [
+        -0.0857,
+        -0.1711,
+        -0.0006
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "Hips",
+    "neck": "Neck",
+    "head": "Head",
+    "spine": "Spine",
+    "torso": "Spine2",
+    "thigh_l": "LeftUpLeg",
+    "shin_l": "LeftLeg",
+    "foot_l": "LeftFoot",
+    "toe_l": "LeftToeBase",
+    "upper_arm_l": "LeftArm",
+    "forearm_l": "LeftForeArm",
+    "hand_l": "LeftHand",
+    "hand_tip_l": "LeftHandMiddle3",
+    "thigh_r": "RightUpLeg",
+    "shin_r": "RightLeg",
+    "foot_r": "RightFoot",
+    "toe_r": "RightToeBase",
+    "upper_arm_r": "RightArm",
+    "forearm_r": "RightForeArm",
+    "hand_r": "RightHand",
+    "hand_tip_r": "RightHandMiddle3"
+  },
+  "all_bones": 52,
+  "radii": {
+    "thigh": 0.0737,
+    "shin": 0.0608,
+    "upper_arm": 0.0571,
+    "forearm": 0.0408,
+    "torso": 0.0937,
+    "pelvis": 0.0976,
+    "head": 0.1049
+  },
+  "mesh": {
+    "vertices": 15839,
+    "height_m": 1.857,
+    "volume_l": 147.1,
+    "bmi_from_volume": 42.0
+  },
+  "strength": 1.053,
+  "speed": 1.0,
+  "style": {},
+  "display": "MATT",
+  "persona": "veteran",
+  "says": ""
+}

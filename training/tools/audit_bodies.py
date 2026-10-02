@@ -30,17 +30,20 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADULT = {"knee": 250.0, "hip_y": 220.0, "shoulder_x": 90.0, "elbow": 70.0, "abdomen_y": 200.0, "ankle_y": 150.0}
 
 
+MODELS = os.path.join(HERE, "models")
+
+
 def boxers() -> list:
     names = []
-    for f in sorted(os.listdir(os.path.join(HERE, "models"))):
+    for f in sorted(os.listdir(MODELS)):
         if f.endswith("_bag.xml"):
             names.append(f[:-8])
     return names
 
 
 def audit(name: str) -> dict:
-    cfg = json.load(open(os.path.join(HERE, "models", f"{name}_policy_config.json"), encoding="utf-8"))
-    m = mujoco.MjModel.from_xml_path(os.path.join(HERE, "models", f"{name}_bag.xml"))
+    cfg = json.load(open(os.path.join(MODELS, f"{name}_policy_config.json"), encoding="utf-8"))
+    m = mujoco.MjModel.from_xml_path(os.path.join(MODELS, f"{name}_bag.xml"))
     d = mujoco.MjData(m)
     mujoco.mj_resetDataKeyframe(m, d, 0)
     mujoco.mj_forward(m, d)
@@ -95,9 +98,12 @@ def audit(name: str) -> dict:
 
 
 def main() -> None:
+    global MODELS
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--models", default=MODELS)
     args = ap.parse_args()
+    MODELS = args.models
     rows = [audit(n) for n in boxers()]
     if args.json:
         print(json.dumps(rows, indent=1))

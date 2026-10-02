@@ -145,9 +145,10 @@ def main() -> None:
     ap.add_argument("--b", default="zombie")
     ap.add_argument("--run", default="match")
     ap.add_argument("--seconds", type=float, default=300.0)
+    ap.add_argument("--models", default=os.path.join(HERE, "models"))
     args = ap.parse_args()
     import json
-    stem = os.path.join(HERE, "models", f"{args.a}_vs_{args.b}")
+    stem = os.path.join(args.models, f"{args.a}_vs_{args.b}")
     ring = Ring(stem + "_spar.xml", json.load(open(stem + "_policy_config.json", encoding="utf-8")))
     ppos, iters = [], 0
     for n in (args.a, args.b):
