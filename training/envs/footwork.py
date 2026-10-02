@@ -40,7 +40,7 @@ CMD = 3                      # numbers of command on the end of the observation
 
 
 class FootworkEnv(BoxingEnv):
-    TERMS = ["alive", "upright", "height", "track", "yaw", "face", "arms", "legs", "stance", "lin_z", "ang", "act",
+    TERMS = ["alive", "upright", "height", "track", "yaw", "face", "steps", "arms", "legs", "stance", "lin_z", "ang", "act",
              "rate", "energy", "qvel", "limit", "slip", "lean", "fall", "style"]
     MODE = "footwork"
 
@@ -81,6 +81,8 @@ class FootworkEnv(BoxingEnv):
         self.b_torso = [mujoco.mj_name2id(m, B, p + "torso") for p in ("a_", "b_")[:K]]
         self.shove_left = z(N, K)
         self.shove_force = z(N, K, 3)
+        self.air = z(N, K, 2)                            # seconds each foot has been off the floor
+        self.was_down = torch.ones(N, K, 2, dtype=torch.bool, device=dev)
 
         cubes = []
         while mujoco.mj_name2id(m, J, f"cube_{len(cubes)}") >= 0:
@@ -166,6 +168,8 @@ class FootworkEnv(BoxingEnv):
         self.opp_xy = torch.where(m3, self._new_opp, self.opp_xy)
         self.faced_at = torch.where(m1, torch.full_like(self.faced_at, -1.0), self.faced_at)
         self.shove_left = torch.where(m1, torch.zeros_like(self.shove_left), self.shove_left)
+        self.air = torch.where(m1[..., None], torch.zeros_like(self.air), self.air)
+        self.was_down = torch.where(m1[..., None], torch.ones_like(self.was_down), self.was_down)
         if self.C:
             self.cube_left = torch.where(m1, torch.zeros_like(self.cube_left), self.cube_left)
 
@@ -302,6 +306,7 @@ class FootworkEnv(BoxingEnv):
         off = torch.atan2(to_t[..., 1], to_t[..., 0]) - yaw
         off = torch.atan2(torch.sin(off), torch.cos(off)).abs()             # how far it is from facing the stand-in
         contact = g["foot_contact"]
+        moving_now = (1.0 - still) * (1.0 - turn) * (self.cmd[..., :2].norm(dim=-1) > 0.1).float()
         foot_v = (g["foot_xy"] - self.prev_foot_xy) / self.dt
         foot_sep = (g["foot_xy"][:, :, 0] - g["foot_xy"][:, :, 1]).norm(dim=-1)
         jp = self.qpos[:, self.jq]
@@ -318,6 +323,14 @@ class FootworkEnv(BoxingEnv):
         r["track"] = 0.5 * torch.exp(-(v_err / 0.5) ** 2) + 0.5 * torch.exp(-(v_err / 0.2) ** 2)
         r["yaw"] = 0.5 * torch.exp(-(w_err / 0.5) ** 2) * (1.0 - turn)
         r["face"] = (0.25 * stand + 0.6 * turn) * torch.cos(off)
+        # A step is a foot that leaves the floor and comes down again. Paid when it lands, for every tenth of a
+        # second it was up beyond the first quarter, and only when going somewhere: a boxer standing still that
+        # learned to stand is slow to learn that walking means lifting a foot, and shuffling is charged (slip).
+        self.air = self.air + self.dt * (~contact).float()
+        landed = contact & ~self.was_down
+        r["steps"] = 1.0 * ((self.air - 0.25) * landed.float()).sum(-1) * moving_now
+        self.air = torch.where(contact, torch.zeros_like(self.air), self.air)
+        self.was_down = contact
         # The guard stays up whatever the legs are doing; the legs go back to the stance when nothing is asked.
         r["arms"] = -0.2 * (away[..., self.arm_idx] ** 2).mean(-1)
         r["legs"] = -0.03 * still * (away[..., self.leg_idx] ** 2).sum(-1)

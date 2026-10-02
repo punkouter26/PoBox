@@ -321,3 +321,19 @@ within chance: it is at the mark, not clear of it. The power fell tenfold: it ha
 **Decision.** Not called passed. R1 keeps 40% of its episodes as stands under the same knocks, so R0 goes on
 being trained, and both lines are examined again after it. The tracking reward was changed before R1: one width
 of 0.25 m/s was flat at a standstill when 1 m/s is asked (exp(-16)); it is now half at 0.5 m/s and half at 0.2.
+
+## 2026-10-02, 18:43 to 18:52: R1 for Matt, first attempt (`r1_matt_a`, stopped)
+
+From `r0_matt`, 60% walk episodes, style weight 0.3. Two things went wrong.
+
+1. **A GPU driver fault** killed it after half a minute (`CUDA error: unspecified launch failure`; the system log
+   has nvlddmkm events 13 and 153 at 18:43:59, the GPU at 85 C). Not the code: the gauntlet session had the
+   same event twice. `tools/train_resilient.py` now starts a run again from its last save (every 50 iterations).
+2. **It did not learn to walk.** In 120 iterations (3 minutes) it went 0.21 m/s when 0.49 was asked, the error
+   flat at 0.53 m/s. The judge of the walk separated the clips from the boxer completely within a minute (+0.98
+   against -1.00), so the style reward was zero: it can only help once the boxer moves something like a walker.
+   What was missing was a reason to lift a foot: standing is what the boxer knows, and sliding a foot is charged.
+
+**Decision.** Stopped and set aside (`checkpoints/r1_matt_a`, curves in `logs/tb_archive/r1_matt_a`). A step
+reward was added to the stage: when a walk is asked for, each foot that lands is paid for the time it was up
+beyond a quarter of a second (`steps`). R1 started again from `r0_matt`, to iteration 2,900 (about 40 minutes).
