@@ -68,11 +68,19 @@ namespace PoBox.Mj
             Joints = Cfg.joint_order.Length;
             Action = new double[Joints];
             _obsF = new float[ObservationSize];
-            if (policy != null)
-            {
-                _worker = new Worker(ModelLoader.Load(policy), BackendType.CPU);
-                _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
-            }
+            SetPolicy(policy);
+        }
+
+        /// <summary>Another policy from here on. None is the zero action.</summary>
+        public void SetPolicy(ModelAsset asset)
+        {
+            _input?.Dispose();
+            _worker?.Dispose();
+            _input = null; _worker = null;
+            policy = asset;
+            if (asset == null) return;
+            _worker = new Worker(ModelLoader.Load(asset), BackendType.CPU);
+            _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
         }
 
         void OnDestroy()
@@ -133,14 +141,34 @@ namespace PoBox.Mj
             MujocoLib.mj_forward(_m, _d);
         }
 
+        /// <summary>The body put in a given state, in MuJoCo's own numbers: the root's position, turn and velocity, and the joints, at rest.</summary>
+        public void SetState(double[] rootPos, double[] rootQuat, double[] rootLinVel, double[] jointPos)
+        {
+            for (int k = 0; k < 3; k++) { _d->qpos[_rootQ + k] = rootPos[k]; _d->qvel[_rootV + k] = rootLinVel[k]; _d->qvel[_rootV + 3 + k] = 0; }
+            for (int k = 0; k < 4; k++) _d->qpos[_rootQ + 3 + k] = rootQuat[k];
+            for (int i = 0; i < Joints; i++)
+            {
+                _d->qpos[_jq[i]] = jointPos[i];
+                _d->qvel[_jv[i]] = 0;
+                _d->ctrl[_act[i]] = jointPos[i];
+                Action[i] = 0;
+            }
+            MujocoLib.mj_forward(_m, _d);
+        }
+
         /// <summary>What is asked of it from here: the kind of episode, the command, and the stand-in, given as a bearing and a distance from where it now stands.</summary>
         public void SetEpisode(int kind, double vx, double vy, double wz, double distance, double bearing)
         {
-            Kind = kind; Cmd[0] = vx; Cmd[1] = vy; Cmd[2] = wz;
             double* pos = _d->xpos + 3 * _pelvis;
             double yaw = Yaw(_d->xquat + 4 * _pelvis);
-            Opp[0] = pos[0] + Math.Cos(yaw + bearing) * distance;
-            Opp[1] = pos[1] + Math.Sin(yaw + bearing) * distance;
+            SetEpisodeAt(kind, vx, vy, wz, pos[0] + Math.Cos(yaw + bearing) * distance, pos[1] + Math.Sin(yaw + bearing) * distance);
+        }
+
+        /// <summary>The same, with the stand-in at a place in the world.</summary>
+        public void SetEpisodeAt(int kind, double vx, double vy, double wz, double oppX, double oppY)
+        {
+            Kind = kind; Cmd[0] = vx; Cmd[1] = vy; Cmd[2] = wz;
+            Opp[0] = oppX; Opp[1] = oppY;
             for (int k = 0; k < 3; k++) _headVel[k] = 0;
             StandIn();
             for (int k = 0; k < 3; k++) _prevHead[k] = _standIn[0][k];
@@ -278,6 +306,12 @@ namespace PoBox.Mj
         }
 
         public double PelvisHeight => _d->xpos[3 * _pelvis + 2];
+        /// <summary>Whether a foot (0 left, 1 right) is on the floor, as the observation counts it: its lowest corner under 5 mm.</summary>
+        public bool FootDown(int f)
+        {
+            double* gp = _d->geom_xpos + 3 * _foot[f], gm = _d->geom_xmat + 9 * _foot[f], size = _m->geom_size + 3 * _foot[f];
+            return gp[2] - (Math.Abs(gm[6]) * size[0] + Math.Abs(gm[7]) * size[1] + Math.Abs(gm[8]) * size[2]) < 0.005;
+        }
         public double Upright => _d->xmat[9 * _pelvis + 8];
         public bool Fallen => PelvisHeight < Cfg.stand_height * 0.6 || Upright < 0.4;
         public double DistanceFromOrigin => Math.Sqrt(_d->qpos[_rootQ] * _d->qpos[_rootQ] + _d->qpos[_rootQ + 1] * _d->qpos[_rootQ + 1]);

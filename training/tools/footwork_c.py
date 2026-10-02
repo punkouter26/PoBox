@@ -270,9 +270,39 @@ def exam(solo: Solo, act, seeds: int, episodes: int) -> dict:
     return out
 
 
-def reference(solo: Solo, act, seconds: float, cube_at: float) -> dict:
+def falls(solo: Solo, act, episodes: int, seed: int = 7) -> dict:
+    """The check Unity is held to (tasks.md, the gate): episodes of 8 s from a noisy start, a stand and a walk
+    by turns, a 20 N s shove at 2 s and a cube at 5 m/s at 4 s. The share of them that end on the floor,
+    and each episode's start and what was done to it, so that Unity can be given the very same ones."""
+    solo.rng = np.random.default_rng(seed)
+    u, d, rows = solo.rng.uniform, solo.d, []
+    for i in range(episodes):
+        if i % 2 == 0:
+            solo.reset(STAND)
+        else:
+            solo.reset(WALK, cmd=(0.6 * solo.quick, 0.0, 0.0))
+        row = {"kind": int(solo.kind), "command": solo.cmd.tolist(), "stand_in_xy": solo.opp.tolist(),
+               "root_pos": d.qpos[0:3].tolist(), "root_quat": d.qpos[3:7].tolist(), "root_linvel": d.qvel[0:3].tolist(),
+               "joint_pos": d.qpos[solo.jq].tolist(),
+               "shove": [20.0 * solo.frail, float(u(-math.pi, math.pi)), 0.15], "cube_bearing": float(u(-math.pi, math.pi))}
+        shoved = thrown = fell = False
+        while solo.t < 8.0 and not fell:
+            if not shoved and solo.t >= 2.0:
+                solo.shove(*row["shove"])
+                shoved = True
+            if not thrown and solo.t >= 4.0:
+                solo.throw(5.0, row["cube_bearing"], 2.5, 0.2)
+                thrown = True
+            fell = solo.step(act(solo.observe()))
+        row["fell"], row["seconds"] = fell, round(solo.t, 2)
+        rows.append(row)
+    return {"episodes": episodes, "fall_rate": sum(r["fell"] for r in rows) / episodes, "mujoco": mujoco.__version__,
+            "control_dt": solo.dt, "shove_at": 2.0, "cube_at": 4.0, "rows": rows}
+
+
+def reference(solo: Solo, act, seconds: float, cube_at: float, kind: int = STAND, cmd=(0.0, 0.0, 0.0)) -> dict:
     """One run from the keyframe, a row a control step: everything Unity needs to do the same and compare."""
-    solo.reset(STAND, noise=False)
+    solo.reset(kind, noise=False, cmd=cmd)
     d, rows, thrown = solo.d, [], False
     while solo.t < seconds - 1e-9:
         if not thrown and cube_at > 0.0 and solo.t >= cube_at:
@@ -288,7 +318,7 @@ def reference(solo: Solo, act, seconds: float, cube_at: float) -> dict:
                      "joint_pos": d.qpos[solo.jq].tolist(), "joint_vel": d.qvel[solo.jv].tolist(),
                      "foot_contact": [bool(x) for x in solo.observe()[72:74]], "fell": fell})
     return {"mujoco": mujoco.__version__, "control_dt": solo.dt, "timestep": float(solo.m.opt.timestep), "joint_order": solo.order,
-            "start_qpos": solo.key.tolist(), "stand_in_xy": solo.opp.tolist(), "command": solo.cmd.tolist(),
+            "start_qpos": solo.key.tolist(), "stand_in_xy": solo.opp.tolist(), "command": solo.cmd.tolist(), "kind": int(solo.kind),
             "events": solo.events, "rows": rows,
             "note": "obs and action are before the step of that row; everything else is after it. Frames are MuJoCo's (z up)."}
 
@@ -335,6 +365,9 @@ def main() -> None:
     ap.add_argument("--reference", default="", help="write the recording Unity is checked against here")
     ap.add_argument("--seconds", type=float, default=5.0)
     ap.add_argument("--cube-at", type=float, default=2.0, help="reference: throw one cube at this time; 0 for none")
+    ap.add_argument("--kind", default="stand", choices=["stand", "walk", "turn"], help="reference: the kind of episode recorded")
+    ap.add_argument("--cmd", type=float, nargs=3, default=[0.0, 0.0, 0.0], help="reference: the command, for a walk")
+    ap.add_argument("--falls", type=int, default=0, help="the gate's fall rate over this many episodes")
     ap.add_argument("--check-env", action="store_true")
     args = ap.parse_args()
     xml = os.path.join(args.models, f"{args.name}_solo.xml")
@@ -344,13 +377,19 @@ def main() -> None:
     solo = Solo(xml, cfg)
     act = load_policy(args.policy, solo.A)
     if args.reference:
-        ref = reference(solo, act, args.seconds, args.cube_at)
+        ref = reference(solo, act, args.seconds, args.cube_at, ("stand", "walk", "turn").index(args.kind), tuple(args.cmd))
         ref["model"], ref["policy"] = os.path.basename(xml), os.path.basename(args.policy) or "zero action"
         os.makedirs(os.path.dirname(os.path.abspath(args.reference)), exist_ok=True)
         with open(args.reference, "w", encoding="utf-8") as fh:
             json.dump(ref, fh)
         up = sum(1 for r in ref["rows"] if not r["fell"]) * solo.dt
         print(f"wrote {args.reference}: {len(ref['rows'])} control steps, MuJoCo {mujoco.__version__}, up for {up:.2f} s, {len(ref['events'])} event(s)")
+    if args.falls:
+        out = falls(solo, act, args.falls)
+        print(f"{args.name}, C MuJoCo {out['mujoco']}: on the floor at the end of {out['fall_rate']:.0%} of {out['episodes']} episodes (stand and walk by turns, a shove and a cube each)")
+        if args.json:
+            with open(args.json, "w", encoding="utf-8") as fh:
+                json.dump(out, fh, indent=1)
     if args.exam:
         out = exam(solo, act, args.seeds, args.episodes)
         out["boxer"], out["policy"] = args.name, args.policy

@@ -107,6 +107,24 @@ namespace PoBox.EditorTools
                    $"prefab {dir}/{title}.prefab; world {(hasWorld ? "kept as it was" : "made (settings, floor, cube pool)")}";
         }
 
+        /// <summary>
+        /// A trained rung into the game: the run's policy becomes the boxer's (Assets/Boxers/NAME/policy.onnx, set on
+        /// its prefab), with the recordings from plain C MuJoCo that the gate tests hold Unity to, if they exist.
+        /// </summary>
+        public static string Promote(string name, string run)
+        {
+            string title = Title(name), dir = $"{BoxersDir}/{title}", from = $"training/checkpoints/{run}";
+            var policy = Copy<ModelAsset>($"{from}/latest.onnx", $"{dir}/policy.onnx");
+            foreach (string file in new[] { "reference_trajectory.json", "falls.json" })
+                if (File.Exists($"{from}/{file}")) Copy<TextAsset>($"{from}/{file}", $"{dir}/{file}");
+            string prefabPath = $"{dir}/{title}.prefab";
+            GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+            root.GetComponent<MjBoxer>().policy = policy;
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+            return $"{title} now runs {from}/latest.onnx";
+        }
+
         /// <summary>The differences between the model the plugin compiles from the open scene and the trainer's, one a line.</summary>
         public static unsafe string Check(string name)
         {
