@@ -33,13 +33,14 @@ from torch.utils.tensorboard import SummaryWriter
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.getup import GetUpEnv  # noqa: E402
+from envs.match import GetUpMatchEnv  # noqa: E402
 from ppo import PPO, PPOConfig  # noqa: E402
 from train_getup_cpu import renormalise  # noqa: E402
 
 
-def pair_xml(a: str, b: str):
+def pair_xml(a: str, b: str, models: str = "models"):
     for x, y in ((a, b), (b, a)):
-        p = os.path.join(HERE, "models", f"{x}_vs_{y}_spar.xml")
+        p = os.path.join(HERE, models, f"{x}_vs_{y}_spar.xml")
         if os.path.exists(p):
             return p, x, y
     raise SystemExit(f"no match model for {a} and {b}")
@@ -74,6 +75,8 @@ def main() -> None:
                     help="stop when every learning boxer gets up unaided this often (e.g. 0.9) with no help left and stands "
                          "within --done-pose of its guard, for 40 iterations running")
     ap.add_argument("--done-pose", type=float, default=0.15, help="radians a joint from the guard, while standing")
+    ap.add_argument("--stage", default="getup", choices=["getup", "v2"],
+                    help="v2: the retrofit's bodies (models/v2) and its 103-number observation (envs/match.py)")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -83,9 +86,9 @@ def main() -> None:
                 args.num_envs = int(json.load(fh)["best"])
         except Exception:
             args.num_envs = 2048
-    xml, x, y = pair_xml(args.a, args.b)
+    xml, x, y = pair_xml(args.a, args.b, os.path.join("models", "v2") if args.stage == "v2" else "models")
     resume = dict(zip((args.a, args.b), args.resume))
-    env = GetUpEnv(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
+    env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     names = env.names
     assert names == [x, y], f"{xml} holds {names}"

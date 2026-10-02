@@ -105,6 +105,7 @@ class Solo:
         self.prev_head = self.stand_in()[0]
         self.shove_left, self.shove_force = 0.0, np.zeros(3)
         self.cube_left = [0.0] * len(self.cube_q)
+        self.scale = 1.0              # the share of drive strength left; 0.04 is a knockdown's slack drives
         self.next_cube, self.events = 0, []
 
     # ---- what the boxer is shown ---------------------------------------------------------------
@@ -169,7 +170,9 @@ class Solo:
         m, d = self.m, self.d
         action = np.asarray(action, dtype=float).clip(-3.0, 3.0)
         self.last = action
-        d.ctrl[:] = (self.default + action * 0.5).clip(self.lo, self.hi)
+        want = (self.default + action * 0.5).clip(self.lo, self.hi)
+        q = d.qpos[self.jq]
+        d.ctrl[:] = q + self.scale * (want - q)      # a weakened boxer is asked for a point part of the way (envs/boxing.py)
         d.xfrc_applied[self.torso_body, :3] = self.shove_force if self.shove_left > 1e-6 else 0.0
         self.shove_left = max(0.0, self.shove_left - self.dt)
         for i, (q, v) in enumerate(zip(self.cube_q, self.cube_v)):
@@ -270,6 +273,36 @@ def exam(solo: Solo, act, seeds: int, episodes: int) -> dict:
     return out
 
 
+def getup(solo: Solo, act, seeds: int, episodes: int) -> dict:
+    """R3, the game's test: a shove and 1.6 to 2.6 s of slack drives (a knockdown, envs/getup.py), then the get-up
+    policy has the body. Up is the pelvis at 88% of its standing height and upright, for 1.5 s without a break."""
+    up, times = 0, []
+    for seed in range(seeds):
+        solo.rng = np.random.default_rng(2000 + seed)
+        u = solo.rng.uniform
+        for _ in range(episodes):
+            solo.reset(STAND)
+            solo.d.qvel[0:2] = u(-2.5, 2.5, 2)
+            solo.d.qvel[3:6] = u(-2.5, 2.5, 3)
+            slack, solo.scale = u(1.6, 2.6), 0.04
+            while solo.t < slack:
+                solo.step(act(solo.observe()))
+            solo.scale, began, stood, at = 1.0, solo.t, 0.0, -1.0
+            while solo.t < began + 8.0 and at < 0.0:
+                solo.step(act(solo.observe()))
+                upright = solo.d.xmat[solo.pelvis][8]
+                stood = stood + solo.dt if solo.d.xpos[solo.pelvis][2] > 0.88 * solo.stand and upright > 0.85 else 0.0
+                if stood >= 1.5:
+                    at = solo.t - began
+            up += int(at >= 0.0)
+            if at >= 0.0:
+                times.append(at)
+    n = seeds * episodes
+    frail = solo.frail < 0.7
+    return {"up": up / n, "seconds": float(np.mean(times)) if times else None, "episodes": n,
+            "mark": 0.6 if frail else 0.8, "within": 9.0 if frail else 8.0, "pass": up / n >= (0.6 if frail else 0.8)}
+
+
 def falls(solo: Solo, act, episodes: int, seed: int = 7) -> dict:
     """The check Unity is held to (tasks.md, the gate): episodes of 8 s from a noisy start, a stand and a walk
     by turns, a 20 N s shove at 2 s and a cube at 5 m/s at 4 s. The share of them that end on the floor,
@@ -368,6 +401,7 @@ def main() -> None:
     ap.add_argument("--kind", default="stand", choices=["stand", "walk", "turn"], help="reference: the kind of episode recorded")
     ap.add_argument("--cmd", type=float, nargs=3, default=[0.0, 0.0, 0.0], help="reference: the command, for a walk")
     ap.add_argument("--falls", type=int, default=0, help="the gate's fall rate over this many episodes")
+    ap.add_argument("--getup-policy", default="", help="exam: also R3, getting up, with this get-up policy")
     ap.add_argument("--check-env", action="store_true")
     args = ap.parse_args()
     xml = os.path.join(args.models, f"{args.name}_solo.xml")
@@ -393,12 +427,17 @@ def main() -> None:
     if args.exam:
         out = exam(solo, act, args.seeds, args.episodes)
         out["boxer"], out["policy"] = args.name, args.policy
+        if args.getup_policy:
+            out["getup"] = getup(solo, load_policy(args.getup_policy, solo.A), args.seeds, args.episodes)
         mark = lambda b: "pass" if b else "FAIL"
         print(f"{args.name}, C MuJoCo {mujoco.__version__}, {out['episodes_each']} episodes of each kind:")
         print(f"  stand   up at 20 s in {out['stand']['up_at_20s']:.0%} (mark 95%)                                  {mark(out['stand']['pass'])}")
         print(f"  walk    velocity off by {out['walk']['velocity_error']:.2f} m/s (0.15), {out['walk']['falls_per_min']:.2f} falls a minute (0.2)        {mark(out['walk']['pass'])}")
         print(f"  turn    facing in 3 s and still up in {out['turn']['faced_in_3s']:.0%} (90%)                          {mark(out['turn']['pass'])}")
         print(f"  joints  fastest against its limit: {out['joints']['worst']} at {out['joints']['p99_of_limit']:.2f} of it (1.00)          {mark(out['joints']['pass'])}")
+        if "getup" in out:
+            g = out["getup"]
+            print(f"  get up  standing 1.5 s within 8 s in {g['up']:.0%} (mark {g['mark']:.0%}), {g['seconds'] or 0:.1f} s on average          {mark(g['pass'])}")
         if args.json:
             with open(args.json, "w", encoding="utf-8") as fh:
                 json.dump(out, fh, indent=1)
