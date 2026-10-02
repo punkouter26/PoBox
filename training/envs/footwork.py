@@ -71,6 +71,10 @@ class FootworkEnv(BoxingEnv):
         self.quick = torch.tensor([float(c.get("speed", 1.0)) for c in self.cfgs], device=dev)
         order = self.cfg["joint_order"]
         self.arm_idx = L([i for i, n in enumerate(order) if n.split("_")[0] in ("abdomen", "shoulder", "elbow")])
+        self.style_idx = L([i for i, n in enumerate(order) if n.split("_")[0] in ("abdomen", "hip", "knee", "ankle")])
+        name = lambda k, part: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, ("a_", "b_")[k] + part)
+        self.leg_len = torch.tensor([float(np.linalg.norm(m.body_pos[name(k, "shin_l")]) + np.linalg.norm(m.body_pos[name(k, "foot_l")]))
+                                     for k in range(K)], device=dev)
 
         self.xfrc = wp.to_torch(self.dw.xfrc_applied)    # (N, nbody, 6): force, then torque
         B, J = mujoco.mjtObj.mjOBJ_BODY, mujoco.mjtObj.mjOBJ_JOINT
@@ -204,6 +208,22 @@ class FootworkEnv(BoxingEnv):
         obs[..., 96:98] = torch.stack([torch.cos(dyaw), torch.sin(dyaw)], -1)
         obs[..., 98:100] = obs[..., 98:100].clamp(-1.0, 1.0)
         return torch.cat([obs, self.cmd], -1).reshape(N * K, self.obs_dim)
+
+    # ---- what the judge of its walk is shown ----------------------------------------------------
+    def style_features(self) -> torch.Tensor:
+        """The legs, the pelvis and the trunk as style.py reads them off the walking clips (the arms are
+        in the guard, which no clip is): (N * K, style.FEATURES). Lengths are in leg lengths."""
+        N, K = self.N, self.K
+        g = self._geometry()
+        lin_w, _, ang_b, grav_b = self._base(g)
+        jp, jv = self.qpos[:, self.jq][..., self.style_idx], self.qvel[:, self.jv][..., self.style_idx]
+        leg = self.leg_len.view(1, K, 1)
+        return torch.cat([jp, jv, g["pos"][..., 2:3] / leg, to_heading(lin_w, g["yaw"]) / leg, ang_b, grav_b], -1).reshape(N * K, -1)
+
+    def style_mask(self) -> torch.Tensor:
+        """Where a walk is being judged: a walk with somewhere to go, or a turn. (N * K,)"""
+        moving = (self.kind == TURN) | ((self.kind == WALK) & (self.cmd.abs().sum(-1) > 0.0))
+        return moving.reshape(self.N * self.K)
 
     # ---- what knocks it about ------------------------------------------------------------------
     def _shove(self) -> None:

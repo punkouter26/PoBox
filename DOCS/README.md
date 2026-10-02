@@ -9,6 +9,25 @@ Read `AGENTS.md` for the owner's house rules. The sibling project `../PoDecath` 
 relative: same engine version, same house style, and the source of the render settings, icons and sound
 recordings copied in here.
 
+## The retrofit (started 2026-10-02, afternoon): read this first
+
+The game is being moved onto the official MuJoCo Unity plugin (`org.mujoco` 3.5.0) with no PhysX in the
+fight, on bodies re-derived from the meshes, with a ladder of behaviours under the boxing (stand, walk,
+turn, get up) trained against shoves, thrown cubes and randomised bodies. **The plan and its ticks are
+`tasks.md`; what was measured, run by run, is `rl_optimization_log.md`.** The working game as it was is the
+tag `pre-retrofit`; from Phase B of the plan until Phase D its fights do not run on `master`.
+
+- New bodies, each with a pool of 8 cubes: `training/rigs/v2`, `training/models/v2` (beside the old ones
+  until the old policies are retired). Matt is 85.1 kg and 1.86 m there, Zombie 91.6 kg.
+- New training files: `training/envs/footwork.py` (stand, walk, turn), `training/style.py` (the judge that
+  pays for walking like the clips), `training/clips/walk_turn.npz` (free CMU motion capture, retargeted),
+  `training/tools/footwork_c.py` (the exam and the Unity reference, in plain C MuJoCo).
+- The trainer's Python on this machine is 3.11.9 with MuJoCo 3.14.1 and MuJoCo Warp 3.14.0, and has no
+  `pip`. MuJoCo 3.5.0 for Python, the version Unity will run, is in `training/.mj350` (not versioned):
+  `PYTHONPATH=training/.mj350` in front of a tool makes it use that.
+
+The sections below describe the game before the retrofit.
+
 ## Finishing every boxer: where it stands (2026-10-02, 11:35, stopped unfinished)
 
 **Stopped at 11:35 at the owner's request, to move the project to another computer.** One boxer of seven

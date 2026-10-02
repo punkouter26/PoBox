@@ -116,8 +116,8 @@ session was training on the old ones at the time. `tools/build_roster.py --all -
   - [x] the 3-number walk command, and widening existing networks with zero weights
   - [x] stand, walk and turn as one stage (`--stage footwork`, not yet known to `train_box.py`)
   - [x] CMU walk and turn clips retargeted to the boxers' joints (`clips/walk_turn.npz`)
-  - [ ] `train_box.py` hook-up, and a smoke run on the GPU
-  - [ ] the style reward's judge (a discriminator on legs, pelvis and trunk against the clips)
+  - [ ] `train_box.py` hook-up (the stage, the judge, a fixed-batch ONNX export), and a smoke run on the GPU
+  - [x] the style reward's judge (`style.py`: legs, pelvis and trunk against the clips)
   - [x] exam lines for R0, R1, R2 and joint speed (`tools/footwork_c.py --exam`)
   - [x] reference export: 5 s from C MuJoCo 3.5.0 (`tools/footwork_c.py --reference`); the zero-action one
         for Phase B is `models/v2/matt_reference_hold.json`

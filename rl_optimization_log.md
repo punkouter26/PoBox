@@ -147,3 +147,20 @@ the recording Unity will be checked against, and the template for the C# observa
   in MuJoCo 3.5.0, a row a control step (observation, action, targets, torques, root and joint state, foot
   contacts) and the one cube thrown at 2.0 s as an event. The guard holds itself: pelvis 0.953 m at the start,
   0.946 m at 1 s, 0.944 m at 2 s; the cube knocks it over and it is down at 4.58 s.
+
+## 2026-10-02: the judge of the walk (CPU)
+
+`training/style.py`: a small network that learns to tell the clips' moments from the boxer's own, and pays
+the boxer for the ones it takes for a clip's. A moment is the legs and the trunk (15 joint angles and
+speeds), the pelvis's height and velocity in leg lengths, its turn rate, and which way is down: 40 numbers,
+no arms. The policy gets no new input. `python style.py` is its check:
+
+- 13,544 moments come from the 20 clips on Matt's body. The stage, put in a clip's state, reads the same
+  40 numbers to 1.3e-07 (`FootworkEnv.style_features`).
+- After 240 updates the judge pays a clip's moment 1.00 and a boxer standing in its guard 0.01.
+- A first version could not learn at all (it paid both 0.75): its smoothness penalty was taken in metres and
+  radians, where a number that hardly varies, such as which way is down, was the whole penalty. It is now
+  taken in the scaled numbers the network reads.
+
+Not yet in the training loop (`train_box.py` waits for the other session's queue), so untried on the GPU and
+its weight against the other rewards is not chosen.
