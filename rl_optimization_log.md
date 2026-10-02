@@ -52,3 +52,16 @@ So the two veterans stand on their new bodies as well as on their old ones, and 
 MuJoCo 3.5.0 as in 3.14. The other five bodies did not change. Punching was not measured here.
 
 **Decision:** nothing trained. Phase B waits for the owner's word on the masses.
+
+### The owner's answers, the same afternoon
+
+- **Masses: Matt at 84 kg in the rig (85.1 kg with his gloves), everybody else as derived.** `roster.json` carries
+  it; Matt and his six pair models were built again, his fingerprint exported again, the self-collision check
+  passed again (trunk slimmed four times, as before). His and Zombie's policies on the final bodies, C MuJoCo
+  3.5.0, 300 s: 25 episodes, no falls. The audit's only remarks are the old ones: holding a deep squat takes
+  89% of Grandma's knee strength and 92% of Grandpa's.
+- **Phase B starts when the other session's queue has finished** (`g1_trump`, `g1_grandma`, `g1_grandpa` were
+  still to run). From Phase B until Phase D the old game's fights do not run on `master`: the plugin's MuJoCo
+  3.5.0 replaces the 3.14 library the old binding needs. The tag `pre-retrofit` is the working game.
+- Seen in the other session's `logs/queue.log`, not acted on: `g1_nick` and `p1_matt` ended with
+  "Warp CUDA error 719: unspecified launch failure" (`g1_nick` at 0.59 of its 0.6 hours).

@@ -1,6 +1,6 @@
 # PoBox retrofit: task list
 
-Status: **approved 2026-10-02. Phase 0 and Phase A are done except 0.1, 0.6 and the owner's sign-off of the body audit (A3).**
+Status: **approved 2026-10-02. Phase 0 and Phase A are done except 0.6. Phase B starts when the other session's training queue has finished (the owner's answer to 0.1).**
 What happened, with the numbers, is in `rl_optimization_log.md`.
 
 Tick a task when it is done and verified. Commit to `master` at the end of each numbered group.
@@ -52,7 +52,7 @@ Every rung also has to keep each joint's 99th-percentile speed under its human l
 
 ## Phase 0: before anything else
 
-- [ ] 0.1 Owner decides what the `g1_*` gauntlet session that was running on 2 October does: finish or stop. Its
+- [x] 0.1 **(answer: let it finish; Phase B waits for it)** Owner decides what the `g1_*` gauntlet session that was running on 2 October does: finish or stop. Its
       results are warm starts only, since the bodies change.
 - [x] 0.2 Commit or discard the two uncommitted settings files (`UniversalRenderPipelineGlobalSettings.asset`,
       `EditorBuildSettings.asset`).
@@ -72,7 +72,7 @@ session was training on the old ones at the time. `tools/build_roster.py --all -
 - [x] A1 Put Matt and Zombie in `roster.json` beside the other five, so one command derives all seven the same way.
 - [x] A2 Re-derive all seven rigs with `glb_to_rig.py` (mesh-fitted shapes). Save the `--plot` overlay of each
       mesh with its shapes to `DOCS/reports/`.
-- [ ] A3 **(table made; waiting for the owner's sign-off, the masses above all)** Body audit, old against new, for every boxer: mass, height, torque limits, speed limits, share of knee
+- [x] A3 **(signed off 2026-10-02: Matt at 84 kg in the rig, the rest as derived)** Body audit, old against new, for every boxer: mass, height, torque limits, speed limits, share of knee
       strength a deep squat takes. Resolve Grandma's mass (87.8 kg today). Owner signs off the table.
 - [x] A4 `rig_to_mjcf.py`: add the 8-cube pool to every model; add a solo model (one boxer, floor, cubes) for
       R0 and R1.

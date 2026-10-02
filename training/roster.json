@@ -1,8 +1,8 @@
 {
   "about": "The boxers built from the owner's meshes on 2026-10-01, and what makes each one itself. tools/build_roster.py reads this. 'age' is muscle strength beside a trained adult's and 'speed' is joint speed beside one's (1.0 = the same); strength also follows the square of height. 'style' is how the boxer is paid in training: the keys are listed in envs/boxing.py where they are read.",
-  "veterans_about": "Matt and Zombie were trained before the roster existed, from rigs read off the skeleton alone. 'build_roster.py --all' derives them from their meshes like everybody else. Zombie's height is the one his first rig had: his file is not in metres.",
+  "veterans_about": "Matt and Zombie were trained before the roster existed, from rigs read off the skeleton alone. 'build_roster.py --all' derives them from their meshes like everybody else. Zombie's height is the one his first rig had: his file is not in metres. Matt's mass is given (the owner's choice, 2026-10-02): his mesh has surfaces inside it and measures 147 litres, where the shapes fitted inside it hold 85.",
   "veterans": {
-    "matt": {"display": "MATT", "glb": "../Assets/Models/Matt.glb", "persona": "veteran", "age": 1.0, "speed": 1.0},
+    "matt": {"display": "MATT", "glb": "../Assets/Models/Matt.glb", "mass": 84, "persona": "veteran", "age": 1.0, "speed": 1.0},
     "zombie": {"display": "ZOMBIE", "glb": "../Assets/Models/Zombie.glb", "height": 1.816, "persona": "veteran", "age": 1.0, "speed": 1.0}
   },
   "boxers": {

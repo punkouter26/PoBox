@@ -2,9 +2,8 @@
   "source": "C:/Users/punko/Downloads/PoBox/Assets/Models/Matt.glb",
   "frame": "blender_z_up (x = character left, -y = forward, z = up)",
   "height_m": 1.857,
-  "mass_kg": 103.5,
+  "mass_kg": 84.0,
   "notes": [
-    "mass from the mesh's volume: 147 litres is a body-mass index of 42.0, held to 30",
     "trunk slimmed to torso 0.113, pelvis 0.117: its own arms touched it",
     "trunk slimmed to torso 0.106, pelvis 0.110: its own arms touched it",
     "trunk slimmed to torso 0.100, pelvis 0.104: its own arms touched it",
