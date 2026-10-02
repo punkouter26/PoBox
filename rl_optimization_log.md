@@ -91,3 +91,36 @@ outside the boxers' ranges and were clipped. The lower foot is 4 degrees toes-do
 Two things to know when the style reward is written. The capture walks with its knees a little bent (never
 straighter than 16 degrees in 16_17), which suits a boxer. Its arms hang and swing; a boxer's are in the
 guard, so the reward should look at the legs, the pelvis and the trunk only. The ankle's roll is left at zero.
+
+## 2026-10-02: the footwork stage, written and tried on the CPU (the GPU was still the other session's)
+
+`training/envs/footwork.py` is rungs R0 to R2 as one stage on the solo model: an episode is a stand, a walk
+to a commanded velocity, or a turn to face a stand-in opponent anywhere round the boxer. It is a new file
+on top of `envs/boxing.py`, which was not touched (the other session's jobs import it). The observation is
+the match's 100 numbers plus the command, 103; `tools/widen_policy.py` widens an existing policy with zero
+weights and checks that it still answers exactly as before.
+
+Checked on the CPU, 6 to 16 worlds (`device="cpu"`; nothing here has run on the GPU yet):
+
+- **Randomisation is real.** Each world has its own link masses, friction, contact softness, joint damping and
+  drive gains, within 15%. The drive torques MuJoCo Warp reports match each world's own gains to 0.0000 N m and
+  are up to 16 N m from what the file's gains would give.
+- **Cubes.** A waiting cube is never more than 2.5 mm from its parking place (it falls for one control step
+  and is put back); cubes in play reach the boxer (nearest 0.27 m from the pelvis centre).
+- **Shoves** reach 296 N for 0.1 s, the top of the 10 to 30 N s range.
+- **The guard held with a zero action falls in 1.5 s** with nothing knocking it. That is the "zero brain" of
+  Phase B: Unity and C MuJoCo can be compared over the first second of it, not over five.
+- **Matt's current match policy, widened, as the warm start** (16 worlds, 10 s, no exploration noise):
+
+  | | Stand | Walk | Turn |
+  |---|---|---|---|
+  | Nothing knocking it, the file's body | 0.00 falls an episode | 0.00; asked 0.53 m/s, did 0.05 | 0.90 falls; faced the stand-in in 3 s in 10% |
+  | Shoves, cubes, randomised body | 0.60 | 0.36; asked 0.51, did 0.10 | 1.00; 0% |
+
+  So he stands when left alone, does not yet listen to the command (its weights are zero), falls when the
+  opponent is not in front of him (known: he has never had one behind him), and is knocked over by the
+  shoves and cubes. These are the numbers R0 to R2 start from. Sixteen worlds is a small sample.
+
+**Not done:** `train_box.py` does not know the stage yet (it is shared with the running queue and waits for
+it to end); nothing has been trained; the style reward's judge (the discriminator) is not written, so the
+`style` term pays nothing. The reward weights are first guesses.
