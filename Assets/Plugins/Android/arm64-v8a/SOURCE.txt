@@ -1,4 +1,0 @@
-libmujoco.so: MuJoCo 3.3.7 for Android arm64-v8a (built for Android 12 / API 31 with NDK r29).
-From https://github.com/joanllobera/mujoco-bin (branch main, Runtime/Plugins/Android/libmujoco.so), Apache-2.0,
-downloaded 2026-10-01. MuJoCo itself is Apache-2.0 (https://github.com/google-deepmind/mujoco).
-The version was read out of the file (its version string is 3.3.7; the repository's README says 3.5.0).

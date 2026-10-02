@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "bin.mujoco": {
+      "version": "https://github.com/joanllobera/mujoco-bin.git#3.5.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "fd34c6120f7b57bc615d7083aba298c937b1e159"
+    },
     "com.unity.ai.inference": {
       "version": "2.6.1",
       "depth": 0,
@@ -228,6 +235,12 @@
         "com.unity.modules.audio": "1.0.0",
         "com.unity.modules.particlesystem": "1.0.0"
       }
+    },
+    "org.mujoco": {
+      "version": "file:org.mujoco",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
