@@ -112,6 +112,9 @@ namespace PoBox.EditorTools
         {
             bool made = !MjScene.InstanceExists;
             var scene = MjScene.Instance;
+            // The plugin takes MuJoCo's step from Unity's fixed step. In play the testbed sets it; here it is set for the check.
+            float fixedStep = Time.fixedDeltaTime;
+            Time.fixedDeltaTime = 0.005f;
             try
             {
                 var doc = scene.CreateScene(skipCompile: true);
@@ -128,7 +131,33 @@ namespace PoBox.EditorTools
                 }
                 finally { MujocoLib.mj_deleteModel(model); }
             }
-            finally { if (made) Object.DestroyImmediate(scene.gameObject); }
+            finally
+            {
+                Time.fixedDeltaTime = fixedStep;
+                if (made) Object.DestroyImmediate(scene.gameObject);
+            }
+        }
+
+        /// <summary>Every boxer's prefab, put in the open scene's world one at a time in place of whoever is there, and checked.</summary>
+        public static string CheckAll()
+        {
+            var present = Object.FindObjectsByType<MjBoxer>(FindObjectsSortMode.None).Select(b => b.gameObject).ToList();
+            foreach (var go in present) go.SetActive(false);
+            var sb = new StringBuilder();
+            try
+            {
+                foreach (string dir in Directory.GetDirectories(BoxersDir))
+                {
+                    string title = Path.GetFileName(dir), name = title.ToLowerInvariant();
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{dir}/{title}.prefab");
+                    if (prefab == null) continue;
+                    var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                    try { sb.AppendLine(Check(name).Trim()); }
+                    finally { Object.DestroyImmediate(instance); }
+                }
+            }
+            finally { foreach (var go in present) go.SetActive(true); }
+            return sb.ToString();
         }
 
         /// <summary>How many of Unity's own physics components the open scenes hold. The fight is MuJoCo's: the answer has to be none.</summary>
@@ -142,6 +171,6 @@ namespace PoBox.EditorTools
         }
 
         [MenuItem("PoBox/Mj/Bring Matt Into This Scene")] static void BuildMatt() => Debug.Log(BuildBoxer("matt"));
-        [MenuItem("PoBox/Mj/Check Matt Against Training")] static void CheckMatt() => Debug.Log(Check("matt"));
+        [MenuItem("PoBox/Mj/Check Every Boxer Against Training")] static void CheckEvery() => Debug.Log(CheckAll());
     }
 }
