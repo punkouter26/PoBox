@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox: the gauntlets, first pass, 2 October 2026</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:17px; margin:26px 0 6px; }
+  p { margin:10px 0; max-width:76ch; }
+  .dim { color:var(--dim); }
+  img { display:block; max-width:100%; height:auto; border:1px solid var(--line); border-radius:10px; background:#000; }
+  .row { display:flex; flex-wrap:wrap; gap:16px; margin:14px 0; }
+  .row > figure { flex:1 1 260px; max-width:340px; margin:0; }
+  .row.two > figure { max-width:520px; }
+  figcaption { color:var(--dim); font-size:14px; margin-top:6px; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; white-space:nowrap; }
+  td.n { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--accent); font-weight:700; }
+  .no { color:#ffb4a8; font-weight:700; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin:12px 0 20px; }
+  .levels > div { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
+  .levels b { display:block; color:var(--warn); font-size:13px; letter-spacing:.06em; margin-bottom:4px; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:80ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox: the gauntlets, first pass</h1>
+  <p class="dim">2 October 2026, 13:10 to 16:53, on the new laptop (RTX 5070 Ti Laptop GPU) · six boxers, 36 minutes each · what the charts say, what the exam says, what went wrong</p>
+
+  <p>A gauntlet is one boxer learning against all six others at once, none of whom is learning. Zombie had his
+     on the old laptop before the move. Today Matt, Nick, Lil Matt, Trump, Grandma and Grandpa had theirs, one
+     after another, each meeting the already-finished policies of those before it. Nobody passes the whole exam
+     yet. Footing, which all seven failed after the league, now fails for four, and by much less. The line that
+     now fails most is carrying on after a get-up: six of seven.</p>
+
+  <h2>The exam after the first pass</h2>
+  <p class="dim">All 21 pairings in plain C MuJoCo, without training noise, three 45-second rounds each and 40 knockdowns per boxer
+     (<code>training/logs/exam_1.log</code>, copied to <code>training/handoff/</code>).</p>
+  <div class="scroll"><table>
+    <tr><th>Boxer</th><th>Footing</th><th>Attack</th><th>Guard</th><th>Chin</th><th>Getting up</th><th>Carrying on</th></tr>
+<tr><td><b>Zombie</b><br><span class="dim" style="font-size:13px">1 line failed</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">0.89 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.78 a second at 7.4 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 98% of what comes at its head (0.59 blocks a second), takes 0.04 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">40 of 40 knockdowns, in 1.6 s on average</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">39 of 40 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Matt</b><br><span class="dim" style="font-size:13px">2 lines failed</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">3.11 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">1.26 a second at 5.7 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 34% of what comes at its head (0.38 blocks a second), takes 0.27 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.22 a minute (worst 1.33)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">40 of 40 knockdowns, in 1.3 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">19 of 40 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Nick</b><br><span class="dim" style="font-size:13px">2 lines failed</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">1.33 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">1.43 a second at 5.5 m/s</span></td><td><span class="dim">not judged</span><br><span class="dim" style="font-size:13px">stops 56% of what comes at its head (0.76 blocks a second), takes 0.69 head shots a second; built without a guard</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">40 of 40 knockdowns, in 2.0 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">35 of 40 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Lil Matt</b><br><span class="dim" style="font-size:13px">4 lines failed</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">1.33 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.89 a second at 7.0 m/s</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">stops 12% of what comes at its head (0.21 blocks a second), takes 1.08 head shots a second</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">legs taken 1.56 a minute (worst 7.56)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">40 of 40 knockdowns, in 1.6 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">31 of 40 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Trump</b><br><span class="dim" style="font-size:13px">2 lines failed</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.00 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.54 a second at 6.2 m/s</span></td><td><span class="dim">not judged</span><br><span class="dim" style="font-size:13px">stops 18% of what comes at its head (0.15 blocks a second), takes 0.83 head shots a second; built without a guard</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">legs taken 2.07 a minute (worst 11.11)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">40 of 40 knockdowns, in 2.0 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">32 of 40 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Grandma</b><br><span class="dim" style="font-size:13px">1 line failed</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.00 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">1.07 a second at 5.2 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 73% of what comes at its head (1.49 blocks a second), takes 0.52 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">26 of 40 knockdowns, in 3.7 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">17 of 26 still up 3 s after the match policy took over</span></td></tr>
+<tr><td><b>Grandpa</b><br><span class="dim" style="font-size:13px">1 line failed</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.00 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">1.20 a second at 5.7 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 86% of what comes at its head (1.33 blocks a second), takes 0.18 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">29 of 40 knockdowns, in 3.2 s on average</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">21 of 29 still up 3 s after the match policy took over</span></td></tr>
+  </table></div>
+  <h3>The same lines before any gauntlet (the exam after the league, 07:20)</h3>
+  <div class="scroll"><table>
+    <tr><th>Boxer</th><th>Footing</th><th>Attack</th><th>Guard</th><th>Chin</th></tr>
+<tr><td><b>Zombie</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">5.67 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.90 a second at 6.0 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 99% of what comes at its head (0.91 blocks a second), takes 0.01 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td></tr>
+<tr><td><b>Matt</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">1.00 falls a minute at worst</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">0.44 a second at 4.4 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 51% of what comes at its head (0.24 blocks a second), takes 0.26 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.22 a minute (worst 1.33)</span></td></tr>
+<tr><td><b>Nick</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">2.33 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">1.20 a second at 5.7 m/s</span></td><td><span class="dim">not judged</span><br><span class="dim" style="font-size:13px">stops 43% of what comes at its head (0.38 blocks a second), takes 0.57 head shots a second; built without a guard</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td></tr>
+<tr><td><b>Lil Matt</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">1.33 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.89 a second at 5.6 m/s</span></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">stops 27% of what comes at its head (0.16 blocks a second), takes 0.95 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.44 a minute (worst 2.67)</span></td></tr>
+<tr><td><b>Trump</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">1.67 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.53 a second at 5.1 m/s</span></td><td><span class="dim">not judged</span><br><span class="dim" style="font-size:13px">stops 52% of what comes at its head (0.33 blocks a second), takes 0.77 head shots a second; built without a guard</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 1.00 a minute (worst 3.00)</span></td></tr>
+<tr><td><b>Grandma</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">2.67 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.70 a second at 5.5 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 83% of what comes at its head (1.18 blocks a second), takes 0.24 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.00 a minute (worst 0.00)</span></td></tr>
+<tr><td><b>Grandpa</b></td><td><span class="no">FAIL</span><br><span class="dim" style="font-size:13px">2.67 falls a minute at worst</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">0.65 a second at 3.8 m/s</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">stops 82% of what comes at its head (0.91 blocks a second), takes 0.04 head shots a second</span></td><td><span class="ok">pass</span><br><span class="dim" style="font-size:13px">legs taken 0.11 a minute (worst 0.67)</span></td></tr>
+  </table></div>
+  <p>Zombie passed all six lines straight after his own gauntlet (<code>exam_zombie_g1.json</code>: 0.00 falls a minute at worst).
+     He fails footing now only because Nick has changed: 0.89 falls a minute against the new Nick, none against anybody else.
+     That is the weakness of doing the boxers one after another: each run moves an opponent the others were already measured against.</p>
+
+  <h2>The three charts that matter</h2>
+  <p class="dim">TensorBoard, http://localhost:6006, the SCALARS page. Each line is one boxer's gauntlet: orange Matt, dark blue Nick,
+     light blue Lil Matt, pink Trump, green Grandma, grey Grandpa. Dark red is the earlier run to compare with, Zombie's gauntlet on the old laptop.
+     Across is training iterations from the start of each run.</p>
+
+  <h3>1. How often the learner ends up on the floor (<code>env/falls</code>)</h3>
+  <img src="img/tb_g1_falls.png" alt="TensorBoard chart of env/falls for the six gauntlets and Zombie's earlier one">
+  <div class="levels">
+    <div><b>TODDLER</b>High up means the boxer fell down a lot. All the lines go down. They learned to stay standing.</div>
+    <div><b>CHILD</b>Each line is how often that boxer ended up on the floor in practice. At the start everybody falls a lot, because the others are strangers. After half an hour most fall only a few times in a hundred. Trump (pink) is still the wobbliest.</div>
+    <div><b>ADULT</b>Share of training episodes that ended with the learner down. Start to end: Matt 18% to 3%, Nick 40% to 5%, Lil Matt 47% to 6%, Trump 54% to 13%, Grandma 72% to 8%, Grandpa 66% to 3%. Measured with exploration noise on, which matters: Matt's 3% here is 3 falls a minute against Grandpa in the exam, where there is no noise (see below).</div>
+  </div>
+
+  <h3>2. Punches the learner lands a second (<code>env/hits_per_s</code>)</h3>
+  <img src="img/tb_g1_hits.png" alt="TensorBoard chart of env/hits_per_s">
+  <div class="levels">
+    <div><b>TODDLER</b>High up means lots of hitting. The lines go up. The boxers learned to hit more.</div>
+    <div><b>CHILD</b>This counts how many punches a second each boxer lands. Nick (dark blue) lands the most, about three every two seconds. Trump (pink) lands the fewest.</div>
+    <div><b>ADULT</b>Landed hits per second, averaged over all six opponents. Start to end: Matt 0.39 to 1.14, Nick 0.98 to 1.50, Lil Matt 0.61 to 1.29, Trump 0.39 to 0.58, Grandma 0.47 to 0.92, Grandpa 0.37 to 1.05. The exam's mark is 0.5 and everybody clears it there too.</div>
+  </div>
+
+  <h3>3. Punches the learner takes a second (<code>env/their_hits_per_s</code>)</h3>
+  <img src="img/tb_g1_taken.png" alt="TensorBoard chart of env/their_hits_per_s">
+  <div class="levels">
+    <div><b>TODDLER</b>High up means getting hit a lot. Lower is better. Most lines go down a bit. One stays up high.</div>
+    <div><b>CHILD</b>This counts how often the boxer gets punched. Most of them learned to get hit less. Lil Matt (light blue) did not: he got better at hitting and at staying up, but he still lets the punches in.</div>
+    <div><b>ADULT</b>Hits taken per second. Nick 1.12 to 0.77, Grandma 0.83 to 0.63, Matt 0.65 to 0.41, Grandpa 0.44 to 0.31, Trump 1.32 to 1.19, Lil Matt 1.15 to 1.42 (rising). The exam then says the same: Lil Matt fails guard (stops 12% of what comes at his head) and Trump fails chin (his legs are taken 2 times a minute, 11 against Nick).</div>
+  </div>
+
+  <h2>Compared with the earlier run</h2>
+  <div class="scroll"><table>
+    <tr><th></th><th>Zombie's gauntlet, old laptop (RTX 2060)</th><th>Today's six, new laptop (RTX 5070 Ti Laptop)</th></tr>
+    <tr><td>Rings</td><td class="n">2,304</td><td class="n">4,608</td></tr>
+    <tr><td>Speed</td><td class="n">about 13,300 steps a second</td><td class="n">about 35,000 (Matt 36,400, Nick 35,100)</td></tr>
+    <tr><td>Training in 36 minutes</td><td class="n">480 iterations, 27 million steps</td><td class="n">607 to 752 iterations, 67 to 83 million steps</td></tr>
+    <tr><td>Learner's falls, start to end</td><td class="n">43% to 1%</td><td class="n">18 to 72%, down to 3 to 13%</td></tr>
+    <tr><td>Punches landed a second at the end</td><td class="n">0.81</td><td class="n">0.58 (Trump) to 1.50 (Nick)</td></tr>
+    <tr><td>Exam straight afterwards</td><td>passed all six lines</td><td>nobody passes all six; one to four lines failed each</td></tr>
+  </table></div>
+  <div class="levels">
+    <div><b>TODDLER</b>The new computer is faster. The boxers got more practice. They got better, but they are not finished.</div>
+    <div><b>CHILD</b>Today's runs did about three times as much practice in the same time as Zombie's did. On the charts they look as good as his or better. But Zombie only had to deal with opponents who had not improved yet. Today each boxer met opponents who had just got better, which is harder.</div>
+    <div><b>ADULT</b>Better on throughput and on the training curves, worse on the exam, and the two do not contradict each other. The exam is taken against today's opponents, not the ones each boxer trained against, and one of them, Nick, is now much the hardest to face (he takes Trump's legs 11 times a minute and Lil Matt's 7.6). Zombie's pass was against the league's policies; against today's he fails footing too.</div>
+  </div>
+
+  <h2>What went wrong</h2>
+  <div class="note"><b>Matt only stays up with his training noise on.</b> In 30 training-style episodes against Grandpa in C MuJoCo he fell
+     0 times with the noise he was trained with (0.18) and 19 times with none, nearly all about two seconds in: he lunges and his pelvis drops before he
+     reaches Grandpa. The exam and the game both run without noise. A 12-minute run at low noise (0.04) to train that away was tried
+     (<code>p1_matt</code>): it died of a GPU fault after five minutes, and the 100 iterations it saved changed nothing, so it is marked rejected.</div>
+  <div class="note"><b>Two GPU faults.</b> The graphics driver logged the same exception (nvlddmkm event 13, "SKEDCHECK22_INVALIDATE_ACTIVE_QMD failed") at 14:21:56
+     and 14:27:27. The first killed Nick's run 30 seconds before its end (his policy from iteration 650 of about 690 was saved and is the one examined);
+     the second killed the low-noise trial. None before, none in the two and a half hours after. The GPU sat at 86 to 89 °C all afternoon with the
+     thermal-throttle flag set, drawing 40 to 75 W of a 140 W limit. The cause of the faults is not established.</div>
+  <div class="note"><b>Carrying on is close to the line for four of them.</b> Run again with a different random draw, Nick got 36 of 39 and Trump 35 of 39 (pass),
+     Grandma 27 of 31 and Grandpa 22 of 26 (just under). Matt (about half) and Lil Matt (about four in five) fail it either way.</div>
+
+  <h2>What happens next</h2>
+  <p>A second round was started at 17:04 and stopped at 17:09, five minutes into its first run. The game is being
+     retrofitted onto new bodies (<code>tasks.md</code>), so these policies will not be examined in the game as they
+     are: the plan uses them as warm starts for the boxing rungs on the new bodies (C7), and the exam is taken again there.
+     Another four hours spent getting the old bodies through the old exam would have bought little and kept the GPU from the retrofit.
+     The six first-round policies are <code>training/checkpoints/g1_&lt;name&gt;</code> and <code>training/logs/policies.json</code> points at them;
+     Zombie's is his earlier one. What a second round should change, when boxing is trained on the new bodies: more episodes that start from a get-up
+     (carrying on fails for six of seven), more rings against whoever a boxer fails against, and a check without noise before a run is called done.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,22 @@
+  grandma v nick: done (29 s)
+  grandpa v nick: done (45 s)
+  nick v lilmatt: done (59 s)
+  nick v matt: done (75 s)
+  trump v nick: done (90 s)
+  nick v zombie: done (104 s)
+
+NICK      FAIL   (checkpoints\g1_nick\latest_nick.pt)
+    footing      FAIL  1.33 falls a minute at worst
+    attack       pass  1.75 a second at 7.1 m/s (mark 4.0), 61% to the head
+    guard          -   stops 44% of what comes at its head (0.33 blocks a second), takes 0.55 head shots a second; built without a guard
+    chin         pass  legs taken 0.00 a minute (worst 0.00)
+    getting up   pass  40 of 40 knockdowns, in 1.7 s on average (mark 80% within 8 s; against grandma)
+    carrying on  pass  37 of 40 still up 3 s after the match policy took over
+        v grandma  lands 1.45/s at 6.7 m/s, 73% head | blocks 0.47/s, head shots taken 0.73/s | falls 0.00/min | dazed: legs 0.00/min
+        v grandpa  lands 0.93/s at 6.9 m/s, 86% head | blocks 0.11/s, head shots taken 0.40/s | falls 0.00/min | dazed: legs 0.00/min
+        v lilmatt  lands 1.89/s at 7.4 m/s, 65% head | blocks 0.47/s, head shots taken 0.57/s | falls 0.00/min | dazed: legs 0.00/min
+        v matt     lands 2.09/s at 7.7 m/s, 34% head | blocks 0.09/s, head shots taken 0.03/s | falls 0.00/min | dazed: legs 0.00/min
+        v trump    lands 2.98/s at 8.4 m/s, 85% head | blocks 0.22/s, head shots taken 1.27/s | falls 0.00/min | dazed: legs 0.00/min
+        v zombie   lands 1.18/s at 5.3 m/s, 23% head | blocks 0.60/s, head shots taken 0.32/s | falls 1.33/min | dazed: legs 0.00/min
+
+0 of 1 boxers pass. 104 s.
