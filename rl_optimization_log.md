@@ -439,3 +439,6 @@ against the frozen others) and get-up runs (`u1_*`) in the queue start from thes
 **Lil Matt (`f_lilmatt`, 22:40 to 23:10).** Stand 100%, walk off by 0.02 m/s with no falls, turn 100%, joints 0.36;
 old get-up policy on the new body 100% in 2.5 s. R0 to R3 passed. (Promotion and the Unity gate wait for the end of
 the night's training: the editor is closed while the GPU trains.)
+
+**Trump (`f_trump`, 23:10 to 23:42).** Stand 100%, walk off by 0.02 m/s with no falls, turn 100%, joints 0.38; old
+get-up policy 97% in 3.2 s. R0 to R3 passed.
