@@ -1,3 +1,0 @@
-policy.onnx copied from training/checkpoints/r5_nick_v_lilmatt/latest_nick.onnx
-written 2026-10-02 07:00:17
-no get-up policy

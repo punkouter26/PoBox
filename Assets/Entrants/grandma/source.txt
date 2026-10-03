@@ -1,3 +1,0 @@
-policy.onnx copied from training/checkpoints/r5_trump_v_grandma/latest_grandma.onnx
-written 2026-10-02 06:10:13
-no get-up policy

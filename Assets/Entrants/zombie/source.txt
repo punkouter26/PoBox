@@ -1,3 +1,0 @@
-policy.onnx copied from training/checkpoints/g1_zombie/latest_zombie.onnx
-written 2026-10-02 11:15:35
-no get-up policy

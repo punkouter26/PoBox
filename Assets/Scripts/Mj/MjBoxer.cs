@@ -12,7 +12,7 @@ namespace PoBox.Mj
         public string name;
         public string[] joint_order;
         public double[] default_joint_pos, lower, upper, velocity_limit, force_limit;
-        public double stand_height, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
+        public double stand_height, total_mass_kg, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
         public int control_decimation = 4, physics_hz = 200;
     }
 

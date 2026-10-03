@@ -351,9 +351,13 @@ class FootworkEnv(BoxingEnv):
         r["height"] = -1.0 * (self.stand_height - 0.08 - pos[..., 2]).clamp_min(0.0)
         # Two widths: the wide one can be felt from a standstill when 1 m/s is asked (the narrow one alone is
         # flat there: exp(-16)), the narrow one is what makes 0.15 m/s of error cost something.
-        r["track"] = 0.5 * torch.exp(-(v_err / 0.5) ** 2) + 0.5 * torch.exp(-(v_err / 0.2) ** 2)
+        # Worth twice as much when the boxer is asked to go somewhere: walking has to pay more than standing,
+        # and what it costs (below) is charged at less than standing's rate.
+        r["track"] = (1.0 + moving_now) * (0.5 * torch.exp(-(v_err / 0.5) ** 2) + 0.5 * torch.exp(-(v_err / 0.2) ** 2))
         r["yaw"] = 0.5 * torch.exp(-(w_err / 0.5) ** 2) * (1.0 - turn)
-        r["face"] = (0.25 * stand + 0.6 * turn) * torch.cos(off)
+        # Two widths again: the cosine is felt from behind; the narrow one (0.2 rad) is what makes 20 degrees off
+        # cost something. With the cosine alone a policy settled 15 to 30 degrees off (R2's exam: 73%, mark 90%).
+        r["face"] = (0.25 * stand + 0.6 * turn) * (torch.cos(off) + torch.exp(-(off / 0.2) ** 2))
         # A step is a foot that leaves the floor and comes down again. Paid when it lands, for every tenth of a
         # second it was up beyond the first quarter, and only when going somewhere: a boxer standing still that
         # learned to stand is slow to learn that walking means lifting a foot, and shuffling is charged (slip).
@@ -370,12 +374,15 @@ class FootworkEnv(BoxingEnv):
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * (action ** 2).sum(-1)
         r["rate"] = -0.01 * ((action - self.prev_action) ** 2).sum(-1)
-        r["energy"] = -2.5e-4 * (tau * jv).abs().clamp_max(2000.0).sum(-1)
+        # A boxer's charges, for standing and for punching. A walker's legs do work every step: charged at full
+        # rate it cost more than walking earned, and the first three walking runs learned to stand (2 October).
+        easy = 1.0 - 0.7 * moving_now
+        r["energy"] = -2.5e-4 * easy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)
         r["limit"] = -0.5 * ((self.joint_lo + 0.05 - jp).clamp_min(0.0) + (jp - self.joint_hi + 0.05).clamp_min(0.0)).sum(-1)
-        r["slip"] = -0.2 * ((foot_v ** 2).sum(-1).clamp_max(25.0) * contact.float()).sum(-1)
-        r["lean"] = -1.5 * ((g["own_head"][..., :2] - g["foot_xy"].mean(2)).norm(dim=-1) - 0.18).clamp_min(0.0)
+        r["slip"] = -0.2 * easy * ((foot_v ** 2).sum(-1).clamp_max(25.0) * contact.float()).sum(-1)
+        r["lean"] = -1.5 * easy * ((g["own_head"][..., :2] - g["foot_xy"].mean(2)).norm(dim=-1) - 0.18).clamp_min(0.0)
         # Moving like a person, judged against the walking and turning clips: paid by the trainer, when it
         # has a judge. Nothing here.
         r["style"] = torch.zeros(N, K, device=self.device)
