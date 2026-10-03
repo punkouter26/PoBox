@@ -22,10 +22,22 @@ namespace PoBox.Tests
     /// </summary>
     public class MjGateTests
     {
-        const string Scene = "Assets/Scenes/Testbed.unity", Boxer = "Assets/Boxers/Matt";
+        const string Scene = "Assets/Scenes/Testbed.unity";
 
-        static IEnumerator Load()
+        /// <summary>Every boxer with recordings from C MuJoCo beside it (MjRetrofit.Promote puts them there).</summary>
+        static string[] Boxers()
         {
+            if (!Directory.Exists("Assets/Boxers")) return new string[0];
+            var names = new System.Collections.Generic.List<string>();
+            foreach (string dir in Directory.GetDirectories("Assets/Boxers"))
+                if (File.Exists(Path.Combine(dir, "reference_trajectory.json")) && File.Exists(Path.Combine(dir, "falls.json")))
+                    names.Add(Path.GetFileName(dir));
+            return names.ToArray();
+        }
+
+        static IEnumerator Load(string boxer)
+        {
+            MjTestbed.Pick = boxer;
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(Scene, new LoadSceneParameters(LoadSceneMode.Single));
 #endif
@@ -44,6 +56,8 @@ namespace PoBox.Tests
             return testbed;
         }
 
+        static string Dir(string boxer) => "Assets/Boxers/" + boxer;
+
         static void Report(string file, StringBuilder sb)
         {
             Debug.Log(sb.ToString());
@@ -52,11 +66,11 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator ThePolicyAnswersInUnityAsItDidInTraining()
+        public IEnumerator ThePolicyAnswersInUnityAsItDidInTraining([ValueSource(nameof(Boxers))] string who)
         {
-            yield return Load();
+            yield return Load(who);
             MjBoxer boxer = Testbed().boxer;
-            var reference = ReferenceTrajectory.FromJson(File.ReadAllText(Boxer + "/reference_trajectory.json"));
+            var reference = ReferenceTrajectory.FromJson(File.ReadAllText(Dir(who) + "/reference_trajectory.json"));
             var obs = new float[MjBoxer.ObservationSize];
             var action = new float[boxer.Joints];
             double worst = 0;
@@ -66,17 +80,17 @@ namespace PoBox.Tests
                 boxer.Infer(obs, action);
                 for (int i = 0; i < action.Length; i++) worst = Math.Max(worst, Math.Abs(action[i] - row.action[i]));
             }
-            Report("gate_replay.txt", new StringBuilder($"replay of {reference.rows.Length} recorded observations: the largest difference in an action is {worst:E1}\n"));
+            Report("gate_replay_" + who + ".txt", new StringBuilder($"replay of {reference.rows.Length} recorded observations: the largest difference in an action is {worst:E1}\n"));
             Assert.Less(worst, 1e-4, "Unity's copy of the policy does not return the trainer's actions");
         }
 
         [UnityTest]
-        public IEnumerator TheSameRunInUnityIsTheRunInMuJoCo()
+        public IEnumerator TheSameRunInUnityIsTheRunInMuJoCo([ValueSource(nameof(Boxers))] string who)
         {
-            yield return Load();
+            yield return Load(who);
             MjTestbed testbed = Testbed();
             MjBoxer boxer = testbed.boxer;
-            var reference = ReferenceTrajectory.FromJson(File.ReadAllText(Boxer + "/reference_trajectory.json"));
+            var reference = ReferenceTrajectory.FromJson(File.ReadAllText(Dir(who) + "/reference_trajectory.json"));
             int rows = reference.rows.Length, n = boxer.Joints, step = 0;
             var joint = new double[rows];
             double sqUnity = 0, sqRef = 0, wayUnity = 0, wayRef = 0;
@@ -140,7 +154,7 @@ namespace PoBox.Tests
             sb.AppendLine($"  torque (RMS):  Unity {rmsUnity:0.00} N m, MuJoCo {rmsRef:0.00}");
             sb.AppendLine($"  ground covered: Unity {wayUnity:0.000} m, MuJoCo {wayRef:0.000} m");
             sb.AppendLine(parted < 0 ? $"  the joints never part by 0.05 rad (largest difference {Max(joint):E1} rad)" : $"  the joints part by 0.05 rad at {parted * reference.control_dt:0.00} s");
-            Report("gate_closed_loop.txt", sb);
+            Report("gate_closed_loop_" + who + ".txt", sb);
 
             Assert.AreEqual(upRef, upUnity, 5, "it does not stay on its feet as long in Unity as in MuJoCo");
             Assert.LessOrEqual(Math.Abs(cadenceUnity - cadenceRef), 0.10 * Math.Max(cadenceRef, 1.0 / seconds), "the cadence is not within 10%");
@@ -150,12 +164,12 @@ namespace PoBox.Tests
         static double Max(double[] a) { double m = 0; foreach (double x in a) m = Math.Max(m, x); return m; }
 
         [UnityTest]
-        public IEnumerator ItEndsOnTheFloorAsOftenInUnityAsInMuJoCo()
+        public IEnumerator ItEndsOnTheFloorAsOftenInUnityAsInMuJoCo([ValueSource(nameof(Boxers))] string who)
         {
-            yield return Load();
+            yield return Load(who);
             MjTestbed testbed = Testbed();
             MjBoxer boxer = testbed.boxer;
-            var set = FallEpisodes.FromJson(File.ReadAllText(Boxer + "/falls.json"));
+            var set = FallEpisodes.FromJson(File.ReadAllText(Dir(who) + "/falls.json"));
             int shoveStep = (int)Math.Round(set.shove_at / set.control_dt), cubeStep = (int)Math.Round(set.cube_at / set.control_dt);
             int fellHere = 0, same = 0, step = 0;
             bool fell = false;
@@ -188,7 +202,7 @@ namespace PoBox.Tests
             finally { Time.timeScale = 1f; testbed.ControlStepBegins -= begins; testbed.ControlStepDone -= done; }
 
             double here = (double)fellHere / set.rows.Length;
-            Report("gate_falls.txt", new StringBuilder(
+            Report("gate_falls_" + who + ".txt", new StringBuilder(
                 $"{set.rows.Length} episodes begun as they began in C MuJoCo {set.mujoco}, a shove at {set.shove_at:0.0} s and a cube at {set.cube_at:0.0} s:\n" +
                 $"  on the floor at the end: Unity {here:P0}, MuJoCo {set.fall_rate:P0}; the same ending in {same} of {set.rows.Length}\n"));
             Assert.LessOrEqual(Math.Abs(here - set.fall_rate), 0.05, "the fall rate in Unity is not within 0.05 of MuJoCo's");

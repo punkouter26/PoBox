@@ -22,6 +22,7 @@ namespace PoBox.Tests
 
         static IEnumerator Load()
         {
+            MjTestbed.Pick = "Matt";   // the hold recording and the fingerprint check are Matt's
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(Scene, new LoadSceneParameters(LoadSceneMode.Single));
 #endif

@@ -18,6 +18,10 @@ namespace PoBox.Mj
     public unsafe class MjTestbed : MonoBehaviour
     {
         public MjBoxer boxer;
+        [Tooltip("Every boxer in the scene, switched off but the one in use. Pick, if set, chooses by name before MuJoCo compiles the scene.")]
+        public MjBoxer[] roster = new MjBoxer[0];
+        /// <summary>The boxer to switch on when the scene loads (its object's name, "Zombie"); empty keeps the scene's own.</summary>
+        public static string Pick;
         public MjCubePool cubes;
         [Tooltip("Shove the boxer every few seconds: 10 to 30 N s, from any side, scaled by its strength.")]
         public bool shoves;
@@ -54,6 +58,15 @@ namespace PoBox.Mj
 
         void Awake()
         {
+            // MuJoCo's model is made from what is switched on when it starts: one boxer, the picked one.
+            if (!string.IsNullOrEmpty(Pick))
+                foreach (MjBoxer b in roster)
+                {
+                    if (b == null) continue;
+                    bool me = string.Equals(b.name, Pick, StringComparison.OrdinalIgnoreCase);
+                    b.gameObject.SetActive(me);
+                    if (me) boxer = b;
+                }
             // The plugin steps MuJoCo once a FixedUpdate and takes MuJoCo's step from Unity's: both are the trainer's.
             Time.fixedDeltaTime = physicsStep;
             // The plugin makes its own MjScene; this only has to be listening before it compiles the model.
