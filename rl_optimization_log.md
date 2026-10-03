@@ -464,3 +464,8 @@ Exam (`tools/exam_v2.py`): attack **1.86 a second at 7.3 m/s** (from 1.19 at 5.7
 Zombie** (none against the other four): FAIL. Getting up 7 of 30 (old get-up policy; `u1_matt_zombie` to come),
 carrying on 3 of 7: FAIL. A second match round with a heavier fall charge (`--fall-penalty`, 4 now) is the lever
 for footing if it fails across the seven.
+
+**Zombie, match (`m1_zombie`, 01:33 to 02:02).** Footing 0.00 falls a minute; attack **1.30 a second at 6.9 m/s** (from
+0.33), 83% to the head; guard stops 80%; chin 0.00: R4 to R6 and footing pass. Getting up 18 of 30 and carrying on
+11 of 18 (old get-up policy): for `u1_matt_zombie`. Against the new Matt he lands nothing (Matt lands 1.72 a second on
+him, all to the body).
