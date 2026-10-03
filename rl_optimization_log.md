@@ -508,3 +508,7 @@ order Matt, Trump, Grandma, Nick, Lil Matt, Grandpa, Zombie. The queue is held a
 (1.67) and Nick (1.33); chin for Lil Matt (2.72) and Trump (2.28); guard for Trump (24%). Matt stops only 17% but takes
 0.03 head shots a second, which passes. The second round now charges 8 for a fall (from 4) for Matt, Nick and Grandpa,
 and runs Matt, Trump, Grandpa, Nick, Lil Matt, Grandma, Zombie.
+
+**Get up, Matt and Zombie (`u1_matt_zombie`, 1500 iterations on the v2 get-up stage, 04:37 to 05:01).** Matt **30 of 30
+knockdowns** in 1.5 s (from 7 of 30), carrying on 21 of 30: FAIL (for `m2_matt`). Zombie **30 of 30** in 1.8 s (from
+18), **carrying on 27 of 30: pass.** With his match exam, **Zombie passes every rung, R0 to R7.**
