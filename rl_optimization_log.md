@@ -457,3 +457,10 @@ stand 98%, walk off by 0.01 m/s with no falls, **turn 99%** (from 90%), joints 0
 **All seven pass R0 to R2 in C MuJoCo 3.5.0** (Matt `r2b_matt`, Zombie, Nick, Lil Matt, Trump, Grandpa `f_<name>`,
 Grandma `f2_grandma`). Promotion and the Unity gate for the five not yet in Unity wait for the end of the night.
 The match runs (`m1_*`) began at 00:59.
+
+**Matt, match (`m1_matt`, 700 iterations from the widened old policy against the six others frozen, 01:02 to 01:30).**
+Exam (`tools/exam_v2.py`): attack **1.86 a second at 7.3 m/s** (from 1.19 at 5.7), all to the body; guard stops 33%,
+0.01 head shots taken a second; chin 0.00. **Footing 1.67 unprovoked falls a minute against Grandma, 1.33 against
+Zombie** (none against the other four): FAIL. Getting up 7 of 30 (old get-up policy; `u1_matt_zombie` to come),
+carrying on 3 of 7: FAIL. A second match round with a heavier fall charge (`--fall-penalty`, 4 now) is the lever
+for footing if it fails across the seven.
