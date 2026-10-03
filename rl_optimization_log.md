@@ -502,3 +502,9 @@ would have emptied by 06:00. Appended: a v2 handover bank for each boxer from to
 (`tools/make_handover_v2.py`), then a second match round `m2_<name>` (500 iterations against the others' m1 policies,
 30% of episodes begun from the handover bank, for carrying on; Trump also paid for blocks, `--block-w 0.3`), in the
 order Matt, Trump, Grandma, Nick, Lil Matt, Grandpa, Zombie. The queue is held at 06:50, eight hours after it began.
+
+**All seven on their m1 policies, like for like (04:52, `logs/exam_v2_after_m1.json`, getting up not tested here):**
+**2 of 7 pass footing, attack, guard and chin: Grandma and Zombie.** Footing fails for Grandpa (2.00 a minute), Matt
+(1.67) and Nick (1.33); chin for Lil Matt (2.72) and Trump (2.28); guard for Trump (24%). Matt stops only 17% but takes
+0.03 head shots a second, which passes. The second round now charges 8 for a fall (from 4) for Matt, Nick and Grandpa,
+and runs Matt, Trump, Grandpa, Nick, Lil Matt, Grandma, Zombie.
