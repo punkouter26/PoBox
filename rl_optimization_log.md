@@ -417,3 +417,21 @@ torque 59.45 against 59.63 N m, 2.859 against 2.853 m; 25 episodes 0% against 0%
 **Nick (`f_nick`, 1600 iterations from `r2b_matt`, 22:06 to 22:40).** Exam, C MuJoCo 3.5.0: stand 100%, walk off
 by 0.01 m/s with no falls, turn 100%, joints 0.61; his old get-up policy, widened, on the new body: **100%** in 2.7 s
 on average (mark 80%). R0 to R3 passed; promoted. The Unity gate is run for the five together once all are in.
+
+**C7 baseline: the old match and get-up policies, widened to 103 inputs, on the new bodies** (`tools/exam_v2.py`,
+C MuJoCo 3.5.0, 4 rounds of 45 s against each of the six others, plain and under the daze; 30 knockdowns each;
+`logs/exam_v2_baseline.json`). **1 of 7 pass (Nick).**
+
+| Boxer | Footing (falls/min, worst) | Attack (/s at m/s) | Guard (stops) | Chin (legs/min) | Get up | Carrying on |
+|---|---|---|---|---|---|---|
+| Grandma | **1.33** | 1.03 at 5.1 | 74% | 0.00 | 25/30 | **22/25** |
+| Grandpa | **1.67** | 1.13 at 5.4 | 84% | 0.00 | 21/30 | **16/21** |
+| Lil Matt | 0.00 | 0.85 at 6.2 | **13%** | 1.11 | 30/30 | **21/30** |
+| Matt | **1.67** | 1.19 at 5.7 | 51% | 0.44 | **7/30** | **2/7** |
+| Nick | 0.00 | 1.65 at 7.3 | 48% | 0.00 | 30/30 | 29/30 |
+| Trump | **1.33** | 0.52 at 6.4 | 38% | **1.78** | 30/30 | **25/30** |
+| Zombie | **1.67** | **0.33** at 5.7 | 95% | 0.00 | **22/30** | **18/22** |
+
+Marks: footing 0.2, attack 0.5/s at 4 m/s x speed, guard 30% or under 0.3 head shots/s, chin 1.5, get up 80% in
+8 s (60% in 9 s for the grandparents), carrying on 90%. Bold fails. The match runs (`m1_*`, 700 iterations each
+against the frozen others) and get-up runs (`u1_*`) in the queue start from these.
