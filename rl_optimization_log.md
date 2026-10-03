@@ -665,3 +665,12 @@ before, so the credit is shared; the shoves also put his opponents down in 20 to
 2.6 s, no falls), Arena against Zombie (119 landed to 101, a knockdown on command and up at the count of 6), Menu (his
 card; rebuilt with six). Announcer clip and portrait in. Report: `DOCS/reports/2026-10-03-trump-in-the-game.html`.
 Open: attack against Matt, Grandma and Grandpa; his hands show past his gloves; the menu portrait's crop.
+
+**Grandpa, second match round, cut short (`m2_grandpa`, 19:00 to 19:09, 247 of 500 iterations: the owner asked for
+training to end by 19:15).** From `m1_grandpa` against the others' current policies (Trump's `m6_trump` among them), fall
+charge 8, handover bank 30%, `--push-vel 0.8 --start-spread 3`. Exam (`logs/exam_m2_grandpa.json`): **footing 0.00 falls a
+minute (from 2.00): pass.** Guard 73%, chin 0.53, getting up 30 of 30. **Attack 0.25 a second at 2.5 m/s (from 0.62 at
+3.4; his mark 0.5 at 3.0): now FAILS** (1.02 a second on Nick, 0.04 to 0.09 on the other four). Carrying on 26 of 30,
+unchanged, FAIL. Still 7 of 9, with a different line failing: **not promoted; `m1_grandpa` stays in the game.** Half a
+round under harder shoves taught him to keep his feet and cost him his punch; whether the second half brings it back
+is not known. The queue is still held; released, it carries this run on from iteration 247 to 500. `m2_zombie` not run.
