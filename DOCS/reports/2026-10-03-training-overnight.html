@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight ladder training</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin:12px 0 4px; }
+  .levels > div { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
+  .levels b { display:block; color:var(--accent); font-size:13px; letter-spacing:.05em; margin-bottom:4px; }
+  .chart { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; margin:14px 0 6px; }
+  .chart img { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Training report: the night of 2 to 3 October</h1>
+  <p class="dim">22:50 to 06:56 · MuJoCo Warp 3.14 on the RTX 5070 Ti · 26 jobs: footwork for six boxers, a match round for all seven, get-up for all seven, handover banks, a second match round for Matt and Trump · every exam in plain C MuJoCo 3.5.0, the version the game runs, without exploration noise</p>
+
+  <h2>Where every boxer stands</h2>
+  <div class="wide"><table>
+    <tr><th>Boxer</th><th>R0 stand</th><th>R1 walk</th><th>R2 turn</th><th>R3 get up</th><th>Footing</th><th>R4 attack</th><th>R5 guard</th><th>R6 chin</th><th>R7 carrying on</th></tr>
+    <tr><td>Matt</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">23/30</b></td></tr><tr><td>Zombie</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td></tr><tr><td>Nick</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">1.33/min</b></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td></tr><tr><td>Lil Matt</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">2.72/min</b></td><td><b style="color:var(--red)">23/29</b></td></tr><tr><td>Trump</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">15%</b></td><td><b style="color:var(--red)">2.50/min</b></td><td><b style="color:var(--red)">26/30</b></td></tr><tr><td>Grandma</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span> (top-up)</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">20/30</b></td></tr><tr><td>Grandpa</td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">2.00/min</b></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><span style="color:var(--accent)">pass</span></td><td><b style="color:var(--red)">26/30</b></td></tr>
+  </table></div>
+  <p><b>Zombie passes every rung.</b> Stand, walk, turn and get up pass for all seven. What is left is boxing at
+  close quarters and the moment after a get-up: carrying on (the match policy taking the body back) fails for five,
+  footing for Nick and Grandpa, chin for Lil Matt and Trump, and Trump's guard. Footing and the boxing lines come from
+  the exam of all seven on their newest match policies; getting up and carrying on from the get-up exams. Marks:
+  footing 0.2 unprovoked falls a minute, attack 0.5 a second at 4 m/s times the boxer's speed, guard 30% stopped or
+  under 0.3 head shots a second, chin 1.5 legs a minute, get up 80% in 8 s (60% in 9 s for the grandparents),
+  carrying on 90%.</p>
+
+  <h2>1. Getting up after a knockdown</h2>
+  <div class="chart"><img src="img/tb_night_up_rate.png" alt="TensorBoard env/up_rate for the four get-up runs: three rise to about 0.98 to 1.0, one to about 0.75"></div>
+  <div class="levels"><div><b>TODDLER</b>The boxer falls down and has to get back up. Up is good. Almost all of them learned to get up.</div><div><b>CHILD</b>Each line is two boxers learning together to stand up after being knocked down. Matt and Zombie (pink) started at about 3 in 10 and finished at almost 10 in 10. The orange line is Grandpa: he is slower and weaker, so he gets up less often in practice, but in the test he still got up every time.</div><div><b>ADULT</b><code>env/up_rate</code>: share of knockdown episodes ending standing, with noise, per get-up run (1,500 iterations of the v2 get-up stage, 103 inputs). Matt and Zombie 0.28 to 0.99, Nick and Lil Matt 0.79 to 1.00, Trump and Grandma 0.56 to 0.98, Grandpa (Matt frozen) 0.39 to 0.75. Exam with noise off: 29 to 30 of 30 for every boxer, 1.4 to 2.2 s. Before tonight: Matt 7, Grandpa 18, Zombie 22 of 30.</div></div>
+
+  <h2>2. Punches landed</h2>
+  <div class="chart"><img src="img/tb_night_hits.png" alt="TensorBoard env/hits_per_s for the match runs: most rise over 700 iterations, from 0.3 to 0.9 up to 0.8 to 1.6"></div>
+  <div class="levels"><div><b>TODDLER</b>The boxer tries to hit the other boxer. Up is good. They all got better at hitting.</div><div><b>CHILD</b>Each line is one boxer practising against the other six, and how many punches a second it lands. Zombie went from hardly ever hitting to about one a second. Matt became the busiest. Trump only got a little better.</div><div><b>ADULT</b><code>env/hits_per_s</code>, the learner's landed punches a second across its six opponents (frozen), with noise. Start to end of each m1 run: Zombie 0.28 to 1.08, Lil Matt 0.45 to 1.26, Grandma 0.65 to 1.31, Matt 0.86 to 1.59, Grandpa 0.60 to 0.95, Trump 0.56 to 0.83, Nick 1.22 to 1.33 (already high). The two m2 runs continue Matt (to 1.66) and Trump (0.80). Attack passes for all seven in the exam.</div></div>
+
+  <h2>3. Falling over in a bout</h2>
+  <div class="chart"><img src="img/tb_night_falls.png" alt="TensorBoard env/falls for the match runs: most fall from 0.1 to 0.2 down to near 0; one stays near 0.1"></div>
+  <div class="levels"><div><b>TODDLER</b>This counts how often the boxer falls over while boxing. Down is good. Most of them stopped falling.</div><div><b>CHILD</b>Out of every practice bout, this is how many ended with the learning boxer on the floor. Most started at 1 or 2 in 10 and ended at about 1 in 100. Trump's line stayed high: he still gets knocked over a lot, mostly by Nick.</div><div><b>ADULT</b><code>env/falls</code>: share of episodes the learner ends on the floor, any cause, with noise. m1: Matt 0.15 to 0.01, Zombie 0.16 to 0.01, Lil Matt 0.18 to 0.01, Grandma 0.23 to 0.04, Grandpa 0.08 to 0.02, Nick 0.10 to 0.02, Trump 0.15 to 0.11; m2 (fall charge 8 for Matt): Matt 0.10 to 0.01, Trump 0.11 to 0.13. The exam counts only falls nobody's punch caused: Matt's went from 1.67 to 0.00 a minute in m2, Trump's from 0.33 to 0.00; Nick (1.33) and Grandpa (2.00) still fail, mostly against each other's new aggression at close range.</div></div>
+
+  <h2>Compared with before tonight</h2>
+  <p><b>Much better.</b> At 22:50 one boxer (Matt) had the footwork rungs and the boxing exam on the new bodies passed
+  1 of 7 (Nick, with the old policies). Now all seven stand, walk, turn and get up; Zombie passes everything, and the
+  boxing exam's lines (R3 to R7 and footing) have gone from 16 fails across the seven to 10 (counting each failed line once). What did not work:
+  paying Trump for blocks made his guard worse (24% to 15%): he trades punches rather than covering, and needs a stage
+  of its own. Carrying on improved little from the second match round (Matt 21 to 23 of 30): the handover bank helps,
+  but 500 iterations at 30% of episodes is not yet enough.</p>
+  <div class="note">One job, <code>m1_nick</code>, faulted on the GPU (CUDA 719) a minute in and was run again at 04:06; the
+  restart wrapper now restarts such a run instead of giving up. Five second-round match runs are queued behind a hold
+  (<code>training/logs/queue.hold</code>).</div>
+</main>
+</body>
+</html>
