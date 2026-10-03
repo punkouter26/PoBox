@@ -417,6 +417,9 @@ namespace PoBox.EditorTools
                             if (r != null && r.enabled) { r.enabled = false; hidden.Add(r); }
                     foreach (TrailRenderer t in skin.trails)
                         if (t != null && t.enabled) { t.enabled = false; hidden.Add(t); }
+                    // The gloves are the MuJoCo glove spheres, drawn in the corner's colour: the only plain mesh renderers.
+                    foreach (Renderer r in skin.extraRenderers)
+                        if (r is MeshRenderer && r.enabled) { r.enabled = false; hidden.Add(r); }
                     if (otherSkin != null) otherSkin.SetVisible(false);
 
                     Vector3 head = skin.HeadPoint, pelvis = skin.PelvisPoint;

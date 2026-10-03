@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &923597134
+--- !u!1 &1567483868
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,9 +127,100 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 923597137}
-  - component: {fileID: 923597136}
-  - component: {fileID: 923597135}
+  - component: {fileID: 1567483871}
+  - component: {fileID: 1567483870}
+  - component: {fileID: 1567483869}
+  m_Layer: 0
+  m_Name: Menu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1567483869
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567483868}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da536ea0b9346a74b8a4f636893269c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoBox.Runtime::PoBox.UI.MenuView
+  boxers:
+  - name: grandma
+    displayName: GRANDMA
+    detail: "1.70 m \xB7 88 kg"
+    portrait: {fileID: 2800000, guid: 54f50bcb3c6f6b54088f2871b70da868, type: 3}
+  - name: grandpa
+    displayName: GRANDPA
+    detail: "1.62 m \xB7 80 kg"
+    portrait: {fileID: 2800000, guid: 96fb38a9e41122e4f8c6b4c8aa4f717d, type: 3}
+  - name: matt
+    displayName: MATT
+    detail: "1.86 m \xB7 85 kg"
+    portrait: {fileID: 2800000, guid: 95a50afba8c5e12489f83788b26d50fc, type: 3}
+  - name: nick
+    displayName: NICK
+    detail: "1.65 m \xB7 59 kg"
+    portrait: {fileID: 2800000, guid: 74969f36ceb1bd44eb5724696e51dbe2, type: 3}
+  - name: zombie
+    displayName: ZOMBIE
+    detail: "1.82 m \xB7 92 kg"
+    portrait: {fileID: 2800000, guid: 275bc595988531d4da89766f70f3fbcd, type: 3}
+  redColor: {r: 0.89, g: 0.24, b: 0.24, a: 1}
+  blueColor: {r: 0.2, g: 0.49, b: 0.94, a: 1}
+--- !u!114 &1567483870
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567483868}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 962bd77d8f5446b45a1ec51a43aefac8, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: b0fcbe2ef84d6fd4b970e050db67e8bc, type: 3}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &1567483871
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567483868}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1997382926
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1997382929}
+  - component: {fileID: 1997382928}
+  - component: {fileID: 1997382927}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -137,21 +228,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &923597135
+--- !u!81 &1997382927
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923597134}
+  m_GameObject: {fileID: 1997382926}
   m_Enabled: 1
---- !u!20 &923597136
+--- !u!20 &1997382928
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923597134}
+  m_GameObject: {fileID: 1997382926}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
@@ -196,112 +287,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &923597137
+--- !u!4 &1997382929
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923597134}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2109189272
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2109189275}
-  - component: {fileID: 2109189274}
-  - component: {fileID: 2109189273}
-  m_Layer: 0
-  m_Name: Menu
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2109189273
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109189272}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da536ea0b9346a74b8a4f636893269c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoBox.Runtime::PoBox.UI.MenuView
-  boxers:
-  - name: grandma
-    displayName: GRANDMA
-    detail: "1.70 m \xB7 88 kg"
-    portrait: {fileID: 2800000, guid: 54f50bcb3c6f6b54088f2871b70da868, type: 3}
-  - name: grandpa
-    displayName: GRANDPA
-    detail: "1.62 m \xB7 80 kg"
-    portrait: {fileID: 2800000, guid: 96fb38a9e41122e4f8c6b4c8aa4f717d, type: 3}
-  - name: lilmatt
-    displayName: LIL MATT
-    detail: "1.64 m \xB7 81 kg"
-    portrait: {fileID: 2800000, guid: ceb78ce3a0c3334448b058f5ee731c79, type: 3}
-  - name: matt
-    displayName: MATT
-    detail: "1.81 m \xB7 79 kg"
-    portrait: {fileID: 2800000, guid: 95a50afba8c5e12489f83788b26d50fc, type: 3}
-  - name: nick
-    displayName: NICK
-    detail: "1.65 m \xB7 59 kg"
-    portrait: {fileID: 2800000, guid: 74969f36ceb1bd44eb5724696e51dbe2, type: 3}
-  - name: trump
-    displayName: TRUMP
-    detail: "1.90 m \xB7 109 kg"
-    portrait: {fileID: 2800000, guid: 472b8a3d7dafdd74a9c0c888e14a9c96, type: 3}
-  - name: zombie
-    displayName: ZOMBIE
-    detail: "1.82 m \xB7 80 kg"
-    portrait: {fileID: 2800000, guid: 275bc595988531d4da89766f70f3fbcd, type: 3}
-  redColor: {r: 0.89, g: 0.24, b: 0.24, a: 1}
-  blueColor: {r: 0.2, g: 0.49, b: 0.94, a: 1}
---- !u!114 &2109189274
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109189272}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 962bd77d8f5446b45a1ec51a43aefac8, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: b0fcbe2ef84d6fd4b970e050db67e8bc, type: 3}
-  m_SortingOrder: 0
-  m_Position: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
-  m_PivotReferenceSize: 0
-  m_Pivot: 0
-  m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &2109189275
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2109189272}
+  m_GameObject: {fileID: 1997382926}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -314,5 +306,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 923597137}
-  - {fileID: 2109189275}
+  - {fileID: 1997382929}
+  - {fileID: 1567483871}

@@ -86,8 +86,13 @@ MonoBehaviour:
   voice: {fileID: 7990334006982751925}
   restHeight: 3.3
   speakHeight: 2.45
+  introHeight: 1.7
+  awayHeight: 8
   ceilingHeight: 9
   travelSeconds: 0.7
+  arriveSeconds: 1.1
+  lingerSeconds: 0.9
+  winnerLingerSeconds: 2.5
   faceCamera: 1
   openDegrees: 24
   upperShare: 0.3
@@ -101,14 +106,12 @@ MonoBehaviour:
   - draw
   - grandma
   - grandpa
-  - lilmatt
   - matt
   - nick
   - red_corner
   - round_1
   - round_2
   - round_3
-  - trump
   - winner
   - zombie
   clips:
@@ -117,14 +120,12 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 42fab982eaf2b4549a019bb1377bae1d, type: 3}
   - {fileID: 8300000, guid: 56c129457e5337943bbc452ca2f13b05, type: 3}
   - {fileID: 8300000, guid: 548abf7f71174d74b993801265eb3367, type: 3}
-  - {fileID: 8300000, guid: fc3e98f9dc37fe54ea816691176f9462, type: 3}
   - {fileID: 8300000, guid: bd8df2c94e00a0e4186b802d0560be2f, type: 3}
   - {fileID: 8300000, guid: c6585cc7166261841ad015adfb4aebab, type: 3}
   - {fileID: 8300000, guid: 3eda54667817f8541be77003471ed61b, type: 3}
   - {fileID: 8300000, guid: 41bc341694e6ba24794e079d570a2534, type: 3}
   - {fileID: 8300000, guid: f3eb7a9167ba31b45921362c377d02bb, type: 3}
   - {fileID: 8300000, guid: 7530726f970af3f4686e16c0fb52d30c, type: 3}
-  - {fileID: 8300000, guid: c782b751b4889b54c9d07e93dcbe9502, type: 3}
   - {fileID: 8300000, guid: 022e49765185f524081b15fbdcce2b53, type: 3}
   - {fileID: 8300000, guid: 5a42b7fa85089a443a635932c3785b8b, type: 3}
 --- !u!82 &7990334006982751925

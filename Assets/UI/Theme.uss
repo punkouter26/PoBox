@@ -529,7 +529,15 @@ Label { margin: 0; padding: 0; }
 .pick--on { opacity: 1; }
 .pick-col--red .pick--on { border-color: var(--red); }
 .pick-col--blue .pick--on { border-color: var(--blue); }
-.pick-portrait { flex-grow: 1; background-color: rgb(20, 24, 34); -unity-background-scale-mode: scale-and-crop; }
+/* A portrait is taken standing, the face in its top third (DevTools 'portraits'); the card shows a wide strip of it,
+   so the strip is anchored on the face rather than the middle of the picture. */
+.pick-portrait {
+    flex-grow: 1;
+    background-color: rgb(20, 24, 34);
+    background-size: cover;
+    background-position-x: center;
+    background-position-y: 16%;
+}
 .pick-foot { height: 112px; padding: 0 16px; justify-content: center; background-color: var(--surface); }
 .pick-name { font-size: var(--t-title); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; }
 .pick-detail { font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); -unity-text-align: middle-left; }
