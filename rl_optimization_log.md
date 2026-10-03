@@ -515,3 +515,6 @@ knockdowns** in 1.5 s (from 7 of 30), carrying on 21 of 30: FAIL (for `m2_matt`)
 
 **Get up, Nick and Lil Matt (`u1_nick_lilmatt`, 05:01 to 05:23).** Nick 30 of 30 in 1.4 s, **carrying on 28 of 30: pass**.
 Lil Matt 29 of 30 in 1.5 s, carrying on 23 of 29: FAIL.
+
+**Get up, Trump and Grandma (`u1_trump_grandma`, 05:23 to 05:46).** Trump 30 of 30 in 1.7 s, carrying on 25 of 30; Grandma
+30 of 30 in 2.2 s (from 22), carrying on 20 of 30: getting up passes for both, carrying on fails for both.
