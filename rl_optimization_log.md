@@ -442,3 +442,8 @@ the night's training: the editor is closed while the GPU trains.)
 
 **Trump (`f_trump`, 23:10 to 23:42).** Stand 100%, walk off by 0.02 m/s with no falls, turn 100%, joints 0.38; old
 get-up policy 97% in 3.2 s. R0 to R3 passed.
+
+**Grandma (`f_grandma`, 23:44 to 00:14).** Stand 97%, walk off by 0.02 m/s with no falls, joints 0.58, old get-up
+policy 77% (her mark 60%): pass. **Turn 83% (mark 90%): FAIL.** Turns alone from 60 starts: 59 faced in time, one
+fall. The exam again with 90 episodes of each kind: turn **90%**, exactly the mark: borderline, not luck. Queued
+`f2_grandma` after Grandpa: 600 more iterations from `f_grandma` with 45% turns (from 30%).
