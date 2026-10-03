@@ -487,3 +487,7 @@ fights at close quarters, and a fall from being bumped is not a fall from a punc
 **m1_nick did not train (02:02 to 02:03):** a GPU fault (CUDA 719) a minute in, before its first save, and
 `train_resilient.py` gave up for want of a save. It now starts such a run again from the beginning; `m1_nick` is back
 in the queue, after `m1_grandpa`.
+
+**Grandpa, match (`m1_grandpa`, 03:38 to 04:06).** Footing 0.00 (from 1.67); attack 0.63 a second at 3.7 m/s (his mark
+3.0); guard stops 71%; chin 0.44; getting up 18 of 30 (exactly his 60%). **Carrying on 15 of 18**: FAIL, the only line.
+`m1_nick` started again at 04:06 and is past its first save.
