@@ -61,6 +61,21 @@ def leash(pid: int) -> None:
         log(f"viewer leash failed: {e}")
 
 
+def gpu_busy() -> int:
+    """The GPU's load, percent, over three seconds; 0 if it cannot be asked. The editor in Play mode or a game
+    takes a run from 60,000 steps a second to 24,000 or 12,000 (rl_optimization_log.md), so a job waits for it."""
+    try:
+        reads = []
+        for _ in range(3):
+            out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                                 capture_output=True, text=True, timeout=20).stdout
+            reads.append(int(out.split()[0]))
+            time.sleep(1.0)
+        return min(reads)
+    except Exception:
+        return 0
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--after", default="", help="do nothing until this file exists")
@@ -91,6 +106,13 @@ def main() -> None:
         if not todo or os.path.exists(os.path.join(LOGS, "queue.hold")):
             if not idle_said:
                 log("held (logs/queue.hold)" if todo else "nothing queued; waiting")
+                idle_said = True
+            time.sleep(15.0)
+            continue
+        busy = gpu_busy()
+        if busy >= 25:       # ponytail: one threshold for everything; a job that should share the GPU needs a flag
+            if not idle_said:
+                log(f"the GPU is {busy}% busy with something else (the editor in Play mode, a game, another run); waiting")
                 idle_said = True
             time.sleep(15.0)
             continue

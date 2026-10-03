@@ -37,6 +37,7 @@ Rules for AI agents working in this Unity project (UNITY_AGENT).
 
 - Creatures should move realistically, with Earth gravity, realistic joint movement, and mass according to their size.
 - Joints should move at a speed and a force that resemble real humans (if the trained agent is the human).
+- Every new creature is trained from the start with a muscle-like speed limit (joint torque falls to nothing at the joint's speed limit) and fatigue (its drives weaken as it spends its energy and recover with rest), and the game runs it under the same rules.
 - Make sure all body parts of all creatures accurately collide with each other, and that creatures cannot pass through each other or anything in the environment.
 
 ## Self-collision

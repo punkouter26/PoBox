@@ -80,7 +80,8 @@ class BoxingEnv:
                  survivor_bootstrap: bool = False, daze: bool = False, daze_tau: float = 2.5,
                  daze_lo: float = 14.0, daze_hi: float = 36.0, daze_weak: float = 0.45, daze_body: float = 0.3,
                  legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
-                 handover: dict = None, handover_share: float = 0.15):
+                 handover: dict = None, handover_share: float = 0.15,
+                 speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -146,8 +147,23 @@ class BoxingEnv:
         order = self.cfg["joint_order"]
         self.A = len(order)
         self.obs_dim = 9 + 3 * self.A + 3 + 9 + 6 + 6 + 2 + 2
+        # Sensor noise in each number's own units (times obs_noise): one size for all of them was the whole
+        # signal of the gravity vector, which moves a few hundredths, and nothing to a joint speed of 20 rad/s.
+        A_ = self.A
+        self.noise_scale = torch.tensor(
+            [0.05] * 3 + [0.1] * 3 + [0.005] * 3              # base velocity, turn rate, gravity
+            + [0.01] * A_ + [0.3] * A_ + [0.0] * A_           # joint angles, joint speeds, last action (known exactly)
+            + [0.0] * 2 + [0.01]                              # feet down, height
+            + [0.02] * 6 + [0.1] * 3                          # target head and body, target head velocity
+            + [0.02] * 12 + [0.02] * 2 + [0.01] * 2,          # gloves, facing, place in the ring
+            device=device)
         self.ring_half = float(cfg.get("ring_half", self.cfg.get("ring_half", 3.05)))
 
+        self.speed_limit = speed_limit or all(c.get("speed_limit", False) for c in self.cfgs)
+        if self.speed_limit:
+            for p, c in zip(("a_", "b_"), self.cfgs):
+                for n, fl, vl in zip(order, c["force_limit"], c["velocity_limit"]):
+                    m.dof_damping[m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, p + n)]] += fl / vl
         d0 = mujoco.MjData(m)
         mujoco.mj_resetDataKeyframe(m, d0, 0)
         mujoco.mj_forward(m, d0)
@@ -261,6 +277,18 @@ class BoxingEnv:
         self.joint_lo = F([c["lower"] for c in self.cfgs])               # (K, A)
         self.joint_hi = F([c["upper"] for c in self.cfgs])
         self.qvel_limit = F([c["velocity_limit"] for c in self.cfgs])    # (K, A): an old fighter's joints are slower
+        # Two rules of a living body, each off unless asked for here or in the fighter's own config (which is
+        # what the exam and the game read, so a policy trained under a rule is examined and played under it).
+        # A muscle's strength falls with its speed: each joint is damped by its force limit over its speed
+        # limit, so a drive pulling its hardest has nothing left over at the limit, which is then the body's
+        # and not only a charge (the physics applies it every solver step). And a body tires: every
+        # joule its drives put out is taken from a reserve that fills again over fatigue_rec_s; below half, the
+        # drives weaken, down to (1 - fatigue_weak) with nothing left.
+        # ponytail: the reserve is not in the observation (nor is the daze); a boxer cannot pace itself by it.
+        # Give it an input with tools/widen_policy.py when pacing is wanted.
+        self.fatigue_j = F([fatigue_j or float(c.get("fatigue_j", 0.0)) for c in self.cfgs])             * F([float(c.get("strength", 1.0)) for c in self.cfgs])              # (K,) a frail body has less
+        self.fatigue_on = bool((self.fatigue_j > 0.0).all())
+        self.fatigue_rec_s, self.fatigue_weak = fatigue_rec_s, fatigue_weak
         leg = [i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
         self.leg_idx = L(leg)
 
@@ -283,13 +311,14 @@ class BoxingEnv:
         self.daze = z(N, K)
         self.legs_out = z(N, K)                                                  # seconds the legs stay gone
         self.drive_scale = torch.ones(N, K, device=device)                       # share of joint drive strength left
+        self.reserve = torch.ones(N, K, device=device)                           # what a tiring body has left, 0 to 1
         self.prev_block = torch.zeros(N, K, 2, dtype=torch.bool, device=device)
         self.since_block = torch.full((N, K), 99.0, device=device)               # seconds since this fighter stopped a punch
         self.gravity_world = torch.tensor([0.0, 0.0, -1.0], device=device)
         self._acc = {k: torch.zeros((), device=device) for k in
                      ("ret_sum", "len_sum", "fell_sum", "done_n", "steps", "upright_sum", "dist_sum",
                       "hits_head", "hits_body", "strength_sum", "strength_max", "glove_speed", "power_sum",
-                      "sat_sum", "ko_sum", "daze_sum", "weak_sum")}
+                      "sat_sum", "ko_sum", "daze_sum", "weak_sum", "reserve_sum")}
         self._acc.update({f"rt_{t}": torch.zeros((), device=device) for t in self.TERMS})
         # The same counts kept per fighter, for a match between two different ones.
         self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head")}
@@ -427,6 +456,9 @@ class BoxingEnv:
         self.drive_scale = torch.where(m1, torch.ones_like(self.drive_scale), self.drive_scale)
         self.prev_block = torch.where(m3, torch.zeros_like(self.prev_block), self.prev_block)
         self.since_block = torch.where(m1, torch.full_like(self.since_block, 99.0), self.since_block)
+        if self.fatigue_on:
+            # An episode is twelve seconds and a round is forty-five: it begins anywhere in a round's tiredness.
+            self.reserve = torch.where(m1, self._u(self.N, self.K, lo=0.3, hi=1.0), self.reserve)
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of
@@ -518,7 +550,7 @@ class BoxingEnv:
                          rel(g["t_head"]), rel(g["t_body"]), to_heading(head_vel, yaw),
                          own_gloves, opp_gloves, facing, ring], dim=-1)
         if self.obs_noise > 0.0:
-            obs = obs + torch.randn(obs.shape, generator=self.rng, device=self.device) * (0.02 * self.obs_noise)
+            obs = obs + torch.randn(obs.shape, generator=self.rng, device=self.device) * (self.noise_scale * self.obs_noise)
         return torch.nan_to_num(obs).clamp(-100.0, 100.0).reshape(N * K, self.obs_dim)
 
     # ---- step ----------------------------------------------------------------------------------
@@ -528,10 +560,15 @@ class BoxingEnv:
         The game's MujocoRing does exactly this with the same number."""
         N, K, A = self.N, self.K, self.A
         want = (self.default_joint + action * self.action_scale).clamp(self.joint_lo, self.joint_hi)
-        if self.daze_on or self.MODE:
-            q = self.qpos[:, self.jq]
-            want = q + self.drive_scale[..., None] * (want - q)
+        q = self.qpos[:, self.jq]
+        if self.daze_on or self.MODE or self.fatigue_on:
+            scale = self.drive_scale * self._tired() if self.fatigue_on else self.drive_scale
+            want = q + scale[..., None] * (want - q)
         self.ctrl.copy_(want.reshape(N, K * A))
+
+    def _tired(self) -> torch.Tensor:
+        """Share of drive strength a tiring body has: all of it down to half its reserve, then less."""
+        return 1.0 - self.fatigue_weak * (1.0 - self.reserve / 0.5).clamp(0.0, 1.0)
 
     def step(self, action: torch.Tensor):
         N, K, A = self.N, self.K, self.A
@@ -660,6 +697,9 @@ class BoxingEnv:
         jp = self.qpos[:, self.jq]
         jv = self.qvel[:, self.jv]
         tau = self.act_force.reshape(N, K, A)
+        if self.fatigue_on:
+            spent = (tau * jv).abs().sum(-1) / self.fatigue_j
+            self.reserve = (self.reserve + self.dt * ((1.0 - self.reserve) / self.fatigue_rec_s - spent)).clamp(0.0, 1.0)
 
         # ---- reward
         r = {}
@@ -731,6 +771,7 @@ class BoxingEnv:
         a["ko_sum"] += (r["ko"] >= self.ko_bonus).float().sum()
         a["daze_sum"] += self.daze.mean()
         a["weak_sum"] += (self.drive_scale < 0.999).float().mean()
+        a["reserve_sum"] += self.reserve.mean()
         ka = self._kacc
         ka["blocks"] += new_block.float().sum((0, 2))
         ka["legs"] += legs_went.float().sum(0)
@@ -780,6 +821,7 @@ class BoxingEnv:
             "legs_gone_per_min": float(self._kacc["legs"].sum().item()) / (s * self.dt * self.N * self.K) * 60.0,
             "daze": a["daze_sum"] / s,
             "weak_share": a["weak_sum"] / s,
+            "reserve": a["reserve_sum"] / s,
         }
         out.update({f"rt_{t}": a[f"rt_{t}"] / s for t in self.TERMS})
         if self.hetero:

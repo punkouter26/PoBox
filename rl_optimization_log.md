@@ -555,3 +555,33 @@ Promoted (match.onnx from `m2_nick`).
 29** (from 20 of 30), attack 1.09 a second (from 0.90), guard 73% (from 65%), footing and chin 0.00, getting up 29 of 30:
 better on every line, carrying on still short of 90%. Promoted. The queue is held again (11:01); `m2_grandpa` and
 `m2_zombie` wait behind it. Abilities grid: https://claude.ai/artifact/1HfxM4Uhtt9LtAikeP197A
+
+## 2026-10-03 afternoon: five changes to the trainer from an audit (no training run yet)
+
+Code only; nothing was trained and nothing was promoted. The queue is still held.
+
+**On for every run from now on (the held `m2_grandpa` and `m2_zombie` included):**
+
+- **The critic's loss is no longer clipped, and the actor and the critic are clipped apart** (`ppo.py`). Rewards are
+  about one a step, so a state is worth 50 to 100; the clipped loss held the critic within 0.2 of its last answer, and
+  one gradient clip over both networks let a large value gradient shrink the policy's step. Suspected in `defend_a`
+  (value loss up tenfold, noise walking up). Not yet measured: compare `value_loss` and `action_std` on the next run.
+- **Sensor noise is in each number's own units** (`envs/boxing.py`, `noise_scale`): 0.005 on gravity, 0.01 on joint
+  angles, 0.3 rad/s on joint speeds, none on the last action and the feet. It was 0.02 on all hundred.
+- **`tools/queue_runner.py` waits while the GPU is 25% busy with something else** (the editor in Play mode, a game).
+
+**Off until asked for, per boxer** (`--speed-limit`, `--fatigue-j 30000` when training; `tools/set_rules.py` writes
+them into the configs under `models/v2`, which is where the exam reads them and what promoting copies to the game):
+
+- **Speed limit:** each joint is damped by its force limit over its speed limit, so a drive pulling its hardest has
+  nothing left at the limit. In the Warp stages, `tools/footwork_c.py`, `tools/exam.py` and `MjBoxer.Bind`. A first
+  version that held the joint target back once a control step was dropped: a forearm passes its limit inside one 20 ms
+  step. CPU smoke (every joint thrown end to end, 8 rings, 3 s): 99th-percentile joint speed 2.30 of the limit without,
+  1.17 with (what is left is one limb whipping another, and the floor).
+  **What the warm start loses** (`r2b_matt`, C MuJoCo 3.5.0, 9 of each kind): stand 100%, walk 0.67 falls a minute
+  (was 0.00, FAIL), turn 89% (was 100%, FAIL). So every policy of a boxer needs a top-up under the rule, and the Unity
+  gate again, before `set_rules.py` turns it on for that boxer.
+- **Fatigue (bouts only):** the drives' output comes off a reserve (30 kJ times the boxer's strength) that fills again
+  over 20 s; below half, the drives weaken, to 0.6 with nothing left. Episodes begin at 0.3 to 1.0 of it. In
+  `BoxingEnv.step`, `tools/exam.py` and `MjBoxer.Tire` (called by `MjRing`). The reserve is not observed (nor is the
+  daze). Smoke: 8 s of thrashing leaves 0.46. Not yet trained with.

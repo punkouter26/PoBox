@@ -12,6 +12,9 @@ namespace PoBox.Mj
         public string name;
         public string[] joint_order;
         public double[] default_joint_pos, lower, upper, velocity_limit, force_limit;
+        /// <summary>The two rules of envs/boxing.py a policy may have been trained under; a config without them has neither.</summary>
+        public bool speed_limit;
+        public double fatigue_j, fatigue_rec_s = 20.0, fatigue_weak = 0.4;
         public double stand_height, total_mass_kg, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
         public int control_decimation = 4, physics_hz = 200;
     }
@@ -46,6 +49,8 @@ namespace PoBox.Mj
 
         /// <summary>The share of joint drive strength the boxer has: 1 unhurt, less when dazed, 0.04 with its legs gone (envs/boxing.py).</summary>
         [NonSerialized] public double DriveScale = 1.0;
+        /// <summary>What a tiring boxer has left, 0 to 1 (envs/boxing.py's reserve). Stays at 1 unless its config has fatigue_j.</summary>
+        [NonSerialized] public double Reserve = 1.0;
 
         public BoxerConfig Cfg { get; private set; }
         public bool Bound { get; private set; }
@@ -134,6 +139,9 @@ namespace PoBox.Mj
                 _jq[i] = _m->jnt_qposadr[j];
                 _jv[i] = _m->jnt_dofadr[j];
                 _act[i] = Id(MujocoLib.mjtObj.mjOBJ_ACTUATOR, Cfg.joint_order[i]);
+                // envs/boxing.py's speed limit: a drive pulling its hardest has nothing left over at the limit.
+                // The model is compiled afresh from the scene each time, so this is added once.
+                if (Cfg.speed_limit) _m->dof_damping[_jv[i]] += Cfg.force_limit[i] / Cfg.velocity_limit[i];
             }
             int root = Id(MujocoLib.mjtObj.mjOBJ_JOINT, "root");
             _rootQ = _m->jnt_qposadr[root]; _rootV = _m->jnt_dofadr[root];
@@ -324,8 +332,10 @@ namespace PoBox.Mj
             {
                 Action[i] = Clamp(Action[i], -Cfg.action_clip, Cfg.action_clip);
                 double want = Clamp(Cfg.default_joint_pos[i] + Action[i] * Cfg.action_scale, Cfg.lower[i], Cfg.upper[i]);
-                // Hurt: the spring to the target is weakened, the damping is not (envs/boxing.py _drive).
-                if (DriveScale < 0.999) { double q = _d->qpos[_jq[i]]; want = q + DriveScale * (want - q); }
+                double q = _d->qpos[_jq[i]];
+                // Hurt or tired: the spring to the target is weakened, the damping is not.
+                double scale = DriveScale * (1.0 - Cfg.fatigue_weak * Clamp(1.0 - Reserve / 0.5, 0.0, 1.0));
+                if (scale < 0.999) want = q + scale * (want - q);
                 _d->ctrl[_act[i]] = _held[i] = want;
             }
         }
@@ -339,6 +349,15 @@ namespace PoBox.Mj
         public void HoldTargets()
         {
             for (int i = 0; i < Joints; i++) _d->ctrl[_act[i]] = _held[i];
+        }
+
+        /// <summary>Once a control step of a bout is over: what its drives put out comes off the reserve, which fills again over fatigue_rec_s.</summary>
+        public void Tire(double dt)
+        {
+            if (Cfg.fatigue_j <= 0.0) return;
+            double watts = 0.0;
+            for (int i = 0; i < Joints; i++) watts += Math.Abs(_d->actuator_force[_act[i]] * _d->qvel[_jv[i]]);
+            Reserve = Clamp(Reserve + dt * ((1.0 - Reserve) / Cfg.fatigue_rec_s - watts / (Cfg.fatigue_j * Cfg.strength)), 0.0, 1.0);
         }
 
         /// <summary>A force on the trunk, in MuJoCo's frame; zero takes it off.</summary>

@@ -121,6 +121,10 @@ def main() -> None:
     ap.add_argument("--shove", type=float, default=2.5, help="getup: the shove that starts an episode, m/s")
     ap.add_argument("--assist", type=float, default=0.6,
                     help="getup: the helping hand the stage starts with, as a share of body weight; it comes down by itself")
+    ap.add_argument("--speed-limit", action="store_true",
+                    help="a drive's torque falls to nothing as its joint nears its speed limit (envs/boxing.py)")
+    ap.add_argument("--fatigue-j", type=float, default=0.0,
+                    help="a bout: joules a full-strength boxer's drives can put out before they tire; 0 = no fatigue. Try 30000")
     ap.add_argument("--more-iters", type=int, default=0,
                     help="stop after this many iterations of this run, wherever the count started. 0 = no such limit")
     ap.add_argument("--freeze", nargs="*", default=[],
@@ -140,19 +144,22 @@ def main() -> None:
     if args.stage == "getup":
         env = GetUpEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                        cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
-                       slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
+                       slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
+                       speed_limit=args.speed_limit)
     elif args.stage == "footwork":
         env = FootworkEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                           episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                           fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
-                          disturb=args.disturb, randomise=args.randomise, rsi=args.rsi)
+                          disturb=args.disturb, randomise=args.randomise, rsi=args.rsi,
+                          speed_limit=args.speed_limit)
     else:
         env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                         push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w,
                         fall_penalty=args.fall_penalty, ko_bonus=args.ko_bonus, survivor_bootstrap=args.survivor_bootstrap,
                         daze=args.daze, daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi,
-                        daze_weak=args.daze_weak, block_w=args.block_w)
+                        daze_weak=args.daze_weak, block_w=args.block_w,
+                        speed_limit=args.speed_limit, fatigue_j=args.fatigue_j)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     # One learner per distinct fighter. Two copies of the same fighter share one, and it learns from both.
     names = env.names if env.hetero else [env.names[0]]
@@ -338,7 +345,8 @@ def main() -> None:
                               **({"judge": judge.state_dict()} if judge is not None else {}),
                               # What the viewer needs to show the policy in the world it was trained in.
                               "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo,
-                                      "daze_hi": args.daze_hi, "daze_weak": args.daze_weak, "block_w": args.block_w}})
+                                      "daze_hi": args.daze_hi, "daze_weak": args.daze_weak, "block_w": args.block_w,
+                                      "speed_limit": env.speed_limit, "fatigue_j": args.fatigue_j}})
                 if frozen[k]:
                     # Kept beside its opponent's so the viewer shows the pair that trained; there is no
                     # latest_* for it, so nothing takes it for a newly trained policy.
@@ -349,7 +357,7 @@ def main() -> None:
                 except Exception as e:   # an export problem must never cost the run
                     print(f"[onnx] export failed: {e}", flush=True)
                 manifest = dict(env.cfgs[k if env.hetero else 0])
-                manifest.update({"action_scale": env.action_scale, "observation_size": D,
+                manifest.update({"action_scale": env.action_scale, "observation_size": D, "speed_limit": env.speed_limit, "fatigue_j": args.fatigue_j,
                                  "trained_by": {"run": run_name, "mode": env.mode, "against": env.names, "iterations": it + 1}})
                 with open(os.path.join(ck_dir, f"latest{tag(name)}_policy_config.json"), "w", encoding="utf-8") as fh:
                     json.dump(manifest, fh, indent=2)

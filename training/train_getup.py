@@ -69,6 +69,7 @@ def main() -> None:
     ap.add_argument("--fresh-assist", nargs="*", default=[],
                     help="boxers that start at --assist whatever their checkpoint says: for a get-up policy borrowed from "
                          "another body, which has learned the movement and not yet this body's weight")
+    ap.add_argument("--speed-limit", action="store_true", help="as train_box.py --speed-limit")
     ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--done-when", type=float, default=0.0,
@@ -88,7 +89,8 @@ def main() -> None:
             args.num_envs = 2048
     xml, x, y = pair_xml(args.a, args.b, os.path.join("models", "v2") if args.stage == "v2" else "models")
     resume = dict(zip((args.a, args.b), args.resume))
-    env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist)
+    env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
+                                                              speed_limit=args.speed_limit)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     names = env.names
     assert names == [x, y], f"{xml} holds {names}"

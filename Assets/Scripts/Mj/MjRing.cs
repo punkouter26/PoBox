@@ -140,6 +140,7 @@ namespace PoBox.Mj
             b.ResetToGuard(floorPoint.x, floorPoint.z, Math.Atan2(facing.z, facing.x));
             b.SetEpisodeAt(MjBoxer.Match, 0, 0, 0, 0, 0);
             b.DriveScale = 1.0;
+            b.Reserve = 1.0;
             _held[k] = false;
             SetGhost(k, false);
             _has[0] = _has[1] = false;      // the other's target has just jumped too
@@ -266,6 +267,8 @@ namespace PoBox.Mj
             // the bodies brought up to date before anybody observes.
             red.AfterStep(_dt);
             blue.AfterStep(_dt);
+            red.Tire(_dt);
+            blue.Tire(_dt);
             MujocoLib.mj_kinematics(_m, _d);
             TrackPunches();
             TrackCanvas();

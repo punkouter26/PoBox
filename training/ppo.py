@@ -196,7 +196,7 @@ class PPO:
 
         T, N = c.steps_per_env, self.num_envs
         flat = lambda x: x.reshape(T * N, *x.shape[2:])
-        obs, act, logp_old, val_old = flat(b["obs"]), flat(b["act"]), flat(b["logp"]), flat(b["val"])
+        obs, act, logp_old = flat(b["obs"]), flat(b["act"]), flat(b["logp"])
         mu_old, sigma_old = flat(b["mu"]), flat(b["sigma"])
         adv_f, ret_f = flat(adv_n), flat(ret)
 
@@ -219,12 +219,16 @@ class PPO:
                         g["lr"] = self.cfg.lr
                 ratio = torch.exp(logp - logp_old[idx])
                 surr = -torch.min(ratio * adv_f[idx], ratio.clamp(1 - c.clip, 1 + c.clip) * adv_f[idx]).mean()
-                v_clipped = val_old[idx] + (v - val_old[idx]).clamp(-c.clip, c.clip)
-                v_loss = torch.max((v - ret_f[idx]).pow(2), (v_clipped - ret_f[idx]).pow(2)).mean()
+                # No clipped value loss: rewards here are about one a step, so a state is worth 50 to 100, and a
+                # critic held within `clip` (0.2) of its last answer cannot follow a change of stage.
+                v_loss = (v - ret_f[idx]).pow(2).mean()
                 loss = surr + c.value_coef * v_loss - c.entropy_coef * ent.mean()
                 self.opt.zero_grad(set_to_none=True)
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.model.parameters(), c.max_grad_norm)
+                # The actor and the critic share no weights: clipped together, a large value gradient shrinks
+                # the policy's step with it.
+                nn.utils.clip_grad_norm_(list(self.model.actor.parameters()) + [self.model.log_std], c.max_grad_norm)
+                nn.utils.clip_grad_norm_(self.model.critic.parameters(), c.max_grad_norm)
                 self.opt.step()
                 if c.max_std > 0.0:
                     with torch.no_grad():

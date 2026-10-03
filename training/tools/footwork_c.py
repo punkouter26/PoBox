@@ -46,9 +46,18 @@ def heading(v, yaw: float) -> np.ndarray:
     return np.array([c * v[0] + s * v[1], -s * v[0] + c * v[1], v[2]])
 
 
+def speed_limit(m, prefix: str, cfg: dict) -> None:
+    """envs/boxing.py's speed limit, for a boxer whose config asks for it: each joint damped by its force limit
+    over its speed limit."""
+    if cfg.get("speed_limit", False):
+        for n, fl, vl in zip(cfg["joint_order"], cfg["force_limit"], cfg["velocity_limit"]):
+            m.dof_damping[m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, prefix + n)]] += fl / vl
+
+
 class Solo:
     def __init__(self, xml: str, cfg: dict, seed: int = 1):
         self.m = m = mujoco.MjModel.from_xml_path(xml)
+        speed_limit(m, "a_", cfg)
         self.d = mujoco.MjData(m)
         self.cfg, self.rng = cfg, np.random.default_rng(seed)
         self.order = cfg["joint_order"]

@@ -41,6 +41,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "tools"))
 from ppo import PPO, PPOConfig  # noqa: E402
 from eval_cmujoco import Ring  # noqa: E402
+from footwork_c import speed_limit  # noqa: E402
 
 VETERANS = ("matt", "zombie")
 MARKS = {
@@ -73,6 +74,8 @@ class ExamRing(Ring):
     def __init__(self, xml: str, cfg: dict, seed: int = 1):
         super().__init__(xml, cfg, seed)
         m = self.m
+        for p, c in zip(("a_", "b_"), self.cfgs):
+            speed_limit(m, p, c)
         G = mujoco.mjtObj.mjOBJ_GEOM
         self.forearm = [[mujoco.mj_name2id(m, G, p + f"forearm_{s}_geom") for s in "lr"] for p in ("a_", "b_")]
         self.r_glove = [m.geom_size[self.glove[k][0]][0] for k in range(2)]
@@ -84,6 +87,7 @@ class ExamRing(Ring):
         self.layers = (m.geom_contype.copy(), m.geom_conaffinity.copy())
         self.own_geoms = [[g for g in range(m.ngeom) if (mujoco.mj_id2name(m, G, g) or "").startswith(p)] for p in ("a_", "b_")]
         self.scale = np.ones(2)
+        self.reserve = np.ones(2)             # envs/boxing.py's fatigue, for a boxer whose config has "fatigue_j"
 
     def place(self, spots, yaws, jitter: float = 0.0):
         m, d = self.m, self.d
@@ -102,6 +106,7 @@ class ExamRing(Ring):
         self.last[:] = 0
         self.head_vel[:] = 0
         self.scale[:] = 1.0
+        self.reserve[:] = 1.0
         for k in range(2):
             self.prev_head[k] = d.geom_xpos[self.head[1 - k]]
 
@@ -140,13 +145,19 @@ class ExamRing(Ring):
             a = np.asarray(actions[k]).clip(-3.0, 3.0)
             self.last[k] = a
             w = (self.default[k] + a * 0.5).clip(self.lo[k], self.hi[k])
-            if self.scale[k] < 0.999:
-                q = d.qpos[self.jq[k]]
-                w = q + self.scale[k] * (w - q)
+            q = d.qpos[self.jq[k]]
+            scale = self.scale[k] * (1.0 - 0.4 * np.clip(1.0 - self.reserve[k] / 0.5, 0.0, 1.0))
+            if scale < 0.999:
+                w = q + scale * (w - q)
             want.append(w)
         d.ctrl[:] = np.concatenate(want)
         mujoco.mj_step(self.m, d, 4)
         for k in range(2):
+            joules = float(self.cfgs[k].get("fatigue_j", 0.0)) * float(self.cfgs[k].get("strength", 1.0))
+            if joules > 0.0:
+                n = self.A
+                spent = np.abs(d.actuator_force[k * n:(k + 1) * n] * d.qvel[self.jv[k]]).sum() / joules
+                self.reserve[k] = np.clip(self.reserve[k] + self.dt * ((1.0 - self.reserve[k]) / 20.0 - spent), 0.0, 1.0)
             head = d.geom_xpos[self.head[1 - k]]
             self.head_vel[k] = (head - self.prev_head[k]) / self.dt
             self.prev_head[k] = head.copy()
