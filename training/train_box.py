@@ -34,6 +34,7 @@ sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
 from envs.getup import GetUpEnv  # noqa: E402
 from envs.footwork import FootworkEnv  # noqa: E402
+from envs.match import MatchEnv  # noqa: E402
 from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
 
 
@@ -98,9 +99,11 @@ def main() -> None:
     ap.add_argument("--survivor-bootstrap", action="store_true",
                     help="the fighter left standing when the other falls has its episode cut short, not ended: "
                          "without this a knockdown costs the one who lands it the rest of the episode's reward")
-    ap.add_argument("--stage", default="auto", choices=["auto", "getup", "footwork"],
+    ap.add_argument("--stage", default="auto", choices=["auto", "getup", "footwork", "v2"],
                     help="auto: bag or match, read from the model. getup: the fighters in the match model learn to "
                          "stand back up after a knockdown (envs/getup.py); resume it from the match policies. "
+                         "v2: auto on the retrofit's bodies (models/v2), with the 103-number observation every v2 policy "
+                         "reads, so a boxer's footwork policy can be taken to the bag (envs/match.py). "
                          "footwork: a boxer alone learns to stand, walk and turn while it is shoved and has cubes "
                          "thrown at it (envs/footwork.py); resume it from a policy widened by tools/widen_policy.py")
     ap.add_argument("--walk-share", type=float, default=0.5, help="footwork: share of episodes that are a commanded walk")
@@ -125,6 +128,12 @@ def main() -> None:
                     help="a drive's torque falls to nothing as its joint nears its speed limit (envs/boxing.py)")
     ap.add_argument("--fatigue-j", type=float, default=0.0,
                     help="a bout: joules a full-strength boxer's drives can put out before they tire; 0 = no fatigue. Try 30000")
+    ap.add_argument("--start-spread", type=float, default=1.0,
+                    help="how far from the guard an episode may begin, as a multiple of the usual 0.06 rad and 0.15 m/s")
+    ap.add_argument("--effort-free-iters", type=int, default=0,
+                    help="no charge for power or for action size and change for this many iterations of the run, then "
+                         "brought back over as many again: for a stage in which a skill has first to be found")
+    ap.add_argument("--shove-max", type=float, default=30.0, help="footwork: the hardest shove, N s")
     ap.add_argument("--more-iters", type=int, default=0,
                     help="stop after this many iterations of this run, wherever the count started. 0 = no such limit")
     ap.add_argument("--freeze", nargs="*", default=[],
@@ -151,15 +160,16 @@ def main() -> None:
                           episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                           fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
                           disturb=args.disturb, randomise=args.randomise, rsi=args.rsi,
+                          shove_hi=args.shove_max, start_spread=args.start_spread,
                           speed_limit=args.speed_limit)
     else:
-        env = BoxingEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
+        env = (MatchEnv if args.stage == "v2" else BoxingEnv)(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                         push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w,
                         fall_penalty=args.fall_penalty, ko_bonus=args.ko_bonus, survivor_bootstrap=args.survivor_bootstrap,
                         daze=args.daze, daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi,
                         daze_weak=args.daze_weak, block_w=args.block_w,
-                        speed_limit=args.speed_limit, fatigue_j=args.fatigue_j)
+                        speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, start_spread=args.start_spread)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     # One learner per distinct fighter. Two copies of the same fighter share one, and it learns from both.
     names = env.names if env.hetero else [env.names[0]]
@@ -252,6 +262,9 @@ def main() -> None:
 
     for it in range(start_iter, args.iters):
         t0 = time.time()
+        if args.effort_free_iters > 0:
+            share = min(1.0, max(0.0, (it - start_iter - args.effort_free_iters) / args.effort_free_iters))
+            env.effort_scale = share
         paid = torch.zeros((), device=device)
         with torch.no_grad():
             for _ in range(args.steps):

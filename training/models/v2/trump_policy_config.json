@@ -229,8 +229,8 @@
     "pace_s": 0.9,
     "taken": 0.4,
     "block_w": 0.0,
-    "range_m": 0.72,
-    "press": 0.25,
+    "range_m": 0.6,
+    "press": 0.4,
     "energy": 0.8
   },
   "strength": 1.102,

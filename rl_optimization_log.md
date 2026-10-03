@@ -610,3 +610,58 @@ without the rule). **R0 to R2 passed at the first attempt.** In Unity: prefab an
 model equals the trainer's (0 differences), in the Arena's MatchSetup and the Testbed's roster. Get-up
 (`u1_trump2_matt`, Matt frozen) and the first match round (`m3_trump`) follow. Report with the charts:
 `DOCS/reports/2026-10-03-abilities-and-training.html`.
+
+**Three options taken from mujoco_playground's G1 walking task (16:30; all off unless asked for, so the run in progress
+is unchanged):**
+
+- `--effort-free-iters N` (train_box, train_gauntlet): no charge for power, action size or action change for N
+  iterations, then brought back over N more. Their humanoid is charged nothing for effort; ours, charged from the first
+  step, taught Trump on the bag that standing still is cheapest (`bag_trump2`, `bag_trump3`).
+- `--shove-max NS` (footwork; default 30, the exam's) and, for bouts, the `--push-vel` there already was: theirs kick
+  the body by up to 2 m/s, ours by 0.1 to 0.4.
+- `--start-spread X` (footwork, bag, match): episodes begin up to X times the usual 0.06 rad a joint and 0.15 m/s from
+  the guard; theirs scale the joints by 0.5 to 1.5. For carrying on, beside the handover bank.
+
+The held `m2_grandpa` and `m2_zombie` now carry `--push-vel 0.8 --start-spread 3` (footing, carrying on). CPU smoke:
+joints start up to 0.18 rad out at spread 3; the three effort terms are exactly 0 at scale 0; shoves reach what is asked.
+
+**Trump, get-up, bag and first match round (15:05 to 16:45).**
+
+- **Get-up (`u1_trump2_matt`, 1500 iterations from the old Trump's get-up policy, Matt frozen):** could not rise at first;
+  the stage's helping hand came on by itself (to 0.25 of body weight) and was gone by iteration 500. Exam: **30 of 30
+  knockdowns in 1.7 s. R3 passed.**
+- **`m3_trump` (from the old Trump's match policy), stopped at 415 and rejected:** it could not stand on the new body
+  (down in 99% of episodes), and by the time it could it had stopped punching: 0.03 a second at 0.7 m/s, blocks 1.0 a
+  second, noise falling. A boxer that relearns to stand while being hit loses its punch on the way.
+- **Bag, two failures (`bag_trump2`, `bag_trump3`, from his footwork policy; the second with hits paid five times as
+  much):** in two minutes glove speed fell from 1.8 to 0.4 m/s and the effort charge from -0.48 to -0.09 a step, hits to
+  nothing. A policy that has never punched, charged for effort from the first step, finds that standing still is best.
+  (`--effort-free-iters` was written because of this; not yet tried.)
+- **Bag, third (`bag_trump4`, 700 iterations from Zombie's match policy, `--hit-w 2`, fatigue off for the stage):** down
+  in every episode for the first minute and punching throughout; at the end 1.69 a second at 8.5 m/s, 1% falls.
+  `train_box.py --stage v2` is the bag (or self-sparring) on the 103-number observation.
+- **`m5_trump` (700 iterations from `bag_trump4`, fatigue on, 30% of episodes from his handover bank).** Exam
+  (`logs/exam_m5_trump.json`): footing 0.00, guard stops 48%, chin 0.00, getting up 30 of 30: pass. **Attack 0.37 a second
+  at 3.7 m/s: FAIL** (1.09 at 8.5 m/s on Zombie, 0.71 on Nick, 0.00 to 0.02 on Matt, Grandma and Grandpa). **Carrying on 23
+  of 30: FAIL.**
+
+Why the attack fails: shoulder to wrist he measures 0.44 m, the shortest in the roster (the others 0.48 to 0.54), and
+his style, written for the old mesh, had him stand at 0.72 m. He lands on the two who come to him. **Changed:** range
+0.72 to 0.60, press 0.25 to 0.4 (roster, rig, configs). **`m6_trump` (17:06):** 500 iterations from `m5_trump`, twice the
+rings against Matt, Grandma and Grandpa, `--push-vel 0.8 --start-spread 3` (their first use).
+
+**`m6_trump` (17:06 to 18:00; 500 iterations from `m5_trump`, range 0.60, twice the rings against Matt, Grandma and
+Grandpa, `--push-vel 0.8 --start-spread 3`).** It ran at 10,000 samples a second for forty minutes while a game held the
+GPU, then 40,000. Exam (`logs/exam_m6_trump.json`): footing 0.00, guard stops 55%, chin 0.00, getting up 30 of 30 in
+1.7 s, **carrying on 28 of 30 (from 23): pass.** **Attack 0.37 a second at 4.3 m/s: FAIL** (1.33 at 8.1 m/s on Zombie, 0.42
+on Nick, 0.02 to 0.04 on Matt, Grandma and Grandpa: no better for the shorter range). **Trump passes 8 of 9.** The wider
+starts and harder shoves came with the first pass of carrying on for a boxer in one round, with the handover bank as
+before, so the credit is shared; the shoves also put his opponents down in 20 to 40% of episodes, which a bout does not.
+
+**Into Unity (18:05 to 18:30).** Promoted: `f_trump2` (with a 5 s walk reference and 25 falls episodes), `m6_trump`,
+`u1_trump2_matt` (exported at 103 inputs), and his config (speed limit, fatigue). **The gate passes for all six, 18 of
+18:** Trump's replay 5.7e-06; closed loop 3.60 against 3.60 footfalls a second, 64.33 against 64.30 N m, 2.943 against
+2.943 m; 25 episodes 0% against 0%. Played: Testbed (stand under shoves and a cube, walk at 0.59 of 0.60 m/s, turn in
+2.6 s, no falls), Arena against Zombie (119 landed to 101, a knockdown on command and up at the count of 6), Menu (his
+card; rebuilt with six). Announcer clip and portrait in. Report: `DOCS/reports/2026-10-03-trump-in-the-game.html`.
+Open: attack against Matt, Grandma and Grandpa; his hands show past his gloves; the menu portrait's crop.

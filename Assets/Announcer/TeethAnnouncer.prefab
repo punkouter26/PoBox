@@ -99,6 +99,7 @@ MonoBehaviour:
   syllablesPerSecond: 5.5
   secondsPerCharacter: 0.055
   loudnessForOpen: 0.16
+  jawSmoothSeconds: 0.07
   speakAloud: 1
   keys:
   - blue_corner
@@ -114,6 +115,7 @@ MonoBehaviour:
   - round_3
   - winner
   - zombie
+  - trump
   clips:
   - {fileID: 8300000, guid: b9cdf217da164a64ea452bd2abe6a02b, type: 3}
   - {fileID: 8300000, guid: 5cf5c94c92c58f846b8ed13982651f4a, type: 3}
@@ -128,6 +130,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 7530726f970af3f4686e16c0fb52d30c, type: 3}
   - {fileID: 8300000, guid: 022e49765185f524081b15fbdcce2b53, type: 3}
   - {fileID: 8300000, guid: 5a42b7fa85089a443a635932c3785b8b, type: 3}
+  - {fileID: 8300000, guid: c782b751b4889b54c9d07e93dcbe9502, type: 3}
 --- !u!82 &7990334006982751925
 AudioSource:
   m_ObjectHideFlags: 0

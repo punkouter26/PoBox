@@ -14,7 +14,8 @@
       "says": "comes forward, big slow shots to the head, little guard",
       "age": 1.0,
       "speed": 1.0,
-      "style": {"head": 1.8, "body": 0.8, "power": 1.8, "pace_s": 0.9, "taken": 0.4, "block_w": 0.0, "range_m": 0.72, "press": 0.25, "energy": 0.8}
+      "style": {"head": 1.8, "body": 0.8, "power": 1.8, "pace_s": 0.9, "taken": 0.4, "block_w": 0.0, "range_m": 0.60, "press": 0.4, "energy": 0.8},
+      "style_note": "2026-10-03 17:05, the new mesh after its first match round: range 0.72 -> 0.60 and press 0.25 -> 0.4. Shoulder to wrist is 0.44 m, the shortest in the roster (the others 0.48 to 0.54); at 0.72 he landed 1.09 a second on Zombie and 0.71 on Nick, who come to him, and 0.00 to 0.02 on Matt, Grandma and Grandpa, who do not."
     },
     "grandma": {
       "display": "GRANDMA",

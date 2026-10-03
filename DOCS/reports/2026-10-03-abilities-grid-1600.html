@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox boxer abilities</title>
+<style>
+  :root { --bg: #fbfaf7; --ink: #1d1d1f; --soft: #5b5b60; --card: #ffffff; --line: #e2dfd8;
+          --pass: #1f7a4d; --pass-bg: #e3f3ea; --fail: #b3261e; --fail-bg: #fbe6e3; --none: #8b8b90; --none-bg: #efeeeb; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151517; --ink: #ececee; --soft: #a2a2a8; --card: #1f1f23; --line: #33333a;
+          --pass: #6fd3a0; --pass-bg: #15301f; --fail: #ff8a80; --fail-bg: #3a1917; --none: #8b8b90; --none-bg: #26262a; } }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, sans-serif; margin: 0; padding: 24px 16px 56px; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 27px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 17px; margin: 0 0 8px; }
+  .sub { color: var(--soft); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .scroll { overflow-x: auto; }
+  table.grid { border-collapse: separate; border-spacing: 4px; min-width: 900px; width: 100%; }
+  .grid th { font-size: 13px; font-weight: 600; text-align: left; padding: 4px 6px; vertical-align: bottom; }
+  .grid th small { display: block; font-weight: 400; color: var(--soft); }
+  .grid td { border-radius: 7px; padding: 7px 8px; font-size: 13px; line-height: 1.3; vertical-align: top; min-width: 92px; }
+  .grid td.name { font-weight: 700; font-size: 15px; background: none; min-width: 84px; }
+  .grid td.name small { display: block; font-weight: 400; color: var(--soft); font-size: 12px; }
+  td.pass { background: var(--pass-bg); } td.fail { background: var(--fail-bg); }
+  td b { display: block; font-size: 15px; } td.pass b { color: var(--pass); } td.fail b { color: var(--fail); }
+  .bar { height: 5px; border-radius: 3px; background: rgba(128,128,128,.25); margin-top: 5px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; } .pass .bar i { background: var(--pass); } .fail .bar i { background: var(--fail); }
+  .key span { display: inline-block; padding: 2px 9px; border-radius: 6px; margin: 0 6px 6px 0; font-size: 13px; }
+  .ladder { display: grid; grid-template-columns: 92px 1fr 52px; gap: 8px 10px; align-items: center; }
+  .rungs { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; } .rungs i { height: 16px; border-radius: 3px; }
+  .pair { display: grid; grid-template-columns: 92px 1fr; gap: 6px 10px; align-items: center; font-size: 14px; }
+  .pair .two { display: grid; gap: 2px; } .pair .two i { display: block; height: 9px; border-radius: 3px; min-width: 2px; }
+  img { max-width: 100%; height: auto; border-radius: 6px; background: #fff; display: block; }
+  dl { margin: 10px 0 0; } dt { font-weight: 600; margin-top: 8px; } dd { margin: 2px 0 0; }
+  ul { margin: 6px 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+<h1>What each boxer can do</h1>
+<p class="sub">3 October 2026, 16:00 · six boxers, nine behaviours · every cell is an exam result (30 tries or four 45-second rounds per opponent, no random wobble)</p>
+
+<div class="card">
+<strong>In one breath.</strong> Zombie and Nick can do everything a bout needs. Matt and Grandma miss one thing: staying up in the first three seconds after getting off the canvas. Grandpa misses two. The new Trump went from a brand-new body this afternoon to passing 7 of 9: he stands, walks, turns, gets up and covers his head, but he <strong>does not throw punches yet</strong> and is wobbly after getting up. He is on the punch bag right now to fix the first of those.
+</div>
+
+<h2>The grid</h2>
+<div class="key">
+  <span style="background:var(--pass-bg);color:var(--pass)">passes its exam</span>
+  <span style="background:var(--fail-bg);color:var(--fail)">fails its exam</span>
+</div>
+<div class="card scroll"><table class="grid" id="grid"></table></div>
+<p class="sub">The thin bar in each cell is how good the boxer is at that behaviour, from worst (empty) to best (full). Grandma and Grandpa are marked against easier targets for punching speed and getting up, because their bodies are built weaker and slower. Lil Matt and the old Trump were taken out of the game this morning and are not shown.</p>
+
+<h2>How far up the ladder each boxer is</h2>
+<div class="card"><div class="ladder" id="ladder"></div>
+<p class="sub" style="margin:12px 0 0">One block per behaviour, in the grid's order: stand, walk, turn, get up, attack, guard, chin, footing, carry on.</p></div>
+
+<h2>Giving and taking: punches a second in the exam</h2>
+<div class="card"><div class="pair" id="pair"></div>
+<p class="sub" style="margin:12px 0 0"><span style="color:var(--pass)">■</span> punches landed &nbsp; <span style="color:var(--fail)">■</span> head shots taken. A good boxer has a long green bar and a short red one. Matt hits most and is almost never hit in the head; Trump does neither.</p></div>
+
+<h2>What is still wrong, in plain words</h2>
+<div class="card"><ul>
+<li><strong>Trump does not punch.</strong> In his first boxing lesson he learned to stay on his feet and keep his gloves up, and nothing else: 0.00 punches landed a second in the exam. The boxing brain he started from belonged to the old Trump's body, which had longer legs, so the punching did not carry over. He is now practising on a punch bag (<code>bag_trump2</code>) before boxing people again.</li>
+<li><strong>Matt, Grandma, Grandpa, Trump: wobbly after getting up.</strong> They get off the floor nearly every time, but when the fighting brain takes the body back from the getting-up brain they fall again: Trump in 13 tries of 30, the others in up to 1 try in 4. Nick's second round of practice fixed exactly this.</li>
+<li><strong>Grandpa: falls without being hit.</strong> About twice a minute against his worst opponent. His second round of practice has still not run.</li>
+<li><strong>Matt never blocks.</strong> He passes the guard test only because opponents rarely reach his head. All his own punches go to the body.</li>
+<li><strong>The human rules.</strong> Trump's footwork was trained with the muscle speed limit. His boxing lesson (<code>m3_trump</code>) ran with the speed limit and fatigue switched off, and no other boxer has trained under either yet (task D8).</li>
+</ul></div>
+
+<h2>The latest lesson: three charts from TensorBoard</h2>
+<p class="sub">Run <code>m3_trump</code>, the new Trump's first boxing lesson against Matt, Zombie, Nick, Grandma and Grandpa: 415 rounds of practice, 19 minutes, 15:32 to 15:51. The other three lines are this morning's second boxing lessons for Matt, Nick and Grandma. Left to right is practice time. These are training numbers, with deliberate random wobble, so they sit a little worse than the exam.</p>
+
+<div class="card">
+<h3>1. Punches landed</h3>
+<img src="img/40_tb_hits_landed_annotated.png" alt="Punches landed a second over training: Matt 1.7, Nick 1.45, Grandma 0.8, the new Trump flat near zero">
+<dl>
+<dt>Toddler</dt><dd>How many times the boxer bops the other one. Up is good. Trump's pink line is lying on the floor: no bops.</dd>
+<dt>Child</dt><dd>Matt lands almost two punches every second, Nick about one and a half, Grandma nearly one. Trump lands one punch every half minute. The green dashed line is what you need to pass, and he is far under it.</dd>
+<dt>Adult</dt><dd>Clean punches landed per second, averaged over all opponents. The three earlier runs start high because they resumed from brains that already boxed on the same body, and each climbed further. Trump's stays at 0.03 for the whole run: the reward for standing and guarding was easier to collect than the reward for hitting, so that is what he learned.</dd>
+</dl>
+</div>
+
+<div class="card">
+<h3>2. Punches taken</h3>
+<img src="img/41_tb_hits_taken_annotated.png" alt="Punches taken a second over training: the new Trump rises to 1.45, Nick steady at 1.0, Grandma falls to 0.6, Matt 0.25">
+<dl>
+<dt>Toddler</dt><dd>How many times the boxer gets bopped. Down is good. Trump's line goes up, which is bad.</dd>
+<dt>Child</dt><dd>At the start Trump kept falling over, and you cannot punch someone who is on the floor. Once he learned to stand, the others could reach him, so he gets hit more and more. Grandma is the opposite: she gets hit less as she practises.</dd>
+<dt>Adult</dt><dd>Punches landed on the learner per second, anywhere on the body. Trump's rise from 0.2 to 1.45 is mostly a side effect of staying upright, and nearly all of it is to the body: the exam shows only 0.02 head shots a second getting through, because his guard stops about half of them. Still, a boxer who never hits back gets hit without limit.</dd>
+</dl>
+</div>
+
+<div class="card">
+<h3>3. Falling down</h3>
+<img src="img/42_tb_falls_annotated.png" alt="Share of rounds ending in a fall: the new Trump starts at 1.0 and drops to about 0.07, level with the others">
+<dl>
+<dt>Toddler</dt><dd>How often the boxer ends up on the floor. Down is good. Trump's line starts at the very top and slides down like a slide!</dd>
+<dt>Child</dt><dd>For the first hundred rounds of practice Trump fell over every single time. Then it clicked, and now he falls about 1 time in 15, the same as the others.</dd>
+<dt>Adult</dt><dd>Share of 12-second episodes that end with the learner down. Trump's plateau at 1.0 is the old body's boxing brain failing on the new body; the drop between rounds 100 and 200 is it adapting. He ends at 0.07, level with Grandma and Nick, and in the exam he has 0.00 unprovoked falls a minute. This is the one clear success of the run.</dd>
+</dl>
+</div>
+
+<div class="card"><strong>Better or worse than earlier runs?</strong> Worse on punching, as good on staying up. Matt, Nick and Grandma each got better at hitting during their lessons; Trump did not start hitting at all. The reason is the starting point, not the amount of practice: they resumed boxing brains made for their own bodies, and Trump resumed one made for a different body, so he spent the lesson relearning balance. A punch-bag lesson started at 15:53 to teach him to hit before he boxes people again.</div>
+
+<p class="sub">Sources: <code>training/logs/exam_*.json</code> (footwork: r2b_matt, f_zombie, f_nick, f2_grandma, f_grandpa, f_trump2; boxing: m2 for Matt, Nick and Grandma, m3 for Trump, the all-boxers exam after round one for Zombie and Grandpa; get-up: the u1 exams). Charts: TensorBoard on port 6006, tags <code>env/hits_per_s</code>, <code>env/their_hits_per_s</code>, <code>env/falls</code>.</p>
+</main>
+<script>
+// cell: [label, detail, state, bar 0..1]; row: [name, note, cells, punches landed a second, head shots taken a second]
+const P = "pass", F = "fail";
+const cols = [["Stand", "upright 20 s while shoved"], ["Walk", "speed error, m/s"], ["Turn", "faces opponent in 3 s"], ["Get up", "off the canvas"],
+              ["Attack", "punches landed a second"], ["Guard", "head shots stopped"], ["Chin", "legs buckle, per minute"], ["Footing", "falls nobody caused, per minute"], ["Carry on", "still up 3 s after rising"]];
+const rows = [
+  ["Zombie", "92 kg", [["100%", "", P, 1], ["0.01 off", "no falls", P, .93], ["93%", "", P, .93], ["30 of 30", "1.8 s", P, 1], ["0.90", "at 5.8 m/s", P, .45], ["73%", "", P, .73], ["0.00", "", P, 1], ["0.00", "", P, 1], ["27 of 30", "", P, .9]], 0.90, 0.24],
+  ["Nick", "59 kg", [["100%", "", P, 1], ["0.01 off", "no falls", P, .93], ["100%", "", P, 1], ["30 of 30", "1.6 s", P, 1], ["1.38", "at 6.8 m/s", P, .69], ["66%", "", P, .66], ["0.00", "", P, 1], ["0.00", "", P, 1], ["29 of 30", "", P, .97]], 1.38, 0.75],
+  ["Matt", "84 kg", [["100%", "", P, 1], ["0.04 off", "no falls", P, .74], ["100%", "", P, 1], ["30 of 30", "1.7 s", P, 1], ["1.99", "at 7.2 m/s, all to the body", P, 1], ["0%", "but hit only 0.06 a second", P, .15], ["0.00", "", P, 1], ["0.00", "", P, 1], ["23 of 30", "needs 27", F, .77]], 1.99, 0.06],
+  ["Grandma", "88 kg, frail", [["98%", "", P, .98], ["0.01 off", "no falls", P, .95], ["99%", "", P, .99], ["29 of 30", "2.6 s", P, .97], ["1.09", "at 5.6 m/s", P, .55], ["73%", "", P, .73], ["0.00", "", P, 1], ["0.00", "", P, 1], ["24 of 29", "needs 90%", F, .83]], 1.09, 0.04],
+  ["Grandpa", "80 kg, frail", [["97%", "", P, .97], ["0.02 off", "no falls", P, .87], ["97%", "", P, .97], ["30 of 30", "2.2 s", P, 1], ["0.62", "at 3.4 m/s", P, .31], ["68%", "", P, .68], ["0.78", "worst 2.67", P, .48], ["2.00", "may be at most 0.2", F, .1], ["26 of 30", "needs 27", F, .87]], 0.62, 0.47],
+  ["Trump", "109 kg, new today", [["100%", "", P, 1], ["0.02 off", "no falls", P, .87], ["100%", "", P, 1], ["30 of 30", "1.8 s", P, 1], ["0.00", "needs 0.5", F, .01], ["52%", "hit only 0.02 a second", P, .52], ["0.27", "worst 1.33", P, .82], ["0.00", "", P, 1], ["17 of 30", "needs 27", F, .57]], 0.00, 0.02],
+];
+document.getElementById("grid").innerHTML = "<tr><th></th>" + cols.map(c => `<th>${c[0]}<small>${c[1]}</small></th>`).join("") + "</tr>" +
+  rows.map(r => `<tr><td class="name">${r[0]}<small>${r[1]}</small></td>` + r[2].map(c =>
+    `<td class="${c[2]}"><b>${c[0]}</b>${c[1]}<div class="bar"><i style="width:${Math.round(c[3] * 100)}%"></i></div></td>`).join("") + "</tr>").join("");
+document.getElementById("ladder").innerHTML = rows.map(r => {
+  const n = r[2].filter(c => c[2] === P).length;
+  return `<strong>${r[0]}</strong><div class="rungs">${r[2].map((c, i) => `<i title="${cols[i][0]}" style="background:var(--${c[2]})"></i>`).join("")}</div><span>${n} of 9</span>`;
+}).join("");
+document.getElementById("pair").innerHTML = rows.map(r =>
+  `<strong>${r[0]}</strong><div class="two"><i title="landed ${r[3]}" style="width:${r[3] / 2 * 100}%;background:var(--pass)"></i>` +
+  `<i title="taken ${r[4]}" style="width:${r[4] / 2 * 100}%;background:var(--fail)"></i></div>`).join("");
+</script>
+</body>
+</html>

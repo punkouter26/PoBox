@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trump in the game</title>
+<style>
+  :root { --bg: #fbfaf7; --ink: #1d1d1f; --soft: #5b5b60; --card: #ffffff; --line: #e2dfd8; --good: #1f7a4d; --bad: #b3261e; --warn: #8a5a00; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151517; --ink: #ececee; --soft: #a2a2a8; --card: #1f1f23; --line: #33333a; --good: #6fd3a0; --bad: #ff8a80; --warn: #f2c14e; } }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, sans-serif; margin: 0; padding: 24px 16px 56px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 27px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 34px 0 8px; }
+  .sub { color: var(--soft); margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  figure { margin: 0; } figcaption { color: var(--soft); font-size: 14px; margin-top: 6px; }
+  img { max-width: 100%; height: auto; border-radius: 8px; display: block; }
+  table { border-collapse: collapse; width: 100%; } td, th { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ok { color: var(--good); font-weight: 600; } .no { color: var(--bad); font-weight: 600; } .hm { color: var(--warn); font-weight: 600; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+<h1>Trump in the game: what I saw</h1>
+<p class="sub">3 October 2026, 18:10 to 18:30 · Unity 6000.6, played in the editor after his training ended · screenshots at 540 by 960</p>
+
+<div class="card"><strong>In short.</strong> The new Trump works in all three scenes. He stands, walks and turns in the Testbed without falling; he boxes Zombie in the Arena, was knocked down on command, got up in about four seconds and carried on; and he has a card in the menu. The Unity gate passes for all six boxers. Two things do not look right yet: his open hands stick out past his gloves, and his menu card shows hair and brow more than face.</div>
+
+<h2>Testbed: stand, walk, turn</h2>
+<div class="card">
+<div class="shots">
+<figure><img src="img/trump_testbed_stand.png" alt="Trump standing in his guard in the testbed, HUD showing 0 falls"><figcaption>Standing in his guard, 15.6 s in, shoves on, 0 falls. The suit and limbs deform cleanly on the new rig.</figcaption></figure>
+<div>
+<table>
+<tr><th>What I asked</th><th>What he did</th><th></th></tr>
+<tr><td>Stand 22 s with shoves, then a thrown cube</td><td>0 falls; pelvis held at 0.81 to 0.82 m</td><td class="ok">good</td></tr>
+<tr><td>Walk forward at 0.6 m/s</td><td>3.75 m in 6.4 s, which is 0.59 m/s; 0 falls</td><td class="ok">good</td></tr>
+<tr><td>Turn to an opponent directly behind</td><td>facing them 2.6 s later; 0 falls</td><td class="ok">good</td></tr>
+<tr><td>Cost on this laptop</td><td>physics 0.13 ms and policy 0.43 ms a step, over 200 frames a second</td><td class="ok">good</td></tr>
+</table>
+<p class="sub" style="margin-top:10px">The Testbed's camera does not follow a walking boxer, so the walk screenshot shows an empty floor; that is the scene, not Trump.</p>
+</div>
+</div>
+</div>
+
+<h2>Arena: a bout with Zombie</h2>
+<div class="card">
+<div class="shots">
+<figure><img src="img/trump_arena_fight.png" alt="Round one: the HUD reads Trump 27 of 30 landed, Zombie dazed"><figcaption>Round one, 18 s in: Trump has landed 27 of 30, Zombie is dazed. The ticker reads "TRUMP lands a big right cross to the head".</figcaption></figure>
+<figure><img src="img/trump_arena_after_getup.png" alt="Round two after Trump got up: he is punching, his open hand visible past the red glove"><figcaption>Round two, after his knockdown: back up and punching. His open hand shows past the red glove.</figcaption></figure>
+<div>
+<table>
+<tr><th>Moment</th><th>What happened</th></tr>
+<tr><td>First 40 s</td><td>Trump landed 53 of 56, Zombie 45 of 48; neither fell</td></tr>
+<tr><td>By 1 min 30 s</td><td>Trump 119 landed and 2 knockdowns scored; Zombie 101 landed and down twice</td></tr>
+<tr><td>Knockdown on command</td><td>pelvis at 0.31 m at the count of 2, 0.61 m at 4, standing (0.84 m) at 6; the bout resumed</td></tr>
+<tr><td>Next 10 s</td><td>stayed on his feet and kept boxing</td></tr>
+<tr><td>Stamina</td><td>the game's stamina bar fell to 0.12 by the middle of round two, lower than Zombie's 0.40</td></tr>
+</table>
+</div>
+</div>
+</div>
+
+<h2>Menu: before and after</h2>
+<div class="card scroll">
+<img src="img/menu_trump_before_after.png" alt="The boxer menu before with five boxers and after with six; Trump's card is outlined">
+<p class="sub" style="margin-top:10px"><strong>1.</strong> Trump's card is new in both corners' columns, with his size (1.90 m, 109 kg) and a portrait taken in the ring. <strong>2.</strong> Six rows fit where five did, so every card is shorter. The layout audit reports 78 elements, none off screen, clipped or too small.</p>
+</div>
+
+<h2>Unity gate (Unity against plain C MuJoCo 3.5.0)</h2>
+<div class="card">
+<table>
+<tr><th>Test for Trump</th><th>Unity</th><th>C MuJoCo</th><th></th></tr>
+<tr><td>Replay of 250 recorded observations</td><td colspan="2">largest action difference 5.7e-06 (must be under 1e-4)</td><td class="ok">pass</td></tr>
+<tr><td>5 s walk: on his feet</td><td>whole 5 s</td><td>whole 5 s</td><td class="ok">pass</td></tr>
+<tr><td>Cadence, footfalls a second</td><td>3.60</td><td>3.60</td><td class="ok">pass</td></tr>
+<tr><td>Torque (RMS)</td><td>64.33 N m</td><td>64.30 N m</td><td class="ok">pass</td></tr>
+<tr><td>Ground covered</td><td>2.943 m</td><td>2.943 m</td><td class="ok">pass</td></tr>
+<tr><td>25 episodes with a shove and a cube: on the floor at the end</td><td>0%</td><td>0%</td><td class="ok">pass</td></tr>
+</table>
+<p class="sub" style="margin-top:10px">All 18 gate tests pass (three for each of six boxers). This is the first gate run with the speed limit applied in Unity, so the rule behaves the same on both sides.</p>
+</div>
+
+<h2>What does not look right yet</h2>
+<div class="card">
+<table>
+<tr><td class="hm">Hands past the gloves</td><td>His mesh has open hands, and the glove is a ball at the wrist, so his fingers show beyond it. Zombie's do the same. Closing the hands into fists in Blender, or hiding the hand under the glove, would fix it.</td></tr>
+<tr><td class="hm">Menu portrait</td><td>The card's crop lands on his hair and brow; most of his face is below the cut. His head is larger than the others', so he needs the crop set lower.</td></tr>
+<tr><td class="no">Attack exam</td><td>0.37 punches a second across all opponents (needs 0.5). He lands freely on Zombie and Nick and almost never on Matt, Grandma or Grandpa. The bout above was against Zombie, his best match-up.</td></tr>
+<tr><td class="hm">Not watched</td><td>I played him only against Zombie in the Arena. I did not watch him against the three he struggles with.</td></tr>
+</table>
+</div>
+</main>
+</body>
+</html>

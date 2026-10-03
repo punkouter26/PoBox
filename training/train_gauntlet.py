@@ -88,6 +88,11 @@ def main() -> None:
                     help="a drive's torque falls to nothing as its joint nears its speed limit (envs/boxing.py)")
     ap.add_argument("--fatigue-j", type=float, default=0.0,
                     help="a bout: joules a full-strength boxer's drives can put out before they tire; 0 = no fatigue. Try 30000")
+    ap.add_argument("--start-spread", type=float, default=1.0,
+                    help="how far from the guard an episode may begin, as a multiple of the usual 0.06 rad and 0.15 m/s")
+    ap.add_argument("--effort-free-iters", type=int, default=0,
+                    help="no charge for power or for action size and change for this many iterations of the run, then "
+                         "brought back over as many again: for a stage in which a skill has first to be found")
     ap.add_argument("--no-onnx", action="store_true")
     ap.add_argument("--handover", default="", help="states the learner's get-up policy leaves it in (tools/make_handover_bank.py); "
                                                    "a share of its episodes begin in one")
@@ -114,7 +119,7 @@ def main() -> None:
                         ko_bonus=args.ko_bonus, survivor_bootstrap=not args.no_survivor_bootstrap, daze=args.daze,
                         daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
-                        handover_share=args.handover_share, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, **extra_env)
+                        handover_share=args.handover_share, start_spread=args.start_spread, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -165,6 +170,10 @@ def main() -> None:
     total = 0
     for it in range(start, iters):
         t0 = time.time()
+        if args.effort_free_iters > 0:
+            share = min(1.0, max(0.0, (it - start - args.effort_free_iters) / args.effort_free_iters))
+            for e in envs:
+                e.effort_scale = share
         with torch.no_grad():
             for _ in range(args.steps):
                 a_me = ppo.act(torch.cat([mine(e, k, o) for e, k, o in zip(envs, side, obs)]))

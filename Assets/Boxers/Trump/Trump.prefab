@@ -51,9 +51,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Mj::PoBox.Mj.MjBoxer
   prefix: a_
   config: {fileID: 4900000, guid: a2a8ddfbe4e3a024ab221c5d450e60a9, type: 3}
-  policy: {fileID: 5022602860645237092, guid: 75d5545dd5b40ee4287e21b6ac83ff26, type: 3}
-  matchPolicy: {fileID: 0}
-  getUpPolicy: {fileID: 0}
+  policy: {fileID: 5022602860645237092, guid: 2d71b22629acb6d48aa21d44aff51801, type: 3}
+  matchPolicy: {fileID: 5022602860645237092, guid: 6858102afcd49ef46bd0faec41f22c3a, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: 06111a7b5cbe74447b47dc450a76070e, type: 3}
   opponent: {fileID: 0}
   ringCentre: {x: 0, y: 0}
 --- !u!114 &540122910588819474

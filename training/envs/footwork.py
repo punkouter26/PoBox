@@ -46,13 +46,14 @@ class FootworkEnv(BoxingEnv):
 
     def __init__(self, xml_path: str, num_envs: int, walk_share: float = 0.5, turn_share: float = 0.25,
                  disturb: float = 1.0, randomise: float = 0.15, shove_every_s: float = 3.0, cube_every_s: float = 3.0,
-                 rsi: float = 0.0, **kw):
+                 rsi: float = 0.0, shove_hi: float = 30.0, **kw):
         self.walk_share, self.turn_share = walk_share, turn_share
         # The share of walks that begin at a moment of a walking clip (style.py), legs and trunk as the clip has
         # them and the arms in the guard, with the clip's own velocity as the command: a boxer that has only ever
         # stood does not find walking by trying things at random, but one put in mid-stride learns to carry on.
         self.rsi = rsi
         self.disturb, self.randomise = disturb, randomise
+        self.shove_hi = shove_hi      # the hardest shove, N s (the exam's is 30; a harder one in training leaves room)
         self.shove_every_s, self.cube_every_s = shove_every_s, cube_every_s
         kw["push_vel"] = 0.0          # shoves here are forces, not jumps in velocity
         kw["daze"] = False
@@ -164,8 +165,9 @@ class FootworkEnv(BoxingEnv):
             q[:, rq:rq + 2] = spot
             q[:, rq + 2] = self.stand_height[k] + 0.002
             q[:, rq + 3:rq + 7] = yaw_quat(yaw)
-            q[:, self.jq[k]] = self.default_joint[k] + self._u(N, A, lo=-0.06, hi=0.06)
-            v[:, rv:rv + 2] = self._u(N, 2, lo=-0.15, hi=0.15)
+            s = self.start_spread
+            q[:, self.jq[k]] = (self.default_joint[k] + self._u(N, A, lo=-0.06 * s, hi=0.06 * s)).clamp(self.joint_lo[k], self.joint_hi[k])
+            v[:, rv:rv + 2] = self._u(N, 2, lo=-0.15 * s, hi=0.15 * s)
             # In front for a stand, anywhere for a turn. (A walk's is put ahead of the boxer every step.)
             turn = self._new_kind[:, k] == TURN
             bearing = yaw + torch.where(turn, self._u(N, lo=-math.pi, hi=math.pi), self._u(N, lo=-0.4, hi=0.4))
@@ -265,7 +267,7 @@ class FootworkEnv(BoxingEnv):
         N, K = self.N, self.K
         start = (self._u(N, K) < self.dt / self.shove_every_s) & (self.shove_left <= 1e-6) & (self.disturb > 0.0)
         ang, secs = self._u(N, K, lo=-math.pi, hi=math.pi), self._u(N, K, lo=0.1, hi=0.2)
-        newtons = self._u(N, K, lo=10.0, hi=30.0) * self.disturb * self.frail.view(1, K) / secs
+        newtons = self._u(N, K, lo=10.0, hi=self.shove_hi) * self.disturb * self.frail.view(1, K) / secs
         force = torch.stack([torch.cos(ang), torch.sin(ang), torch.zeros_like(ang)], -1) * newtons[..., None]
         self.shove_force = torch.where(start[..., None], force, self.shove_force)
         self.shove_left = torch.where(start, secs, (self.shove_left - self.dt).clamp_min(0.0))
@@ -372,12 +374,12 @@ class FootworkEnv(BoxingEnv):
         r["stance"] = -0.2 * still * (foot_sep - 0.30).abs()
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
-        r["act"] = -0.001 * (action ** 2).sum(-1)
-        r["rate"] = -0.01 * ((action - self.prev_action) ** 2).sum(-1)
+        r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
+        r["rate"] = -0.01 * self.effort_scale * ((action - self.prev_action) ** 2).sum(-1)
         # A boxer's charges, for standing and for punching. A walker's legs do work every step: charged at full
         # rate it cost more than walking earned, and the first three walking runs learned to stand (2 October).
         easy = 1.0 - 0.7 * moving_now
-        r["energy"] = -2.5e-4 * easy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
+        r["energy"] = -2.5e-4 * self.effort_scale * easy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)
         r["limit"] = -0.5 * ((self.joint_lo + 0.05 - jp).clamp_min(0.0) + (jp - self.joint_hi + 0.05).clamp_min(0.0)).sum(-1)

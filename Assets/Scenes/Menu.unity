@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1567483868
+--- !u!1 &31685427
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,9 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1567483871}
-  - component: {fileID: 1567483870}
-  - component: {fileID: 1567483869}
+  - component: {fileID: 31685430}
+  - component: {fileID: 31685429}
+  - component: {fileID: 31685428}
   m_Layer: 0
   m_Name: Menu
   m_TagString: Untagged
@@ -137,13 +137,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1567483869
+--- !u!114 &31685428
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1567483868}
+  m_GameObject: {fileID: 31685427}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: da536ea0b9346a74b8a4f636893269c1, type: 3}
@@ -166,19 +166,23 @@ MonoBehaviour:
     displayName: NICK
     detail: "1.65 m \xB7 59 kg"
     portrait: {fileID: 2800000, guid: 74969f36ceb1bd44eb5724696e51dbe2, type: 3}
+  - name: trump
+    displayName: TRUMP
+    detail: "1.90 m \xB7 109 kg"
+    portrait: {fileID: 2800000, guid: d4304d4d54738d94aa201b5b403be6a4, type: 3}
   - name: zombie
     displayName: ZOMBIE
     detail: "1.82 m \xB7 92 kg"
     portrait: {fileID: 2800000, guid: 275bc595988531d4da89766f70f3fbcd, type: 3}
   redColor: {r: 0.89, g: 0.24, b: 0.24, a: 1}
   blueColor: {r: 0.2, g: 0.49, b: 0.94, a: 1}
---- !u!114 &1567483870
+--- !u!114 &31685429
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1567483868}
+  m_GameObject: {fileID: 31685427}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
@@ -195,13 +199,13 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &1567483871
+--- !u!4 &31685430
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1567483868}
+  m_GameObject: {fileID: 31685427}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -210,7 +214,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1997382926
+--- !u!1 &1232416650
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -218,9 +222,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1997382929}
-  - component: {fileID: 1997382928}
-  - component: {fileID: 1997382927}
+  - component: {fileID: 1232416653}
+  - component: {fileID: 1232416652}
+  - component: {fileID: 1232416651}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -228,21 +232,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1997382927
+--- !u!81 &1232416651
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1997382926}
+  m_GameObject: {fileID: 1232416650}
   m_Enabled: 1
---- !u!20 &1997382928
+--- !u!20 &1232416652
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1997382926}
+  m_GameObject: {fileID: 1232416650}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
@@ -287,13 +291,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1997382929
+--- !u!4 &1232416653
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1997382926}
+  m_GameObject: {fileID: 1232416650}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -306,5 +310,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1997382929}
-  - {fileID: 1567483871}
+  - {fileID: 1232416653}
+  - {fileID: 31685430}

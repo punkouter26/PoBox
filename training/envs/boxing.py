@@ -81,7 +81,8 @@ class BoxingEnv:
                  daze_lo: float = 14.0, daze_hi: float = 36.0, daze_weak: float = 0.45, daze_body: float = 0.3,
                  legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
                  handover: dict = None, handover_share: float = 0.15,
-                 speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4):
+                 speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4,
+                 start_spread: float = 1.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -115,6 +116,13 @@ class BoxingEnv:
         self.daze_weak, self.daze_body, self.legs_out_s = daze_weak, daze_body, legs_out_s
         # Paid to a fighter whose glove or forearm is in the way of a punch coming at its head.
         self.block_w = block_w
+        # How far from the guard an episode may begin, as a multiple of the usual 0.06 rad a joint and 0.15 m/s:
+        # a boxer that has only ever started in its guard is lost when it is handed a body in any other state.
+        self.start_spread = start_spread
+        # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
+        # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
+        # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
+        self.effort_scale = 1.0
         self.range_m = range_m
         self.hit_cap = hit_cap
         # How far a glove has to come back off the target before it can score again: a punch has a
@@ -419,8 +427,9 @@ class BoxingEnv:
             q[:, rq:rq + 2] = spots[k]
             q[:, rq + 2] = self.stand_height[k] + 0.002
             q[:, rq + 3:rq + 7] = yaw_quat(yaw)
-            q[:, self.jq[k]] = self.default_joint[k] + self._u(N, A, lo=-0.06, hi=0.06)
-            v[:, rv:rv + 2] = self._u(N, 2, lo=-0.15, hi=0.15)
+            s = self.start_spread
+            q[:, self.jq[k]] = (self.default_joint[k] + self._u(N, A, lo=-0.06 * s, hi=0.06 * s)).clamp(self.joint_lo[k], self.joint_hi[k])
+            v[:, rv:rv + 2] = self._u(N, 2, lo=-0.15 * s, hi=0.15 * s)
             b = self.bank[k]
             if b is not None:
                 pick = torch.randint(0, b["z"].shape[0], (N,), device=self.device, generator=self.rng)
@@ -722,9 +731,9 @@ class BoxingEnv:
             - self.s_crowd * (self.s_range - 0.12 - dist).clamp_min(0.0)
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
-        r["act"] = -0.001 * (action ** 2).sum(-1)
-        r["rate"] = -0.01 * ((action - self.prev_action) ** 2).sum(-1)
-        r["energy"] = -2.5e-4 * self.s_energy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
+        r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
+        r["rate"] = -0.01 * self.effort_scale * ((action - self.prev_action) ** 2).sum(-1)
+        r["energy"] = -2.5e-4 * self.effort_scale * self.s_energy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)
         r["limit"] = -0.5 * ((self.joint_lo + 0.05 - jp).clamp_min(0.0) + (jp - self.joint_hi + 0.05).clamp_min(0.0)).sum(-1)

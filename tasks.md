@@ -165,4 +165,7 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
       Per boxer: top up footwork, get-up and match under the rules, pass the exam and the Unity gate, then
       `tools/set_rules.py --only NAME --speed-limit 1 --fatigue-j 30000` and promote. Matt first (his footwork
       fails walk and turn under the speed limit today). Does not hold up C6, C7 or D6.
+- [ ] D9 **Trump (new mesh, 2026-10-03):** in the game with footwork, get-up and match policies under the speed limit
+      and fatigue; passes 8 of 9 and the Unity gate. Open: attack (0.37 a second, mark 0.5: he does not reach Matt,
+      Grandma or Grandpa); fists or hidden hands under the gloves; the menu portrait's crop.
 - [ ] D7 Whole ladder re-checked in Unity for all seven; `DOCS/README.md` updated; commit.
