@@ -450,3 +450,10 @@ fall. The exam again with 90 episodes of each kind: turn **90%**, exactly the ma
 
 **Grandpa (`f_grandpa`, 00:16 to 00:47).** Stand 97%, walk off by 0.02 m/s with no falls, turn 97%, joints 0.66:
 R0 to R2 passed. His old get-up policy on the new body: **27%** (mark 60%): for `u1_grandpa_matt`.
+
+**Grandma top-up (`f2_grandma`, 1600 to 2200, 45% turns, 00:48 to 00:59).** Exam on 90 episodes of each kind:
+stand 98%, walk off by 0.01 m/s with no falls, **turn 99%** (from 90%), joints 0.59, get-up 78% (mark 60%). Passed.
+
+**All seven pass R0 to R2 in C MuJoCo 3.5.0** (Matt `r2b_matt`, Zombie, Nick, Lil Matt, Trump, Grandpa `f_<name>`,
+Grandma `f2_grandma`). Promotion and the Unity gate for the five not yet in Unity wait for the end of the night.
+The match runs (`m1_*`) began at 00:59.
