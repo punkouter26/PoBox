@@ -1,0 +1,17 @@
+{
+  "name": "bin.mujoco",
+  "displayName": "MuJoCo binaries",
+  "version": "3.5.0",
+  "description": "MuJoCo binaries for Unity (joanllobera/mujoco-bin#3.5.0), embedded by PoBox: the Android arm64 library is MuJoCo 3.5.0 built here with NDK r27c (the tag ships a 3.3.7 one), see README-PoBox.md",
+  "dependencies": {},
+  "author": {
+    "name": "Joan Llobera",
+    "email": "joan.llobera@artanim.ch",
+    "url": "https://artanim.ch/"
+  },
+  "changelogUrl": "",
+  "documentationUrl": "",
+  "license": "Apache-2.0",
+  "licensesUrl": "",
+  "hideInEditor": false
+}

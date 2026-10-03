@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "bin.mujoco": "https://github.com/joanllobera/mujoco-bin.git#3.5.0",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.cinemachine": "6.6.0",
     "com.unity.cloud.gltfast": "6.20.0",
