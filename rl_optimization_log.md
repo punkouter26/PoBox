@@ -379,3 +379,30 @@ are what is compared for that reason.
 
 **Decision:** the gate is passed; later rungs may go ahead (tasks.md, the parity rule). R2 (turn) for Matt started
 at 19:31 from `r1_matt`.
+
+## 2026-10-02 evening: R2 for Matt, the first footwork for another body (Zombie), and R2b
+
+**R2 (`r2_matt`, 1950 to 3150 from `r1_matt`, 40% walks, 30% turns).** In training it faced the stand-in within
+3 s in 87 to 94% of turn episodes (with exploration noise). **Exam, no noise, C MuJoCo 3.5.0, 30 of each kind:**
+stand 100% (pass), walk off by 0.02 m/s with no falls (pass), joints at 0.40 of their limits (pass), **turn 73%
+(mark 90%, FAIL).**
+
+Why: 60 turns sorted by their starting angle (scratchpad `turn_diag.py`) show it never falls and nearly always
+swings round, but settles 15 to 30 degrees off and drifts there. The facing term was `0.6 * cos(off)`: at 20
+degrees off that pays 0.94 of the most it can, so precision was worth almost nothing.
+
+**Change:** `envs/footwork.py`, face = weight x (cos(off) + exp(-(off/0.2)^2)): the cosine is still felt from
+behind; the narrow term costs about half of the face reward at 20 degrees off and nothing at 0.
+
+**R2b (`r2b_matt`, 3150 to 3950 from `r2_matt`), queued after `f_zombie`;** the five footwork jobs not yet started
+were pointed at it. (Stopping `f_zombie`, already running on the old reward, was not allowed, so it finished.)
+
+**Zombie (`f_zombie`, 1600 iterations from `r2_matt` onto Zombie's body, old reward).** Exam, C MuJoCo 3.5.0:
+stand 100%, walk off by 0.01 m/s with no falls, **turn 93%**, joints 0.38: **R0, R1 and R2 passed.** Its old
+get-up policy on the new body: 30% (mark 80%): the queued `u1_matt_zombie` is for that.
+**The gate in Unity** (promoted with `MjRetrofit.Promote("zombie", "f_zombie")`; the gate tests now run for every
+boxer with recordings): replay 6.7e-06; closed loop on its feet the whole 5 s in both, 3.60 against 3.60 footfalls
+a second, RMS torque 57.23 against 57.25 N m, 2.980 m against 2.980 m; 25 shove-and-cube episodes 0% against 0%
+on the floor, the same ending in 25 of 25. **Passed.**
+
+Also: R2b ran at 12,000 rather than 60,000 samples a second while a game (Age of Empires IV) held the GPU.

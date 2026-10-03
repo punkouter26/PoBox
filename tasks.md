@@ -146,11 +146,13 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
       binding, the PhysX shadow bodies, the scripted stand-in and the 21 pair layouts.
 - [x] D3 Interaction through MuJoCo only: fire a cube, shove toggle, behaviour selector, reset; automatic reset
       on a fall, a stall or the end of a task.
-- [ ] D4 HUD anchors (title, FPS and telemetry, menu and behaviour selector, reset and shove, version); layout
+- [x] D4 HUD anchors (title, FPS and telemetry, menu and behaviour selector, reset and shove, version); layout
       audit; before/after report.
 - [ ] D5 Play-mode tests updated; the old transfer probe replaced by the parity tests.
       2026-10-02: TransferProbe deleted; 15/16 PoBox tests pass. Open: the arena pairing test fails until the
       boxers have match policies (Zombie, on the zero brain, falls). The plugin's own tests pass alone (11/11) but
       not after ours (a scene with raw object names lingers).
 - [ ] D6 Android build with the 3.5.0 arm64 library; run on a phone; frame pacing and inference cost measured.
+      2026-10-02: the 3.5.0 tag's Android library is MuJoCo 3.3.7; a 3.5.0 one is built here with NDK r27c and
+      embedded (Packages/bin.mujoco). The APK builds (219 MB, IL2CPP, arm64). Open: no phone attached to run it on.
 - [ ] D7 Whole ladder re-checked in Unity for all seven; `DOCS/README.md` updated; commit.

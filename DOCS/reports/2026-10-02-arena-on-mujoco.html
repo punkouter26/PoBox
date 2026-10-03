@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox arena on MuJoCo</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PoBox retrofit: the boxing game on MuJoCo</h1>
+  <p class="dim">2 October 2026 · Phase D of <code>tasks.md</code> (D1 to D4) · the arena before and after its gloves, the HUD's anchors, and the layout audit</p>
+
+  <p>The arena is now an authored scene of prefabs on the MuJoCo plugin: the floor, the four rope walls and the eight
+  cubes of the trainer's own ring model, one <code>MjRing</code>, and every boxer twice (dressed for each corner,
+  switched off until the menu picks a pair). Unity's physics has no part in it: the scene holds no rigid body, no
+  articulation, no collider and no joint. The HUD is the one the game already had; the only thing on screen that
+  changed is the gloves.</p>
+
+  <div class="pair">
+    <div>
+      <span class="tag before">BEFORE: FIRST RUN ON MUJOCO</span>
+      <div class="shot">
+        <img src="img/arena_mujoco.png" alt="Matt over a downed Zombie with the count at 2; Matt's hands are bare">
+        <span class="pin" style="left:42%; top:42%;">A</span>
+      </div>
+      <p class="dim">The glove spheres were the hidden collision shapes, so a boxer punched with bare hands and a
+      viewer could not tell whose glove was whose.</p>
+    </div>
+    <div>
+      <span class="tag after">AFTER: GLOVES IN THE CORNER'S COLOUR</span>
+      <div class="shot">
+        <img src="img/arena_mujoco_gloves.png" alt="Matt with red gloves facing Zombie with blue gloves; the HUD across the top and bottom">
+        <span class="pin" style="left:29%; top:58%;">A</span>
+        <span class="pin" style="left:92%; top:54%;">A</span>
+        <span class="pin" style="left:9%; top:5%;">1</span>
+        <span class="pin" style="left:50%; top:5%;">2</span>
+        <span class="pin" style="left:91%; top:5%;">3</span>
+        <span class="pin" style="left:10%; top:97.5%;">4</span>
+        <span class="pin" style="left:92.5%; top:97.5%;">5</span>
+      </div>
+      <p class="dim">Matt v Zombie, round 1, both on their trained footwork policies.</p>
+    </div>
+  </div>
+
+  <ol class="legend" type="A">
+    <li><b>Changed: the gloves.</b> Each glove is drawn as what it is to MuJoCo, the sphere a punch is measured with,
+    in the corner's colour (<code>Glove_Red</code>, <code>Glove_Blue</code>). They hide with the boxer for the
+    portraits.</li>
+  </ol>
+  <p>Unchanged, and where each of the HUD's anchors sits:</p>
+  <ol class="legend">
+    <li>Title, top left: <b>POBOX</b>.</li>
+    <li>Frames a second, top centre, with the scoreboard and telemetry under it (health, the win bar, punches
+    thrown and landed, the hardest hit, energy).</li>
+    <li>Menu, top right: the boxer menu and settings.</li>
+    <li>Debug, bottom left: the developer panel.</li>
+    <li>Version, bottom right.</li>
+  </ol>
+  <div class="note">The frame rate in the picture (17) was taken with the GPU shared by a training run and a game.
+  The physics itself costs about 0.2 ms a frame (both boxers, 200 steps a second).</div>
+
+  <h2>Layout audit</h2>
+  <p>The play-mode tests hold the HUD and the boxer menu to one screen with nothing scrolled or cut, at three phone
+  shapes. All pass on the retrofitted game (19 of 19 PoBox tests, 2 October 2026).</p>
+  <div class="wide"><table>
+    <tr><th>Test</th><th>720 x 1280</th><th>1080 x 1920</th><th>1080 x 2400</th></tr>
+    <tr><td>HUD fits one screen, no scrolling</td><td>pass</td><td>pass</td><td>pass</td></tr>
+    <tr><td>Boxer menu fits one screen, corners kept apart</td><td>pass</td><td>pass</td><td>pass</td></tr>
+  </table></div>
+  <div class="wide"><table>
+    <tr><th>Other checks</th><th>Result</th></tr>
+    <tr><td>The arena fields the pair the menu picked, on MuJoCo, and they stay up</td><td>pass</td></tr>
+    <tr><td>Fighters stay on their feet through the intro</td><td>pass</td></tr>
+    <tr><td>Unity's physics components in the arena and the testbed</td><td>none</td></tr>
+    <tr><td>The gate, Unity against C MuJoCo 3.5.0, for Matt and for Zombie</td><td>pass (replay 6.7e-6; same cadence, torque and falls)</td></tr>
+  </table></div>
+</main>
+</body>
+</html>
