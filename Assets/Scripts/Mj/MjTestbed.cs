@@ -21,7 +21,7 @@ namespace PoBox.Mj
         public MjCubePool cubes;
         [Tooltip("Shove the boxer every few seconds: 10 to 30 N s, from any side, scaled by its strength.")]
         public bool shoves;
-        [Tooltip("Stand the boxer up again two seconds after a fall, or when it is five metres from where it began.")]
+        [Tooltip("Start the task again: two seconds after a fall, five metres from where it began, a walk that has stalled (20 cm in 4 s), or a turn's 5 s up.")]
         public bool autoReset = true;
         [Tooltip("MuJoCo's step, seconds: the trainer's (models/v2, 200 Hz).")]
         public float physicsStep = 0.005f;
@@ -34,6 +34,8 @@ namespace PoBox.Mj
         public double PhysicsMs { get; private set; }
         public double PolicyMs { get; private set; }
         public bool Ready => boxer != null && boxer.Bound;
+        int _behaviour = MjBoxer.Stand;
+        double _taskBegan, _checkAt, _distAt;
         /// <summary>Raised when a control step's physics is done; the boxer's state is that of the end of the step.</summary>
         public event Action ControlStepDone;
         /// <summary>Raised at the start of a control step, before the boxer observes: the place to throw something from a script.</summary>
@@ -90,8 +92,8 @@ namespace PoBox.Mj
             if (cubes != null) { cubes.ParkAll(); cubes.Tick(0.0); }
             boxer.Push(0, 0, 0);
             boxer.ResetToGuard(0.0, 0.0, 0.0);
-            boxer.SetEpisode(MjBoxer.Stand, 0.0, 0.0, 0.0, 1.3, 0.0);
-            Now = 0.0; _sub = 0; _shoveLeft = 0.0; _nextShove = 2.0; _downFor = 0.0;
+            SetBehaviour(_behaviour);
+            Now = 0.0; _sub = 0; _shoveLeft = 0.0; _nextShove = 2.0; _downFor = 0.0; _taskBegan = 0.0; _checkAt = 4.0; _distAt = 0.0;
             MjScene.Instance.SyncUnityToMjState();
         }
 
@@ -138,6 +140,8 @@ namespace PoBox.Mj
         /// <summary>What the boxer is asked to do from where it stands: hold its guard, walk forward at 0.6 m/s, or turn to an opponent behind it.</summary>
         public void SetBehaviour(int kind)
         {
+            _behaviour = kind;
+            _taskBegan = Now; _checkAt = Now + 4.0; _distAt = boxer.DistanceFromOrigin;
             if (kind == MjBoxer.Walk) boxer.SetEpisode(MjBoxer.Walk, 0.6 * boxer.Cfg.speed, 0.0, 0.0, 1.2, 0.0);
             else if (kind == MjBoxer.Turn) boxer.SetEpisode(MjBoxer.Turn, 0.0, 0.0, 0.0, 1.5, Math.PI);
             else boxer.SetEpisode(MjBoxer.Stand, 0.0, 0.0, 0.0, 1.3, 0.0);
@@ -160,7 +164,14 @@ namespace PoBox.Mj
             // Once down it is down until it is stood up again: a body rolling on the floor is one fall, not several.
             if (boxer.Fallen && _downFor == 0.0) Falls++;
             if (boxer.Fallen || _downFor > 0.0) _downFor += ControlDt;
-            if (_downFor >= 2.0 || boxer.DistanceFromOrigin > 5.0 || double.IsNaN(boxer.PelvisHeight)) ResetBoxer();
+            bool stalled = false;
+            if (_behaviour == MjBoxer.Walk && Now >= _checkAt)
+            {
+                stalled = Math.Abs(boxer.DistanceFromOrigin - _distAt) < 0.2;
+                _checkAt = Now + 4.0; _distAt = boxer.DistanceFromOrigin;
+            }
+            bool turnOver = _behaviour == MjBoxer.Turn && Now - _taskBegan >= 5.0;
+            if (_downFor >= 2.0 || boxer.DistanceFromOrigin > 5.0 || double.IsNaN(boxer.PelvisHeight) || stalled || turnOver) ResetBoxer();
         }
     }
 }

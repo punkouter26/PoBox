@@ -139,15 +139,18 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 
 ## Phase D: the game on the new physics, and polish
 
-- [ ] D1 Author the arena in the editor from prefabs: floor, ropes, cube pool, the seven boxer prefabs for each
+- [x] D1 Author the arena in the editor from prefabs: floor, ropes, cube pool, the seven boxer prefabs for each
       corner switched off; the picked pair is switched on before `MjScene` compiles. `PoBoxBuilder` stops
       generating scenes.
-- [ ] D2 Move hits, daze, knockdowns, balance gauge, hit map and rope flex to read `mjData`. Delete the custom
+- [x] D2 Move hits, daze, knockdowns, balance gauge, hit map and rope flex to read `mjData`. Delete the custom
       binding, the PhysX shadow bodies, the scripted stand-in and the 21 pair layouts.
-- [ ] D3 Interaction through MuJoCo only: fire a cube, shove toggle, behaviour selector, reset; automatic reset
+- [x] D3 Interaction through MuJoCo only: fire a cube, shove toggle, behaviour selector, reset; automatic reset
       on a fall, a stall or the end of a task.
 - [ ] D4 HUD anchors (title, FPS and telemetry, menu and behaviour selector, reset and shove, version); layout
       audit; before/after report.
 - [ ] D5 Play-mode tests updated; the old transfer probe replaced by the parity tests.
+      2026-10-02: TransferProbe deleted; 15/16 PoBox tests pass. Open: the arena pairing test fails until the
+      boxers have match policies (Zombie, on the zero brain, falls). The plugin's own tests pass alone (11/11) but
+      not after ours (a scene with raw object names lingers).
 - [ ] D6 Android build with the 3.5.0 arm64 library; run on a phone; frame pacing and inference cost measured.
 - [ ] D7 Whole ladder re-checked in Unity for all seven; `DOCS/README.md` updated; commit.
