@@ -31,6 +31,7 @@ namespace PoBox.EditorTools
         public const string MenuUxml = UiDir + "/Menu.uxml";
         public const string PortraitDir = UiDir + "/Portraits";
         public const string LookPath = SettingsDir + "/Arena_Volume.asset";
+        public const string PulsePath = SettingsDir + "/Arena_Pulse.asset";
 
         public static void EnsureFolder(string path)
         {
@@ -448,6 +449,33 @@ namespace PoBox.EditorTools
             return p;
         }
 
+        /// <summary>
+        /// What a punch out of the ordinary does to the picture at full weight, for ImpactVfx to fade in and out
+        /// over the house look: the lamps flare, the lens gives, the edges fringe, and what moves smears.
+        /// </summary>
+        [MenuItem("PoBox/Dev/Bake Hit Pulse Profile")]
+        public static VolumeProfile Pulse()
+        {
+            VolumeProfile p = Profile(PulsePath);
+
+            var bloom = p.Add<Bloom>(true);
+            bloom.intensity.Override(2.2f);
+            bloom.threshold.Override(0.8f);
+
+            var lens = p.Add<LensDistortion>(true);
+            lens.intensity.Override(-0.22f);
+            lens.scale.Override(1.03f);
+
+            var fringe = p.Add<ChromaticAberration>(true);
+            fringe.intensity.Override(0.45f);
+
+            var blur = p.Add<MotionBlur>(true);
+            blur.intensity.Override(0.5f);
+            blur.quality.Override(MotionBlurQuality.Low);
+
+            Persist(p);
+            return p;
+        }
 
         // ---------------------------------------------------------------- UI
 

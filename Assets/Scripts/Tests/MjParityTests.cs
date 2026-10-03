@@ -34,10 +34,10 @@ namespace PoBox.Tests
         public IEnumerator TheTestbedHasNoUnityPhysicsInIt()
         {
             yield return Load();
-            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Rigidbody>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length, "Rigidbody");
-            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<ArticulationBody>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length, "ArticulationBody");
-            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length, "Collider");
-            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Joint>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length, "Joint");
+            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Rigidbody>(FindObjectsInactive.Include).Length, "Rigidbody");
+            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<ArticulationBody>(FindObjectsInactive.Include).Length, "ArticulationBody");
+            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsInactive.Include).Length, "Collider");
+            Assert.AreEqual(0, UnityEngine.Object.FindObjectsByType<Joint>(FindObjectsInactive.Include).Length, "Joint");
             Assert.AreEqual(SimulationMode.Script, Physics.simulationMode, "Unity's physics must only step when a script asks, and none does");
         }
 
@@ -66,7 +66,7 @@ namespace PoBox.Tests
         {
             yield return Load();
             var reference = ReferenceTrajectory.FromJson(File.ReadAllText(Boxer + "/reference_hold.json"));
-            var testbed = UnityEngine.Object.FindFirstObjectByType<MjTestbed>();
+            var testbed = UnityEngine.Object.FindAnyObjectByType<MjTestbed>();
             Assert.IsTrue(testbed.Ready, "the testbed's boxer is not bound to the model");
             MjBoxer boxer = testbed.boxer;
             testbed.autoReset = false;

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portrait compaction and integrity</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 280px; max-width:380px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:900px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Portrait compaction and integrity: five of a list of ten</h1>
+  <p class="dim">3 October 2026 · every picture is the game rendered at 1080 x 1920 with the interface laid over it, Matt against Zombie · numbered pins mark what changed</p>
+
+  <p>The list had ten items. Five were already in the game and are checked by the one-screen audit; the other five were the gaps, and those are what was done. All 30 play-mode tests pass (one new), and the audit reports nothing off screen, scrolling, too small or clipped at 720 x 1280, 1080 x 1920 and 1080 x 2400.</p>
+
+  <div class="wide">
+  <table>
+    <tr><th>#</th><th>Item</th><th>State</th></tr>
+    <tr><td>1</td><td>One screen, no scrolling, result and controls on one docked card</td><td>Already there</td></tr>
+    <tr><td>2</td><td>Safe area on tall phones</td><td>Already there (not seen on a real notch: no phone has run it)</td></tr>
+    <tr><td>3</td><td>The five anchors</td><td>Already there</td></tr>
+    <tr><td>4</td><td>State flow from menu to fight to result and round again</td><td><b>Done</b>: three faults fixed, one test added</td></tr>
+    <tr><td>5</td><td>Icons in place of words</td><td><b>Done</b>: the menu button and the two follow buttons</td></tr>
+    <tr><td>6</td><td>Overlays as tabbed bottom sheets</td><td><b>Done</b>: the menu is docked at the bottom, one overlay at a time</td></tr>
+    <tr><td>7</td><td>A clean console</td><td><b>Done</b>: one editor exception and every compile warning removed</td></tr>
+    <tr><td>8</td><td>Controls within a thumb's reach</td><td>Done by 6, plus every frame chip now 88 tall</td></tr>
+    <tr><td>9</td><td>Debug panel on a HUD icon</td><td>Already there (the DEBUG chip, or a tap on the frame rate)</td></tr>
+    <tr><td>10</td><td>One stylesheet, one set of radii, colours and text sizes</td><td><b>Done</b>: tokens in <code>Theme.uss</code>; the testbed moved onto it</td></tr>
+  </table>
+  </div>
+
+  <h2>6 and 8. The menu is a bottom sheet · 5. icons for words</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/ux_before_menu.png" alt="The menu before: a sheet over the top of the screen"></div></div>
+    <div><span class="tag after">AFTER</span><div class="shot"><img src="img/ux_after_menu.png" alt="The menu after: a sheet docked at the bottom">
+      <span class="pin" style="left:50%;top:61%">1</span><span class="pin" style="left:50%;top:38%">2</span>
+      <span class="pin" style="left:80%;top:74%">3</span><span class="pin" style="left:87%;top:6.2%">4</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>Docked at the bottom.</b> The sheet used to hang from the top and cover the scoreboard, with RESTART and NEXT BOUT at the far end of the screen from a thumb. It now sits where the result card sits.</li>
+    <li><b>The fight stays in view.</b> The scoreboard and the pods are no longer covered, and the cameras frame the boxers in the band above the sheet. A tap on the picture closes the menu.</li>
+    <li><b>Follow buttons are gloves.</b> FOLLOW RED and FOLLOW BLUE had a row to themselves; they are now a red and a blue glove at the end of the camera row. The sheet is 96 px shorter for it.</li>
+    <li><b>Three bars, and a cross.</b> The word MENU (CLOSE while open) is an icon, in a button 88 px square; it was 72 px tall, under the stylesheet's own rule for anything pressed.</li>
+  </ol>
+
+  <h2>6. One overlay at a time</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/ux_before_results_menu.png" alt="Before: the menu and the result card both open"></div></div>
+    <div><span class="tag after">AFTER</span><div class="shot"><img src="img/ux_after_results_menu.png" alt="After: the menu in the result card's place">
+      <span class="pin" style="left:50%;top:61%">1</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>The menu takes the card's place.</b> With a result up, opening the menu left two sheets on screen and a strip of picture between them. The card now steps aside while the menu or the debug panel is open and comes back when it closes; opening one of those two closes the other.</li>
+  </ol>
+
+  <h2>5. The fight screen</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/ux_before_fight.png" alt="The fight screen before"></div></div>
+    <div><span class="tag after">AFTER</span><div class="shot"><img src="img/ux_after_fight.png" alt="The fight screen after">
+      <span class="pin" style="left:87%;top:6.2%">1</span><span class="pin" style="left:22%;top:6.2%">2</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>Menu icon.</b> As above.</li>
+    <li><b>Frame chips.</b> All four are 88 px tall, because two of them (the frame rate and DEBUG) are pressed. Nothing else on this screen moved.</li>
+  </ol>
+
+  <h2>10. The testbed on the game's stylesheet</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/ux_before_testbed.png" alt="The testbed before, with its own inline styles"></div></div>
+    <div><span class="tag after">AFTER</span><div class="shot"><img src="img/ux_after_testbed.png" alt="The testbed after, on Theme.uss">
+      <span class="pin" style="left:24%;top:2.7%">1</span><span class="pin" style="left:50%;top:11.5%">2</span><span class="pin" style="left:58%;top:97.3%">3</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>Same chips.</b> The testbed carried its own colours, a 14 px corner and its own sizes in inline styles. It now uses the HUD's classes.</li>
+    <li><b>Readout.</b> The boxer and the timings are one panel, in the scoreboard's place.</li>
+    <li><b>Buttons.</b> The game's buttons; CUBE is no longer amber and the behaviour selector is the accent colour.</li>
+  </ol>
+  <p>In <code>Theme.uss</code> itself nothing should look different: 29 literals became tokens. Corners are 6, 8, 12 or 16; text is 26, 28, 32, 40 or 52 except the walk-on name, the round banner and the count. Four sizes moved onto the scale by 2 to 4 px (boxer names 38 to 40, the clock 56 to 52, the round number and the debug values 30 to 28).</p>
+
+  <h2>4. State flow</h2>
+  <div class="wide">
+  <table>
+    <tr><th>Fault</th><th>What happened</th><th>Fix</th></tr>
+    <tr><td>Double tap on FIGHT or BOXERS</td><td>Each tap asked for the scene again, so the arena (and MuJoCo's model) was built, thrown away and built again</td><td>The first tap is the only one (<code>MenuView.Fight</code>, <code>HudView.ToBoxers</code>)</td></tr>
+    <tr><td>An arena with no boxers</td><td>The bout threw at its first line, then again every frame once the clock ran out, and the round never ended</td><td><code>Bout.Start</code> stops when a corner is empty; <code>MatchSetup</code> has already said why</td></tr>
+    <tr><td>Menu over a result</td><td>Two sheets up at once (pictured above)</td><td><code>HudView.ShowResults</code></td></tr>
+  </table>
+  </div>
+  <p>Checked and found sound: RESTART in the middle of a count, the time scale going back to 1 on the way to the menu, and nothing left of a bout once its scene has gone. The new test <code>TheLoopFromTheMenuToAResultAndBackLeavesNothingBehind</code> walks the whole loop with every scene button tapped twice, and fails on any error in the console.</p>
+
+  <h2>7. The console</h2>
+  <ul>
+    <li><b>An exception at every recompile and every Play</b> while a MuJoCo body was selected: <code>ArgumentException: You can only call GUI functions from inside OnGUI</code>, eight times in this morning's log. It came from the plugin's mouse-spring inspector; one guard, marked <code>PoBox:</code>, in <code>Packages/org.mujoco/Editor/Components/MjMouseSpring.cs</code>.</li>
+    <li><b>Compile warnings: 22 to 0.</b> Eleven calls to search functions Unity 6.6 has deprecated (<code>MjRetrofit.cs</code>, <code>MjParityTests.cs</code>), and the CPU lightmapper, which is deprecated but is the one the bake was measured with: that one is kept and its warning silenced.</li>
+    <li>Three play sessions (testbed, a full bout, the menu) logged no error, no missing script and no UI Toolkit warning.</li>
+  </ul>
+
+  <div class="note"><b>Not checked.</b> Nothing here has been on a phone: the thumb reach is by measurement, not by hand, and the safe area has not met a real notch. The tap on the picture that closes the menu was not exercised by a test. The MuJoCo package's own test files still carry deprecation warnings if they are compiled; they are not part of this project's assemblies.</div>
+</main>
+</body>
+</html>

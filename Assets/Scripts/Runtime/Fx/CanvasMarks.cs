@@ -75,8 +75,9 @@ namespace PoBox.Fx
 
         void OnFloor(Vector3 point, float impulse)
         {
-            if (scuffs.Length == 0) return;
-            Place(scuffs, _scuffLeft, _scuffFull, ref _nextScuff, point, Mathf.Lerp(0.4f, 0.9f, Mathf.Clamp01(impulse / 80f)), scuffSeconds, Random.Range(0f, 360f));
+            // A falling body comes down in a dozen places; the heavy ones mark the cloth.
+            if (scuffs.Length == 0 || impulse < 30f) return;
+            Place(scuffs, _scuffLeft, _scuffFull, ref _nextScuff, point, Mathf.Lerp(0.3f, 0.9f, Mathf.Clamp01(impulse / 120f)), scuffSeconds, Random.Range(0f, 360f));
         }
 
         void OnFootStep(Vector3 point, float speed)

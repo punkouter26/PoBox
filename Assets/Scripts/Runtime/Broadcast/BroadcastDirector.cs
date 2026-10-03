@@ -51,6 +51,8 @@ namespace PoBox.Broadcast
         public CinemachineCamera winnerCam;
         [Tooltip("The walk-on sequence. Empty: the two corner shots are simply cut between.")]
         public PlayableDirector walkOn;
+        [Tooltip("Not on air: it draws into a texture the HUD shows as an inset. On only during a count, on the boxer left standing.")]
+        public Camera pipCam;
 
         [Header("Framing")]
         public Vector3 ringCentre;
@@ -76,6 +78,8 @@ namespace PoBox.Broadcast
         /// <summary>A shot chosen by hand in the menu. Null hands the cameras back to the director.</summary>
         public Shot? Pinned { get; private set; }
         public int CutCount { get; private set; }
+        /// <summary>The corner the close-up is locked on by hand: 0 red, 1 blue, -1 nobody.</summary>
+        public int Focused => Pinned != Shot.Impact || bout == null ? -1 : _impactVictim == bout.blue ? 1 : 0;
 
         // The part of the screen the picture is actually seen through, as fractions of its height from
         // the top: the HUD's scoreboard covers what is above, its dock or the results card what is below.
@@ -98,7 +102,7 @@ namespace PoBox.Broadcast
         CinemachineImpulseSource _impulse;
         Fighter _initiative, _impactVictim;
         Shot _forced;
-        float _forcedUntil, _nextCut, _lastImpactCut = -99f, _orbitAngle, _sepSmooth = 1.2f, _sepVelocity;
+        float _forcedUntil, _nextCut, _lastImpactCut = -99f, _orbitAngle, _orbitHeldUntil, _sepSmooth = 1.2f, _sepVelocity;
         Vector3 _mid, _midVelocity, _side = Vector3.back;
         bool _hasMid;
 
@@ -165,6 +169,8 @@ namespace PoBox.Broadcast
             if (e.impulse > 3f && _impulse != null)
                 _impulse.GenerateImpulseAtPositionWithVelocity(e.point, -e.normal * (strength * shakeVelocity));
 
+            // A close-up locked on one boxer by hand stays on that boxer.
+            if (Pinned == Shot.Impact) return;
             if (!e.clean || e.impulse < bigHit || e.victim == null || e.victim.IsDown) return;
             if (Time.unscaledTime - _lastImpactCut < 2.5f) return;
             _lastImpactCut = Time.unscaledTime;
@@ -175,7 +181,7 @@ namespace PoBox.Broadcast
         void OnKnockdown(Fighter f, HitEvent cause)
         {
             _lastImpactCut = Time.unscaledTime;
-            _impactVictim = f;
+            if (Pinned != Shot.Impact) _impactVictim = f;
             Force(Shot.Impact, 1.3f);
             if (_impulse != null) _impulse.GenerateImpulseAtPositionWithVelocity(f.pelvis.transform.position, Vector3.down * shakeVelocity);
         }
@@ -191,6 +197,22 @@ namespace PoBox.Broadcast
         {
             Pinned = shot;
             _nextCut = 0f;
+        }
+
+        /// <summary>Locks the close-up on one boxer (0 red, 1 blue) until the cameras are given back.</summary>
+        public void Focus(int corner)
+        {
+            if (bout == null) return;
+            _impactVictim = corner == 1 ? bout.blue : bout.red;
+            Pin(Shot.Impact);
+        }
+
+        /// <summary>Turns the orbit camera by hand, taking it on air if it is not; it stays where it is put for a few seconds, then walks on.</summary>
+        public void TurnOrbit(float degrees)
+        {
+            _orbitAngle += degrees;
+            _orbitHeldUntil = Time.unscaledTime + 3f;
+            if (Pinned != Shot.Orbit) Pin(Shot.Orbit);
         }
 
         // ------------------------------------------------------------ choosing
@@ -314,7 +336,7 @@ namespace PoBox.Broadcast
             // Orbit: the same framing, walking round the ring.
             if (orbitCam != null)
             {
-                _orbitAngle += orbitDegreesPerSecond * dt;
+                if (Time.unscaledTime >= _orbitHeldUntil) _orbitAngle += orbitDegreesPerSecond * dt;
                 Vector3 around = Quaternion.AngleAxis(_orbitAngle, Vector3.up) * Vector3.forward;
                 float d = TwoShotDistance(orbitCam, aspect, halfWidth + 0.2f, 1.3f);
                 Place(orbitCam, Raise(_mid + around * d, OverTheRopes(around, d, 0.3f)), _mid);
@@ -347,7 +369,8 @@ namespace PoBox.Broadcast
                 // Head and body in the clear band of a portrait screen needs about three metres on this
                 // lens; closer and the screen is one shoulder.
                 Vector3 head = victim.HeadPoint;
-                const float impactDistance = 3.2f;
+                // Locked on a boxer by hand it is a shot to watch for minutes, not a second: a step further back.
+                float impactDistance = Pinned == Shot.Impact ? 4.4f : 3.2f;
                 Vector3 p = head + _side * impactDistance;
                 bool outside = Mathf.Abs(p.x - ringCentre.x) > ringHalf - 0.2f || Mathf.Abs(p.z - ringCentre.z) > ringHalf - 0.2f;
                 p.y = outside ? OverTheRopes(_side, impactDistance, 0f) : head.y + 0.2f;
@@ -360,6 +383,24 @@ namespace PoBox.Broadcast
                 Vector3 centre = Vector3.Lerp(victim.PelvisPoint, victim.ChestPoint, 0.5f);
                 Vector3 p = centre + Vector3.up * 5.2f - dir * 0.6f;
                 overheadCam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(centre - p, dir));
+            }
+
+            // The inset, during a count: the boxer left standing, head to hips, from in front and to one side.
+            if (pipCam != null)
+            {
+                bool on = bout.Phase == BoutPhase.Count && bout.Downed != null;
+                if (pipCam.enabled != on) pipCam.enabled = on;
+                if (on)
+                {
+                    FighterSkin up = bout.Downed == bout.red ? blue : red, down = bout.Downed == bout.red ? red : blue;
+                    Vector3 chest = up.ChestPoint;
+                    Vector3 facing = down.ChestPoint - chest;
+                    facing.y = 0f;
+                    facing = facing.sqrMagnitude > 0.01f ? facing.normalized : Vector3.forward;
+                    Vector3 p = Inside(chest + Quaternion.AngleAxis(35f, Vector3.up) * facing * 2.6f, 0.3f);
+                    p.y = ringCentre.y + 1.5f;
+                    pipCam.transform.SetPositionAndRotation(p, Quaternion.LookRotation(Vector3.Lerp(up.HeadPoint, up.PelvisPoint, 0.4f) - p, Vector3.up));
+                }
             }
 
             PlaceWalk(walkRedCam, red, blue);

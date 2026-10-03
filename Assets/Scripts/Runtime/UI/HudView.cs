@@ -14,7 +14,7 @@ namespace PoBox.UI
     /// <summary>
     /// The whole interface, in one document, on one portrait screen, with nothing that scrolls.
     ///
-    /// Five things never move: the game's name top-left, the frame rate top-centre, MENU top-right, DEBUG
+    /// Five things never move: the game's name top-left, the frame rate top-centre, the menu top-right, DEBUG
     /// bottom-left and the version bottom-right. Between them: a scoreboard of three rows (the names
     /// written on the health bars with the clock between them; a tug-of-war win-probability bar; three
     /// chips, each a pair of numbers either side of an icon, the third cycling through five readings on a
@@ -22,11 +22,15 @@ namespace PoBox.UI
     /// win probability and frame time.
     ///
     /// Over the picture: a pod in each top corner showing where that fighter has been hit and where its
-    /// balance is, the commentary as a caption along the bottom that fades when it has nothing to say, and
-    /// during the walk-on each fighter's name across the lower third.
+    /// balance is, what it has left in the tank and what it is doing this moment; the commentary as a caption
+    /// along the bottom that fades when it has nothing to say; during the walk-on each fighter's name across
+    /// the lower third; between rounds the three cards and the round's numbers; during a count an inset of
+    /// the boxer left standing; and at a hard clean punch the glove's speed, written where it landed. A
+    /// sideways drag on the picture takes the orbit camera and turns it.
     ///
-    /// Everything else opens over that rather than replacing it: the menu is a sheet with three tabs, the
-    /// debug readings are a panel that grows out of the DEBUG chip, and the end of a bout is a single sheet
+    /// Everything else opens over that rather than replacing it, docked at the bottom where a thumb is and
+    /// one at a time: the menu is a sheet with three tabs (a tap on the picture closes it), the debug
+    /// readings are a panel that grows out of the DEBUG chip, and the end of a bout is a single sheet
     /// carrying the result, the three judges' cards, both fighters' numbers with a hit map each, and the
     /// win-probability graph of the whole bout. BOXERS, in the menu and on that sheet, goes back to the
     /// first screen to choose another pair.
@@ -51,6 +55,8 @@ namespace PoBox.UI
         Button _fps, _menu, _debug;
         Label _version, _debugText;
         VisualElement _debugDot, _debugPanel;
+        Glyph _menuGlyph;
+        bool _leaving;
         readonly List<Label> _debugValues = new List<Label>();
 
         // board
@@ -68,6 +74,29 @@ namespace PoBox.UI
         AudioDirector _audio;
         System.Func<int, float> _sampleExcitement, _sampleShare;
         int _walkShown = -1;
+
+        // pods: the tank and the action badge
+        readonly VisualElement[] _tank = new VisualElement[2];
+        readonly Label[] _act = new Label[2];
+        readonly PunchType[] _punch = new PunchType[2];
+        readonly float[] _punchAt = { -99f, -99f };
+        static readonly string[] PunchNames = { "JAB", "CROSS", "HOOK", "UPPER", "BODY" };
+        /// <summary>Seconds a punch's name stays on the badge.</summary>
+        const float PunchShown = 0.45f;
+
+        // between rounds, the inset, the speed of a punch
+        VisualElement _break, _pip, _picture;
+        Label _breakTitle, _flash;
+        readonly Label[] _breakLanded = new Label[2], _breakBlocked = new Label[2];
+        readonly VisualElement[] _breakCards = new VisualElement[Judges.Count];
+        readonly Label[] _breakScores = new Label[Judges.Count];
+        readonly FighterStats[] _roundStart = new FighterStats[2];
+        [Tooltip("A clean punch this many times harder than these two usually land has its glove speed written where it landed.")]
+        public float flashOverUsual = 1.25f;
+        const float FlashSeconds = 0.9f;
+        Vector3 _flashPoint;
+        float _flashAt = -99f, _dragX;
+        bool _dragging;
 
         // dock
         VisualElement _dock, _strip;
@@ -91,7 +120,7 @@ namespace PoBox.UI
         VisualElement _menuSheet;
         readonly Button[] _tabs = new Button[3];
         readonly VisualElement[] _pages = new VisualElement[3];
-        readonly Button[] _camButtons = new Button[4], _speedButtons = new Button[2];
+        readonly Button[] _camButtons = new Button[4], _speedButtons = new Button[2], _focusButtons = new Button[2];
         Button _sSound, _sQuality, _sFps, _sReset;
         readonly Label[][] _leagueCells = new Label[LeagueRows][];
         readonly VisualElement[] _leagueRows = new VisualElement[LeagueRows];
@@ -127,6 +156,7 @@ namespace PoBox.UI
 
             _fps = _root.Q<Button>("fps");
             _menu = _root.Q<Button>("menu");
+            _menuGlyph = _root.Q<Glyph>("menu-glyph");
             _debug = _root.Q<Button>("debug");
             _version = _root.Q<Label>("version");
             _debugText = _root.Q<Label>("debug-text");
@@ -154,6 +184,22 @@ namespace PoBox.UI
             _hitRed = _root.Q<HitMap>("hit-red"); _hitBlue = _root.Q<HitMap>("hit-blue");
             _balRed = _root.Q<BalanceGauge>("bal-red"); _balBlue = _root.Q<BalanceGauge>("bal-blue");
             _resHitRed = _root.Q<HitMap>("res-hit-red"); _resHitBlue = _root.Q<HitMap>("res-hit-blue");
+
+            string[] corners = { "red", "blue" };
+            for (int i = 0; i < 2; i++)
+            {
+                _tank[i] = _root.Q<VisualElement>("tank-" + corners[i]);
+                _act[i] = _root.Q<Label>("act-" + corners[i]);
+                _breakLanded[i] = _root.Q<Label>("break-landed-" + corners[i]);
+                _breakBlocked[i] = _root.Q<Label>("break-blocked-" + corners[i]);
+            }
+            _break = _root.Q<VisualElement>("break");
+            _breakTitle = _root.Q<Label>("break-title");
+            _pip = _root.Q<VisualElement>("pip");
+            _flash = _root.Q<Label>("flash");
+            _picture = _root.Q<VisualElement>("picture");
+            if (_pip != null && director != null && director.pipCam != null && director.pipCam.targetTexture != null)
+                _pip.style.backgroundImage = Background.FromRenderTexture(director.pipCam.targetTexture);
 
             _dock = _root.Q<VisualElement>("dock");
             _strip = _root.Q<VisualElement>("strip");
@@ -187,12 +233,14 @@ namespace PoBox.UI
             Hook(_root.Q<Button>("cycle"), () => { _cycle = (_cycle + 1) % CycleModes; RefreshCycleKey(); RefreshTape(); });
 
             BuildResultsTape();
-            BuildJudges();
+            BuildJudges("res-judges", _judgeCards, _judgeScores);
+            BuildJudges("break-judges", _breakCards, _breakScores);
             BuildDebugPanel();
             BuildLeagueRows();
             HookMenu();
             HookStrip();
             HookResults();
+            HookPicture();
 
             RefreshCycleKey();
             SetStripPage(0);
@@ -201,11 +249,15 @@ namespace PoBox.UI
             ApplySafeArea();
 
             SimBus.Line += OnLine;
+            SimBus.PunchThrown += OnPunch;
+            SimBus.Hit += OnHit;
         }
 
         void OnDisable()
         {
             SimBus.Line -= OnLine;
+            SimBus.PunchThrown -= OnPunch;
+            SimBus.Hit -= OnHit;
         }
 
         static void Hook(Button b, System.Action action)
@@ -255,9 +307,9 @@ namespace PoBox.UI
         }
 
         /// <summary>One card a judge: the judge's name over the score, red's first.</summary>
-        void BuildJudges()
+        void BuildJudges(string hostName, VisualElement[] cards, Label[] scores)
         {
-            VisualElement host = _root.Q<VisualElement>("res-judges");
+            VisualElement host = _root.Q<VisualElement>(hostName);
             if (host == null) return;
             host.Clear();
             for (int j = 0; j < Judges.Count; j++)
@@ -271,8 +323,8 @@ namespace PoBox.UI
                 card.Add(name);
                 card.Add(score);
                 host.Add(card);
-                _judgeCards[j] = card;
-                _judgeScores[j] = score;
+                cards[j] = card;
+                scores[j] = score;
             }
         }
 
@@ -341,6 +393,13 @@ namespace PoBox.UI
                 Hook(_camButtons[i], () => { if (director != null) director.Pin(shots[index]); RefreshMenu(); });
             }
 
+            for (int i = 0; i < 2; i++)
+            {
+                int corner = i;
+                _focusButtons[i] = _root.Q<Button>(i == 0 ? "cam-red" : "cam-blue");
+                Hook(_focusButtons[i], () => { if (director != null) director.Focus(corner); RefreshMenu(); });
+            }
+
             string[] speeds = { "spd-one", "spd-two" };
             float[] scales = { 1f, 2f };
             for (int i = 0; i < speeds.Length; i++)
@@ -394,6 +453,36 @@ namespace PoBox.UI
             });
         }
 
+        /// <summary>A sideways drag on the picture turns the orbit camera, taking it on air first. AUTO in the menu gives the cameras back.</summary>
+        void HookPicture()
+        {
+            if (_picture == null) return;
+            _picture.RegisterCallback<PointerDownEvent>(e =>
+            {
+                // The menu is a sheet over the picture: a tap on what is left of the picture puts it away.
+                if (MenuOpen) { CloseMenu(); return; }
+                _dragX = e.position.x;
+                _dragging = true;
+                _picture.CapturePointer(e.pointerId);
+            });
+            _picture.RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (!_dragging || director == null) return;
+                float dx = e.position.x - _dragX;
+                // A tap, or a finger resting, is not a drag: the cameras are only taken by a real one.
+                if (director.Pinned != Shot.Orbit && Mathf.Abs(dx) < 24f) return;
+                _dragX = e.position.x;
+                director.TurnOrbit(-dx * 0.25f);
+            });
+            _picture.RegisterCallback<PointerUpEvent>(e =>
+            {
+                if (!_dragging) return;
+                _dragging = false;
+                _picture.ReleasePointer(e.pointerId);
+                RefreshMenu();
+            });
+        }
+
         void HookResults()
         {
             HookBoxers(_root.Q<Button>("res-boxers"));
@@ -405,7 +494,15 @@ namespace PoBox.UI
         {
             if (b == null) return;
             b.EnableInClassList("hidden", !MatchSelection.HasMenu);
-            b.clicked += () => SceneManager.LoadScene(MatchSelection.MenuScene);
+            b.clicked += ToBoxers;
+        }
+
+        /// <summary>Leaves for the first screen, once: a second tap while the scene is loading would load it twice.</summary>
+        public void ToBoxers()
+        {
+            if (_leaving || !MatchSelection.HasMenu) return;
+            _leaving = true;
+            SceneManager.LoadScene(MatchSelection.MenuScene);
         }
 
         // ------------------------------------------------------------ settings
@@ -435,16 +532,26 @@ namespace PoBox.UI
         public void OpenMenu(int tab)
         {
             if (_menuSheet == null) return;
+            // One thing open at a time: the three of them are docked in the same place.
+            if (DebugOpen) ToggleDebug();
             _menuSheet.RemoveFromClassList("hidden");
-            if (_menu != null) _menu.text = "CLOSE";
+            if (_menuGlyph != null) _menuGlyph.kind = GlyphKind.Close;
+            ShowResults();
             ShowTab(tab);
+        }
+
+        /// <summary>The results card is up when the bout is over and neither the menu nor the debug panel is in its place.</summary>
+        void ShowResults()
+        {
+            if (_results != null) _results.EnableInClassList("hidden", bout == null || bout.Phase != BoutPhase.Results || MenuOpen || DebugOpen);
         }
 
         public void CloseMenu()
         {
             if (_menuSheet == null) return;
             _menuSheet.AddToClassList("hidden");
-            if (_menu != null) _menu.text = "MENU";
+            if (_menuGlyph != null) _menuGlyph.kind = GlyphKind.Menu;
+            ShowResults();
         }
 
         public void ShowTab(int tab)
@@ -461,7 +568,9 @@ namespace PoBox.UI
         public void ToggleDebug()
         {
             if (_debugPanel == null) return;
+            if (!DebugOpen) CloseMenu();
             _debugPanel.ToggleInClassList("hidden");
+            ShowResults();
             RefreshDebug();
         }
 
@@ -480,6 +589,8 @@ namespace PoBox.UI
             Shot?[] shots = { null, Shot.Wide, Shot.Orbit, Shot.Overhead };
             for (int i = 0; i < _camButtons.Length; i++)
                 if (_camButtons[i] != null) _camButtons[i].EnableInClassList("btn--on", pinned == shots[i]);
+            for (int i = 0; i < 2; i++)
+                if (_focusButtons[i] != null) _focusButtons[i].EnableInClassList("btn--on", director != null && director.Focused == i);
 
             float scale = bout != null ? bout.userTimeScale : 1f;
             float[] scales = { 1f, 2f };
@@ -541,6 +652,23 @@ namespace PoBox.UI
             if (_ticker != null) _ticker.text = text;
         }
 
+        void OnPunch(Fighter f, PunchType type, int hand)
+        {
+            if (bout == null) return;
+            int corner = f == bout.blue ? 1 : 0;
+            _punch[corner] = type;
+            _punchAt[corner] = Time.time;
+        }
+
+        void OnHit(HitEvent e)
+        {
+            Excitement ex = Excitement.Instance;
+            if (!e.clean || ex == null || e.impulse < ex.UsualImpulse * flashOverUsual || _flash == null) return;
+            _flashPoint = e.point;
+            _flashAt = Time.unscaledTime;
+            _flash.text = $"{e.gloveSpeed:0.0} m/s";
+        }
+
         void Update()
         {
             if (_root == null) return;
@@ -590,14 +718,14 @@ namespace PoBox.UI
 
         /// <summary>
         /// Tells the cameras which part of the screen is not under interface: from the bottom of the
-        /// scoreboard to the top of the dock, or to the top of the results card when that is up.
+        /// scoreboard to the top of the dock, or to the top of the results card or the menu when one is up.
         /// </summary>
         void ReportPictureBand()
         {
             if (director == null || _board == null || _root.panel == null) return;
             float height = _root.panel.visualTree.layout.height;
             if (!(height > 1f)) return;
-            VisualElement below = ResultsOpen ? _results : _dock;
+            VisualElement below = ResultsOpen ? _results : MenuOpen ? _menuSheet : _dock;
             if (below == null) return;
             float top = _board.worldBound.yMax / height, bottom = below.worldBound.yMin / height;
             if (bottom > top + 0.1f) director.SetPictureBand(top, bottom);
@@ -618,11 +746,26 @@ namespace PoBox.UI
             }
 
             bool results = phase == BoutPhase.Results;
-            if (_results != null) _results.EnableInClassList("hidden", !results);
+            ShowResults();
             if (_dock != null) _dock.EnableInClassList("hidden", results);
             // The card carries both hit maps; the pods would say the same thing twice.
             if (_hitRed != null && _hitRed.parent != null) _hitRed.parent.EnableInClassList("hidden", results);
             if (_hitBlue != null && _hitBlue.parent != null) _hitBlue.parent.EnableInClassList("hidden", results);
+
+            // A round starts: what each has done so far, so the break can show the round alone.
+            if (phase == BoutPhase.Intro)
+            {
+                if (red != null) _roundStart[0] = red.stats;
+                if (blue != null) _roundStart[1] = blue.stats;
+            }
+            if (_break != null) _break.EnableInClassList("hidden", phase != BoutPhase.RoundBreak);
+            if (phase == BoutPhase.RoundBreak) FillBreak();
+            if (_pip != null)
+            {
+                _pip.EnableInClassList("hidden", phase != BoutPhase.Count || director == null || director.pipCam == null);
+                // The frame is the colour of the corner of the boxer in it: the one left standing.
+                _pip.EnableInClassList("pip--blue", bout.Downed == red);
+            }
 
             if (results) FillResults();
             if (MenuOpen && _pages[1] != null && !_pages[1].ClassListContains("hidden")) RefreshLeague();
@@ -710,6 +853,45 @@ namespace PoBox.UI
             if (_hitBlue != null) _hitBlue.Set(blue.taken, scale, blue.Daze01);
             if (_balRed != null) _balRed.Set(red.footOffset, red.footDown, red.CaptureOffset, red.BalanceMargin, red.IsDown && !red.IsRising);
             if (_balBlue != null) _balBlue.Set(blue.footOffset, blue.footDown, blue.CaptureOffset, blue.BalanceMargin, blue.IsDown && !blue.IsRising);
+            RefreshStatus(0, red);
+            RefreshStatus(1, blue);
+        }
+
+        /// <summary>The tank, and the badge under it: down, getting up, dazed, the punch just thrown, or in its guard.</summary>
+        void RefreshStatus(int corner, Fighter f)
+        {
+            if (_tank[corner] != null)
+            {
+                _tank[corner].style.width = Length.Percent(f.Stamina * 100f);
+                _tank[corner].EnableInClassList("tank-fill--low", f.Stamina < 0.35f);
+            }
+            if (_act[corner] == null) return;
+            bool punching = Time.time - _punchAt[corner] < PunchShown;
+            bool alarm = f.IsDown || f.Staggered;
+            Set(_act[corner], f.IsRising ? "RISING" : f.IsDown ? "DOWN" : f.Staggered ? "DAZED" : punching ? PunchNames[(int)_punch[corner]] : "GUARD");
+            _act[corner].EnableInClassList("act--alarm", alarm);
+            _act[corner].EnableInClassList("act--punch", punching && !alarm);
+        }
+
+        /// <summary>Between rounds: the cards as they stand, and landed of thrown and punches stopped in the round just ended.</summary>
+        void FillBreak()
+        {
+            Set(_breakTitle, "END OF ROUND " + bout.Round);
+            for (int j = 0; j < Judges.Count; j++)
+            {
+                if (_breakCards[j] == null) continue;
+                int r = bout.judges.total[j, 0], b = bout.judges.total[j, 1];
+                Set(_breakScores[j], bout.judges.Card(j));
+                _breakCards[j].EnableInClassList("judge--red", r > b);
+                _breakCards[j].EnableInClassList("judge--blue", b > r);
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                Fighter f = i == 0 ? bout.red : bout.blue;
+                if (f == null) continue;
+                Set(_breakLanded[i], $"{f.stats.landed - _roundStart[i].landed}/{f.stats.thrown - _roundStart[i].thrown}");
+                Set(_breakBlocked[i], (f.stats.blocked - _roundStart[i].blocked).ToString());
+            }
         }
 
         /// <summary>The impulse that is drawn fully hot: the most that has landed on any one part of either fighter, and never less than a few punches' worth.</summary>
@@ -747,6 +929,22 @@ namespace PoBox.UI
                     Set(_walkCorner, walk == 0 ? "RED CORNER" : "BLUE CORNER");
                     Set(_walkName, f.displayName);
                     Set(_walkDetail, WalkOnDetail(f));
+                }
+            }
+            // The speed of a hard punch, where it landed, rising a little as it fades.
+            if (_flash != null)
+            {
+                float age = now - _flashAt;
+                Camera cam = director != null ? director.mainCamera : null;
+                bool show = age < FlashSeconds && cam != null && _safe != null && !ResultsOpen && !MenuOpen;
+                _flash.EnableInClassList("hidden", !show);
+                if (show)
+                {
+                    Vector3 v = cam.WorldToViewportPoint(_flashPoint);
+                    Rect area = _safe.layout;
+                    _flash.style.left = Mathf.Clamp(v.x * area.width - 100f, 0f, area.width - 200f);
+                    _flash.style.top = Mathf.Clamp((1f - v.y) * area.height - 90f - age * 60f, 0f, area.height - 48f);
+                    _flash.style.opacity = Mathf.Clamp01((FlashSeconds - age) * 4f);
                 }
             }
             if (_banner != null)

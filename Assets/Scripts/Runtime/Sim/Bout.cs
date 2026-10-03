@@ -112,6 +112,9 @@ namespace PoBox.Sim
         void Start()
         {
             Time.fixedDeltaTime = physicsStep;
+            // No boxers (MatchSetup has said why): without this the bout threw at its first line, and again
+            // every frame once the clock ran out, with the round never ending.
+            if (red == null || blue == null) { enabled = false; return; }
             NewBout();
         }
 

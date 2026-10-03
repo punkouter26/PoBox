@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Audio;
 using PoBox.Fx;
+using PoBox.Mj;
 using PoBox.Sim;
 
 namespace PoBox.Audio
@@ -14,6 +15,9 @@ namespace PoBox.Audio
     /// faster than the slap and is pitched down as it gets heavier, so a hard shot is lower and longer and
     /// not just louder. A punch stopped on the gloves has a duller slap and no thud. And a punch harder than
     /// these two usually land draws a gasp from the crowd, a fraction of a second after it.
+    ///
+    /// A boot dragged or turned on the canvas scrapes: a loop of noise at each boxer's feet, made here, whose
+    /// level and pitch follow how fast MuJoCo has the planted foot sliding.
     ///
     /// The crowd is a looping bed whose level rides the excitement reading, with a swell laid over it on a
     /// big moment and a groan on a knockdown. So that a heavy punch is heard through it, the crowd bus is
@@ -40,6 +44,9 @@ namespace PoBox.Audio
         public AudioClip whoosh;
         public AudioClip bodyFall;
         public AudioClip[] footsteps = new AudioClip[0];
+        [Tooltip("A planted foot sliding faster than the first, m/s, is heard; at the second it is as loud as it gets.")]
+        public Vector2 scrapeSpeed = new Vector2(0.12f, 1.2f);
+        [Range(0f, 1f)] public float scrapeVolume = 0.3f;
         [Tooltip("Impulse at which the heavy samples take over, N s.")]
         public float heavyImpulse = 14f;
         [Tooltip("Impulse at which the thud comes in under the slap, N s.")]
@@ -78,6 +85,10 @@ namespace PoBox.Audio
 
         AudioSource[] _pool;
         AudioSource _bed, _crowdSource, _ringSource;
+        readonly AudioSource[] _scrape = new AudioSource[2];
+        MjRing _ring;
+        /// <summary>How loud each boxer's scrape is at this moment, 0 to 1.</summary>
+        public float ScrapeNow(int corner) => _scrape[corner] != null ? _scrape[corner].volume : 0f;
         int _next, _lastCount;
         float _lastSwell = -99f, _duck, _gaspAt = -1f, _gaspVolume, _lastStep = -99f, _bedLevel;
         bool _mixed;
@@ -103,6 +114,16 @@ namespace PoBox.Audio
                 _pool[i] = s;
             }
 
+            AudioClip scrape = ScrapeLoop();
+            for (int i = 0; i < 2; i++)
+            {
+                _scrape[i] = Instantiate(_pool[0], transform);
+                _scrape[i].name = "Scrape " + i;
+                _scrape[i].clip = scrape;
+                _scrape[i].loop = true;
+                _scrape[i].volume = 0f;
+            }
+
             _bed = Source2D(crowd);
             _bed.clip = crowdBed;
             _bed.loop = true;
@@ -116,6 +137,27 @@ namespace PoBox.Audio
             if (mixer == null) return null;
             AudioMixerGroup[] found = mixer.FindMatchingGroups(name);
             return found != null && found.Length > 0 ? found[0] : null;
+        }
+
+        /// <summary>A second of cloth being rubbed: white noise with the top and the bottom taken off, its end faded into its beginning.</summary>
+        static AudioClip ScrapeLoop()
+        {
+            const int rate = 22050, fade = 2048;
+            var rng = new System.Random(7);
+            var raw = new float[rate + fade];
+            float low = 0f, slow = 0f;
+            for (int i = 0; i < raw.Length; i++)
+            {
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                low += 0.35f * (white - low);           // off above about 2 kHz
+                slow += 0.02f * (low - slow);           // what is under about 70 Hz
+                raw[i] = (low - slow) * 1.6f;
+            }
+            var data = new float[rate];
+            for (int i = 0; i < rate; i++) data[i] = i < fade ? Mathf.Lerp(raw[rate + i], raw[i], i / (float)fade) : raw[i];
+            AudioClip clip = AudioClip.Create("Scrape", rate, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
 
         AudioSource Source2D(AudioMixerGroup group)
@@ -211,7 +253,9 @@ namespace PoBox.Audio
 
         void OnFloor(Vector3 point, float impulse)
         {
-            PlayAt(bodyFall, point, Mathf.Lerp(0.4f, 1f, Mathf.Clamp01(impulse / 80f)), Random.Range(0.9f, 1.05f));
+            // A glove or a knee put down is a pat; a body landing is the whole thud, and lower.
+            float k = Mathf.Clamp01(impulse / 120f);
+            PlayAt(bodyFall, point, Mathf.Lerp(0.08f, 1f, k), Mathf.Lerp(1.25f, 0.9f, k) * Random.Range(0.95f, 1.05f));
         }
 
         void OnFootStep(Vector3 point, float speed)
@@ -266,6 +310,8 @@ namespace PoBox.Audio
                 _ringSource.volume = ringGain;
             }
 
+            Scrape(dt);
+
             if (_gaspAt > 0f && Time.unscaledTime >= _gaspAt)
             {
                 PlayCrowd(crowdGasp, _gaspVolume);
@@ -280,6 +326,28 @@ namespace PoBox.Audio
             int active = 0;
             for (int i = 0; i < _pool.Length; i++) if (_pool[i].isPlaying) active++;
             ActiveVoices = active;
+        }
+
+        void Scrape(float dt)
+        {
+            if (_ring == null) _ring = FindAnyObjectByType<MjRing>();
+            for (int i = 0; i < 2; i++)
+            {
+                AudioSource s = _scrape[i];
+                MjBoxer b = _ring == null ? null : i == 0 ? _ring.red : _ring.blue;
+                float k = 0f;
+                if (b != null && Bout.SimRunning)
+                {
+                    k = Mathf.InverseLerp(scrapeSpeed.x, scrapeSpeed.y, _ring.FootSlide(b, out Vector3 at));
+                    if (k > 0f) s.transform.position = at;
+                }
+                // Up at once, away over a fifth of a second: a scrape is short.
+                float level = k * scrapeVolume * (_mixed ? 1f : hitsGain);
+                s.volume = level > s.volume ? level : Mathf.MoveTowards(s.volume, level, dt * 5f * scrapeVolume);
+                s.pitch = Mathf.Lerp(0.75f, 1.35f, k);
+                if (s.volume > 0.001f && !s.isPlaying) s.Play();
+                else if (s.volume <= 0.001f && s.isPlaying) s.Pause();
+            }
         }
 
         static float Db(float linear) => linear > 1e-4f ? 20f * Mathf.Log10(linear) : -80f;

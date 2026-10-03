@@ -5,7 +5,7 @@
     Five anchors that never move:
         top-left      the game's name
         top-centre    the frame rate (tap: frame-time graph and the debug panel)
-        top-right     MENU
+        top-right     the menu (three bars; a cross while it is open)
         bottom-left   DEBUG
         bottom-right  the version
 
@@ -17,8 +17,9 @@
     pods, one a fighter: where it has been hit, and where its balance is. The commentary is a caption
     over the bottom of the picture that goes away when it has nothing to say.
 
-    The menu, the debug panel and the results card are absolutely positioned and open over that; nothing
-    here scrolls and nothing pushes anything else off the screen. HudView.cs fills in the numbers.
+    The menu, the debug panel and the results card are absolutely positioned and open over that, docked at
+    the bottom and one at a time; nothing here scrolls and nothing pushes anything else off the screen.
+    A tap on the picture closes the menu. HudView.cs fills in the numbers.
 
     A warning for whoever edits this: XML does not allow two hyphens in a row inside a comment, and the
     importer answers by silently producing an empty document. Class names with a double hyphen stay out
@@ -30,10 +31,15 @@
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
         <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
 
+            <!-- Under everything else: a sideways drag on the picture takes the orbit camera and turns it. -->
+            <ui:VisualElement name="picture" class="picture" />
+
             <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
                 <ui:Label name="title" class="chip frame-title" text="POBOX" picking-mode="Ignore" />
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Button name="menu" class="btn btn--ghost frame-btn" text="MENU" />
+                <ui:Button name="menu" class="btn btn--ghost btn--icon">
+                    <PoBox.UI.Glyph name="menu-glyph" kind="Menu" class="glyph--btn" />
+                </ui:Button>
                 <ui:VisualElement class="frame-centre" picking-mode="Ignore">
                     <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
                 </ui:VisualElement>
@@ -90,10 +96,18 @@
             <ui:VisualElement name="pod-red" class="pod pod--red" picking-mode="Ignore">
                 <PoBox.UI.HitMap name="hit-red" class="hitmap" />
                 <PoBox.UI.BalanceGauge name="bal-red" class="balance" />
+                <ui:VisualElement class="tank" picking-mode="Ignore">
+                    <ui:VisualElement name="tank-red" class="tank-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="act-red" class="act" text="GUARD" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement name="pod-blue" class="pod pod--blue" picking-mode="Ignore">
                 <PoBox.UI.HitMap name="hit-blue" class="hitmap" mirror="true" />
                 <PoBox.UI.BalanceGauge name="bal-blue" class="balance" />
+                <ui:VisualElement class="tank" picking-mode="Ignore">
+                    <ui:VisualElement name="tank-blue" class="tank-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="act-blue" class="act" text="GUARD" picking-mode="Ignore" />
             </ui:VisualElement>
 
             <ui:Label name="banner" class="banner hidden" text="ROUND 1" picking-mode="Ignore" />
@@ -106,6 +120,30 @@
                     <ui:Label name="walkon-detail" class="walkon-detail" text="" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
+
+            <!-- Between rounds: the three cards as they stand, and what each boxer did in the round just ended. -->
+            <ui:VisualElement name="break" class="break hidden" picking-mode="Ignore">
+                <ui:Label name="break-title" class="break-title" text="END OF ROUND 1" picking-mode="Ignore" />
+                <ui:VisualElement name="break-judges" class="judges" picking-mode="Ignore" />
+                <ui:VisualElement class="chips" picking-mode="Ignore">
+                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                        <ui:Label name="break-landed-red" class="stat-val stat-val--l" text="0/0" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph kind="Glove" class="glyph" />
+                        <ui:Label name="break-landed-blue" class="stat-val stat-val--r" text="0/0" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                        <ui:Label name="break-blocked-red" class="stat-val stat-val--l" text="0" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph kind="Shield" class="glyph" />
+                        <ui:Label name="break-blocked-blue" class="stat-val stat-val--r" text="0" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- During a count: the boxer left standing, while the main picture is on the one on the canvas. -->
+            <ui:VisualElement name="pip" class="pip hidden" picking-mode="Ignore" />
+
+            <!-- A hard clean punch: the glove's speed, written where it landed. -->
+            <ui:Label name="flash" class="flash hidden" text="" picking-mode="Ignore" />
 
             <ui:Label name="ticker" class="ticker" text="" picking-mode="Ignore" />
 
@@ -172,6 +210,12 @@
                         <ui:Button name="cam-wide" class="btn grid-4" text="WIDE" />
                         <ui:Button name="cam-orbit" class="btn grid-4" text="ORBIT" />
                         <ui:Button name="cam-top" class="btn grid-4" text="TOP" />
+                        <ui:Button name="cam-red" class="btn grid-4 btn--tool">
+                            <PoBox.UI.Glyph kind="Glove" class="glyph--btn glyph--red" />
+                        </ui:Button>
+                        <ui:Button name="cam-blue" class="btn grid-4 btn--tool">
+                            <PoBox.UI.Glyph kind="Glove" class="glyph--btn glyph--blue" />
+                        </ui:Button>
                     </ui:VisualElement>
                     <ui:Label class="label-micro page-label" text="SPEED" picking-mode="Ignore" />
                     <ui:VisualElement class="grid" picking-mode="Ignore">

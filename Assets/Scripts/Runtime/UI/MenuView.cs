@@ -46,7 +46,7 @@ namespace PoBox.UI
         Button[][] _cards = new Button[2][];
         Rect _lastSafe;
         Vector2Int _lastScreen;
-        bool _scaleKnown;
+        bool _scaleKnown, _leaving;
 
         void OnEnable()
         {
@@ -161,7 +161,9 @@ namespace PoBox.UI
 
         public void Fight()
         {
-            if (boxers.Length == 0 || !Application.isPlaying) return;
+            // Once: the arena takes seconds to load, and a second tap in that time would load it twice.
+            if (boxers.Length == 0 || !Application.isPlaying || _leaving) return;
+            _leaving = true;
             MatchSelection.Choose(boxers[Red].name, boxers[Blue].name);
             SceneManager.LoadScene(MatchSelection.ArenaScene);
         }

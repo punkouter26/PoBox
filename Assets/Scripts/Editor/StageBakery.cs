@@ -585,7 +585,10 @@ namespace PoBox.EditorTools
             var settings = new LightingSettings
             {
                 name = "PoBox Lighting",
+                // Deprecated in favour of the GPU baker, which has not been tried here: the bake is on the CPU on purpose.
+#pragma warning disable CS0618
                 lightmapper = LightingSettings.Lightmapper.ProgressiveCPU,
+#pragma warning restore CS0618
                 bakedGI = true,
                 realtimeGI = false,
                 mixedBakeMode = MixedLightingMode.IndirectOnly,

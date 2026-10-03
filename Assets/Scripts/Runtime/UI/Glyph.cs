@@ -3,7 +3,7 @@ using UnityEngine.UIElements;
 
 namespace PoBox.UI
 {
-    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze }
+    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze, Menu, Close }
 
     /// <summary>
     /// The small icons that stand in for words on the tale of the tape: a glove for punches landed, a burst
@@ -107,6 +107,19 @@ namespace PoBox.UI
                         float a = i * Mathf.PI * 2f / 3f - 0.5f;
                         p.BeginPath(); p.Arc(P(Mathf.Sin(a) * 0.82f, -Mathf.Cos(a) * 0.82f), u * 0.17f, 0f, 360f); p.Fill();
                     }
+                    break;
+
+                case GlyphKind.Menu:
+                    // Three bars.
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        p.BeginPath(); p.MoveTo(P(-0.8f, i * 0.55f)); p.LineTo(P(0.8f, i * 0.55f)); p.Stroke();
+                    }
+                    break;
+
+                case GlyphKind.Close:
+                    p.BeginPath(); p.MoveTo(P(-0.65f, -0.65f)); p.LineTo(P(0.65f, 0.65f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(0.65f, -0.65f)); p.LineTo(P(-0.65f, 0.65f)); p.Stroke();
                     break;
 
                 default: // Power: a gauge

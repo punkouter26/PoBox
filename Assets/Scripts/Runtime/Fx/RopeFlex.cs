@@ -74,7 +74,7 @@ namespace PoBox.Fx
         void OnFloor(Vector3 point, float impulse)
         {
             // The canvas is tied to the same posts: a body landing on it shakes every rope a little.
-            float kick = Mathf.Clamp01(impulse / 80f) * 0.9f;
+            float kick = Mathf.Clamp01(impulse / 120f) * 0.9f;
             for (int r = 0; r < ropes.Length; r++)
             {
                 for (int i = 1; i < points - 1; i++)

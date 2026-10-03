@@ -13,7 +13,8 @@ namespace PoBox.Fx
     /// The lamps: the four spots over the ring lift a little with the action and flash on a knockdown.
     /// <see cref="houseLights"/> dims them all for the walk-on, where the Timeline brings them down and back
     /// up. Two more spots, the sweeps, belong to the Timeline during the walk-on (it swings one onto each
-    /// corner); when the bout is over they find the winner and stay on it.
+    /// corner); in the fight each follows its own boxer, dark, and comes up for a moment when that boxer lands
+    /// a clean punch, brighter the harder it was; when the bout is over they find the winner and stay on it.
     /// </summary>
     public class ArenaMood : MonoBehaviour
     {
@@ -21,10 +22,12 @@ namespace PoBox.Fx
         public Light[] ringLights = new Light[0];
         [Tooltip("Lamp housings whose emission follows the lights.")]
         public Renderer[] lampRenderers = new Renderer[0];
-        [Tooltip("The two follow-spots. Off at rest; the walk-on Timeline and the winner's moment use them.")]
+        [Tooltip("The two follow-spots, red's then blue's. The walk-on Timeline, a clean punch landed and the winner's moment use them.")]
         public Light[] sweeps = new Light[0];
         [Tooltip("Intensity of a sweep when it is on the winner.")]
         public float sweepIntensity = 220f;
+        [Tooltip("How bright a sweep comes up on the boxer who landed the hardest clean punch, as a fraction of that.")]
+        [Range(0f, 1f)] public float sweepOnPunch = 0.6f;
         [Tooltip("How much the lamps lift at full excitement, as a fraction of their resting level.")]
         public float lift = 0.35f;
         [Tooltip("Clean impulse that makes the crowd jump, N s.")]
@@ -47,6 +50,7 @@ namespace PoBox.Fx
 
         float[] _rest;
         float _flash, _phones, _side, _nextPop;
+        readonly float[] _landed = new float[2];
         MaterialPropertyBlock _block;
 
         void Awake()
@@ -79,6 +83,13 @@ namespace PoBox.Fx
         void OnHit(HitEvent e)
         {
             if (!e.clean) return;
+            if (bout != null)
+            {
+                int who = e.attacker == bout.red ? 0 : 1;
+                // Against what these two usually land, as the flashes are: a usual punch brings it most of the way up.
+                Excitement usually = Excitement.Instance;
+                _landed[who] = Mathf.Max(_landed[who], Mathf.Clamp01(e.impulse / ((usually != null ? usually.UsualImpulse : burstImpulse) * 1.4f)));
+            }
             if (e.impulse >= burstImpulse) Burst = Mathf.Max(Burst, Mathf.Clamp01(e.impulse / 22f));
             // The cameras come out for what is out of the ordinary for these two.
             Excitement ex = Excitement.Instance;
@@ -136,20 +147,22 @@ namespace PoBox.Fx
                     if (r != null) r.SetPropertyBlock(_block);
             }
 
-            // The sweeps: the Timeline's during the walk-on, the winner's at the result, off otherwise.
-            if (phase == BoutPhase.WalkOn) return;
-            Fighter winner = phase == BoutPhase.Results && bout != null ? bout.Winner : null;
-            foreach (Light s in sweeps)
+            // The sweeps: the Timeline's during the walk-on, the winner's at the result; in between each is on
+            // its own boxer, and lit by what that boxer has just landed.
+            if (phase == BoutPhase.WalkOn || bout == null) return;
+            Fighter winner = phase == BoutPhase.Results ? bout.Winner : null;
+            for (int i = 0; i < sweeps.Length; i++)
             {
-                if (s == null) continue;
-                if (winner != null)
-                {
-                    Vector3 target = winner.pelvis.transform.position + Vector3.up * 0.3f;
-                    Quaternion aim = Quaternion.LookRotation(target - s.transform.position);
-                    s.transform.rotation = Quaternion.Slerp(s.transform.rotation, aim, Mathf.Clamp01(dt * 3f));
-                    s.intensity = Mathf.MoveTowards(s.intensity, sweepIntensity, dt * sweepIntensity * 1.5f);
-                }
-                else if (s.intensity > 0f) s.intensity = Mathf.MoveTowards(s.intensity, 0f, dt * sweepIntensity * 2f);
+                Light s = sweeps[i];
+                Fighter on = winner != null ? winner : i == 0 ? bout.red : bout.blue;
+                if (s == null || on == null || on.pelvis == null) continue;
+                Vector3 target = on.pelvis.transform.position + Vector3.up * 0.3f;
+                Quaternion aim = Quaternion.LookRotation(target - s.transform.position);
+                s.transform.rotation = Quaternion.Slerp(s.transform.rotation, aim, Mathf.Clamp01(dt * (winner != null ? 3f : 8f)));
+                if (i < 2) _landed[i] = Mathf.MoveTowards(_landed[i], 0f, dt * 1.4f);
+                float level = winner != null ? 1f : phase == BoutPhase.Fight && i < 2 ? _landed[i] * sweepOnPunch : 0f;
+                float rate = sweepIntensity * level > s.intensity ? 6f : 1.5f;      // up at once, away slowly
+                s.intensity = Mathf.MoveTowards(s.intensity, sweepIntensity * level, dt * sweepIntensity * rate);
             }
         }
     }

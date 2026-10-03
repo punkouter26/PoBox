@@ -197,7 +197,7 @@ namespace PoBox.EditorTools
             }
 
             // What is left of the import is the world: keep it if this scene has none yet.
-            bool hasWorld = Object.FindObjectsByType<MjGlobalSettings>(FindObjectsSortMode.None).Length > 1;
+            bool hasWorld = Object.FindObjectsByType<MjGlobalSettings>().Length > 1;
             if (hasWorld) Object.DestroyImmediate(imported);
             else
             {
@@ -545,7 +545,7 @@ namespace PoBox.EditorTools
         /// <summary>Every boxer's prefab, put in the open scene's world one at a time in place of whoever is there, and checked.</summary>
         public static string CheckAll()
         {
-            var present = Object.FindObjectsByType<MjBoxer>(FindObjectsSortMode.None).Select(b => b.gameObject).ToList();
+            var present = Object.FindObjectsByType<MjBoxer>().Select(b => b.gameObject).ToList();
             foreach (var go in present) go.SetActive(false);
             var sb = new StringBuilder();
             try
@@ -567,10 +567,10 @@ namespace PoBox.EditorTools
         /// <summary>How many of Unity's own physics components the open scenes hold. The fight is MuJoCo's: the answer has to be none.</summary>
         public static string PhysXCensus()
         {
-            int bodies = Object.FindObjectsByType<Rigidbody>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-            int articulations = Object.FindObjectsByType<ArticulationBody>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-            int colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-            int joints = Object.FindObjectsByType<Joint>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
+            int bodies = Object.FindObjectsByType<Rigidbody>(FindObjectsInactive.Include).Length;
+            int articulations = Object.FindObjectsByType<ArticulationBody>(FindObjectsInactive.Include).Length;
+            int colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Include).Length;
+            int joints = Object.FindObjectsByType<Joint>(FindObjectsInactive.Include).Length;
             return $"Rigidbody {bodies}, ArticulationBody {articulations}, Collider {colliders}, Joint {joints}";
         }
 

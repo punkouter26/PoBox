@@ -58,8 +58,10 @@ namespace PoBox.Announcer
         public float syllablesPerSecond = 5.5f;
         [Tooltip("Seconds of mouthing per character of a line it does not say aloud.")]
         public float secondsPerCharacter = 0.055f;
-        [Tooltip("Loudness of its own voice that opens the jaw fully.")]
+        [Tooltip("Loudness of its own voice that opens the jaw fully, until it has been louder than that.")]
         public float loudnessForOpen = 0.16f;
+        [Tooltip("Seconds the jaw takes to follow its voice. Longer is smoother, shorter is snappier; the voice is read this far ahead, so the jaw is not late for it.")]
+        public float jawSmoothSeconds = 0.07f;
 
         [Header("Voice")]
         public bool speakAloud = true;
@@ -75,7 +77,10 @@ namespace PoBox.Announcer
 
         readonly Dictionary<string, AudioClip> _byKey = new Dictionary<string, AudioClip>();
         readonly Dictionary<AudioClip, Vector2> _sound = new Dictionary<AudioClip, Vector2>();   // where the words start and end, seconds
-        readonly float[] _window = new float[256];
+        // About a fortieth of a second of the recording: several periods of a voice, so that what is measured
+        // is how loud the word is and not where in the wave the frame happened to fall.
+        readonly float[] _window = new float[1024];
+        float _openVelocity, _loudest;
         readonly List<string> _queue = new List<string>();
         Coroutine _speech;
         float _mouthUntil, _height, _lowUntil, _phase, _downTo, _linger = 0.9f;
@@ -287,12 +292,23 @@ namespace PoBox.Announcer
 
             // The jaw: its own voice if it is speaking, a syllable at a time if it is only mouthing a line.
             float want = 0f;
-            if (voice != null && voice.isPlaying)
+            if (voice != null && voice.isPlaying && voice.clip != null)
             {
-                voice.GetOutputData(_window, 0);
-                float sum = 0f;
-                for (int i = 0; i < _window.Length; i++) sum += _window[i] * _window[i];
-                want = Mathf.Clamp01(Mathf.Sqrt(sum / _window.Length) / Mathf.Max(1e-4f, loudnessForOpen));
+                // Read from the recording itself, as far ahead of what is being heard as the jaw lags behind
+                // what it is asked for: the mouth is then open when the word is, not after it.
+                AudioClip clip = voice.clip;
+                int frames = _window.Length / Mathf.Max(1, clip.channels);
+                int at = voice.timeSamples + (int)(jawSmoothSeconds * clip.frequency) - frames / 2;
+                if (clip.samples > frames && clip.GetData(_window, Mathf.Clamp(at, 0, clip.samples - frames)))
+                {
+                    float sum = 0f;
+                    for (int i = 0; i < _window.Length; i++) sum += _window[i] * _window[i];
+                    // Against the loudest it has been: a fixed mark that every vowel passes holds the jaw wide
+                    // open for the whole word, and the syllables in it are then not seen.
+                    float loud = Mathf.Sqrt(sum / _window.Length);
+                    _loudest = Mathf.Max(_loudest, loud, loudnessForOpen);
+                    want = Mathf.Clamp01(loud / _loudest);
+                }
             }
             else if (now < _mouthUntil)
             {
@@ -301,7 +317,8 @@ namespace PoBox.Announcer
                 float size = 0.45f + 0.55f * Mathf.PerlinNoise(_phase * 0.37f, 3.1f);
                 want = size * Mathf.Abs(Mathf.Sin(_phase * Mathf.PI));
             }
-            Open = Mathf.MoveTowards(Open, want, dt * (want > Open ? 14f : 9f));
+            // Eased both ways, with no corner where it starts or stops: a jaw has weight.
+            Open = Mathf.Clamp01(Mathf.SmoothDamp(Open, want, ref _openVelocity, Mathf.Max(0.01f, jawSmoothSeconds), Mathf.Infinity, Mathf.Min(dt, 0.05f)));
             if (lowerJaw != null) lowerJaw.localRotation = _lowerRest * Quaternion.Euler(Open * openDegrees, 0f, 0f);
             if (upperJaw != null) upperJaw.localRotation = _upperRest * Quaternion.Euler(-Open * openDegrees * upperShare, 0f, 0f);
 

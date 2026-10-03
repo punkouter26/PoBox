@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Physics-driven effects</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 280px; max-width:380px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:900px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Physics-driven effects: five additions that read MuJoCo's own state</h1>
+  <p class="dim">3 October 2026 · every picture is the arena rendered at 1080 x 1920 with the HUD laid over it, Matt against Zombie · numbered pins mark what changed</p>
+
+  <p>The list asked for five out of ten. Six of the ten were already in the game from the broadcast pass of 1 October (impact particles scaled by impulse, layered impact sound, canvas decals, camera shake and a shock ring, bruises and sweat, the flash of the ring lamps on a knockdown), so the five were chosen from what was missing. Each one is driven by a number MuJoCo or the fighter's own bookkeeping already holds.</p>
+  <p>All 29 play-mode tests pass, one of them new: a knockdown has to be reported by MuJoCo's contacts and has to pulse the picture.</p>
+
+  <div class="wide"><table>
+    <tr><th>#</th><th>What</th><th>Driven by</th><th>From the list</th></tr>
+    <tr><td>1</td><td>Bodies landing on the canvas</td><td>the force MuJoCo's solver put through the floor into each shape of a boxer</td><td>1, 9</td></tr>
+    <tr><td>2</td><td>Boots scraping the canvas</td><td>how fast a planted foot is sliding</td><td>5</td></tr>
+    <tr><td>3</td><td>The picture pulses on a hard punch</td><td>how far the punch's impulse is above what these two usually land</td><td>2, 7</td></tr>
+    <tr><td>4</td><td>Follow-spots</td><td>where each boxer is, and the impulse it has just landed</td><td>8</td></tr>
+    <tr><td>5</td><td>Steam off a tiring boxer</td><td>the tank, which is the mechanical work its joints have done</td><td>10</td></tr>
+  </table></div>
+
+  <h2>1. Bodies landing on the canvas, measured</h2>
+  <p>A landing used to be one event a fall, guessed from how fast the pelvis was dropping. It is now read from MuJoCo's contact list: every shape of a boxer other than its feet that comes down on the floor, having been clear of it for a fifth of a second, raises an event carrying the impulse the solver gave it. Dust, the thud, the scuff on the cloth and the shake of the ropes all take their size from that number, so a glove put down to get up is a pat and a back hitting the canvas is the whole thing.</p>
+  <p>One forced knockdown of Matt and his getting up gave eleven landings between 7 and 166 N s:</p>
+  <div class="wide"><table>
+    <tr><th>Impulse, N s</th><td>75.7</td><td>15.6</td><td>45.1</td><td>74.4</td><td>45.0</td><td>13.0</td><td>8.5</td><td>14.2</td><td>124.2</td><td>6.9</td><td>166.1</td></tr>
+  </table></div>
+  <p>The effects are at full size from 120 N s. Only landings over 30 N s mark the cloth.</p>
+  <div class="note">The impulse is the contact force at the one physics step in four that is looked at, times the control step. It is the solver's own force, but not summed over every step, so treat it as a size for effects and not as a measurement to compare runs by. Punches are unchanged: they are still measured as the trainer measures them (closing speed of the glove), on purpose.</div>
+
+  <h2>2. Boots scraping the canvas</h2>
+  <p>A foot that is planted and still moving is being dragged or turned on. Each boxer has a looping scrape at its feet (a second of filtered noise made at start-up, no new sound file) whose loudness and pitch follow that sliding speed: silent under 0.12 m/s, full at 1.2 m/s. In the bout sampled, Matt's feet slid at up to 0.6 m/s and Zombie's hardly at all.</p>
+  <div class="note">Nobody has listened to it. Like the rest of the sound in this project it has been measured, not heard.</div>
+
+  <h2>3. The picture pulses on a hard punch</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/gfx_pulse_before.png" alt="The fight with no pulse"></div></div>
+    <div><span class="tag after">AFTER, held at full weight</span><div class="shot"><img src="img/gfx_pulse_after.png" alt="The fight with the pulse at full weight">
+      <span class="pin" style="left:48%;top:46%">1</span><span class="pin" style="left:10%;top:76%">2</span><span class="pin" style="left:92%;top:36%">3</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>Bloom.</b> Anything bright flares: here a lamp behind the ropes.</li>
+    <li><b>Fringing.</b> Colours part at the edges of the frame, most on the ropes.</li>
+    <li><b>The lens gives.</b> The picture bulges slightly towards its edges.</li>
+  </ol>
+  <p>A second volume sits over the house look. Its weight is how far a clean punch was above what the two boxers usually land (the same reading the crowd's gasp and the camera flashes use), it is full on a knockdown, and it is gone in 0.28 s. It also carries motion blur, which costs nothing while the weight is zero. The HUD is drawn afterwards and is not touched. The still on the right is the pulse held at full weight for the picture; in a bout it is a flicker, and between Matt and Zombie few punches are far enough above the usual to raise it.</p>
+  <div class="note">Depth of field was left out: the owner had the depth-of-field look removed with the slow motion on 1 October.</div>
+
+  <h2>4. Follow-spots</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/gfx_sweep_before.png" alt="The same frame with the follow-spots dark"></div></div>
+    <div><span class="tag after">AFTER, same frame</span><div class="shot"><img src="img/gfx_sweep_after.png" alt="The same frame with the follow-spots up">
+      <span class="pin" style="left:82%;top:38%">1</span><span class="pin" style="left:70%;top:66%">2</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>The boxer is picked out.</b> Zombie's head and shoulders are lit against the crowd.</li>
+    <li><b>A pool on the canvas</b> under the pair.</li>
+  </ol>
+  <p>The two sweep lamps were used only for the walk-on and the winner. In the fight each now stays aimed at its own boxer, dark, and comes up when that boxer lands a clean punch: brighter the harder it was against the pair's usual, up at once and away in under a second. The picture is one paused frame with both lamps at the level a hard punch gives.</p>
+
+  <h2>5. Steam off a tiring boxer</h2>
+  <div class="pair">
+    <div><span class="tag before">BEFORE</span><div class="shot"><img src="img/gfx_steam_before.png" alt="No steam"></div></div>
+    <div><span class="tag after">AFTER, at full rate</span><div class="shot"><img src="img/gfx_steam_after.png" alt="Steam over both boxers' heads">
+      <span class="pin" style="left:36%;top:32%">1</span><span class="pin" style="left:62%;top:30%">2</span></div></div>
+  </div>
+  <ol class="legend">
+    <li><b>Zombie</b> and</li>
+    <li><b>Matt</b>, each with vapour rising off the head and carried a little by the head's own movement.</li>
+  </ol>
+  <p>The tank falls with the mechanical work a boxer's joints do. Steam starts when it is under 97% and is at its full nine puffs a second at 60%. In the bout sampled the tank went to about 0.8 after a knockdown and back near full at each round break, so in play it is a wisp now and then, most after a flurry. The picture has it forced to the full rate.</p>
+
+  <h2>Left out</h2>
+  <div class="wide"><table>
+    <tr><th>From the list</th><th>Why</th></tr>
+    <tr><td>3 impact audio, 6 decals, most of 1 and 7</td><td>Already in the game since 1 October; this pass only feeds them better numbers.</td></tr>
+    <tr><td>4 advanced shaders, Blender</td><td>Nothing here needed a new model or shader. Worth doing when there is a specific object to make.</td></tr>
+    <tr><td>10 mesh deformation, heat glow</td><td>Bruises where punches land and a wet sheen as the tank falls are already drawn; the joint glow was removed at the owner's request on 1 October.</td></tr>
+    <tr><td>9 the physics model</td><td>The fight is stepped by MuJoCo itself through the official plugin, the same model the trainer uses, with no Unity physics in the scene. There is nothing more accurate to switch to; what changed is that one more effect now reads it directly.</td></tr>
+  </table></div>
+
+  <h2>Not checked</h2>
+  <p>Nothing was heard by a person and nothing was run on a phone. The cost of the pulse on a phone (lens distortion, fringing and motion blur for a quarter of a second) is not known. Two extra real-time spot lights are now lit for moments during the fight; in the editor the frame rate stayed at 59 to 60.</p>
+</main>
+</body>
+</html>

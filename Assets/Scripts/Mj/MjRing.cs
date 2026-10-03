@@ -42,6 +42,11 @@ namespace PoBox.Mj
         public event Action<MjBoxer, float> PunchStopped;
         /// <summary>A foot has come down: whose, where (Unity), and how fast it was moving.</summary>
         public event Action<MjBoxer, Vector3, float> FootStep;
+        /// <summary>
+        /// A part of a boxer other than a foot has come down on the canvas: whose, where (Unity), and the impulse
+        /// MuJoCo's solver gave it through the floor over that control step, N s.
+        /// </summary>
+        public event Action<MjBoxer, Vector3, float> BodyLanded;
         /// <summary>A control step is over: the boxers' states are the end of it.</summary>
         public event Action ControlStep;
 
@@ -58,6 +63,9 @@ namespace PoBox.Mj
         readonly double[,,] _closing = new double[2, 2, 2], _speed = new double[2, 2, 2], _prevGlove = new double[2, 2, 3], _gloveVel = new double[2, 2, 3];
         readonly double[,] _prevHead = new double[2, 3], _prevBody = new double[2, 3];
         readonly double[,,] _prevFoot = new double[2, 2, 3];
+        readonly double[,] _slide = new double[2, 2];
+        int[] _owner = new int[0];          // which boxer a shape belongs to, -1 for none; feet are -1 here
+        double[] _load = new double[0], _clear = new double[0], _at = new double[0];
         readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
         long _began;
 
@@ -105,6 +113,11 @@ namespace PoBox.Mj
                 for (int i = 0; i < shapes.Length; i++) _geoms[k][i] = shapes[i].MujocoId;
                 _b[k].SetEpisodeAt(MjBoxer.Match, 0, 0, 0, 0, 0);
             }
+            _owner = new int[_m->ngeom]; _load = new double[_m->ngeom]; _clear = new double[_m->ngeom]; _at = new double[3 * _m->ngeom];
+            for (int g = 0; g < _m->ngeom; g++) { _owner[g] = -1; _clear[g] = 1.0; }
+            for (int k = 0; k < 2; k++)
+                foreach (int g in _geoms[k])
+                    if (g != _b[k].FootGeom(0) && g != _b[k].FootGeom(1)) _owner[g] = k;
             // Everything that is not a boxer (floor, ropes, cubes) goes on both layers, so that a boxer moved to
             // layer 2 while it is down still lies on the canvas, and only the other boxer passes through it.
             var mine = new System.Collections.Generic.HashSet<int>(_geoms[0]);
@@ -177,6 +190,17 @@ namespace PoBox.Mj
 
         public bool FootDown(MjBoxer b, int foot) => _footDown[Slot(b), foot];
 
+        /// <summary>How fast a boxer's planted foot is sliding over the canvas, m/s (the faster of the two; 0 with neither down), and where that foot is (Unity).</summary>
+        public float FootSlide(MjBoxer b, out Vector3 at)
+        {
+            int k = Slot(b), foot = _slide[k, 1] > _slide[k, 0] ? 1 : 0;
+            at = b.transform.position;
+            if (!Ready) return 0f;
+            double* f = Geom(b.FootGeom(foot));
+            at = ToUnity(f[0], f[1], 0.0);
+            return (float)_slide[k, foot];
+        }
+
         // ---------------------------------------------------------------- stepping
 
         void SetGhost(int k, bool ghost)
@@ -244,6 +268,7 @@ namespace PoBox.Mj
             blue.AfterStep(_dt);
             MujocoLib.mj_kinematics(_m, _d);
             TrackPunches();
+            TrackCanvas();
             ControlStep?.Invoke();
         }
 
@@ -307,6 +332,9 @@ namespace PoBox.Mj
                         double sx = f[0] - _prevFoot[k, hand, 0], sy = f[1] - _prevFoot[k, hand, 1], sz = f[2] - _prevFoot[k, hand, 2];
                         FootStep?.Invoke(me, ToUnity(f[0], f[1], 0.0), (float)(Math.Sqrt(sx * sx + sy * sy + sz * sz) / _dt));
                     }
+                    // A foot that was down and still is, and has moved: it is being dragged or turned on.
+                    double dx = f[0] - _prevFoot[k, hand, 0], dy = f[1] - _prevFoot[k, hand, 1];
+                    _slide[k, hand] = down && _footDown[k, hand] && _has[k] && !_held[k] ? Math.Sqrt(dx * dx + dy * dy) / _dt : 0.0;
                     _footDown[k, hand] = down;
                     for (int c = 0; c < 3; c++) _prevFoot[k, hand, c] = f[c];
                 }
@@ -316,6 +344,37 @@ namespace PoBox.Mj
             {
                 TrackBlocks(k);
                 _has[k] = true;
+            }
+        }
+
+        /// <summary>
+        /// Bodies landing on the canvas, read from MuJoCo's own contacts: the force the solver put through the
+        /// floor into each of a boxer's shapes (feet apart), and an event the control step a shape that has been
+        /// clear of the canvas for a fifth of a second comes down on it.
+        /// </summary>
+        void TrackCanvas()
+        {
+            double* force = stackalloc double[6];
+            for (int i = 0; i < _d->ncon; i++)
+            {
+                MujocoLib.mjContact_* c = _d->contact + i;
+                int g = c->geom1, floor = c->geom2;
+                if (_m->geom_type[g] == 0) { g = c->geom2; floor = c->geom1; }
+                if (_m->geom_type[floor] != 0 || _owner[g] < 0 || c->efc_address < 0) continue;
+                MujocoLib.mj_contactForce(_m, _d, i, force);
+                _load[g] += force[0];
+                for (int k = 0; k < 3; k++) _at[3 * g + k] = c->pos[k];
+            }
+            for (int g = 0; g < _load.Length; g++)
+            {
+                if (_owner[g] < 0) continue;
+                if (_load[g] <= 0.0) { _clear[g] += _dt; continue; }
+                // ponytail: the force at the one step in four that is looked at, times the control step; summing
+                // every physics step would give the exact impulse if these numbers ever have to be compared.
+                float impulse = (float)(_load[g] * _dt);
+                if (_clear[g] >= 0.2 && impulse > 1f) BodyLanded?.Invoke(_b[_owner[g]], ToUnity(_at[3 * g], _at[3 * g + 1], 0.0), impulse);
+                _clear[g] = 0.0;
+                _load[g] = 0.0;
             }
         }
 

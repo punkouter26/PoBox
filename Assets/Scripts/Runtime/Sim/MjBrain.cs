@@ -14,7 +14,8 @@ namespace PoBox.Sim
     ///     opponent where the opponent stands (training/envs/getup.py), and the match policy has it back once it
     ///     has stood long enough (the fighter decides when);
     ///   * punches are recognised as they are thrown (a glove moving at the opponent's head faster than a guard
-    ///     moves), and the ring's measured landings, stops and footsteps become the fight's events.
+    ///     moves), and the ring's measured landings, stops, footsteps and bodies meeting the canvas become the
+    ///     fight's events.
     /// </summary>
     [DefaultExecutionOrder(-40)]
     public class MjBrain : MonoBehaviour
@@ -33,8 +34,6 @@ namespace PoBox.Sim
         bool _holding, _releaseNext;
         readonly float[] _punchNotedAt = { -9f, -9f };
         Transform[] _gloves;
-        float _prevPelvisY;
-        bool _landedThisFall;
 
         void OnEnable()
         {
@@ -42,6 +41,7 @@ namespace PoBox.Sim
             ring.PunchLanded += OnLanded;
             ring.PunchStopped += OnStopped;
             ring.FootStep += OnFoot;
+            ring.BodyLanded += OnBodyLanded;
         }
 
         void OnDisable()
@@ -50,6 +50,7 @@ namespace PoBox.Sim
             ring.PunchLanded -= OnLanded;
             ring.PunchStopped -= OnStopped;
             ring.FootStep -= OnFoot;
+            ring.BodyLanded -= OnBodyLanded;
         }
 
         void Start()
@@ -74,6 +75,11 @@ namespace PoBox.Sim
         void OnFoot(MjBoxer whose, Vector3 at, float speed)
         {
             if (whose == boxer && !fighter.IsDown) SimBus.RaiseFootStep(at, speed);
+        }
+
+        void OnBodyLanded(MjBoxer whose, Vector3 at, float impulse)
+        {
+            if (whose == boxer) SimBus.RaiseFloorImpact(at, impulse);
         }
 
         /// <summary>Sent by the fighter when its time on the canvas is up. Answers only if there is a policy for getting up.</summary>
@@ -106,7 +112,6 @@ namespace PoBox.Sim
             if (!ring.Ready || fighter == null) return;
             boxer.DriveScale = fighter.DriveScale;
             ring.SetDown(boxer, fighter.IsDown);
-            FloorImpact();
             if (!Bout.SimRunning) return;
 
             // While the referee counts over the other fighter this one stands in its guard, turned towards them,
@@ -166,18 +171,6 @@ namespace PoBox.Sim
                 else type = hand == 0 ? PunchType.Jab : PunchType.Cross;
                 fighter.NotePunch(hand == 0 ? -1 : 1, type);
             }
-        }
-
-        /// <summary>A body landing on the canvas, for the sound and the cameras: the pelvis coming down hard near the floor, once a fall.</summary>
-        void FloorImpact()
-        {
-            float y = fighter.PelvisHeight;
-            float falling = (_prevPelvisY - y) / Mathf.Max(1e-4f, Time.fixedDeltaTime);
-            _prevPelvisY = y;
-            if (!fighter.IsDown) { _landedThisFall = false; return; }
-            if (_landedThisFall || y > 0.35f || falling < 1.2f) return;
-            _landedThisFall = true;
-            SimBus.RaiseFloorImpact(fighter.pelvis.transform.position, falling * fighter.totalMass * 0.1f);
         }
     }
 

@@ -67,6 +67,74 @@ Earlier in the day (Phase B):
 
 The sections below describe the game before the retrofit.
 
+## Portrait compaction and integrity (2026-10-03)
+
+Five of a list of ten; the other five (one screen, safe area, the five anchors, the debug panel on a chip, the
+result card docked) were already in the game. Pictures before and after:
+`DOCS/reports/2026-10-03-portrait-compaction.html`. 30 of 30 play-mode tests pass (one new).
+
+- **The menu is a bottom sheet.** Docked where the result card sits (`.menu-sheet`), so the scoreboard stays in
+  view and the cameras frame the boxers above it (`HudView.ReportPictureBand`). A tap on the picture closes it.
+  Menu, debug panel and result card are up one at a time (`HudView.ShowResults`).
+- **Icons for words.** The menu button is three bars, a cross while open (`GlyphKind.Menu`, `Close`); FOLLOW RED
+  and FOLLOW BLUE are a red and a blue glove at the end of the camera row. All four frame chips are 88 px tall.
+- **State flow.** A second tap on FIGHT or BOXERS no longer loads the scene again (`MenuView.Fight`,
+  `HudView.ToBoxers`); a bout with an empty corner stops instead of throwing every frame (`Bout.Start`). The test
+  `TheLoopFromTheMenuToAResultAndBackLeavesNothingBehind` walks menu, fight, a count cut short by RESTART, the
+  result, the next bout and back, and fails on any error in the console.
+- **Console.** The MuJoCo plugin's mouse-spring inspector threw at every recompile and Play with a body selected:
+  guarded (`Packages/org.mujoco/Editor/Components/MjMouseSpring.cs`, the fourth change marked `PoBox:`).
+  Compile warnings 22 to 0.
+- **One stylesheet.** Radii, colours and text sizes in `Theme.uss` are tokens (the rule is at the top of the
+  file); `Testbed.uxml` had its own inline styles and now uses the HUD's classes. Dev command `play-testbed`.
+- **Not checked:** nothing has been on a phone; the tap that closes the menu has no test.
+
+## Physics-driven effects (2026-10-03)
+
+Five of a list of ten; six of the ten were already in the game, so these are the gaps. Pictures before and
+after: `DOCS/reports/2026-10-03-physics-driven-fx.html`. 29 of 29 play-mode tests pass (one new).
+
+- **Landings from MuJoCo's contacts.** `MjRing.TrackCanvas` reads `mjData.contact` once a control step and
+  raises `BodyLanded` for every shape of a boxer (feet apart) that comes down on the floor, with the impulse
+  the solver gave it; `MjBrain` passes it on as `SimBus.FloorImpact`. It replaces one guess a fall from the
+  pelvis's speed. One knockdown and get-up: eleven landings, 7 to 166 N s. Dust, thud, scuff and rope shake
+  are full at 120 N s; only landings over 30 N s mark the cloth.
+- **Scrape.** `MjRing.FootSlide` is how fast a planted foot is sliding; `AudioDirector.Scrape` plays a loop of
+  filtered noise made at start-up at each boxer's feet, silent under 0.12 m/s and full at 1.2
+  (`scrapeSpeed`). **Not listened to.**
+- **Hit pulse.** `Hit Pulse`, a second global volume beside `Look` (`Assets/Settings/Arena_Pulse.asset`, made
+  by `AssetBakery.Pulse`: bloom, lens distortion, fringing, motion blur). `ImpactVfx` sets its weight from
+  how far a clean punch is above the usual, to full on a knockdown, gone in 0.28 s. No depth of field: the
+  owner had that look removed on 1 October. Its cost on a phone is not known.
+- **Follow-spots.** In the fight each sweep lamp stays on its own boxer and comes up when that boxer lands a
+  clean punch (`ArenaMood.sweepOnPunch`); the walk-on and the winner use them as before.
+- **Steam.** `Steam` (a copy of `Canvas Dust`) puffs off a boxer's head as the tank falls: from 97%, full at
+  60% (`ImpactVfx.steamTank`). The tank only gets to about 0.8 in a bout, so it is a wisp.
+- Left out: Blender models and new shaders (nothing needed one), mesh deformation and heat glow.
+
+## Broadcast telemetry (2026-10-03)
+
+Five additions to the fight screen, picked by the owner from a list of ten, and a steadier announcer. Screens
+before and after, annotated: `DOCS/reports/2026-10-03-broadcast-telemetry.html`. 28 of 28 play-mode tests pass.
+
+- **Pods:** under each balance gauge a tank bar (`Fighter.Stamina`) and a badge saying what the boxer is doing:
+  GUARD, the punch just thrown, DAZED, DOWN, RISING. `HudView.RefreshStatus`.
+- **Round break:** the three judges' cards and the round's own landed-of-thrown and stopped punches, for the
+  three seconds between rounds. `HudView.FillBreak`.
+- **Camera:** FOLLOW RED and FOLLOW BLUE in the menu lock the close-up on one boxer (`BroadcastDirector.Focus`);
+  a sideways drag on the picture takes the orbit camera and turns it (`TurnOrbit`). AUTO gives the cameras back.
+  The drag was checked with synthetic pointer events, not on a phone.
+- **On the canvas:** each boxer's foot patch and capture point (`Fx/BalanceMarks.cs`, two line renderers a
+  boxer, under `Decals` in the arena). A clean punch a quarter harder than usual has its glove speed written
+  where it landed (`HudView.flashOverUsual`); between Matt and Zombie few punches are.
+- **Count:** an inset of the boxer left standing (`Cameras/PiP Camera`, drawing into `Assets/UI/Pip.renderTexture`
+  only during a count). Its cost on a phone is not known.
+- **Announcer:** the jaw reads 23 ms of the recording a little ahead of the sound and eases to it
+  (`TeethAnnouncer.jawSmoothSeconds`), against the loudest the voice has been. Sharp reversals fell from 11 a
+  second to under 1. **Measured, not watched.**
+- Left out on purpose: slow motion, the highlight reel and the replay scrubber (removed on 1 October), and
+  trajectory ribbons (a policy gives joint targets, not intentions).
+
 ## Finishing every boxer, on the new laptop (2026-10-02, afternoon)
 
 Carried on at 13:10 on the new machine (RTX 5070 Ti Laptop GPU; the gauntlet runs at about 35,000 steps a

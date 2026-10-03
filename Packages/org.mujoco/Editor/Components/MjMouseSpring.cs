@@ -32,6 +32,9 @@ namespace Mujoco {
     private Color _translucentRed = new Color(1, 0, 0, 0.1f);
 
     public void OnDisable() {
+      // PoBox: outside OnGUI (a domain reload with a body selected) a control ID cannot be asked for, and
+      // asking threw an ArgumentException into the console at every recompile and every Play.
+      if (UnityEngine.Event.current == null) return;
       // If we're still the hot control at this stage, we need to release.
       int uniqueID = GUIUtility.GetControlID(FocusType.Passive);
       if (GUIUtility.hotControl == uniqueID) {

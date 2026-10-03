@@ -13,6 +13,14 @@
  *  - Anything a thumb presses is at least 88 px tall (a 44 pt target at 2x), however tight the rest is.
  *
  *  - Nothing scrolls. A panel that does not fit is a panel with too much in it.
+ *
+ *  - Colours, corner radii and text sizes come from the tokens below, and the three documents (Hud, Menu,
+ *    Testbed) carry no styles of their own. Corners are 6, 8, 12 or 16 (a circle is half its own size);
+ *    text is 26, 28, 32, 40 or 52. The exceptions are the three things meant to be read across a room:
+ *    the walk-on name (76), the round banner (96) and the referee's count (220).
+ *
+ *  - What opens over the fight (menu, results, debug) is docked at the bottom, where a thumb is, one at a
+ *    time; the picture keeps the top of the screen.
  */
 
 :root {
@@ -30,9 +38,15 @@
     --overlay:        rgba(6, 8, 14, 0.78);
     --row:            rgba(255, 255, 255, 0.05);
     --row-lead:       rgba(255, 255, 255, 0.11);
+    --shade:          rgba(0, 0, 0, 0.35);
 
     --accent:         rgb(46, 191, 140);
     --accent-press:   rgb(32, 150, 110);
+    --accent-tint:    rgba(46, 191, 140, 0.18);
+    --accent-tint-2:  rgba(46, 191, 140, 0.32);
+    /* Text on a filled accent, danger or warning button. */
+    --on-accent:      rgb(6, 20, 15);
+    --on-danger:      rgb(30, 6, 4);
     --danger:         rgb(255, 108, 92);
     --warn:           rgb(255, 198, 84);
     --red:            rgb(226, 62, 62);
@@ -54,8 +68,10 @@
     --frame-row:      88px;
     --frame-clear:   104px;
 
+    --radius-lg:      16px;
     --radius:         12px;
     --radius-sm:       8px;
+    --radius-xs:       6px;
 }
 
 /* ------------------------------------------------------------------ base */
@@ -97,14 +113,14 @@ Label { margin: 0; padding: 0; }
     transition-timing-function: ease-out;
 }
 
-.btn:hover { background-color: rgba(46, 191, 140, 0.18); }
+.btn:hover { background-color: var(--accent-tint); }
 .btn:active { scale: 0.97 0.97; background-color: var(--accent-press); }
 
-.btn--primary { background-color: var(--accent); color: rgb(6, 20, 15); }
+.btn--primary { background-color: var(--accent); color: var(--on-accent); }
 .btn--primary:hover { background-color: rgb(60, 210, 156); }
 .btn--ghost { background-color: var(--overlay); }
-.btn--on { background-color: rgba(46, 191, 140, 0.30); border-width: 2px; border-color: var(--accent); }
-.btn--danger { background-color: var(--danger); color: rgb(30, 6, 4); }
+.btn--on { background-color: var(--accent-tint-2); border-width: 2px; border-color: var(--accent); }
+.btn--danger { background-color: var(--danger); color: var(--on-danger); }
 
 /* An icon and a word side by side, and an icon alone. */
 .btn--tool { flex-direction: row; align-items: center; justify-content: center; }
@@ -140,7 +156,8 @@ Label { margin: 0; padding: 0; }
     border-width: 0;
     margin: 0;
     padding: 0 20px;
-    height: 72px;
+    /* Two of the four are pressed, so all four are a thumb tall. */
+    height: var(--frame-row);
     color: var(--ink);
     font-size: var(--t-body);
     -unity-text-align: middle-center;
@@ -159,7 +176,10 @@ Label { margin: 0; padding: 0; }
 .frame-fps--warn { color: var(--warn); }
 .frame-fps--bad { color: var(--danger); }
 
-.frame-btn { height: 72px; min-height: 72px; padding: 0 24px; }
+/* An icon drawn in a button: three bars for the menu, a glove in a corner's colour for that boxer. */
+.glyph--btn { width: 44px; height: 44px; margin: 0; color: var(--ink); }
+.glyph--red { color: var(--red); }
+.glyph--blue { color: var(--blue); }
 
 .frame-debug { flex-direction: row; align-items: center; }
 .frame-debug-text { font-size: var(--t-body); margin-left: 12px; }
@@ -195,18 +215,18 @@ Label { margin: 0; padding: 0; }
     align-items: center;
     padding: 0 14px;
     border-radius: var(--radius-sm);
-    background-color: rgba(255, 255, 255, 0.10);
+    background-color: var(--row-lead);
     overflow: hidden;
 }
 .plate--blue { flex-direction: row-reverse; }
 .plate-fill { position: absolute; top: 0; bottom: 0; width: 100%; }
 .plate-fill--red { left: 0; background-color: var(--red); }
 .plate-fill--blue { right: 0; background-color: var(--blue); }
-.plate-name { font-size: 38px; -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+.plate-name { font-size: var(--t-title); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
 .plate-rank {
     font-size: var(--t-micro);
-    background-color: rgba(0, 0, 0, 0.35);
-    border-radius: 6px;
+    background-color: var(--shade);
+    border-radius: var(--radius-xs);
     padding: 2px 8px;
     margin: 0 10px;
     flex-shrink: 0;
@@ -215,8 +235,8 @@ Label { margin: 0; padding: 0; }
 
 .badge {
     font-size: var(--t-micro);
-    background-color: rgba(255, 255, 255, 0.10);
-    border-radius: 6px;
+    background-color: var(--row-lead);
+    border-radius: var(--radius-xs);
     padding: 2px 8px;
     margin: 0 8px;
     color: var(--ink-dim);
@@ -225,11 +245,11 @@ Label { margin: 0; padding: 0; }
 .badge--big { font-size: var(--t-body); padding: 8px 16px; margin: 0; color: var(--ink); -unity-font-style: bold; }
 
 .clock { width: 230px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
-.clock-round { font-size: 30px; color: var(--warn); -unity-font-style: bold; margin-right: 10px; }
-.clock-time { font-size: 56px; -unity-font-style: bold; }
+.clock-round { font-size: var(--t-small); color: var(--warn); -unity-font-style: bold; margin-right: 10px; }
+.clock-time { font-size: var(--t-display); -unity-font-style: bold; }
 
 /* Tug of war: red's share of the bar is red's chance of winning as it stands (Sim/Excitement.cs). */
-.momentum { height: 40px; margin-top: var(--gap-2); background-color: var(--blue); border-radius: 6px; overflow: hidden; }
+.momentum { height: 40px; margin-top: var(--gap-2); background-color: var(--blue); border-radius: var(--radius-xs); overflow: hidden; }
 .momentum-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background-color: var(--red); }
 .momentum-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background-color: rgba(255, 255, 255, 0.9); }
 .momentum-text { position: absolute; top: 0; bottom: 0; font-size: var(--t-small); -unity-font-style: bold; -unity-text-align: middle-center; }
@@ -247,7 +267,7 @@ Label { margin: 0; padding: 0; }
     margin: 0;
     padding: 0;
     border-width: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-xs);
     background-color: rgba(0, 0, 0, 0);
 }
 .tape-val { flex: 1 1 0; font-size: var(--t-body); -unity-font-style: bold; color: var(--ink); }
@@ -270,10 +290,10 @@ Label { margin: 0; padding: 0; }
     border-radius: var(--radius-sm);
     flex-direction: row;
     align-items: center;
-    background-color: rgba(255, 255, 255, 0.07);
+    background-color: var(--row);
 }
-.stat--tap { background-color: rgba(46, 191, 140, 0.16); }
-.stat--tap:active { background-color: rgba(46, 191, 140, 0.34); }
+.stat--tap { background-color: var(--accent-tint); }
+.stat--tap:active { background-color: var(--accent-tint-2); }
 .stat-val { flex: 1 1 0; font-size: var(--t-small); -unity-font-style: bold; color: var(--ink); }
 .stat-val--l { -unity-text-align: middle-right; padding-right: 10px; }
 .stat-val--r { -unity-text-align: middle-left; padding-left: 10px; }
@@ -294,6 +314,15 @@ Label { margin: 0; padding: 0; }
 .pod--blue { right: var(--gap-4); border-top-width: 6px; border-top-color: var(--blue); }
 .hitmap { width: 116px; height: 164px; }
 .balance { width: 116px; height: 78px; margin-top: 4px; border-top-width: 2px; border-top-color: var(--surface-line); }
+/* What is left in the tank, and what the boxer is doing this moment. */
+.tank { width: 116px; height: 10px; margin-top: 4px; border-radius: 5px; background-color: var(--row-lead); overflow: hidden; }
+.tank-fill { height: 10px; width: 100%; background-color: var(--accent); }
+.tank-fill--low { background-color: var(--warn); }
+.act { width: 116px; height: 36px; margin-top: 4px; font-size: var(--t-micro); -unity-font-style: bold; -unity-text-align: middle-center; color: var(--ink-dim); border-radius: var(--radius-xs); }
+.act--punch { color: rgb(12, 16, 22); background-color: var(--ink); }
+.act--alarm { color: var(--on-danger); background-color: var(--warn); }
+
+.picture { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 
 /* ------------------------------------------------------------------ over the picture */
 
@@ -308,6 +337,45 @@ Label { margin: 0; padding: 0; }
     text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
 }
 .banner--count { top: 500px; font-size: 220px; letter-spacing: 0; color: var(--warn); }
+
+/* Between rounds: the cards and the round's numbers, over the middle of the picture. */
+.break {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    top: 700px;
+    padding: var(--gap-4);
+    background-color: var(--overlay);
+    border-radius: var(--radius);
+}
+.break-title { font-size: var(--t-title); -unity-font-style: bold; -unity-text-align: middle-center; letter-spacing: 2px; }
+
+.pip {
+    position: absolute;
+    right: var(--gap-4);
+    bottom: 380px;
+    width: 270px;
+    height: 360px;
+    border-width: 4px;
+    border-color: var(--red);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background-color: var(--scrim);
+}
+.pip--blue { border-color: var(--blue); }
+
+.flash {
+    position: absolute;
+    width: 200px;
+    height: 48px;
+    font-size: var(--t-body);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--warn);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+}
 
 /* The walk-on: one corner at a time, named across the lower third of the picture. */
 .walkon {
@@ -338,7 +406,7 @@ Label { margin: 0; padding: 0; }
     height: 56px;
     font-size: var(--t-body);
     -unity-text-align: middle-left;
-    background-color: rgba(6, 8, 14, 0.66);
+    background-color: var(--overlay);
     border-left-width: 6px;
     border-left-color: var(--accent);
     border-radius: var(--radius-sm);
@@ -369,7 +437,7 @@ Label { margin: 0; padding: 0; }
     left: var(--gap-4);
     right: var(--gap-4);
     background-color: var(--surface);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border-width: 1px;
     border-color: var(--surface-line);
     padding: var(--gap-5);
@@ -382,7 +450,7 @@ Label { margin: 0; padding: 0; }
 .res-title { flex: 1 1 0; }
 .res-winner { font-size: var(--t-display); -unity-font-style: bold; }
 .res-method { font-size: var(--t-body); color: var(--ink-dim); }
-.res-graph { height: 96px; margin-top: var(--gap-3); background-color: rgba(255, 255, 255, 0.04); border-radius: var(--radius-sm); }
+.res-graph { height: 96px; margin-top: var(--gap-3); background-color: var(--row); border-radius: var(--radius-sm); }
 
 /* The three judges' cards, each marked with the colour of the corner it went to. */
 .judges { flex-direction: row; margin-top: var(--gap-3); margin-left: -4px; margin-right: -4px; }
@@ -411,9 +479,10 @@ Label { margin: 0; padding: 0; }
 .res-actions .btn { margin-right: var(--gap-2); }
 .res-go { flex: 1 1 0; margin-right: 0; }
 
-/* Menu: one sheet, three tabs. Every page is the same height so the sheet does not jump between them. */
-.menu-sheet { top: var(--frame-clear); }
-.seg { flex-direction: row; height: 88px; background-color: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 6px; }
+/* Menu: one sheet, three tabs, docked at the bottom where the results card sits. Every page is the same
+   height so the sheet does not jump between them. */
+.menu-sheet { bottom: var(--frame-clear); }
+.seg { flex-direction: row; height: 88px; background-color: var(--row); border-radius: var(--radius); padding: 6px; }
 .seg-btn {
     flex: 1 1 0;
     margin: 0 3px;
@@ -425,7 +494,7 @@ Label { margin: 0; padding: 0; }
     font-size: var(--t-body);
     -unity-font-style: bold;
 }
-.seg-btn--on { background-color: var(--accent); color: rgb(6, 20, 15); }
+.seg-btn--on { background-color: var(--accent); color: var(--on-accent); }
 
 .page { height: 520px; margin-top: var(--gap-4); }
 .page-label { margin-top: var(--gap-5); margin-bottom: var(--gap-1); }
@@ -469,7 +538,12 @@ Label { margin: 0; padding: 0; }
 .dbg-key { width: 140px; font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); }
 /* The value takes the rest of its cell: sized to its text, a count that goes from 99 to 104 is clipped
    for the frame it takes the layout to catch up, and the one-screen audit says so. */
-.dbg-val { font-size: 30px; -unity-font-style: bold; flex-grow: 1; }
+.dbg-val { font-size: var(--t-small); -unity-font-style: bold; flex-grow: 1; }
+
+/* ------------------------------------------------------------------ the testbed (Testbed.uxml) */
+
+.tb-line { font-size: var(--t-small); white-space: normal; -unity-text-align: middle-center; }
+.tb-btn { margin-right: var(--gap-2); }
 
 /* ------------------------------------------------------------------ the first screen: choose the boxers */
 
@@ -517,7 +591,7 @@ Label { margin: 0; padding: 0; }
     margin: 0 0 var(--gap-2) 0;
     padding: 0;
     border-width: 6px;
-    border-color: rgba(255, 255, 255, 0.10);
+    border-color: var(--surface-line);
     border-radius: var(--radius);
     background-color: var(--surface);
     overflow: hidden;
@@ -533,7 +607,7 @@ Label { margin: 0; padding: 0; }
    so the strip is anchored on the face rather than the middle of the picture. */
 .pick-portrait {
     flex-grow: 1;
-    background-color: rgb(20, 24, 34);
+    background-color: var(--surface);
     background-size: cover;
     background-position-x: center;
     background-position-y: 16%;

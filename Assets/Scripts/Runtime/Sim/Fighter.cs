@@ -142,6 +142,10 @@ namespace PoBox.Sim
         /// <summary>Each foot from the middle of the two, in the same frame (left, right), and whether it is on the canvas.</summary>
         public readonly Vector2[] footOffset = new Vector2[2];
         public readonly bool[] footDown = { true, true };
+        /// <summary>The capture point on the canvas, world x and z.</summary>
+        public Vector2 CapturePoint { get; private set; }
+        /// <summary>The patch of canvas the planted feet cover, world x and z, anticlockwise. Empty when the fighter is not standing on anything.</summary>
+        public IReadOnlyList<Vector2> Support => _hull;
         public float PowerW { get; private set; }
         public float PeakStress { get; private set; }
         public BodyPart PeakStressPart { get; private set; }
@@ -442,6 +446,7 @@ namespace PoBox.Sim
             float height = Mathf.Max(0.2f, CenterOfMass.y - _floorY);
             float reach = Mathf.Sqrt(height / 9.81f);
             var capture = new Vector2(CenterOfMass.x + CenterOfMassVelocity.x * reach, CenterOfMass.z + CenterOfMassVelocity.z * reach);
+            CapturePoint = capture;
 
             _hullPoints.Clear();
             Vector2 mid = Vector2.zero;
@@ -465,6 +470,7 @@ namespace PoBox.Sim
                 ConvexHull(_hullPoints, _hull);
                 margin = Mathf.Clamp01((InsideDistance(_hull, capture) + 0.10f) / 0.20f);
             }
+            else _hull.Clear();
             BalanceMargin += (margin - BalanceMargin) * 0.25f;
 
             // The same picture in the fighter's own frame, for the gauge on the HUD.

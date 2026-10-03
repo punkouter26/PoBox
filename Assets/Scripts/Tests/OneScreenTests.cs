@@ -164,6 +164,113 @@ namespace PoBox.Tests
             }
         }
 
+        [UnityTest]
+        public IEnumerator AKnockdownIsFeltOnTheCanvasAndInThePicture()
+        {
+            yield return SceneManager.LoadSceneAsync("Arena", LoadSceneMode.Single);
+            yield return UntilTheBell();
+            var vfx = Object.FindAnyObjectByType<PoBox.Fx.ImpactVfx>();
+            Assert.IsTrue(vfx.HasPulse, "the arena has no hit-pulse volume");
+            Assert.IsNotNull(vfx.steam, "the arena has no steam");
+
+            float hardest = 0f, pulse = 0f;
+            System.Action<Vector3, float> heard = (at, impulse) => hardest = Mathf.Max(hardest, impulse);
+            SimBus.FloorImpact += heard;
+            Bout.Instance.red.ForceDown();
+            for (int i = 0; i < 180; i++) { yield return null; pulse = Mathf.Max(pulse, vfx.Pulse); }
+            SimBus.FloorImpact -= heard;
+
+            // What MuJoCo put through the floor into a body of 80 kg coming down: tens of newton-seconds.
+            Assert.Greater(hardest, 10f, "a boxer went down and MuJoCo's contacts reported no landing");
+            Assert.Greater(pulse, 0.5f, "a knockdown did not pulse the picture");
+        }
+
+        /// <summary>
+        /// Menu, fight, a count cut short by RESTART, the result, the next bout, back to the menu, and in again,
+        /// with every button that changes scene tapped twice. Any error or exception in the console fails it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheLoopFromTheMenuToAResultAndBackLeavesNothingBehind()
+        {
+            if (!MatchSelection.HasMenu) Assert.Ignore("no trained boxers, so the build has no menu scene");
+            int arenas = 0;
+            UnityEngine.Events.UnityAction<Scene, LoadSceneMode> counted = (s, m) => { if (s.name == MatchSelection.ArenaScene) arenas++; };
+            SceneManager.sceneLoaded += counted;
+            try
+            {
+                yield return SceneManager.LoadSceneAsync(MatchSelection.MenuScene, LoadSceneMode.Single);
+                yield return null;
+                MenuView menu = Object.FindAnyObjectByType<MenuView>();
+                Assert.IsNotNull(menu, "the Menu scene has no MenuView");
+                menu.Fight();
+                menu.Fight();
+                yield return UntilTheBell();
+                yield return Settle();
+                Assert.AreEqual(1, arenas, "a double tap on FIGHT loaded the arena more than once");
+
+                Bout bout = Bout.Instance;
+                HudView hud = Object.FindAnyObjectByType<HudView>();
+                Assert.IsNotNull(bout, "FIGHT did not reach the arena");
+                Assert.AreEqual(BoutPhase.Fight, bout.Phase, "the first bell never rang");
+                bout.league = null;             // a half-second round is not a result for the owner's ladder
+                bout.rounds = 1;
+                bout.roundSeconds = 0.5f;
+
+                bout.red.ForceDown();
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.Count, bout.Phase, "a knockdown did not start a count");
+                bout.Restart();
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.Intro, bout.Phase, "RESTART during a count did not start the bout again");
+                Assert.IsNull(bout.Downed, "RESTART left the referee counting");
+                Assert.IsFalse(bout.red.IsDown, "RESTART left a boxer on the canvas");
+
+                yield return Until(() => bout.Phase == BoutPhase.Results);
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.Results, bout.Phase, "the bout never reached a result");
+                Assert.IsTrue(hud.ResultsOpen, "the result card is not up");
+                hud.OpenMenu(0);
+                Assert.IsFalse(hud.ResultsOpen, "the menu and the result card are both up");
+                hud.CloseMenu();
+                Assert.IsTrue(hud.ResultsOpen, "closing the menu did not bring the result card back");
+
+                int number = bout.BoutNumber;
+                bout.NewBout();
+                yield return Settle();
+                Assert.AreEqual(number + 1, bout.BoutNumber);
+                Assert.IsFalse(hud.ResultsOpen, "the result card stayed up into the next bout");
+
+                bout.userTimeScale = 2f;
+                yield return null;
+                hud.ToBoxers();
+                hud.ToBoxers();
+                yield return Until(() => Object.FindAnyObjectByType<MenuView>() != null);
+                yield return Settle();
+                Assert.IsNull(Bout.Instance, "the bout outlived its scene");
+                Assert.IsFalse(Bout.SimRunning, "the simulation is still marked running on the menu");
+                Assert.AreEqual(1f, Time.timeScale, "the menu was left running at the fight's speed");
+
+                Object.FindAnyObjectByType<MenuView>().Fight();
+                yield return UntilTheBell();
+                Assert.AreEqual(2, arenas, "the second FIGHT did not load the arena exactly once");
+                Assert.IsNotNull(Bout.Instance, "the second FIGHT did not reach the arena");
+                Assert.AreEqual(1, Bout.Instance.BoutNumber);
+                Assert.AreEqual(BoutPhase.Fight, Bout.Instance.Phase, "the second visit never reached the bell");
+            }
+            finally
+            {
+                SceneManager.sceneLoaded -= counted;
+                MatchSelection.Clear();
+            }
+        }
+
+        /// <summary>Waits for something, for twenty seconds at most.</summary>
+        static IEnumerator Until(System.Func<bool> done)
+        {
+            float deadline = Time.realtimeSinceStartup + 20f;
+            while (Time.realtimeSinceStartup < deadline && !done()) yield return null;
+        }
+
         static IEnumerator Settle()
         {
             for (int i = 0; i < 4; i++) yield return null;
