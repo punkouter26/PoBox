@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox boxer abilities</title>
+<style>
+  :root { --bg: #fbfaf7; --ink: #1d1d1f; --soft: #5b5b60; --card: #ffffff; --line: #e2dfd8;
+          --pass: #1f7a4d; --pass-bg: #e3f3ea; --fail: #b3261e; --fail-bg: #fbe6e3; --learn: #8a5a00; --learn-bg: #fdf0d3; --none: #8b8b90; --none-bg: #efeeeb; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151517; --ink: #ececee; --soft: #a2a2a8; --card: #1f1f23; --line: #33333a;
+          --pass: #6fd3a0; --pass-bg: #15301f; --fail: #ff8a80; --fail-bg: #3a1917; --learn: #f2c14e; --learn-bg: #33290f; --none: #8b8b90; --none-bg: #26262a; } }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, sans-serif; margin: 0; padding: 24px 16px 56px; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 27px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 17px; margin: 0 0 8px; }
+  .sub { color: var(--soft); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .scroll { overflow-x: auto; }
+  table.grid { border-collapse: separate; border-spacing: 4px; min-width: 900px; width: 100%; }
+  .grid th { font-size: 13px; font-weight: 600; text-align: left; padding: 4px 6px; vertical-align: bottom; }
+  .grid th small { display: block; font-weight: 400; color: var(--soft); }
+  .grid td { border-radius: 7px; padding: 7px 8px; font-size: 13px; line-height: 1.3; vertical-align: top; min-width: 92px; }
+  .grid td.name { font-weight: 700; font-size: 15px; background: none; min-width: 84px; }
+  .grid td.name small { display: block; font-weight: 400; color: var(--soft); font-size: 12px; }
+  td.pass { background: var(--pass-bg); } td.fail { background: var(--fail-bg); } td.learn { background: var(--learn-bg); } td.none { background: var(--none-bg); color: var(--none); }
+  td b { display: block; font-size: 15px; } td.pass b { color: var(--pass); } td.fail b { color: var(--fail); } td.learn b { color: var(--learn); }
+  .bar { height: 5px; border-radius: 3px; background: rgba(128,128,128,.25); margin-top: 5px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; } .pass .bar i { background: var(--pass); } .fail .bar i { background: var(--fail); } .learn .bar i { background: var(--learn); }
+  .key span { display: inline-block; padding: 2px 9px; border-radius: 6px; margin: 0 6px 6px 0; font-size: 13px; }
+  .ladder { display: grid; grid-template-columns: 92px 1fr 52px; gap: 8px 10px; align-items: center; }
+  .rungs { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; } .rungs i { height: 16px; border-radius: 3px; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  img { max-width: 100%; height: auto; border-radius: 6px; background: #fff; }
+  dl { margin: 10px 0 0; } dt { font-weight: 600; margin-top: 8px; } dd { margin: 2px 0 0; }
+  ul { margin: 6px 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+<h1>What each boxer can do</h1>
+<p class="sub">3 October 2026, mid-afternoon · six boxers, nine behaviours · exam results in plain C MuJoCo with no random wobble, unless a cell says "in training"</p>
+
+<div class="card">
+<strong>In one breath.</strong> Zombie and Nick can do everything a bout needs. Matt and Grandma miss one thing: staying up in the first three seconds after getting off the canvas. Grandpa misses two. The new Trump started learning today and is a third of the way through his first lesson (stand, walk, turn); he has not been taught to box or get up yet.
+</div>
+
+<h2>The grid</h2>
+<div class="key">
+  <span style="background:var(--pass-bg);color:var(--pass)">passes its exam</span>
+  <span style="background:var(--fail-bg);color:var(--fail)">fails its exam</span>
+  <span style="background:var(--learn-bg);color:var(--learn)">in training now</span>
+  <span style="background:var(--none-bg);color:var(--none)">not taught yet</span>
+</div>
+<div class="card scroll"><table class="grid" id="grid"></table></div>
+<p class="sub">The thin bar in each cell is how good the boxer is at that behaviour, from worst (empty) to best (full). Grandma and Grandpa are marked against easier targets for punching speed and getting up, because their bodies are built weaker and slower.</p>
+
+<h2>How far up the ladder each boxer is</h2>
+<div class="card"><div class="ladder" id="ladder"></div>
+<p class="sub" style="margin:12px 0 0">One block per behaviour, in the grid's order.</p></div>
+
+<h2>What is still wrong, in plain words</h2>
+<div class="card"><ul>
+<li><strong>Matt, Grandma, Grandpa: wobbly after getting up.</strong> They get off the floor nearly every time, but when the fighting brain takes the body back from the getting-up brain, they fall again in up to 1 try in 4. Nick's second round of practice fixed exactly this, so the same practice is queued for the others.</li>
+<li><strong>Grandpa: falls without being hit.</strong> About twice a minute against his worst opponent. Matt and Nick had the same problem and a second round fixed it; his second round has not run yet.</li>
+<li><strong>Matt never blocks.</strong> He passes the guard test only because opponents rarely reach his head. All his own punches go to the body.</li>
+<li><strong>Trump is brand new.</strong> New mesh, rigged today, heavier (109 kg) with short legs. He is also the first boxer whose muscles slow down and tire like a person's.</li>
+</ul></div>
+
+<h2>Trump's lesson right now: three charts</h2>
+<p class="sub">Run <code>f_trump2</code>, about 650 of 1,600 rounds of practice. Red is Trump. Green is Nick and blue is Zombie, who finished the same lesson yesterday.</p>
+<div class="charts">
+<div class="card">
+<h3>1. Falls while walking</h3>
+<img src="img/trump_tb_falls_annotated.png" alt="Share of walks that end in a fall: Trump's red line has dropped close to Nick's and Zombie's">
+<dl>
+<dt>Toddler</dt><dd>The line going down means Trump falls over less. Down is good!</dd>
+<dt>Child</dt><dd>At first every walk ended on the floor. Now about 2 to 4 walks in 100 do. Nick and Zombie ended near 1 in 100.</dd>
+<dt>Adult</dt><dd>Share of walking episodes ending in a fall, with exploration noise, shoves and thrown cubes. Trump 1.00 at the start, 0.02 to 0.04 now; Nick and Zombie finished near 0.01.</dd>
+</dl>
+</div>
+<div class="card">
+<h3>2. Walking at the asked speed</h3>
+<img src="img/trump_tb_track_annotated.png" alt="Walking speed error: Trump's red line is under the 0.15 pass line, on top of Nick's">
+<dl>
+<dt>Toddler</dt><dd>We tell Trump how fast to walk. The line shows how wrong he gets it. Lower is better.</dd>
+<dt>Child</dt><dd>If we ask for 1 metre a second and he does 0.89, he is off by 0.11. The dotted line is the pass mark and he is under it.</dd>
+<dt>Adult</dt><dd>Mean error between commanded and actual velocity. Trump 0.11 m/s, under the 0.15 mark and level with where Nick finished; Zombie finished at 0.09.</dd>
+</dl>
+</div>
+<div class="card">
+<h3>3. Turning to face the opponent</h3>
+<img src="img/trump_tb_turn_annotated.png" alt="Share of turns made within three seconds: Trump's red line is mostly above the 0.90 pass line">
+<dl>
+<dt>Toddler</dt><dd>Someone stands behind Trump. Can he turn to look at them? Higher means more often.</dd>
+<dt>Child</dt><dd>He has three seconds to turn and face them. He manages it 9 times in 10 or better, but it jumps about from minute to minute.</dd>
+<dt>Adult</dt><dd>Share of turn episodes faced within 15 degrees inside 3 s. Trump swings between 0.88 and 1.00; Nick finished near 0.99, Zombie near 0.92. This is the noisiest of the three and the rung Matt and Grandma each needed a top-up for.</dd>
+</dl>
+</div>
+</div>
+<div class="card"><strong>Better or worse than earlier runs?</strong> About the same at this stage, which is encouraging: his body is new and he trains under the speed limit, which nobody before him did. He also had a head start from Matt's finished footwork, and this is the first run with this morning's fix to the trainer, so one run cannot say which of those matters most. The honest test is the exam at the end of the lesson.</div>
+
+<p class="sub">Sources: <code>training/logs/exam_*.json</code> (footwork: r2b_matt, f_zombie, f_nick, f2_grandma, f_grandpa; boxing: m2 for Matt, Nick and Grandma, the all-boxers exam after round one for Zombie and Grandpa, and the u1 get-up exams). Trump's cells are live training numbers, which include deliberate random wobble.</p>
+</main>
+<script>
+// [label, detail, state, bar 0..1]
+const P = "pass", F = "fail", L = "learn", N = "none";
+const cols = [["Stand", "upright 20 s while shoved"], ["Walk", "speed error, m/s"], ["Turn", "faces opponent in 3 s"], ["Get up", "off the canvas"],
+              ["Attack", "punches landed a second"], ["Guard", "head shots stopped"], ["Chin", "legs buckle, per minute"], ["Footing", "falls nobody caused, per minute"], ["Carry on", "still up 3 s after rising"]];
+const rows = [
+  ["Matt", "84 kg", [["100%", "", P, 1], ["0.04 off", "no falls", P, .74], ["100%", "", P, 1], ["30 of 30", "1.7 s", P, 1], ["1.99", "at 7.2 m/s, all to the body", P, 1], ["0%", "but hit only 0.06 a second", P, .15], ["0.00", "", P, 1], ["0.00", "", P, 1], ["23 of 30", "needs 27", F, .77]]],
+  ["Zombie", "92 kg", [["100%", "", P, 1], ["0.01 off", "no falls", P, .93], ["93%", "", P, .93], ["30 of 30", "1.8 s", P, 1], ["0.90", "at 5.8 m/s", P, .45], ["73%", "", P, .73], ["0.00", "", P, 1], ["0.00", "", P, 1], ["27 of 30", "", P, .9]]],
+  ["Nick", "59 kg", [["100%", "", P, 1], ["0.01 off", "no falls", P, .93], ["100%", "", P, 1], ["30 of 30", "1.6 s", P, 1], ["1.38", "at 6.8 m/s", P, .69], ["66%", "", P, .66], ["0.00", "", P, 1], ["0.00", "", P, 1], ["29 of 30", "", P, .97]]],
+  ["Grandma", "88 kg, frail", [["98%", "", P, .98], ["0.01 off", "no falls", P, .95], ["99%", "", P, .99], ["29 of 30", "2.6 s", P, .97], ["1.09", "at 5.6 m/s", P, .55], ["73%", "", P, .73], ["0.00", "", P, 1], ["0.00", "", P, 1], ["24 of 29", "needs 90%", F, .83]]],
+  ["Grandpa", "80 kg, frail", [["97%", "", P, .97], ["0.02 off", "no falls", P, .87], ["97%", "", P, .97], ["30 of 30", "2.2 s", P, 1], ["0.62", "at 3.4 m/s", P, .31], ["68%", "", P, .68], ["0.78", "worst 2.67", P, .48], ["2.00", "may be at most 0.2", F, .1], ["26 of 30", "needs 27", F, .87]]],
+  ["Trump", "109 kg, new today", [["0 falls", "in training", L, .9], ["0.11 off", "in training", L, .3], ["about 94%", "in training", L, .9], ["not yet", "", N, 0], ["not yet", "", N, 0], ["not yet", "", N, 0], ["not yet", "", N, 0], ["not yet", "", N, 0], ["not yet", "", N, 0]]],
+];
+const grid = document.getElementById("grid");
+grid.innerHTML = "<tr><th></th>" + cols.map(c => `<th>${c[0]}<small>${c[1]}</small></th>`).join("") + "</tr>" +
+  rows.map(r => `<tr><td class="name">${r[0]}<small>${r[1]}</small></td>` + r[2].map(c =>
+    `<td class="${c[2]}"><b>${c[0]}</b>${c[1]}${c[2] === N ? "" : `<div class="bar"><i style="width:${Math.round(c[3] * 100)}%"></i></div>`}</td>`).join("") + "</tr>").join("");
+const colour = { pass: "var(--pass)", fail: "var(--fail)", learn: "var(--learn)", none: "var(--none-bg)" };
+document.getElementById("ladder").innerHTML = rows.map(r => {
+  const n = r[2].filter(c => c[2] === P).length;
+  return `<strong>${r[0]}</strong><div class="rungs">${r[2].map((c, i) => `<i title="${cols[i][0]}" style="background:${colour[c[2]]}"></i>`).join("")}</div><span>${n} of 9</span>`;
+}).join("");
+</script>
+</body>
+</html>

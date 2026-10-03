@@ -7,7 +7,7 @@
     {
       "name": "trump",
       "rig": "trump.json",
-      "source_mesh": "C:/Users/punko/Downloads/PoBox/TRUMP_Rigged.glb",
+      "source_mesh": "C:/Users/punko/Downloads/PoBox/RIGGED_Trump.glb",
       "joint_order": [
         "abdomen_z",
         "abdomen_y",
@@ -43,15 +43,15 @@
         1.9548,
         0.0,
         0.0,
-        -0.1656,
+        -0.1931,
         0.4538,
-        -0.2882,
+        -0.2606,
         0.0,
         0.0,
         0.0,
-        -0.1656,
+        -0.1931,
         0.4538,
-        -0.2882,
+        -0.2606,
         0.0
       ],
       "lower": [
@@ -217,15 +217,15 @@
       ],
       "total_mass_kg": 109.366,
       "height_m": 1.9,
-      "stand_height": 0.979,
+      "stand_height": 0.836,
       "action_scale": 0.5,
       "action_clip": 3.0,
       "physics_hz": 200,
       "control_decimation": 4,
       "ring_half": 3.05,
       "radii": {
-        "head": 0.125,
-        "torso": 0.1121,
+        "head": 0.12,
+        "torso": 0.1054,
         "glove": 0.075
       },
       "style": {
@@ -241,13 +241,15 @@
       },
       "strength": 1.102,
       "speed": 1.0,
-      "stance_lean_deg": 4.51,
+      "stance_lean_deg": 2.93,
       "models": {
         "solo": "trump_solo.xml",
         "bag": "trump_bag.xml",
         "spar": "trump_spar.xml"
       },
-      "cubes": 8
+      "cubes": 8,
+      "speed_limit": true,
+      "fatigue_j": 30000.0
     },
     {
       "name": "lilmatt",

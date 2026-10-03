@@ -25,8 +25,8 @@ import exam as E  # noqa: E402
 from ppo import PPO, PPOConfig  # noqa: E402
 
 MODELS = os.path.join(HERE, "models", "v2")
-# Trump and Lil Matt were taken out of the game on 2026-10-03; their models and checkpoints stay in training/.
-NAMES = ("grandma", "grandpa", "matt", "nick", "zombie")
+# Lil Matt was taken out of the game on 2026-10-03 (his models and checkpoints stay in training/). Trump came back the same day on a new mesh.
+NAMES = ("grandma", "grandpa", "matt", "nick", "trump", "zombie")
 OBS = 103
 
 

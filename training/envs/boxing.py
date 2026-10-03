@@ -159,9 +159,11 @@ class BoxingEnv:
             device=device)
         self.ring_half = float(cfg.get("ring_half", self.cfg.get("ring_half", 3.05)))
 
-        self.speed_limit = speed_limit or all(c.get("speed_limit", False) for c in self.cfgs)
-        if self.speed_limit:
-            for p, c in zip(("a_", "b_"), self.cfgs):
+        # Fighter by fighter: a boxer trained under the rule can meet one that was not.
+        limited = [speed_limit or bool(c.get("speed_limit", False)) for c in self.cfgs]
+        self.speed_limit = any(limited)
+        for p, c, on in zip(("a_", "b_"), self.cfgs, limited):
+            if on:
                 for n, fl, vl in zip(order, c["force_limit"], c["velocity_limit"]):
                     m.dof_damping[m.jnt_dofadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, p + n)]] += fl / vl
         d0 = mujoco.MjData(m)
@@ -287,7 +289,9 @@ class BoxingEnv:
         # ponytail: the reserve is not in the observation (nor is the daze); a boxer cannot pace itself by it.
         # Give it an input with tools/widen_policy.py when pacing is wanted.
         self.fatigue_j = F([fatigue_j or float(c.get("fatigue_j", 0.0)) for c in self.cfgs])             * F([float(c.get("strength", 1.0)) for c in self.cfgs])              # (K,) a frail body has less
-        self.fatigue_on = bool((self.fatigue_j > 0.0).all())
+        self.fatigue_on = bool((self.fatigue_j > 0.0).any())
+        self.tires = self.fatigue_j > 0.0                                        # (K,) which fighters tire
+        self.fatigue_j = torch.where(self.tires, self.fatigue_j, torch.full_like(self.fatigue_j, float("inf")))
         self.fatigue_rec_s, self.fatigue_weak = fatigue_rec_s, fatigue_weak
         leg = [i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
         self.leg_idx = L(leg)
@@ -458,7 +462,7 @@ class BoxingEnv:
         self.since_block = torch.where(m1, torch.full_like(self.since_block, 99.0), self.since_block)
         if self.fatigue_on:
             # An episode is twelve seconds and a round is forty-five: it begins anywhere in a round's tiredness.
-            self.reserve = torch.where(m1, self._u(self.N, self.K, lo=0.3, hi=1.0), self.reserve)
+            self.reserve = torch.where(m1 & self.tires, self._u(self.N, self.K, lo=0.3, hi=1.0), self.reserve)
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of

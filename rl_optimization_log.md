@@ -585,3 +585,28 @@ them into the configs under `models/v2`, which is where the exam reads them and 
   over 20 s; below half, the drives weaken, to 0.6 with nothing left. Episodes begin at 0.3 to 1.0 of it. In
   `BoxingEnv.step`, `tools/exam.py` and `MjBoxer.Tire` (called by `MjRing`). The reserve is not observed (nor is the
   daze). Smoke: 8 s of thrashing leaves 0.46. Not yet trained with.
+
+## 2026-10-03 14:30: a new Trump (the owner's `TRUMP.glb`), rigged and derived; not yet in Unity, not yet trained
+
+The owner's new mesh had no skeleton. Rigged in Blender 5.2: scaled to the roster's 1.90 m, 24 bones with Mixamo
+names placed from the mesh's own outline, automatic weights (on a copy with its seams merged, then carried back),
+exported as `RIGGED_Trump.glb`; `roster.json` points at it. `build_roster.py --only trump` (rigs/v2, models/v2, 8
+cubes): 109.4 kg, strength 1.10, pelvis 0.836 m in the guard (the old Trump's was near 1.0: this one has a long trunk
+and short legs), weight 47% of the way from heel to toe. Self-collision: the forearms touched the chest in the guard
+and the walk; clean after four trunk slimmings (torso 0.105, pelvis 0.076): no pair touches in 25 poses. Fit picture
+`logs/fit_trump.png`; fingerprint and `trump_reference_hold.json` written.
+
+**The old Trump's policies are not a warm start for this body** (`f_trump` on it, C MuJoCo 3.5.0, 9 of each kind):
+stand 0%, walk 17 falls a minute, turn 56%. Footwork starts from `r2b_matt` as the others' did.
+
+**Waiting on the owner:** the editor was in Play mode on the Arena, so nothing was imported and no run was started.
+Still to do: `Assets/Models/Trump.glb`, `MjRetrofit.BuildBoxer/BuildCorners`, the arena, menu, portrait and voice;
+footwork, get-up and match with `--speed-limit --fatigue-j 30000` from the first run (AGENTS.md); exam; Unity gate.
+
+**Trump, footwork (`f_trump2`, 1600 iterations from `r2b_matt`, speed limit on from the first step, 14:36 to 15:05, about
+95,000 samples a second with the editor closed).** Exam, C MuJoCo 3.5.0 under the speed limit, 30 of each kind: stand
+100%, walk off by 0.02 m/s with no falls, turn 100%, joints at 0.29 of their limits (the others ran at 0.38 to 0.66
+without the rule). **R0 to R2 passed at the first attempt.** In Unity: prefab and both corners built, the compiled
+model equals the trainer's (0 differences), in the Arena's MatchSetup and the Testbed's roster. Get-up
+(`u1_trump2_matt`, Matt frozen) and the first match round (`m3_trump`) follow. Report with the charts:
+`DOCS/reports/2026-10-03-abilities-and-training.html`.

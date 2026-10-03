@@ -8,7 +8,7 @@
   "boxers": {
     "trump": {
       "display": "TRUMP",
-      "glb": "../TRUMP_Rigged.glb",
+      "glb": "../RIGGED_Trump.glb",
       "height": 1.90,
       "persona": "brawler",
       "says": "comes forward, big slow shots to the head, little guard",

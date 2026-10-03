@@ -482,6 +482,8 @@ namespace PoBox.EditorTools
         {
             string title = Title(name), dir = $"{BoxersDir}/{title}", from = $"training/checkpoints/{run}";
             var policy = Copy<ModelAsset>($"{from}/latest.onnx", $"{dir}/policy.onnx");
+            // The body's config goes with it: the rules a policy was trained under (speed limit, fatigue) are in there.
+            Copy<TextAsset>($"{Models}/{name}_policy_config.json", $"{dir}/config.json");
             foreach (string file in new[] { "reference_trajectory.json", "falls.json" })
                 if (File.Exists($"{from}/{file}")) Copy<TextAsset>($"{from}/{file}", $"{dir}/{file}");
             string prefabPath = $"{dir}/{title}.prefab";
