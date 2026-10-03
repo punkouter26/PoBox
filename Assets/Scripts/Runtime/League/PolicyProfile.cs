@@ -5,7 +5,7 @@ namespace PoBox.League
     /// <summary>
     /// One entry on the ladder: a name, a look, and what drives the fighter.
     ///
-    /// Today "what drives it" is the style numbers below, read by <c>ScriptedBoxer</c>. They are a stand-in.
+    /// Today "what drives it" is the style numbers below, a stand-in for what the boxer's policy does.
     /// The slot that matters is <see cref="checkpoint"/>: once a policy has been trained in MuJoCo/Newton on
     /// the owner's skinned mesh, each exported ONNX checkpoint becomes one of these assets with its
     /// generation number, and the ladder turns into checkpoint against checkpoint without any other change.

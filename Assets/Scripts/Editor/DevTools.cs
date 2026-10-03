@@ -33,7 +33,6 @@ namespace PoBox.EditorTools
     ///     shot-end NAME               render the camera at that size, lay the HUD over it, write Build/Shots/NAME.png
     ///     layout                      the one-screen audit of the live HUD or menu (call between shot-begin and shot-end)
     ///     call TYPE METHOD [args]     call a method on the first live component of that type (ints, floats, bools, strings)
-    ///     probe, probe-read           drive single joints, then report which way they went (joint sign check)
     ///     gameview W H                set the Game view to a fixed portrait size
     ///     down 0|1                    the red (0) or blue (1) fighter's legs go, now: a knockdown to look at
     ///     sound, sound-reset          the finished mix as measured: peak, average, clipped samples, limiter
@@ -93,8 +92,6 @@ namespace PoBox.EditorTools
                 case "shot-end": return ShotEnd(a[1]);
                 case "layout": return Layout();
                 case "call": return Call(a);
-                case "probe": return Probe();
-                case "probe-read": ProbeRead(); return "read";
                 case "gameview": return SetGameViewSize(int.Parse(a[1]), int.Parse(a[2]), "PoBox " + a[1] + "x" + a[2]) ? "ok" : "failed";
                 case "down": return Down(int.Parse(a[1]));
                 case "sound": return Sound();
@@ -248,11 +245,10 @@ namespace PoBox.EditorTools
                 s.Append($" bal={f.BalanceMargin:0.00} stress={f.PeakStress:0.00} power={f.PowerW:0}W thrown={f.stats.thrown} landed={f.stats.landed} clean={f.stats.clean} peak={f.stats.peakImpulse:0.0}Ns dmg={f.stats.damageDealt:0.0} kd={f.stats.knockdowns} kJ={f.stats.energyJ / 1000f:0.00}");
                 s.Append($" gloves=({f.GloveSpeedL:0.0},{f.GloveSpeedR:0.0})m/s daze={f.Daze:0.0} drive={f.DriveScale:0.00} rising={f.IsRising} blocked={f.stats.blocked} downs={f.stats.downs}");
                 s.Append($" taken=[{f.taken[0]:0},{f.taken[1]:0},{f.taken[2]:0},{f.taken[3]:0},{f.taken[4]:0}] capture=({f.CaptureOffset.x:0.00},{f.CaptureOffset.y:0.00})");
-                var policy = f.GetComponent<Rl.PolicyBrain>();
-                if (policy != null) s.Append($" value={(policy.HasValue ? policy.Value.ToString("0.0") : "none")} getup={(policy.HasGetUp ? (policy.GettingUp ? "RUNNING" : "ready") : "none")}");
-                var brain = f.GetComponent<ScriptedBoxer>();
-                Vector3 v = f.pelvis.body.linearVelocity;
-                if (brain != null) s.Append($" walk={new Vector2(v.x, v.z).magnitude:0.00}/{brain.WantVelocity.magnitude:0.00}m/s peakJoint={(f.PeakStressPart != null ? f.PeakStressPart.name : "-")}");
+                var policy = f.GetComponent<MjBrain>();
+                if (policy != null) s.Append($" value={(policy.HasValue ? policy.Value.ToString("0.0") : "none")} getup={(f.boxer.getUpPolicy != null ? (policy.GettingUp ? "RUNNING" : "ready") : "none")}");
+                Vector3 v = f.CenterOfMassVelocity;
+                s.Append($" walk={new Vector2(v.x, v.z).magnitude:0.00}m/s peakJoint={(f.PeakStressPart != null ? f.PeakStressPart.name : "-")}");
             }
             s.Append($"\n  excitement={Excitement.Value:0.00} redShare={Excitement.RedShare:0.00}");
             BroadcastDirector d = BroadcastDirector.Instance;
@@ -260,7 +256,7 @@ namespace PoBox.EditorTools
 
             if (b.Phase == BoutPhase.Results) s.Append($"\n  result: {(b.Winner != null ? b.Winner.displayName : "draw")} {b.Method} elo={b.EloDelta:0.0}");
             PerfTelemetry perf = PerfTelemetry.Instance;
-            if (perf != null) s.Append($"\n  perf: frame={perf.FrameMs:0.0}ms physics={perf.PhysicsMs:0.00}ms x{PhysicsStepper.StepsLastFrame} setpass={perf.SetPass} tris={perf.Triangles} gc={perf.GcKb:0.0}kB (average {perf.GcAverageKb:0.0}) scale={perf.RenderScale:0.00} (down {perf.StepsDown}, up {perf.StepsUp})");
+            if (perf != null) s.Append($"\n  perf: frame={perf.FrameMs:0.0}ms physics={perf.PhysicsMs:0.00}ms setpass={perf.SetPass} tris={perf.Triangles} gc={perf.GcKb:0.0}kB (average {perf.GcAverageKb:0.0}) scale={perf.RenderScale:0.00} (down {perf.StepsDown}, up {perf.StepsUp})");
             s.Append($"\n  cards: {b.CardsText()} (rounds scored {b.judges.RoundsScored}) leans now {b.judges.Lean(0):+0;-0;0} {b.judges.Lean(1):+0;-0;0} {b.judges.Lean(2):+0;-0;0}");
             Excitement ex = Excitement.Instance;
             if (ex != null) s.Append($" | critic edge {ex.CriticEdge:+0.00;-0.00} ({(ex.HasCritic ? "both critics" : "no critic")}) usual hit {ex.UsualImpulse:0.0}Ns");
@@ -408,7 +404,7 @@ namespace PoBox.EditorTools
             {
                 foreach (Fighter f in new[] { b.red, b.blue })
                 {
-                    if (f == null || f.mjcf == null) continue;
+                    if (f == null || f.boxer == null) continue;
                     Fighter other = b.Other(f);
                     var skin = f.GetComponent<Fx.FighterSkin>();
                     var otherSkin = other != null && other != f ? other.GetComponent<Fx.FighterSkin>() : null;
@@ -424,7 +420,7 @@ namespace PoBox.EditorTools
                     if (otherSkin != null) otherSkin.SetVisible(false);
 
                     Vector3 head = skin.HeadPoint, pelvis = skin.PelvisPoint;
-                    Vector3 forward = f.mjcf.Forward;
+                    Vector3 forward = f.boxer.Forward;
                     forward.y = 0f;
                     forward.Normalize();
                     Vector3 look = Vector3.Lerp(pelvis, head, 0.62f);
@@ -439,7 +435,7 @@ namespace PoBox.EditorTools
                     main.Render();
 
                     Texture2D shot = Read(rt);
-                    string path = $"{AssetBakery.PortraitDir}/{f.mjcf.fighterName}.png";
+                    string path = $"{AssetBakery.PortraitDir}/{f.boxer.Cfg.name}.png";
                     File.WriteAllBytes(Path.GetFullPath(path), shot.EncodeToPNG());
                     UnityEngine.Object.DestroyImmediate(shot);
                     written.Add(path);
@@ -492,57 +488,6 @@ namespace PoBox.EditorTools
             Type inner = Nullable.GetUnderlyingType(t);
             if (inner != null) return s == "null" ? null : Convert(s, inner);
             return s;
-        }
-
-        // ---------------------------------------------------------------- joint signs
-
-        /// <summary>
-        /// Which way does a positive drive target turn a link? Pins the red fighter's pelvis in the air,
-        /// switches its brain off, asks one joint at a time for +30 degrees and reads the link's local Euler
-        /// angle back after it settles. If the angle that comes back has the opposite sign, RigSigns for
-        /// that axis is -1. Run in play mode; restart the bout afterwards.
-        /// </summary>
-        static string Probe()
-        {
-            Bout b = Bout.Instance;
-            if (b == null || !EditorApplication.isPlaying) return "play first";
-            Fighter f = b.red;
-            f.GetComponent<ScriptedBoxer>().enabled = false;
-            b.blue.GetComponent<ScriptedBoxer>().enabled = false;
-            f.pelvis.body.immovable = true;
-
-            var s = new StringBuilder("drive +30 on one axis, then read the link's local Euler angles after `step 90`:\n");
-            Set(f.upperArmR, 30f, 0f, 0f);     // X on a spherical joint
-            Set(f.thighL, 0f, 0f, 30f);        // Z on a spherical joint
-            Set(f.torso, 0f, 30f, 0f);         // Y on a spherical joint
-            f.shinR.body.SetDriveTarget(ArticulationDriveAxis.X, 30f);   // revolute
-            s.Append("targets set: upperArmR X+30, thighL Z+30, torso Y+30, shinR X+30. Now `step 90`, then `probe-read`.");
-            return s.ToString();
-        }
-
-        static void Set(BodyPart p, float x, float y, float z)
-        {
-            p.body.SetDriveTarget(ArticulationDriveAxis.X, x);
-            p.body.SetDriveTarget(ArticulationDriveAxis.Y, y);
-            p.body.SetDriveTarget(ArticulationDriveAxis.Z, z);
-        }
-
-        [MenuItem("PoBox/Dev/Probe Read")]
-        public static void ProbeRead()
-        {
-            Bout b = Bout.Instance;
-            if (b == null) { Out("probe-read: not playing"); return; }
-            Fighter f = b.red;
-            string E(BodyPart p)
-            {
-                Vector3 e = p.transform.localEulerAngles;
-                float N(float v) => v > 180f ? v - 360f : v;
-                ArticulationReducedSpace jp = p.body.jointPosition;
-                var j = new StringBuilder();
-                for (int i = 0; i < p.body.dofCount; i++) j.Append($"{jp[i] * Mathf.Rad2Deg:0.0} ");
-                return $"euler=({N(e.x):0.0},{N(e.y):0.0},{N(e.z):0.0}) jointPos=[{j.ToString().Trim()}] dof={p.body.dofCount}";
-            }
-            Out("probe-read:\n  upperArmR (X+30): " + E(f.upperArmR) + "\n  thighL (Z+30): " + E(f.thighL) + "\n  torso (Y+30): " + E(f.torso) + "\n  shinR (X+30): " + E(f.shinR));
         }
 
         // ---------------------------------------------------------------- game view

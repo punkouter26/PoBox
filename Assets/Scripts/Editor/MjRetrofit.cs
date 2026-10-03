@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Mujoco;
 using PoBox.Mj;
 using PoBox.Rl;
@@ -22,6 +24,111 @@ namespace PoBox.EditorTools
         const string Models = "training/models/v2", Rigs = "training/rigs/v2", BoxersDir = "Assets/Boxers";
 
         static string Title(string name) => char.ToUpperInvariant(name[0]) + name.Substring(1);
+
+        /// <summary>The boxers there are: a folder of Assets/Boxers with a prefab in it, by name.</summary>
+        public static string[] Boxers()
+        {
+            if (!AssetDatabase.IsValidFolder(BoxersDir)) return new string[0];
+            return AssetDatabase.GetSubFolders(BoxersDir)
+                .Select(Path.GetFileName)
+                .Where(t => File.Exists($"{BoxersDir}/{t}/{t}.prefab"))
+                .Select(t => t.ToLowerInvariant())
+                .OrderBy(n => n, System.StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        /// <summary>The name on the scoreboard: the rig file's "display" ("LIL MATT"), otherwise the name in capitals.</summary>
+        public static string DisplayName(string name)
+        {
+            string rig = $"{Rigs}/{name}.json";
+            if (File.Exists(rig))
+            {
+                Match m = Regex.Match(File.ReadAllText(rig), "\"display\"\\s*:\\s*\"([^\"]+)\"");
+                if (m.Success) return m.Groups[1].Value.ToUpperInvariant();
+            }
+            return name.ToUpperInvariant();
+        }
+
+        /// <summary>A boxer's card on the first screen: name, size, and the portrait taken with the dev command 'portraits'.</summary>
+        public static PoBox.UI.MenuView.Boxer Card(string name)
+        {
+            var cfg = JsonUtility.FromJson<Sizes>(File.ReadAllText($"{BoxersDir}/{Title(name)}/config.json"));
+            string portrait = $"{AssetBakery.PortraitDir}/{name}.png";
+            if (File.Exists(portrait))
+            {
+                AssetDatabase.ImportAsset(portrait);
+                var importer = AssetImporter.GetAtPath(portrait) as TextureImporter;
+                if (importer != null && (importer.npotScale != TextureImporterNPOTScale.None || importer.mipmapEnabled || importer.wrapMode != TextureWrapMode.Clamp))
+                {
+                    importer.npotScale = TextureImporterNPOTScale.None;
+                    importer.mipmapEnabled = false;
+                    importer.wrapMode = TextureWrapMode.Clamp;
+                    importer.SaveAndReimport();
+                }
+            }
+            return new PoBox.UI.MenuView.Boxer
+            {
+                name = name,
+                displayName = DisplayName(name),
+                detail = cfg.height_m > 0f && cfg.total_mass_kg > 0f ? $"{cfg.height_m:0.00} m · {cfg.total_mass_kg:0} kg" : "",
+                portrait = AssetDatabase.LoadAssetAtPath<Texture2D>(portrait),
+            };
+        }
+
+        [System.Serializable] class Sizes { public float height_m, total_mass_kg; }
+
+        /// <summary>The owner's mesh for a boxer, Assets/Models/NAME.glb (or .fbx).</summary>
+        static GameObject Mesh(string name)
+        {
+            foreach (string ext in new[] { ".glb", ".fbx" })
+            {
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/{Title(name)}{ext}");
+                if (go != null) return go;
+            }
+            return null;
+        }
+
+        /// <summary>Which bone of the mesh is which limb: the rig file's "map".</summary>
+        static Dictionary<string, string> BoneMap(string rigJson)
+        {
+            var map = new Dictionary<string, string>();
+            Match block = Regex.Match(rigJson, "\"map\"\\s*:\\s*\\{([^}]*)\\}");
+            if (block.Success)
+                foreach (Match m in Regex.Matches(block.Groups[1].Value, "\"(\\w+)\"\\s*:\\s*\"([^\"]+)\""))
+                    map[m.Groups[1].Value] = m.Groups[2].Value;
+            return map;
+        }
+
+        /// <summary>Which bone rides on which body, and which limbs are straightened onto the body's before binding (parents before children).</summary>
+        static void ConfigureBinder(SkinBinder binder, Dictionary<string, string> bones)
+        {
+            void Map(string body, string key)
+            {
+                if (bones.TryGetValue(key, out string bone)) binder.map.Add(new SkinBinder.BoneMap { body = body, bone = bone });
+            }
+            void Aim(string key, string towardKey, string body, string towardBody)
+            {
+                if (bones.TryGetValue(key, out string bone) && bones.TryGetValue(towardKey, out string toward))
+                    binder.aims.Add(new SkinBinder.Aim { bone = bone, towardBone = toward, body = body, towardBody = towardBody });
+            }
+            Map("pelvis", "pelvis");
+            Map("torso", "spine");
+            foreach (string s in new[] { "l", "r" })
+            {
+                Map($"upper_arm_{s}", $"upper_arm_{s}");
+                Map($"forearm_{s}", $"forearm_{s}");
+                Aim($"upper_arm_{s}", $"forearm_{s}", $"upper_arm_{s}", $"forearm_{s}");
+                Aim($"forearm_{s}", $"hand_{s}", $"forearm_{s}", $"glove_{s}");
+            }
+            foreach (string s in new[] { "l", "r" })
+            {
+                Map($"thigh_{s}", $"thigh_{s}");
+                Map($"shin_{s}", $"shin_{s}");
+                Map($"foot_{s}", $"foot_{s}");
+                Aim($"thigh_{s}", $"shin_{s}", $"thigh_{s}", $"shin_{s}");
+                Aim($"shin_{s}", $"foot_{s}", $"shin_{s}", $"foot_{s}");
+            }
+        }
 
         /// <summary>The boxer's solo model as MjBody, MjGeom, joints and drives under one root in the open scene.</summary>
         public static GameObject Import(string name)
@@ -73,7 +180,7 @@ namespace PoBox.EditorTools
             mj.policy = Copy<ModelAsset>($"{Models}/zero_policy.onnx", $"{BoxersDir}/zero_policy.onnx");
 
             string note = "no mesh";
-            GameObject mesh = EntrantFactory.Mesh(name);
+            GameObject mesh = Mesh(name);
             if (mesh != null)
             {
                 var skin = (GameObject)PrefabUtility.InstantiatePrefab(mesh);
@@ -82,7 +189,7 @@ namespace PoBox.EditorTools
                 var binder = boxer.AddComponent<SkinBinder>();
                 binder.rigRoot = boxer.transform;
                 binder.skin = skin;
-                EntrantFactory.ConfigureBinder(binder, EntrantFactory.BoneMap(File.ReadAllText($"{Rigs}/{name}.json")), "glove_");
+                ConfigureBinder(binder, BoneMap(File.ReadAllText($"{Rigs}/{name}.json")));
                 note = $"{binder.map.Count} bones bound";
             }
 

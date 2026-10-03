@@ -2,6 +2,8 @@
     "name": "PoBox.Runtime",
     "rootNamespace": "PoBox",
     "references": [
+        "PoBox.Mj",
+        "Mujoco.Runtime",
         "Unity.Cinemachine",
         "Unity.InferenceEngine",
         "Unity.RenderPipelines.Core.Runtime",

@@ -53,6 +53,7 @@ namespace PoBox.Diag
         ProfilerRecorder _draw, _batches, _setPass, _tris, _gc, _memory;
         float _smoothed = 16.6f, _over, _under, _originalScale = -1f;
         UniversalRenderPipelineAsset _asset;
+        Mj.MjRing _ring;
 
         void Awake() => Instance = this;
 
@@ -117,8 +118,9 @@ namespace PoBox.Diag
             if (_gc.Valid) GcKb = _gc.LastValue / 1024f;
             GcAverageKb += (GcKb - GcAverageKb) * 0.02f;
             if (_memory.Valid) MemoryMb = _memory.LastValue / (1024f * 1024f);
-            // Timed with a stopwatch round the step itself: the engine's physics markers read zero outside the profiler.
-            PhysicsMs = Sim.PhysicsStepper.FrameMs;
+            // MuJoCo's own time this frame, timed by the ring round its steps.
+            if (_ring == null) _ring = FindAnyObjectByType<Mj.MjRing>();
+            PhysicsMs = _ring != null ? (float)_ring.PhysicsMs : 0f;
 
             Govern(ms);
         }

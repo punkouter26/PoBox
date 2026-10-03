@@ -7,9 +7,8 @@ using PoBox.Announcer;
 namespace PoBox.EditorTools
 {
     /// <summary>
-    /// Builds the ring announcer (the owner's teeth, <see cref="TeethAnnouncer"/>) as a prefab, and hangs it
-    /// over the ring whenever the arena is built. The arena's builder is not changed for it: this subscribes
-    /// to <see cref="PoBoxBuilder.BuildingArena"/>.
+    /// Builds the ring announcer (the owner's teeth, <see cref="TeethAnnouncer"/>) as a prefab; menu
+    /// PoBox/Announcer/Add To Open Scene hangs it over the ring.
     ///
     /// The model is Assets/Announcer/Teeth.glb, made from the two scans by training/tools/teeth_to_glb.py:
     /// two meshes, TeethUpper and TeethLower, in metres at life size, both with their origin on the jaw's
@@ -17,7 +16,6 @@ namespace PoBox.EditorTools
     /// To move or resize it, edit the prefab (or the object in the scene); to pick up a new model or new
     /// recordings, menu PoBox/Announcer/Rebuild Prefab.
     /// </summary>
-    [InitializeOnLoad]
     public static class AnnouncerBuilder
     {
         const string Dir = "Assets/Announcer";
@@ -27,12 +25,6 @@ namespace PoBox.EditorTools
         const string VoiceDir = Dir + "/Voice";
         /// <summary>Times life size: a jaw 7 cm across is nothing from the back of a hall.</summary>
         const float Size = 12f;
-
-        static AnnouncerBuilder()
-        {
-            PoBoxBuilder.BuildingArena -= Place;
-            PoBoxBuilder.BuildingArena += Place;
-        }
 
         static void Place(Transform environment)
         {

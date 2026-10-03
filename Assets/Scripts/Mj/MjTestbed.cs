@@ -117,7 +117,7 @@ namespace PoBox.Mj
             if (!Ready) return;
             // The plugin's MjActuator copies its own Control field over mjData.ctrl after every step, so the
             // targets are written again before each one: they are held for the whole control step.
-            if (_sub != 0) { boxer.Drive(); _stepBegan = _clock.ElapsedTicks; return; }
+            if (_sub != 0) { boxer.HoldTargets(); _stepBegan = _clock.ElapsedTicks; return; }
             long began = _clock.ElapsedTicks;
             if (shoves && Now >= _nextShove)
             {

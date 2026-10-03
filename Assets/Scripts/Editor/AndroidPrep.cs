@@ -61,11 +61,6 @@ namespace PoBox.EditorTools
             }
             else missing.Add("the MuJoCo library (" + Library + ", from joanllobera/mujoco-bin)");
 
-            int layouts = 0;
-            if (Directory.Exists(EntrantFactory.RingDir))
-                layouts = Directory.GetFiles(EntrantFactory.RingDir, "*_android.json").Length;
-            if (layouts > 0) ready.Add($"{layouts} match layout(s) for the phone's MuJoCo");
-            else missing.Add("a match layout for the phone's MuJoCo (tools/export_mujoco_layout.py --android, then PoBox/Import Trained Entrants)");
 
             if (apply)
             {

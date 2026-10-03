@@ -72,7 +72,7 @@ namespace PoBox.Sim
         public float criticMemory = 15f;
 
         float _value, _share = 0.5f, _spike, _sampleTimer, _recentRed, _recentBlue;
-        readonly Rl.PolicyBrain[] _brains = new Rl.PolicyBrain[2];
+        readonly MjBrain[] _brains = new MjBrain[2];
         readonly Fighter[] _brainOf = new Fighter[2];
         readonly float[] _mean = new float[2], _var = new float[2], _seen = new float[2];
 
@@ -209,8 +209,8 @@ namespace PoBox.Sim
             for (int k = 0; k < 2; k++)
             {
                 Fighter f = k == 0 ? red : blue;
-                if (_brainOf[k] != f) { _brainOf[k] = f; _brains[k] = f.GetComponent<Rl.PolicyBrain>(); _seen[k] = 0f; }
-                Rl.PolicyBrain brain = _brains[k];
+                if (_brainOf[k] != f) { _brainOf[k] = f; _brains[k] = f.GetComponent<MjBrain>(); _seen[k] = 0f; }
+                MjBrain brain = _brains[k];
                 if (brain == null || !brain.HasValue) { both = false; continue; }
                 // On the canvas the match policy is not being asked anything, and its last answer is stale.
                 if (f.IsDown || bout.Phase != BoutPhase.Fight) continue;
@@ -237,17 +237,19 @@ namespace PoBox.Sim
             if (attacker.IsDown) return 0f;
             Vector3 head = defender.HeadPosition;
             Vector3 headVelocity = defender.HeadVelocity;
-            return Mathf.Max(GloveClosing(attacker.forearmL, head, headVelocity), GloveClosing(attacker.forearmR, head, headVelocity));
+            var brain = attacker.GetComponent<MjBrain>();
+            if (brain == null || attacker.ring == null || !attacker.ring.Ready) return 0f;
+            return Mathf.Max(GloveClosing(attacker, brain, 0, head, headVelocity), GloveClosing(attacker, brain, 1, head, headVelocity));
         }
 
-        static float GloveClosing(BodyPart forearm, Vector3 head, Vector3 headVelocity)
+        static float GloveClosing(Fighter attacker, MjBrain brain, int hand, Vector3 head, Vector3 headVelocity)
         {
-            if (forearm == null || forearm.strike == null) return 0f;
-            Vector3 glove = forearm.strike.bounds.center;
-            Vector3 to = head - glove;
+            Transform glove = brain.Glove(hand);
+            if (glove == null) return 0f;
+            Vector3 to = head - glove.position;
             float d = to.magnitude;
             if (d < 0.01f || d > 1.4f) return 0f;
-            Vector3 v = forearm.body.GetPointVelocity(glove) - headVelocity;
+            Vector3 v = attacker.ring.GloveVelocity(attacker.boxer, hand) - headVelocity;
             return Mathf.Max(0f, Vector3.Dot(v, to / d));
         }
 

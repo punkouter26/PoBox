@@ -133,9 +133,9 @@ namespace PoBox.Tests
 
                 Bout bout = Bout.Instance;
                 Assert.IsNotNull(bout, "the Arena scene has no Bout");
-                Assert.AreEqual(red, bout.red.mjcf.fighterName, "the red corner is not the boxer that was picked for it");
-                Assert.AreEqual(blue, bout.blue.mjcf.fighterName, "the blue corner is not the boxer that was picked for it");
-                Assert.IsTrue(bout.red.mjcf.Shadowed && bout.blue.mjcf.Shadowed, "the picked pair is not running on MuJoCo");
+                Assert.AreEqual(red, bout.red.boxer.Cfg.name, "the red corner is not the boxer that was picked for it");
+                Assert.AreEqual(blue, bout.blue.boxer.Cfg.name, "the blue corner is not the boxer that was picked for it");
+                Assert.IsTrue(bout.red.boxer.Bound && bout.blue.boxer.Bound, "the picked pair is not running on MuJoCo");
                 foreach (Fighter f in new[] { bout.red, bout.blue })
                     Assert.IsFalse(f.IsDown, f.displayName + " fell over without being hit");
             }

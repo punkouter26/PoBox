@@ -167,22 +167,14 @@ namespace PoBox.Sim
         {
             Respawn(red, inCorners && redStool != null ? redStool : redCorner, redNeutral, newBout);
             Respawn(blue, inCorners && blueStool != null ? blueStool : blueCorner, blueNeutral, newBout);
-            // A body that has been told where to stand is only drawn there once the physics has stepped.
-            // The walk-on simulates nothing, so the two would be shown where the last bout left them: one
-            // step, of no length to speak of, puts them in their corners.
-            if (inCorners && Physics.simulationMode == SimulationMode.Script) Physics.Simulate(1e-4f);
         }
 
         void Respawn(Fighter f, Transform corner, Transform neutral, bool newBout)
         {
             if (f == null || corner == null) return;
             f.Respawn(corner.position, corner.rotation, newBout);
-            // Whatever is driving it, scripted or trained, starts the round with a clear head.
+            // Its policy starts the round with a clear head.
             f.SendMessage("ResetBrain", SendMessageOptions.DontRequireReceiver);
-            var scripted = f.GetComponent<ScriptedBoxer>();
-            if (scripted != null && neutral != null) scripted.neutralSpot = neutral.position;
-            var trained = f.GetComponent<Rl.PolicyBrain>();
-            if (trained != null && neutral != null) trained.neutralSpot = neutral.position;
         }
 
         void SetPhase(BoutPhase next)
@@ -193,8 +185,9 @@ namespace PoBox.Sim
             _phaseTimer = 0f;
 
             bool run = next == BoutPhase.Intro || next == BoutPhase.Fight || next == BoutPhase.Count;
-            // PhysicsStepper steps the world only while this is set, which is what freezes it between rounds.
+            // MuJoCo steps only while this is set, which is what freezes the ring between rounds.
             SimRunning = run;
+            if (red != null && red.ring != null) red.ring.running = run;
 
             if (next == BoutPhase.Intro || next == BoutPhase.WalkOn) RoundTimeLeft = roundSeconds;
             if (_started) SimBus.RaisePhase(from, next);

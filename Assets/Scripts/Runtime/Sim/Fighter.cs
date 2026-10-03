@@ -19,12 +19,12 @@ namespace PoBox.Sim
     }
 
     /// <summary>
-    /// The physical fighter: thirteen articulation links, the health and control it has left, and the
-    /// telemetry everything else reads (joint stress, balance, power, glove speed, hit impulses).
+    /// The fighter: a boxer on the MuJoCo plugin (<see cref="Mj.MjBoxer"/>, its body and its policy, stepped by
+    /// <see cref="Mj.MjRing"/>), the health and control it has left, and the telemetry everything else reads
+    /// (joint stress, balance, power, glove speed, hit impulses). There is no Unity physics in it.
     ///
-    /// It decides nothing. A brain sets the joint drive targets (<see cref="ScriptedBoxer"/> for the stand-in,
-    /// a MuJoCo-trained policy for an entrant), and this class turns what the physics then did into numbers.
-    /// That is the seam: swap the brain, keep the broadcast.
+    /// It decides nothing. The policy sets the joint targets, and this class turns what MuJoCo then did into
+    /// numbers and the bout's events. That is the seam: swap the brain, keep the broadcast.
     ///
     /// What a punch does to a trained fighter is the rule its policy was trained under (training/envs/boxing.py):
     /// every hit adds its closing speed to the fighter's daze, in full to the head and a share to the body;
@@ -42,7 +42,7 @@ namespace PoBox.Sim
         public League.PolicyProfile profile;
         public Fighter opponent;
 
-        [Header("Rig (set by the scene builder)")]
+        [Header("Body (the boxer's prefab, Assets/Boxers)")]
         public BodyPart pelvis;
         public BodyPart torso;
         public BodyPart head;
@@ -52,9 +52,11 @@ namespace PoBox.Sim
         public BodyPart[] parts = new BodyPart[0];
         public float standingPelvisHeight = 0.97f;
         public float totalMass = 72f;
-        [Tooltip("Set on a trained fighter: the body built from its MuJoCo model. Empty on the scripted stand-in.")]
-        public Rl.MjcfRig mjcf;
-        [Tooltip("Centre of the head, where the head is not a link of its own.")]
+        [Tooltip("The boxer: its MuJoCo body and its policies.")]
+        public Mj.MjBoxer boxer;
+        [Tooltip("The ring that steps it.")]
+        public Mj.MjRing ring;
+        [Tooltip("Centre of the head (its shape on the torso link).")]
         public Transform headAnchor;
 
         [Header("Damage model")]
@@ -147,80 +149,41 @@ namespace PoBox.Sim
         public float GloveSpeedL { get; private set; }
         public float GloveSpeedR { get; private set; }
         public float PelvisHeight => pelvis != null ? pelvis.transform.position.y - _floorY : 0f;
-        public Vector3 HeadPosition => headAnchor != null ? headAnchor.position
-                                     : head != null ? head.body.worldCenterOfMass : transform.position + Vector3.up * 1.6f;
-        public Vector3 HeadVelocity => headAnchor != null && torso != null ? torso.body.GetPointVelocity(headAnchor.position)
-                                     : head != null ? head.body.linearVelocity : Vector3.zero;
+        public Vector3 HeadPosition => headAnchor != null ? headAnchor.position : transform.position + Vector3.up * 1.6f;
+        public Vector3 HeadVelocity { get; private set; }
         /// <summary>1 standing straight, 0 lying down: how far the pelvis's own up is from the world's.</summary>
         public float Upright => pelvis != null ? Vector3.Dot(pelvis.transform.up, Vector3.up) : 1f;
         public HitEvent LastHitTaken { get; private set; }
 
-        struct Pending
-        {
-            public bool active;
-            public float start;
-            public HitEvent e;
-            public BodyPart victimPart;
-        }
-
-        Pending _pendL, _pendR;
-        float _nextHitL, _nextHitR;
         readonly PunchType[] _punchInHand = new PunchType[2];
         readonly float[] _punchAt = { -99f, -99f };
         readonly bool[] _punchSpent = new bool[2];
         /// <summary>How long after it leaves a punch can still land. After that a touch is a push.</summary>
         const float PunchLife = 0.5f;
-        Vector3[] _restPos;
-        Quaternion[] _restRot;
         float _stagger, _downTimer, _lowTime, _lastHitAt = -99f, _floorY, _stoodFor;
-        Vector3 _prevCom;
+        Vector3 _prevCom, _prevHead;
         bool _hasPrevCom, _canGetUp;
+        readonly Vector3[] _sole = new Vector3[4];
         readonly List<Vector2> _hullPoints = new List<Vector2>(8), _hull = new List<Vector2>(9);
+        /// <summary>The mass behind a glove: a punch's impulse is this times its closing speed (as training scores it), N s.</summary>
         public const float PunchMass = 2.2f;
-        const float HitWindow = 0.05f;
-        const float HitCooldown = 0.22f;
         const float HitCap = 9f;
 
         void Awake()
         {
             _floorY = transform.position.y;
-            _restPos = new Vector3[parts.Length];
-            _restRot = new Quaternion[parts.Length];
-            for (int i = 0; i < parts.Length; i++)
-            {
-                _restPos[i] = parts[i].transform.localPosition;
-                _restRot[i] = parts[i].transform.localRotation;
-            }
         }
 
         // ------------------------------------------------------------ lifecycle
 
-        /// <summary>
-        /// Puts the fighter back on its feet at a spot. The articulation is switched off while its links are
-        /// moved back to the pose they were built in: an articulation rebuilds itself from its transforms
-        /// when it is enabled, which is the one reset that cannot leave a joint with stale velocity.
-        /// </summary>
+        /// <summary>Puts the fighter back on its feet at a spot, in its guard, exactly as an episode starts in training.</summary>
         public void Respawn(Vector3 position, Quaternion rotation, bool newBout)
         {
-            if (pelvis == null) return;
-            if (mjcf != null)
-            {
-                // A trained body is stood in its guard exactly as an episode starts in training.
-                mjcf.ResetPose(position, rotation * Vector3.forward);
-            }
-            else
-            {
-                GameObject root = pelvis.gameObject;
-                root.SetActive(false);
-                transform.SetPositionAndRotation(position, rotation);
-                for (int i = 0; i < parts.Length; i++)
-                    parts[i].transform.SetLocalPositionAndRotation(_restPos[i], _restRot[i]);
-                root.SetActive(true);
-            }
+            if (pelvis == null || ring == null) return;
+            ring.Place(boxer, position, rotation * Vector3.forward);
 
             _floorY = position.y;
             _upSince = Time.time;
-            _pendL = default; _pendR = default;
             _stagger = 0f; _downTimer = 0f; _lowTime = 0f; _stoodFor = 0f;
             _hasPrevCom = false;
             Daze = 0f;
@@ -254,137 +217,50 @@ namespace PoBox.Sim
             SimBus.RaisePunch(this, type, hand);
         }
 
-        // ------------------------------------------------------------ contacts
+        // ------------------------------------------------------------ punches
 
-        public void OnPartTouched(BodyPart part, Collision c, bool entered)
+        /// <summary>
+        /// A punch of this fighter's landed, measured by the ring as the trainer measures one: which hand (-1 left,
+        /// +1 right), on the head or the body, its closing speed, where, and the glove's velocity. Only a thrown
+        /// punch scores, and only once; one the brain did not see thrown (it can be past the guard's speed for less
+        /// than a control step) is counted as thrown here.
+        /// </summary>
+        public void OnPunchLanded(int side, bool toHead, float speed, Vector3 point, Vector3 gloveVelocity)
         {
-            if (!Bout.SimRunning || c.contactCount == 0) return;
-
-            Collider otherCollider = c.collider;
-            BodyPart other = otherCollider != null ? otherCollider.GetComponentInParent<BodyPart>() : null;
-
-            if (other == null)
-            {
-                // The canvas or the ropes. Only a body landing is worth telling anybody about.
-                if (entered && (part.kind == PartKind.Torso || part.kind == PartKind.Head || part.kind == PartKind.Pelvis))
-                {
-                    float j = c.impulse.magnitude;
-                    if (j > 6f) SimBus.RaiseFloorImpact(c.GetContact(0).point, j);
-                }
-                return;
-            }
-
-            if (other.owner == null || other.owner == this || part.strike == null) return;
-            // Nothing scores before the bell or while the referee is counting.
-            if (!Bout.Fighting) return;
-            // Was it the glove, or the forearm behind it? And which part of them did the glove touch:
-            // usually the link's own kind, finer where one link carries several shapes (a trained fighter's
-            // head is a ball on its torso link, beside the chest and the body). Each contact says which
-            // shape it was on; of the ones the glove made, the most telling counts.
-            ContactPoint cp = default;
-            bool glove = false;
-            PartKind touched = other.kind;
-            float telling = -1f;
-            for (int i = 0; i < c.contactCount; i++)
-            {
-                ContactPoint at = c.GetContact(i);
-                if (at.thisCollider != part.strike) continue;
-                var zoneTag = at.otherCollider != null ? at.otherCollider.GetComponent<Rl.HitZone>() : null;
-                PartKind kind = zoneTag != null ? zoneTag.kind : other.kind;
-                if (ZoneWeight(kind) <= telling) continue;
-                telling = ZoneWeight(kind);
-                touched = kind;
-                cp = at;
-                glove = true;
-            }
-            if (!glove) return;
-
-            bool left = part.side < 0;
-            ref Pending p = ref (left ? ref _pendL : ref _pendR);
-            float impulse = c.impulse.magnitude;
-            Vector3 gloveVelocity = c.relativeVelocity;
-            bool shadowed = mjcf != null && mjcf.Shadowed;
-            if (shadowed)
-            {
-                // The body in the scene is a shadow of the one MuJoCo is simulating, and what Unity's solver
-                // says it took to stop a shadow's glove is not a measurement of anything. A punch here is what
-                // it is in training: how fast the glove was closing on what it hit, as MuJoCo's own state
-                // has it, over the control step it landed in. Times the mass behind a glove (2.2 kg, measured
-                // as impulse over speed when Unity did simulate the arm), newton-seconds.
-                int hand = left ? 0 : 1;
-                float speed = touched == PartKind.Head ? mjcf.ring.HitSpeed(mjcf.slot, hand, true)
-                            : touched == PartKind.Torso || touched == PartKind.Pelvis ? mjcf.ring.HitSpeed(mjcf.slot, hand, false)
-                            : Mathf.Max(mjcf.ring.HitSpeed(mjcf.slot, hand, true), mjcf.ring.HitSpeed(mjcf.slot, hand, false));
-                // A layout from before the ring measured punches has nothing to say; fall back on the contact.
-                if (speed <= 0f && mjcf.ring.L.fighters[mjcf.slot].r_glove <= 0f)
-                    speed = Mathf.Min(HitCap, Mathf.Abs(Vector3.Dot(c.relativeVelocity, cp.normal)));
-                impulse = PunchMass * speed;
-                gloveVelocity = mjcf.ring.GloveVelocity(mjcf.slot, hand);
-            }
-
-            if (p.active)
-            {
-                // A shadow's glove is stopped by MuJoCo over several steps: the hardest reading is the punch,
-                // their sum would be several punches.
-                p.e.impulse = shadowed ? Mathf.Max(p.e.impulse, impulse) : p.e.impulse + impulse;
-                // A punch that comes off the guard and still reaches the head is a head shot: within the
-                // one touch, the hit is scored on the most telling part the glove got to.
-                if (other.owner == p.e.victim && ZoneWeight(touched) > ZoneWeight(p.e.zone))
-                {
-                    p.e.zone = touched;
-                    p.e.point = cp.point;
-                    p.e.normal = cp.normal;
-                    p.victimPart = other;
-                }
-                return;
-            }
-
-            if (Time.fixedTime < (left ? _nextHitL : _nextHitR)) return;
-            // Only a thrown punch scores, and only once: a glove leaning on the other fighter, or
-            // brushing them on the way back to the guard, is a push, however hard the solver says it was.
-            int h = left ? 0 : 1;
-            if (_punchSpent[h] || Time.fixedTime - _punchAt[h] > PunchLife) return;
+            if (!Bout.Fighting || opponent == null || IsDown || opponent.IsDown) return;
+            int h = side < 0 ? 0 : 1;
+            if (_punchSpent[h] || Time.fixedTime - _punchAt[h] > PunchLife) NotePunch(side, side < 0 ? PunchType.Jab : PunchType.Cross);
             _punchSpent[h] = true;
-
-            p.active = true;
-            p.start = Time.fixedTime;
-            p.victimPart = other;
-            p.e = new HitEvent
+            BodyPart part = opponent.torso;       // the head is a ball on the torso's link
+            Vector3 centre = toHead ? opponent.HeadPosition : part.transform.position;
+            var e = new HitEvent
             {
                 attacker = this,
-                victim = other.owner,
-                zone = touched,
-                punch = _punchInHand[left ? 0 : 1],
-                hand = part.side,
-                point = cp.point,
-                normal = cp.normal,
-                impulse = impulse,
-                gloveSpeed = shadowed ? impulse / PunchMass : c.relativeVelocity.magnitude,
+                victim = opponent,
+                zone = toHead ? PartKind.Head : PartKind.Torso,
+                punch = _punchInHand[h],
+                hand = side,
+                point = point,
+                normal = (point - centre).normalized,
+                impulse = PunchMass * Mathf.Min(HitCap, speed),
+                gloveSpeed = speed,
                 velocity = gloveVelocity,
                 time = Bout.Clock,
             };
-        }
+            if (e.impulse < impulseFloor) return;
 
-        void Resolve(ref Pending p, bool left)
-        {
-            if (!p.active || Time.fixedTime - p.start < HitWindow) return;
-            p.active = false;
-            if (left) _nextHitL = Time.fixedTime + HitCooldown; else _nextHitR = Time.fixedTime + HitCooldown;
-            if (p.e.impulse < impulseFloor || p.e.victim == null) return;
-
-            p.e.victim.TakeHit(ref p.e, p.victimPart);
-
+            opponent.TakeHit(ref e, part);
             stats.landed++;
-            if (p.e.clean) stats.clean++;
-            stats.damageDealt += p.e.damage;
-            if (p.e.impulse > stats.peakImpulse) stats.peakImpulse = p.e.impulse;
+            if (e.clean) stats.clean++;
+            stats.damageDealt += e.damage;
+            if (e.impulse > stats.peakImpulse) stats.peakImpulse = e.impulse;
 
-            SimBus.RaiseHit(p.e);
-            if (p.e.victim.IsDown && p.e.victim._wentDownThisStep)
+            SimBus.RaiseHit(e);
+            if (opponent.IsDown && opponent._wentDownThisStep)
             {
-                p.e.victim._wentDownThisStep = false;
+                opponent._wentDownThisStep = false;
                 stats.knockdowns++;
-                SimBus.RaiseKnockdown(p.e.victim, p.e);
+                SimBus.RaiseKnockdown(opponent, e);
             }
         }
 
@@ -501,62 +377,28 @@ namespace PoBox.Sim
         {
             if (!Bout.SimRunning || parts.Length == 0) return;
             float dt = Time.fixedDeltaTime;
-
-            Resolve(ref _pendL, true);
-            Resolve(ref _pendR, false);
             SampleTelemetry(dt);
             UpdateControl(dt);
         }
 
         void SampleTelemetry(float dt)
         {
-            Vector3 com = Vector3.zero;
-            float mass = 0f, power = 0f, peak = 0f, sum = 0f;
+            float power = 0f, peak = 0f, sum = 0f;
             int driven = 0;
             BodyPart peakPart = null;
-            bool shadowed = mjcf != null && mjcf.Shadowed;
-
+            double[] limits = boxer.Cfg.force_limit;
             for (int i = 0; i < parts.Length; i++)
             {
                 BodyPart part = parts[i];
-                ArticulationBody ab = part.body;
-                com += ab.worldCenterOfMass * ab.mass;
-                mass += ab.mass;
-
-                // The joint above this link: one articulation joint on the stand-in, a chain of hinges on
-                // a trained body (a hip is three). The part's stress is its hardest-working hinge.
+                if (part.joints == null || part.joints.Length == 0) continue;
+                // The joint above this link, a chain of hinges (a hip is three): its stress is its hardest-working hinge.
                 float s = 0f, p = 0f;
-                bool any = false;
-                int links = part.DriveCount;
-                for (int l = 0; l < links; l++)
+                foreach (int j in part.joints)
                 {
-                    ArticulationBody link = part.Drive(l);
-                    if (shadowed)
-                    {
-                        // The body that is doing the work is the one in MuJoCo; its motors report their own torque.
-                        int j = mjcf.IndexOf(link);
-                        if (j < 0) continue;
-                        any = true;
-                        float torque1 = mjcf.ring.Torque(mjcf.slot, j);
-                        p += Mathf.Abs(torque1 * mjcf.ring.Speed(mjcf.slot, j));
-                        s = Mathf.Max(s, Mathf.Clamp01(Mathf.Abs(torque1) / Mathf.Max(1f, mjcf.ring.TorqueLimit(mjcf.slot, j))));
-                        continue;
-                    }
-                    int dof = link.dofCount;
-                    if (link.isRoot || dof == 0) continue;
-                    any = true;
-                    // driveForce is what the PD drive itself produced, which is exactly what forceLimit caps.
-                    ArticulationReducedSpace torque = link.driveForce;
-                    ArticulationReducedSpace speed = link.jointVelocity;
-                    float t2 = 0f;
-                    for (int d = 0; d < dof; d++)
-                    {
-                        t2 += torque[d] * torque[d];
-                        p += Mathf.Abs(torque[d] * speed[d]);
-                    }
-                    s = Mathf.Max(s, Mathf.Clamp01(Mathf.Sqrt(t2) / Mathf.Max(1f, part.DriveLimit(l))));
+                    float torque = (float)boxer.Torque(j);
+                    p += Mathf.Abs(torque * (float)boxer.JointVelocity(j));
+                    s = Mathf.Max(s, Mathf.Clamp01(Mathf.Abs(torque) / Mathf.Max(1f, limits != null && j < limits.Length ? (float)limits[j] : 100f)));
                 }
-                if (!any) continue;
                 part.stress += (s - part.stress) * (s > part.stress ? 0.5f : 0.05f);
                 power += p;
                 sum += part.stress;
@@ -564,10 +406,15 @@ namespace PoBox.Sim
                 if (part.stress > peak) { peak = part.stress; peakPart = part; }
             }
 
-            CenterOfMass = mass > 0f ? com / mass : transform.position;
-            if (_hasPrevCom) CenterOfMassVelocity = Vector3.Lerp(CenterOfMassVelocity, (CenterOfMass - _prevCom) / dt, 0.3f);
-            else CenterOfMassVelocity = Vector3.zero;
+            CenterOfMass = boxer.CentreOfMass;
+            if (_hasPrevCom)
+            {
+                CenterOfMassVelocity = Vector3.Lerp(CenterOfMassVelocity, (CenterOfMass - _prevCom) / dt, 0.3f);
+                HeadVelocity = Vector3.Lerp(HeadVelocity, (HeadPosition - _prevHead) / dt, 0.5f);
+            }
+            else { CenterOfMassVelocity = Vector3.zero; HeadVelocity = Vector3.zero; }
             _prevCom = CenterOfMass;
+            _prevHead = HeadPosition;
             _hasPrevCom = true;
             PowerW += (power - PowerW) * 0.1f;
             PeakStress = peak;
@@ -578,19 +425,8 @@ namespace PoBox.Sim
             // Tired fighters are slower fighters. The tank refills at rest, slowly.
             Stamina = Mathf.Clamp(Stamina - power * dt / staminaJoules + 0.004f * dt, 0.12f, 1f);
 
-            if (shadowed)
-            {
-                GloveSpeedL = mjcf.ring.GloveVelocity(mjcf.slot, 0).magnitude;
-                GloveSpeedR = mjcf.ring.GloveVelocity(mjcf.slot, 1).magnitude;
-            }
-            else
-            {
-                if (forearmL != null && forearmL.strike != null)
-                    GloveSpeedL = forearmL.body.GetPointVelocity(forearmL.strike.bounds.center).magnitude;
-                if (forearmR != null && forearmR.strike != null)
-                    GloveSpeedR = forearmR.body.GetPointVelocity(forearmR.strike.bounds.center).magnitude;
-            }
-
+            GloveSpeedL = ring.GloveVelocity(boxer, 0).magnitude;
+            GloveSpeedR = ring.GloveVelocity(boxer, 1).magnitude;
             SampleBalance();
         }
 
@@ -611,26 +447,13 @@ namespace PoBox.Sim
             Vector2 mid = Vector2.zero;
             for (int i = 0; i < 2; i++)
             {
-                BodyPart foot = i == 0 ? footL : footR;
-                BoxCollider box = mjcf != null ? (i == 0 ? mjcf.footL : mjcf.footR) : null;
-                Transform t = box != null ? box.transform : foot.transform;
-                Vector3 centre = box != null ? t.TransformPoint(box.center) : foot.body.worldCenterOfMass;
-                Vector3 half = box != null ? Vector3.Scale(box.size, t.lossyScale) * 0.5f : new Vector3(0.045f, 0.03f, 0.13f);
-                Vector3 ax = t.right * half.x, ay = t.up * half.y, az = t.forward * half.z;
-                float lift = centre.y - (Mathf.Abs(ax.y) + Mathf.Abs(ay.y) + Mathf.Abs(az.y)) - _floorY;
-                footDown[i] = mjcf != null && mjcf.Shadowed ? mjcf.ring.FootDown(mjcf.slot, i) : lift < 0.03f;
-                mid += new Vector2(centre.x, centre.z) * 0.5f;
+                boxer.Sole(i, _sole);
+                footDown[i] = ring.FootDown(boxer, i);
+                Vector2 c = Vector2.zero;
+                foreach (Vector3 corner in _sole) c += new Vector2(corner.x, corner.z) * 0.25f;
+                mid += c * 0.5f;
                 if (!footDown[i]) continue;
-                // The sole is the box's two longest axes; the shortest is its thickness.
-                Vector3 u = ax, v = az;
-                if (half.x <= half.y && half.x <= half.z) u = ay;
-                else if (half.z <= half.x && half.z <= half.y) v = ay;
-                for (int sx = -1; sx <= 1; sx += 2)
-                    for (int sz = -1; sz <= 1; sz += 2)
-                    {
-                        Vector3 corner = centre + u * sx + v * sz;
-                        _hullPoints.Add(new Vector2(corner.x, corner.z));
-                    }
+                foreach (Vector3 corner in _sole) _hullPoints.Add(new Vector2(corner.x, corner.z));
             }
 
             // A boxer on the move has its capture point near the edge of its feet most of the time, and
@@ -645,7 +468,7 @@ namespace PoBox.Sim
             BalanceMargin += (margin - BalanceMargin) * 0.25f;
 
             // The same picture in the fighter's own frame, for the gauge on the HUD.
-            Vector3 fwd = mjcf != null ? mjcf.Forward : pelvis.transform.forward;
+            Vector3 fwd = boxer.Forward;
             var f2 = new Vector2(fwd.x, fwd.z);
             if (f2.sqrMagnitude < 1e-6f) f2 = Vector2.up;
             f2.Normalize();
@@ -654,8 +477,7 @@ namespace PoBox.Sim
             CaptureOffset = Vector2.Lerp(CaptureOffset, Local(capture), 0.25f);
             for (int i = 0; i < 2; i++)
             {
-                BodyPart foot = i == 0 ? footL : footR;
-                Vector3 c = foot.body.worldCenterOfMass;
+                Vector3 c = (i == 0 ? footL : footR).transform.position;
                 footOffset[i] = Local(new Vector2(c.x, c.z));
             }
         }
@@ -713,18 +535,15 @@ namespace PoBox.Sim
                     _downTimer -= dt;
                     if (_downTimer <= 0f && !IsOut)
                     {
-                        if (mjcf != null)
-                        {
-                            // A trained fighter gets up by itself if it has been taught to; if it has not,
-                            // it is stood back in its guard, as it was before there was a policy for this.
-                            SendMessage("BeginGetUp", SendMessageOptions.DontRequireReceiver);
-                            if (!_canGetUp) { StandUp(); return; }
-                        }
+                        // A boxer gets up by itself if it has been taught to; if it has not, the referee stands
+                        // it back in its guard.
+                        SendMessage("BeginGetUp", SendMessageOptions.DontRequireReceiver);
+                        if (!_canGetUp) { StandUp(); return; }
                         IsRising = true;
                         _stoodFor = 0f;
                     }
                 }
-                else if (mjcf != null)
+                else
                 {
                     // The drives are back and the get-up policy has them. Up is on its feet and upright (the
                     // test the policy was trained to pass, after half a second of it), and the policy keeps
@@ -736,17 +555,6 @@ namespace PoBox.Sim
                     bool standing = PelvisHeight > standingPelvisHeight * 0.88f && Upright > 0.85f;
                     _stoodFor = standing ? _stoodFor + dt : 0f;
                     if (_stoodFor >= handOverSeconds) FinishGetUp();
-                }
-                else
-                {
-                    Authority = Mathf.MoveTowards(Authority, 1f, dt * 0.9f);
-                    DriveScale = Authority;
-                    if (Authority >= 1f && PelvisHeight > standingPelvisHeight * 0.85f)
-                    {
-                        IsDown = false;
-                        IsRising = false;
-                        SimBus.RaiseGotUp(this);
-                    }
                 }
                 return;
             }
@@ -796,7 +604,6 @@ namespace PoBox.Sim
             IsDown = false;
             IsRising = false;
             _upSince = Time.time;
-            _pendL = default; _pendR = default;
             _stagger = 0f; _lowTime = 0f; _stoodFor = 0f;
             Daze = 0f;
             Authority = 1f; DriveScale = 1f;
@@ -820,18 +627,8 @@ namespace PoBox.Sim
                 // place knocks the other one down (seen at 0.9 m: down within half a second, every time).
                 const float Clear = 1.3f;
                 float reach = ringHalf - 0.6f;
-                // The fighter left standing has been boxing a stand-in on the spot where this one stood.
-                // Stood up anywhere else, this one appears off to its side or behind it, and a policy that
-                // has never had to turn round falls over doing it. So: on the line it is already looking
-                // along, a step further back. All it sees is its opponent step away.
-                var theirBrain = opponent != null ? opponent.GetComponent<Rl.PolicyBrain>() : null;
-                if (theirBrain != null && theirBrain.StandInSpot.HasValue)
-                {
-                    Vector3 from = opponent.pelvis.transform.position;
-                    Vector3 line = theirBrain.StandInSpot.Value - from;
-                    line.y = 0f;
-                    if (line.sqrMagnitude > 0.01f) at = new Vector3(from.x, at.y, from.z) + line.normalized * Clear;
-                }
+                // Stood up where it lies, clear of the other fighter: the one left standing has been held in its
+                // guard facing this one, and sees it step back up in front of it.
                 at.x = Mathf.Clamp(at.x, ringCentre.x - reach, ringCentre.x + reach);
                 at.z = Mathf.Clamp(at.z, ringCentre.z - reach, ringCentre.z + reach);
                 if (opponent != null)
@@ -855,9 +652,8 @@ namespace PoBox.Sim
                 }
             }
             Vector3 facing = opponent != null ? opponent.pelvis.transform.position - at : transform.forward;
-            mjcf.ResetPose(at, facing);
+            ring.Place(boxer, at, facing);
             _upSince = Time.time;
-            _pendL = default; _pendR = default;
             _stagger = 0f; _lowTime = 0f;
             Daze = 0f;
             _hasPrevCom = false;

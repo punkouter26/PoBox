@@ -11,7 +11,7 @@ namespace PoBox.Mj
     {
         public string name;
         public string[] joint_order;
-        public double[] default_joint_pos, lower, upper, velocity_limit;
+        public double[] default_joint_pos, lower, upper, velocity_limit, force_limit;
         public double stand_height, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
         public int control_decimation = 4, physics_hz = 200;
     }
@@ -26,7 +26,7 @@ namespace PoBox.Mj
     /// </summary>
     public unsafe class MjBoxer : MonoBehaviour
     {
-        public const int Stand = 0, Walk = 1, Turn = 2;
+        public const int Stand = 0, Walk = 1, Turn = 2, Match = 3;
         public const int ObservationSize = 103;
 
         [Tooltip("In front of every name of this boxer in the model: a_ for the red corner, b_ for the blue.")]
@@ -35,6 +35,17 @@ namespace PoBox.Mj
         public TextAsset config;
         [Tooltip("The policy. None is the zero action: the guard, held by the joint drives.")]
         public ModelAsset policy;
+        [Tooltip("The policy for a bout (training/envs/match.py). None: the one above.")]
+        public ModelAsset matchPolicy;
+        [Tooltip("The policy for getting up off the canvas (envs/getup.py on v2). None: the referee stands it up.")]
+        public ModelAsset getUpPolicy;
+        [Tooltip("The other boxer, in a bout. Episodes of kind Match show it, not a stand-in.")]
+        public MjBoxer opponent;
+        [Tooltip("Where the middle of the ring is, MuJoCo's x and y: the observation's place in the ring is measured from it.")]
+        public Vector2 ringCentre;
+
+        /// <summary>The share of joint drive strength the boxer has: 1 unhurt, less when dazed, 0.04 with its legs gone (envs/boxing.py).</summary>
+        [NonSerialized] public double DriveScale = 1.0;
 
         public BoxerConfig Cfg { get; private set; }
         public bool Bound { get; private set; }
@@ -53,7 +64,15 @@ namespace PoBox.Mj
         MujocoLib.mjData_* _d;
         int[] _jq, _jv, _act;
         int _pelvis, _torsoBody, _head, _torso, _rootQ, _rootV;
-        readonly int[] _glove = new int[2], _foot = new int[2];
+        readonly int[] _glove = new int[2], _foot = new int[2], _forearm = new int[2];
+
+        // Where the things a punch is measured against are in the model (for MjRing).
+        public int PelvisBody => _pelvis;
+        public int HeadGeom => _head;
+        public int TorsoGeom => _torso;
+        public int GloveGeom(int hand) => _glove[hand];
+        public int ForearmGeom(int hand) => _forearm[hand];
+        public int FootGeom(int foot) => _foot[foot];
         readonly double[][] _guard = { new double[3], new double[3], new double[3], new double[3] };   // head, body, gloves
         readonly double[][] _standIn = { new double[3], new double[3], new double[3], new double[3] };
         double _theirs;
@@ -71,22 +90,30 @@ namespace PoBox.Mj
             SetPolicy(policy);
         }
 
-        /// <summary>Another policy from here on. None is the zero action.</summary>
+        readonly System.Collections.Generic.Dictionary<ModelAsset, Worker> _workers = new System.Collections.Generic.Dictionary<ModelAsset, Worker>();
+
+        /// <summary>Another policy from here on. None is the zero action. Each policy's worker is made once and kept.</summary>
         public void SetPolicy(ModelAsset asset)
         {
-            _input?.Dispose();
-            _worker?.Dispose();
-            _input = null; _worker = null;
             policy = asset;
+            _worker = null;
             if (asset == null) return;
-            _worker = new Worker(ModelLoader.Load(asset), BackendType.CPU);
-            _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
+            if (!_workers.TryGetValue(asset, out _worker))
+            {
+                _worker = new Worker(ModelLoader.Load(asset), BackendType.CPU);
+                _workers[asset] = _worker;
+            }
+            if (_input == null) _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
         }
+
+        /// <summary>The policy the boxer now runs.</summary>
+        public ModelAsset Running => policy;
 
         void OnDestroy()
         {
             _input?.Dispose();
-            _worker?.Dispose();
+            foreach (var w in _workers.Values) w.Dispose();
+            _workers.Clear();
         }
 
         int Id(MujocoLib.mjtObj kind, string name)
@@ -114,6 +141,7 @@ namespace PoBox.Mj
             _head = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "head_geom"); _torso = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "torso_geom");
             _glove[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "glove_l"); _glove[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "glove_r");
             _foot[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "foot_l_geom"); _foot[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "foot_r_geom");
+            _forearm[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "forearm_l_geom"); _forearm[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "forearm_r_geom");
             Bound = true;
 
             // Where the head, the body and the gloves are from the pelvis in the guard: the stand-in's shape.
@@ -135,7 +163,7 @@ namespace PoBox.Mj
             {
                 _d->qpos[_jq[i]] = Cfg.default_joint_pos[i];
                 _d->qvel[_jv[i]] = 0;
-                _d->ctrl[_act[i]] = Cfg.default_joint_pos[i];
+                _d->ctrl[_act[i]] = _held[i] = Cfg.default_joint_pos[i];
                 Action[i] = 0;
             }
             MujocoLib.mj_forward(_m, _d);
@@ -150,7 +178,7 @@ namespace PoBox.Mj
             {
                 _d->qpos[_jq[i]] = jointPos[i];
                 _d->qvel[_jv[i]] = 0;
-                _d->ctrl[_act[i]] = jointPos[i];
+                _d->ctrl[_act[i]] = _held[i] = jointPos[i];
                 Action[i] = 0;
             }
             MujocoLib.mj_forward(_m, _d);
@@ -188,6 +216,15 @@ namespace PoBox.Mj
         {
             double* pos = _d->xpos + 3 * _pelvis;
             double yaw = Yaw(_d->xquat + 4 * _pelvis);
+            if (Kind == Match && opponent != null && opponent.Bound)
+            {
+                // A bout: the other boxer, as it is.
+                _theirs = Yaw(_d->xquat + 4 * opponent._pelvis);
+                int[] theirs = { opponent._head, opponent._torso, opponent._glove[0], opponent._glove[1] };
+                for (int p = 0; p < 4; p++)
+                    for (int k = 0; k < 3; k++) _standIn[p][k] = _d->geom_xpos[3 * theirs[p] + k];
+                return;
+            }
             double ox = Kind == Walk ? pos[0] + Math.Cos(yaw) * 1.2 : Opp[0], oy = Kind == Walk ? pos[1] + Math.Sin(yaw) * 1.2 : Opp[1];
             _theirs = Math.Atan2(pos[1] - oy, pos[0] - ox);
             double c = Math.Cos(_theirs), s = Math.Sin(_theirs);
@@ -239,8 +276,11 @@ namespace PoBox.Mj
             }
             o[at++] = Math.Cos(_theirs - yaw); o[at++] = Math.Sin(_theirs - yaw);
             double cy = Math.Cos(yaw), sy = Math.Sin(yaw);
-            o[at++] = Clamp((cy * -pos[0] + sy * -pos[1]) / Cfg.ring_half, -1.0, 1.0);
-            o[at++] = Clamp((-sy * -pos[0] + cy * -pos[1]) / Cfg.ring_half, -1.0, 1.0);
+            double rx = ringCentre.x - pos[0], ry = ringCentre.y - pos[1];
+            // A bout's ring is the trainer's (envs/boxing.py: not held to its size); the footwork stage holds it to one.
+            double reach = Kind == Match ? 100.0 : 1.0;
+            o[at++] = Clamp((cy * rx + sy * ry) / Cfg.ring_half, -reach, reach);
+            o[at++] = Clamp((-sy * rx + cy * ry) / Cfg.ring_half, -reach, reach);
             o[at++] = Cmd[0]; o[at++] = Cmd[1]; o[at++] = Cmd[2];
             for (int i = 0; i < ObservationSize; i++) o[i] = Clamp(o[i], -100.0, 100.0);
         }
@@ -283,8 +323,22 @@ namespace PoBox.Mj
             for (int i = 0; i < Joints; i++)
             {
                 Action[i] = Clamp(Action[i], -Cfg.action_clip, Cfg.action_clip);
-                _d->ctrl[_act[i]] = Clamp(Cfg.default_joint_pos[i] + Action[i] * Cfg.action_scale, Cfg.lower[i], Cfg.upper[i]);
+                double want = Clamp(Cfg.default_joint_pos[i] + Action[i] * Cfg.action_scale, Cfg.lower[i], Cfg.upper[i]);
+                // Hurt: the spring to the target is weakened, the damping is not (envs/boxing.py _drive).
+                if (DriveScale < 0.999) { double q = _d->qpos[_jq[i]]; want = q + DriveScale * (want - q); }
+                _d->ctrl[_act[i]] = _held[i] = want;
             }
+        }
+
+        readonly double[] _held = new double[64];
+
+        /// <summary>
+        /// The targets of this control step written again. The plugin's MjActuator copies its own Control field
+        /// over mjData.ctrl after every physics step; the trainer holds its targets for the whole control step.
+        /// </summary>
+        public void HoldTargets()
+        {
+            for (int i = 0; i < Joints; i++) _d->ctrl[_act[i]] = _held[i];
         }
 
         /// <summary>A force on the trunk, in MuJoCo's frame; zero takes it off.</summary>
@@ -314,6 +368,33 @@ namespace PoBox.Mj
         }
         public double Upright => _d->xmat[9 * _pelvis + 8];
         public bool Fallen => PelvisHeight < Cfg.stand_height * 0.6 || Upright < 0.4;
+        /// <summary>The whole body's centre of mass, Unity's frame.</summary>
+        public Vector3 CentreOfMass
+        {
+            get { double* c = _d->subtree_com + 3 * _pelvis; return new Vector3((float)c[0], (float)c[2], (float)c[1]); }
+        }
+
+        /// <summary>The four corners of a foot's sole (0 left, 1 right), Unity's frame, into the array given.</summary>
+        public void Sole(int f, Vector3[] corners)
+        {
+            double* gp = _d->geom_xpos + 3 * _foot[f], gm = _d->geom_xmat + 9 * _foot[f], size = _m->geom_size + 3 * _foot[f];
+            int n = 0;
+            for (int sx = -1; sx <= 1; sx += 2)
+                for (int sy = -1; sy <= 1; sy += 2)
+                {
+                    // The box's own x and y, at the bottom of its z: MuJoCo's frame, then Unity's.
+                    double lx = sx * size[0], ly = sy * size[1], lz = -size[2];
+                    double x = gp[0] + gm[0] * lx + gm[1] * ly + gm[2] * lz, y = gp[1] + gm[3] * lx + gm[4] * ly + gm[5] * lz, z = gp[2] + gm[6] * lx + gm[7] * ly + gm[8] * lz;
+                    corners[n++] = new Vector3((float)x, (float)z, (float)y);
+                }
+        }
+
+        /// <summary>Which way the boxer faces, Unity's frame, flat on the floor.</summary>
+        public Vector3 Forward
+        {
+            get { double yaw = Yaw(_d->xquat + 4 * _pelvis); return new Vector3((float)Math.Cos(yaw), 0f, (float)Math.Sin(yaw)); }
+        }
+
         public double DistanceFromOrigin => Math.Sqrt(_d->qpos[_rootQ] * _d->qpos[_rootQ] + _d->qpos[_rootQ + 1] * _d->qpos[_rootQ + 1]);
         public double JointPosition(int i) => _d->qpos[_jq[i]];
         public double JointVelocity(int i) => _d->qvel[_jv[i]];
