@@ -550,3 +550,8 @@ none, as in C MuJoCo: a one-sided pairing, for the next round.
 against the five left in the game: **footing 0.00** (from 1.33), attack 1.38 a second at 6.8 m/s, guard 66%, chin 0.00,
 getting up 30 of 30, carrying on 29 of 30: **every line passes. Nick passes the whole ladder**, the second after Zombie.
 Promoted (match.onnx from `m2_nick`).
+
+**Grandma, second match round (`m2_grandma`, 400 iterations, from her handover bank, 10:41 to 11:01).** Carrying on **24 of
+29** (from 20 of 30), attack 1.09 a second (from 0.90), guard 73% (from 65%), footing and chin 0.00, getting up 29 of 30:
+better on every line, carrying on still short of 90%. Promoted. The queue is held again (11:01); `m2_grandpa` and
+`m2_zombie` wait behind it. Abilities grid: https://claude.ai/artifact/1HfxM4Uhtt9LtAikeP197A
