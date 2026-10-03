@@ -529,3 +529,12 @@ handover banks (`hb_*`, from 06:05) and the second match round are for that.
 bank, 06:10 to 06:32).** **Footing 0.00 falls a minute** (from 1.67): pass. Attack 1.99 a second at 7.2 m/s, every punch to
 the body; head shots taken 0.06 a second (guard passes on that); chin 0.00; getting up 30 of 30. Carrying on 23 of 30
 (from 21): still short of 27.
+
+**Trump, second match round (`m2_trump`, 500 iterations, blocks paid 0.3, from his handover bank, 06:32 to 06:56).** **Footing
+0.00** (from 0.33): pass; attack 1.03 a second at 8.4 m/s; getting up 30 of 30. FAIL: **guard 15%** (from 24%, worse with
+blocks paid: he trades rather than covers, 2.11 head shots a second taken from Nick), chin 2.50 legs a minute (11.00
+against Nick), carrying on 26 of 30. His guard needs more than a payment: next time a stage of its own, or Nick held
+back as a sparring partner until it holds.
+
+**The night ends here (06:56): the queue is held** (`logs/queue.hold`); `m2_grandpa`, `m2_nick`, `m2_lilmatt`, `m2_grandma`
+and `m2_zombie` are queued behind it.
