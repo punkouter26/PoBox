@@ -491,3 +491,8 @@ in the queue, after `m1_grandpa`.
 **Grandpa, match (`m1_grandpa`, 03:38 to 04:06).** Footing 0.00 (from 1.67); attack 0.63 a second at 3.7 m/s (his mark
 3.0); guard stops 71%; chin 0.44; getting up 18 of 30 (exactly his 60%). **Carrying on 15 of 18**: FAIL, the only line.
 `m1_nick` started again at 04:06 and is past its first save.
+
+**Nick, match (`m1_nick`, 04:06 to 04:37, after the restart).** Attack 1.23 a second at 7.2 m/s; guard stops 64%; chin 0.00;
+getting up 28 of 30. FAIL: footing 1.33 (all against the new Zombie), carrying on 21 of 28. He passed everything in the
+baseline, but against the old policies: each boxer's exam has met whichever of the others were trained by then, so a
+full exam of all seven on their new match policies is running (`logs/exam_v2_after_m1.json`).
