@@ -435,3 +435,7 @@ C MuJoCo 3.5.0, 4 rounds of 45 s against each of the six others, plain and under
 Marks: footing 0.2, attack 0.5/s at 4 m/s x speed, guard 30% or under 0.3 head shots/s, chin 1.5, get up 80% in
 8 s (60% in 9 s for the grandparents), carrying on 90%. Bold fails. The match runs (`m1_*`, 700 iterations each
 against the frozen others) and get-up runs (`u1_*`) in the queue start from these.
+
+**Lil Matt (`f_lilmatt`, 22:40 to 23:10).** Stand 100%, walk off by 0.02 m/s with no falls, turn 100%, joints 0.36;
+old get-up policy on the new body 100% in 2.5 s. R0 to R3 passed. (Promotion and the Unity gate wait for the end of
+the night's training: the editor is closed while the GPU trains.)
