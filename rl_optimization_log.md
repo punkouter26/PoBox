@@ -483,3 +483,7 @@ Nick), **footing 0.33** a minute (all against Nick), carrying on 26 of 30. The m
 0.00; getting up 22 of 30 (mark 60% in 9 s). FAIL: **footing 1.33 a minute, all against Nick**; carrying on 11 of 22.
 Nick is the one boxer the others fall against unprovoked (Trump 0.33, Grandma 1.33, all of it against him): he
 fights at close quarters, and a fall from being bumped is not a fall from a punch in the exam's count.
+
+**m1_nick did not train (02:02 to 02:03):** a GPU fault (CUDA 719) a minute in, before its first save, and
+`train_resilient.py` gave up for want of a save. It now starts such a run again from the beginning; `m1_nick` is back
+in the queue, after `m1_grandpa`.

@@ -50,7 +50,11 @@ def main() -> None:
             return
         print(f"[resilient] attempt {attempt} of {run} ended with exit code {code} at {time.strftime('%H:%M:%S')}", flush=True)
         if not any(os.path.exists(p) for p in latest):
-            raise SystemExit(f"[resilient] {run} has no save to start again from")
+            # Faulted before its first save (m1_nick, 2026-10-03: CUDA 719 a minute in): nothing was learned, so
+            # it simply starts again as it started.
+            print(f"[resilient] {run} had no save yet; starting it again from the beginning", flush=True)
+            time.sleep(30)
+            continue
         # From its own last save (a boxer that is only company keeps the file it came with), and without what
         # only a first start does.
         i = args.index("--resume")
