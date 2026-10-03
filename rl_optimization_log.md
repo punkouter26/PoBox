@@ -512,3 +512,6 @@ and runs Matt, Trump, Grandpa, Nick, Lil Matt, Grandma, Zombie.
 **Get up, Matt and Zombie (`u1_matt_zombie`, 1500 iterations on the v2 get-up stage, 04:37 to 05:01).** Matt **30 of 30
 knockdowns** in 1.5 s (from 7 of 30), carrying on 21 of 30: FAIL (for `m2_matt`). Zombie **30 of 30** in 1.8 s (from
 18), **carrying on 27 of 30: pass.** With his match exam, **Zombie passes every rung, R0 to R7.**
+
+**Get up, Nick and Lil Matt (`u1_nick_lilmatt`, 05:01 to 05:23).** Nick 30 of 30 in 1.4 s, **carrying on 28 of 30: pass**.
+Lil Matt 29 of 30 in 1.5 s, carrying on 23 of 29: FAIL.
