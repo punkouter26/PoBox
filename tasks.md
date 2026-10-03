@@ -131,7 +131,9 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [x] C3 **Gate.** Export Matt's R1 policy to ONNX and the reference trajectory. In Unity: replay test, 5 s
       closed-loop comparison, fall rate over 25 episodes. **If it fails, stop and fix before C4.**
 - [ ] C4 R0 and R1 for the other six, warm-started from Matt; a Unity spot check of each.
+      Done: Matt (R1), Zombie (f_zombie, gate passed). Queued: Nick, Lil Matt, Trump, Grandma, Grandpa.
 - [ ] C5 R2 turn, all seven; Unity spot check.
+      Done: Matt (r2b_matt, 100%, gate passed), Zombie (93%, gate passed). The other five with C4.
 - [ ] C6 R3 get up, all seven, from the existing get-up policies, marked by the game's 1.5 s test; Unity spot check.
 - [ ] C7 R4 to R7 boxing: warm start from the existing match and gauntlet policies, gauntlet against the frozen
       others, full exam; Unity spot check of each boxer.

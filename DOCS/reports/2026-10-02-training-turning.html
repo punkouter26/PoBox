@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turning rung training</title>
+<style>
+  :root { --bg:#0e1118; --card:#171b26; --line:#2a3040; --ink:#eef2f8; --dim:#a8b2c0; --accent:#2ebf8c; --warn:#ffc654; --red:#e23e3e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:21px; margin:44px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p { margin:10px 0; max-width:72ch; }
+  .dim { color:var(--dim); }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; margin:18px 0; }
+  .pair > div { flex:1 1 300px; max-width:420px; }
+  .shot { position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000; }
+  .shot img { display:block; width:100%; height:auto; }
+  .tag { display:inline-block; font-weight:700; letter-spacing:.06em; font-size:13px; padding:3px 10px; border-radius:6px; margin-bottom:8px; }
+  .tag.before { background:#3a2020; color:#ffb4a8; }
+  .tag.after { background:#16392d; color:#8ff0c8; }
+  .pin { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:var(--warn); color:#1a1300;
+         font-weight:800; font-size:14px; line-height:26px; text-align:center; box-shadow:0 0 0 2px #000a, 0 2px 6px #000c; }
+  ol.legend { padding-left:22px; margin:12px 0; }
+  ol.legend li { margin:5px 0; }
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; margin:12px 0; width:100%; max-width:860px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 16px; margin:16px 0; max-width:76ch; }
+  code { background:#1d2230; padding:1px 5px; border-radius:4px; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin:12px 0 4px; }
+  .levels > div { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
+  .levels b { display:block; color:var(--accent); font-size:13px; letter-spacing:.05em; margin-bottom:4px; }
+  .chart { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; margin:14px 0 6px; }
+  .chart img { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Training report: turning (R2), Matt and Zombie</h1>
+  <p class="dim">2 October 2026 · MuJoCo Warp 3.14, 4,096 worlds · runs <code>r1_matt</code> (walk, for comparison), <code>r2_matt</code>, <code>r2b_matt</code>, <code>f_zombie</code> · exams in plain C MuJoCo 3.5.0, the version the game runs</p>
+
+  <p>R2 teaches a boxer to turn and face an opponent standing anywhere round it, while keeping what R0 and R1 taught
+  (standing through shoves and thrown cubes, walking at the speed asked). The charts are TensorBoard's, one colour a
+  run, on one axis of training iterations: <b>dark blue</b> <code>r1_matt</code>, <b>red</b> <code>r2_matt</code>,
+  <b>pink</b> <code>r2b_matt</code> (R2 continued with a changed reward), <b>light blue</b> <code>f_zombie</code>
+  (Zombie's body, started from Matt's R2, counting from 0).</p>
+
+  <h2>Result</h2>
+  <div class="wide"><table>
+    <tr><th>Exam (30 episodes each, no exploration noise)</th><th>Mark</th><th>Matt R2</th><th>Matt R2b</th><th>Zombie</th></tr>
+    <tr><td>Stand: still up after 20 s of shoves and cubes</td><td>95%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+    <tr><td>Walk: speed error / falls a minute</td><td>0.15 m/s / 0.2</td><td>0.02 / 0</td><td>0.04 / 0</td><td>0.01 / 0</td></tr>
+    <tr><td>Turn: facing within 15 degrees inside 3 s, still up</td><td>90%</td><td><b style="color:var(--red)">73%</b></td><td><b style="color:var(--accent)">100%</b></td><td>93%</td></tr>
+    <tr><td>Joints: fastest against its speed limit</td><td>1.00</td><td>0.40</td><td>0.45</td><td>0.38</td></tr>
+    <tr><td>The gate in Unity (replay, closed loop, 25 episodes)</td><td>pass</td><td></td><td>pass (8.6e-6; 4.80 v 4.80 steps/s)</td><td>pass (6.7e-6; 3.60 v 3.60)</td></tr>
+  </table></div>
+
+  <h2>1. Turning: facing the opponent inside 3 seconds</h2>
+  <div class="chart"><img src="img/tb_r2_turn_rate.png" alt="TensorBoard chart env/turn_rate: red r2_matt climbs from about 0.6 to 0.9 with much noise; pink r2b_matt runs near 1.0; light blue f_zombie sits around 0.9"></div>
+  <div class="levels"><div><b>TODDLER</b>The boxer has to turn round to look at the other boxer. Higher is better. Red got good, pink got really good.</div><div><b>CHILD</b>Each point is how many turn tries, out of all of them, ended with the boxer facing the opponent within 3 seconds. Matt's first try (red) got to about 9 in 10 but wobbled. After we changed how he is scored (pink), he does it almost every time. Zombie (light blue) learned it too.</div><div><b>ADULT</b><code>env/turn_rate</code>: share of ended turn episodes with the facing error below 15 degrees by 3 s and no fall, measured with exploration noise on. R2 rose from 0.6 to about 0.9 but plateaued noisily; its exam (noise off) was 73%: the policy settled 15 to 30 degrees off. The facing reward was 0.6 cos(error), worth 94% of its maximum at 20 degrees. R2b adds a narrow term exp(-(error/0.2)<sup>2</sup>); the curve jumps to 0.97 to 1.0 and the exam to 100%. The dark-blue line at 0 is R1, which had no turn episodes.</div></div>
+
+  <h2>2. Walking at the speed asked</h2>
+  <div class="chart"><img src="img/tb_r2_track_err.png" alt="TensorBoard chart env/track_err: dark blue r1 falls from above 0.4 to about 0.13; red, pink and light blue stay near 0.1"></div>
+  <div class="levels"><div><b>TODDLER</b>The boxer is told how fast to walk. Lower is better. The lines go down and stay down.</div><div><b>CHILD</b>This is how far off the boxer's walking speed is from what it was told, in metres a second. Matt learned walking in the dark blue part. While he learned to turn (red, pink) he didn't forget how to walk, and Zombie walks just as well.</div><div><b>ADULT</b><code>env/track_err</code>: mean |velocity - command| over walk episodes, m/s, with noise. R1 brought it from about 0.5 to 0.13; R2 and R2b hold 0.10 to 0.12 while turning is learned (no forgetting), and Zombie, warm-started from R2 on a heavier body, starts near 0.2 and settles at 0.09. Exams with noise off: 0.04 (Matt R2b) and 0.01 (Zombie) against a mark of 0.15.</div></div>
+
+  <h2>3. Falling over</h2>
+  <div class="chart"><img src="img/tb_r2_fall_rate.png" alt="TensorBoard chart env/fall_rate: all runs between about 0.005 and 0.02, spiking briefly at the start of each run"></div>
+  <div class="levels"><div><b>TODDLER</b>This counts how often the boxer falls down. Lower is better. It hardly ever falls.</div><div><b>CHILD</b>Out of all the tries, this is how many ended with the boxer on the floor, even though it is being pushed and hit with flying cubes. It's about 1 in 100. It jumps a little at the start of each run while the boxer gets used to new jobs, then settles.</div><div><b>ADULT</b><code>env/fall_rate</code>: share of ended episodes that ended in a fall, all kinds, with shoves of 10 to 30 N s, cubes and &plusmn;15% randomised mass, friction, damping and gains. It stays at 0.5 to 1.5% throughout; each run's first iterations spike (exploration noise reset to 0.3, new episode kinds). Adding turns did not cost balance. Exams with noise off: no falls in 30 stands, walks or turns for either boxer.</div></div>
+
+  <h2>Compared with earlier runs</h2>
+  <p><b>Better.</b> R1 could stand and walk but never had to turn. R2 learned to turn but not precisely (73% in the exam).
+  R2b turns every time without losing walking or balance, and passes in Unity as it does in C MuJoCo. Zombie, taught
+  from Matt's R2 on his own heavier body, passed all three rungs first time (93% turning) even under the old reward.
+  The other five boxers now start from R2b.</p>
+  <div class="note">R2b ran for a while at 12,000 rather than 60,000 to 90,000 samples a second while a game held the GPU;
+  it changed the time it took, not the result.</div>
+</main>
+</body>
+</html>
