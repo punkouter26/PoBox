@@ -524,3 +524,8 @@ Lil Matt 29 of 30 in 1.5 s, carrying on 23 of 29: FAIL.
 **R3 passes for all seven: 30 of 30 knockdowns each** (29 for Lil Matt), 1.4 to 2.2 s on average. Carrying on (the
 match policy taking the body back) passes for Zombie and Nick and fails for the other five (20 to 26 of 30): the
 handover banks (`hb_*`, from 06:05) and the second match round are for that.
+
+**Matt, second match round (`m2_matt`, 500 iterations from `m1_matt`, fall charge 8, 30% of episodes from his handover
+bank, 06:10 to 06:32).** **Footing 0.00 falls a minute** (from 1.67): pass. Attack 1.99 a second at 7.2 m/s, every punch to
+the body; head shots taken 0.06 a second (guard passes on that); chin 0.00; getting up 30 of 30. Carrying on 23 of 30
+(from 21): still short of 27.
