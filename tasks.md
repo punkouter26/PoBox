@@ -130,14 +130,16 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [x] C2 R1 walk: train Matt, pass the exam line, log.
 - [x] C3 **Gate.** Export Matt's R1 policy to ONNX and the reference trajectory. In Unity: replay test, 5 s
       closed-loop comparison, fall rate over 25 episodes. **If it fails, stop and fix before C4.**
-- [ ] C4 R0 and R1 for the other six, warm-started from Matt; a Unity spot check of each.
-      All seven pass in C MuJoCo (2026-10-03 01:00). Unity gate passed: Matt, Zombie; the other five after the night's training.
-- [ ] C5 R2 turn, all seven; Unity spot check.
+- [x] C4 R0 and R1 for the other six, warm-started from Matt; a Unity spot check of each.
+      All seven pass in C MuJoCo (2026-10-03 01:00) and the Unity gate (07:30; Nick on a 10 s reference).
+- [x] C5 R2 turn, all seven; Unity spot check.
       All seven pass in C MuJoCo (turn 93 to 100%; Grandma after a 600-iteration top-up). Unity gate: as C4.
 - [ ] C6 R3 get up, all seven, from the existing get-up policies, marked by the game's 1.5 s test; Unity spot check.
-      All seven get up 29-30 of 30 in C MuJoCo (u1_*, 2026-10-03). Unity spot check after the night's training.
+      All seven get up 29-30 of 30 in C MuJoCo (u1_*, 2026-10-03), promoted as getup.onnx. Open: a Unity knockdown spot check.
 - [ ] C7 R4 to R7 boxing: warm start from the existing match and gauntlet policies, gauntlet against the frozen
       others, full exam; Unity spot check of each boxer.
+      2026-10-03: m1 for all seven, m2 for Matt and Trump, promoted as match.onnx. Zombie passes R4-R7; 10 lines
+      still fail across the others (DOCS/reports/2026-10-03-training-overnight.html). Five m2 runs queued behind a hold.
 - [ ] C8 Commit after each rung.
 
 ## Phase D: the game on the new physics, and polish

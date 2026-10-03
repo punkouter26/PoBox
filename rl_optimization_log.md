@@ -538,3 +538,10 @@ back as a sparring partner until it holds.
 
 **The night ends here (06:56): the queue is held** (`logs/queue.hold`); `m2_grandpa`, `m2_nick`, `m2_lilmatt`, `m2_grandma`
 and `m2_zombie` are queued behind it.
+
+**Into Unity (07:15 to 07:40).** Footwork promoted for Nick, Lil Matt, Trump, Grandma (`f2_grandma`) and Grandpa; match
+(`m2_matt`, `m2_trump`, `m1_*` for the rest) and get-up (`u1_*`, exported at 103 inputs) for all seven
+(`MjRetrofit.PromoteBoxing`). **The gate passes for all seven** (33 of 34 tests at first: Nick's 5 s walk had 21 footfalls
+against 19, 10.5%; on a 10 s reference 4.10 against 3.80 a second, and the test passes). Arena spot check, Matt v
+Zombie on their match policies, two minutes: both up throughout, Matt lands 206 of 227 (all to the body), Zombie lands
+none, as in C MuJoCo: a one-sided pairing, for the next round.
