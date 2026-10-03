@@ -2145,7 +2145,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Mj::PoBox.Mj.MjBoxer
   prefix: a_
   config: {fileID: 4900000, guid: bdef541cdf04fb54bbe862f040ab665a, type: 3}
-  policy: {fileID: 5022602860645237092, guid: 75d5545dd5b40ee4287e21b6ac83ff26, type: 3}
+  policy: {fileID: 5022602860645237092, guid: 0ee89e71ebcc4e5469af9fe2dcb7d3c2, type: 3}
+  matchPolicy: {fileID: 5022602860645237092, guid: d86dacf0aba5bc2409c9cd92b80e71c6, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: 9dfc64c00c4fd714f9730d1f1a888cb0, type: 3}
+  opponent: {fileID: 0}
+  ringCentre: {x: 0, y: 0}
 --- !u!114 &5295247371302597626
 MonoBehaviour:
   m_ObjectHideFlags: 0

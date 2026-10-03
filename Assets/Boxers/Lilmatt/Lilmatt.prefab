@@ -1212,7 +1212,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Mj::PoBox.Mj.MjBoxer
   prefix: a_
   config: {fileID: 4900000, guid: e6144bd697ed97e4eb47d55f9f09debf, type: 3}
-  policy: {fileID: 5022602860645237092, guid: 75d5545dd5b40ee4287e21b6ac83ff26, type: 3}
+  policy: {fileID: 5022602860645237092, guid: e69b213bc0027944a83f7660e0169640, type: 3}
+  matchPolicy: {fileID: 5022602860645237092, guid: edbe970e1eb8a954a8ba8494483bc94d, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: 16223c6e9b5e858449149f46f9f54703, type: 3}
+  opponent: {fileID: 0}
+  ringCentre: {x: 0, y: 0}
 --- !u!114 &2042017723375257127
 MonoBehaviour:
   m_ObjectHideFlags: 0

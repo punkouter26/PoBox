@@ -2252,8 +2252,8 @@ MonoBehaviour:
   prefix: a_
   config: {fileID: 4900000, guid: 0fe162ebc5535c74e850faeaa6f68174, type: 3}
   policy: {fileID: 5022602860645237092, guid: 24b6542dab390f547ba82609a5250a05, type: 3}
-  matchPolicy: {fileID: 0}
-  getUpPolicy: {fileID: 0}
+  matchPolicy: {fileID: 5022602860645237092, guid: 8340205cd83063c4c85518f8036fc693, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: e0f4634f23d3d2f47b943a1e231d7459, type: 3}
   opponent: {fileID: 0}
   ringCentre: {x: 0, y: 0}
 --- !u!114 &4284941605585069190

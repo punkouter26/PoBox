@@ -6305,8 +6305,8 @@ MonoBehaviour:
   prefix: a_
   config: {fileID: 4900000, guid: 2b44fc7b1e0152b4da071743a38db8ae, type: 3}
   policy: {fileID: 5022602860645237092, guid: 98650a66198c89f4c985740be5d0c776, type: 3}
-  matchPolicy: {fileID: 0}
-  getUpPolicy: {fileID: 0}
+  matchPolicy: {fileID: 5022602860645237092, guid: 586988fb50a29bc40b71e4c627c1c7e7, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: fd382194524808447a56eed588cc1ba4, type: 3}
   opponent: {fileID: 0}
   ringCentre: {x: 0, y: 0}
 --- !u!114 &6414601557123744375

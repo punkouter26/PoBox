@@ -492,6 +492,25 @@ namespace PoBox.EditorTools
             return $"{title} now runs {from}/latest.onnx";
         }
 
+        /// <summary>
+        /// A boxer's boxing into the game: the match run's policy (training/checkpoints/MATCHRUN/latest_NAME.onnx) and
+        /// the get-up run's, as Assets/Boxers/NAME/match.onnx and getup.onnx, set on its prefab's MjBoxer. The corner
+        /// prefabs are variants of it, so both corners have them.
+        /// </summary>
+        public static string PromoteBoxing(string name, string matchRun, string getUpRun)
+        {
+            string title = Title(name), dir = $"{BoxersDir}/{title}", prefabPath = $"{dir}/{title}.prefab";
+            var match = Copy<ModelAsset>($"training/checkpoints/{matchRun}/latest_{name}.onnx", $"{dir}/match.onnx");
+            var getUp = Copy<ModelAsset>($"training/checkpoints/{getUpRun}/latest_{name}.onnx", $"{dir}/getup.onnx");
+            GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+            var mj = root.GetComponent<MjBoxer>();
+            mj.matchPolicy = match;
+            mj.getUpPolicy = getUp;
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+            return $"{title} boxes with {matchRun} and gets up with {getUpRun}";
+        }
+
         /// <summary>The differences between the model the plugin compiles from the open scene and the trainer's, one a line.</summary>
         public static unsafe string Check(string name)
         {

@@ -377,7 +377,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoBox.Mj::PoBox.Mj.MjBoxer
   prefix: a_
   config: {fileID: 4900000, guid: 41d0511f3b74aa14ca0dd4121b524e11, type: 3}
-  policy: {fileID: 5022602860645237092, guid: 75d5545dd5b40ee4287e21b6ac83ff26, type: 3}
+  policy: {fileID: 5022602860645237092, guid: eddcdfa94ab73514782f423e896fbf9e, type: 3}
+  matchPolicy: {fileID: 5022602860645237092, guid: 81393dca522afc64881a29be527edd1d, type: 3}
+  getUpPolicy: {fileID: 5022602860645237092, guid: 5d7a67d360f67c6469d8a4618717d0ea, type: 3}
+  opponent: {fileID: 0}
+  ringCentre: {x: 0, y: 0}
 --- !u!114 &332919500692247565
 MonoBehaviour:
   m_ObjectHideFlags: 0
