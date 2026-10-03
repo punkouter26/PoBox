@@ -44,7 +44,15 @@ class Player:
         self.xml = xml or extra.get("xml", "")
         if not os.path.exists(self.xml):
             raise SystemExit(f"model file not found: {self.xml!r}. Pass --xml.")
-        if extra.get("mode", "") == "getup":
+        # A policy of the retrofit's line sees 103 numbers (the command's 3 after the match's 100): its stage is envs/match.py's.
+        wide = torch.load(ckpts[0], map_location="cpu", weights_only=False)["model"]["actor.0.weight"].shape[1] == 103
+        if wide and extra.get("mode", "") != "footwork":
+            from envs.match import GetUpMatchEnv, MatchEnv
+            kind = GetUpMatchEnv if extra.get("mode", "") == "getup" else MatchEnv
+            kw = {} if kind is GetUpMatchEnv else dict(push_vel=0.0, **extra.get("env", {}))
+            self.env = kind(self.xml, 1, randomise=0.0, device=device, seed=seed, cuda_graph=False, obs_noise=0.0,
+                            action_scale=float(extra.get("action_scale", 0.5)), **kw)
+        elif extra.get("mode", "") == "getup":
             # No helping hand: what is watched is what the game will get.
             self.env = GetUpEnv(self.xml, 1, device=device, seed=seed, cuda_graph=False, obs_noise=0.0, assist=0.0,
                                 action_scale=float(extra.get("action_scale", 0.5)))
