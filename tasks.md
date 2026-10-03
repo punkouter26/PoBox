@@ -135,6 +135,7 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [ ] C5 R2 turn, all seven; Unity spot check.
       All seven pass in C MuJoCo (turn 93 to 100%; Grandma after a 600-iteration top-up). Unity gate: as C4.
 - [ ] C6 R3 get up, all seven, from the existing get-up policies, marked by the game's 1.5 s test; Unity spot check.
+      All seven get up 29-30 of 30 in C MuJoCo (u1_*, 2026-10-03). Unity spot check after the night's training.
 - [ ] C7 R4 to R7 boxing: warm start from the existing match and gauntlet policies, gauntlet against the frozen
       others, full exam; Unity spot check of each boxer.
 - [ ] C8 Commit after each rung.

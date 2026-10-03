@@ -518,3 +518,9 @@ Lil Matt 29 of 30 in 1.5 s, carrying on 23 of 29: FAIL.
 
 **Get up, Trump and Grandma (`u1_trump_grandma`, 05:23 to 05:46).** Trump 30 of 30 in 1.7 s, carrying on 25 of 30; Grandma
 30 of 30 in 2.2 s (from 22), carrying on 20 of 30: getting up passes for both, carrying on fails for both.
+
+**Get up, Grandpa (`u1_grandpa_matt`, Matt frozen, 05:46 to 06:05).** 30 of 30 in 2.2 s (from 18), carrying on 26 of 30.
+
+**R3 passes for all seven: 30 of 30 knockdowns each** (29 for Lil Matt), 1.4 to 2.2 s on average. Carrying on (the
+match policy taking the body back) passes for Zombie and Nick and fails for the other five (20 to 26 of 30): the
+handover banks (`hb_*`, from 06:05) and the second match round are for that.
