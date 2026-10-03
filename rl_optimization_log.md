@@ -496,3 +496,9 @@ in the queue, after `m1_grandpa`.
 getting up 28 of 30. FAIL: footing 1.33 (all against the new Zombie), carrying on 21 of 28. He passed everything in the
 baseline, but against the old policies: each boxer's exam has met whichever of the others were trained by then, so a
 full exam of all seven on their new match policies is running (`logs/exam_v2_after_m1.json`).
+
+**Queue extended (04:45):** the get-up runs train at 107,000 samples a second, about 20 minutes each, so the queue
+would have emptied by 06:00. Appended: a v2 handover bank for each boxer from tonight's get-up policies
+(`tools/make_handover_v2.py`), then a second match round `m2_<name>` (500 iterations against the others' m1 policies,
+30% of episodes begun from the handover bank, for carrying on; Trump also paid for blocks, `--block-w 0.3`), in the
+order Matt, Trump, Grandma, Nick, Lil Matt, Grandpa, Zombie. The queue is held at 06:50, eight hours after it began.

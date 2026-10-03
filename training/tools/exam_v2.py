@@ -5,7 +5,7 @@ get-up test, unchanged, run on models/v2 with the 103-input policies (the match'
     PYTHONPATH=.mj350 python tools/exam_v2.py                     every boxer with a match policy
     PYTHONPATH=.mj350 python tools/exam_v2.py --only matt zombie --json logs/exam_v2.json
 
-Which policies: a boxer's match policy is the newest of checkpoints/m1_<name>/latest_<name>.pt, then
+Which policies: a boxer's match policy is the newest of checkpoints/m<round>_<name>/latest_<name>.pt (m1, m2, ...), then
 checkpoints/wide/match_<name>.pt (the old one widened to 103, before any training on the new body); its get-up
 policy the newest checkpoints/u1_*/latest_<name>.pt, then checkpoints/wide/getup_<name>.pt. --book FILE
 ({"matt": {"match": path, "getup": path}}) overrides either.
@@ -51,8 +51,8 @@ def policies() -> dict:
         with open(sys.argv[sys.argv.index("--book") + 1], "r", encoding="utf-8") as f:
             override = json.load(f)
     for n in NAMES:
-        trained = [p for p in glob.glob(os.path.join(ck, f"m1_{n}", f"latest_{n}.pt"))]
-        match = trained[0] if trained else os.path.join(ck, "wide", f"match_{n}.pt")
+        trained = glob.glob(os.path.join(ck, f"m[0-9]_{n}", f"latest_{n}.pt"))
+        match = max(trained, key=os.path.getmtime) if trained else os.path.join(ck, "wide", f"match_{n}.pt")
         ups = glob.glob(os.path.join(ck, "u1_*", f"latest_{n}.pt"))
         getup = max(ups, key=os.path.getmtime) if ups else os.path.join(ck, "wide", f"getup_{n}.pt")
         e = {}
