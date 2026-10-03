@@ -447,3 +447,6 @@ get-up policy 97% in 3.2 s. R0 to R3 passed.
 policy 77% (her mark 60%): pass. **Turn 83% (mark 90%): FAIL.** Turns alone from 60 starts: 59 faced in time, one
 fall. The exam again with 90 episodes of each kind: turn **90%**, exactly the mark: borderline, not luck. Queued
 `f2_grandma` after Grandpa: 600 more iterations from `f_grandma` with 45% turns (from 30%).
+
+**Grandpa (`f_grandpa`, 00:16 to 00:47).** Stand 97%, walk off by 0.02 m/s with no falls, turn 97%, joints 0.66:
+R0 to R2 passed. His old get-up policy on the new body: **27%** (mark 60%): for `u1_grandpa_matt`.
