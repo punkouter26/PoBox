@@ -469,3 +469,7 @@ for footing if it fails across the seven.
 0.33), 83% to the head; guard stops 80%; chin 0.00: R4 to R6 and footing pass. Getting up 18 of 30 and carrying on
 11 of 18 (old get-up policy): for `u1_matt_zombie`. Against the new Matt he lands nothing (Matt lands 1.72 a second on
 him, all to the body).
+
+**Lil Matt, match (`m1_lilmatt`, 02:06 to 02:34).** Footing 0.00; attack 0.93 a second at 6.8 m/s; **guard stops 70%**
+(from 13%); chin 1.44 legs a minute (mark 1.5; 8.67 against Zombie, who lands 2.22 head shots a second on him); getting
+up 30 of 30 in 1.6 s. **Carrying on 21 of 30** (mark 90%): FAIL, the only line.
