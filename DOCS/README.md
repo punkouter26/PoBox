@@ -15,7 +15,7 @@ The game is being moved onto the official MuJoCo Unity plugin (`org.mujoco` 3.5.
 fight, on bodies re-derived from the meshes, with a ladder of behaviours under the boxing (stand, walk,
 turn, get up) trained against shoves, thrown cubes and randomised bodies. **The plan and its ticks are
 `tasks.md`; what was measured, run by run, is `rl_optimization_log.md`.** The working game as it was is the
-tag `pre-retrofit`; from Phase B of the plan until Phase D its fights do not run on `master`.
+tag `pre-retrofit`; since Phase D the fights on `master` run on the plugin.
 
 - New bodies, each with a pool of 8 cubes: `training/rigs/v2`, `training/models/v2` (beside the old ones
   until the old policies are retired). Matt is 85.1 kg and 1.86 m there, Zombie 91.6 kg.
@@ -26,22 +26,44 @@ tag `pre-retrofit`; from Phase B of the plan until Phase D its fights do not run
   `pip`. MuJoCo 3.5.0 for Python, the version Unity will run, is in `training/.mj350` (not versioned):
   `PYTHONPATH=training/.mj350` in front of a tool makes it use that.
 
-**Where it stands (2 October, evening): Phase B is done; nothing has been trained on the new bodies yet.**
+**Where it stands (2 October, 22:00): the game runs on MuJoCo; the ladder is being trained.**
+
+- **The boxing game is on the plugin (Phase D).** `Assets/Scenes/Arena.unity` is authored from prefabs: the trainer's
+  ring (floor, four rope walls, 8 cubes) under `Mj World`, one `MjRing`, and every boxer twice
+  (`Assets/Boxers/NAME/NAME Red.prefab` and `NAME Blue.prefab`, switched off; the blue one's objects are named `b_`).
+  `MatchSetup` switches on the picked pair and hands it to the ring before MuJoCo compiles. The old PhysX layer,
+  the custom MuJoCo binding, the scripted stand-in and the 21 pair layouts are deleted; the arena holds no
+  Rigidbody, ArticulationBody, Collider or Joint. Report: `DOCS/reports/2026-10-02-arena-on-mujoco.html`.
+- Runtime: `Assets/Scripts/Mj` (`MjBoxer`, `MjRing`: the bout's physics, punches measured as the trainer measures
+  them, holding a boxer through a count, ghosting a downed one; `MjCubePool`, `MjTestbed`) and
+  `Assets/Scripts/Runtime/Sim/MjBrain.cs` (between a `Fighter` and its `MjBoxer`: drive strength, get-up, punches
+  named). Corner prefabs and the arena: `MjRetrofit.BuildCorners`, `MjRetrofit.RetrofitArena` (run once).
+- `Assets/Scenes/Testbed.unity` holds all seven (`MjTestbed.roster`; `MjTestbed.Pick` chooses one by name). The
+  gate tests (`MjGateTests`) run for every boxer with C MuJoCo recordings beside it; `MjRetrofit.Promote(name, run)`
+  puts a run's policy and recordings there.
+- **Android:** the `bin.mujoco` 3.5.0 tag ships a MuJoCo **3.3.7** Android library, so `Packages/bin.mujoco` is
+  embedded with a 3.5.0 one built here (`Packages/bin.mujoco/README-PoBox.md`). The APK builds
+  (`PoBox/Android/Build APK`, 219 MB); it has not been run on a phone yet.
+- **Ladder** (exams in plain C MuJoCo 3.5.0, `training/tools/footwork_c.py --exam`): Matt R0 and R1 pass, R2 (turn)
+  failed at 73% and is being retrained with a sharper facing reward (`r2b_matt`); Zombie R0 to R2 pass and his gate
+  in Unity passes. The other five, the match (R4 to R7) and get-up (R3) runs are in `training/logs/queue.json`.
+
+Earlier in the day (Phase B):
 
 - All seven boxers are prefabs of the MuJoCo plugin's components with their meshes bound (`Assets/Boxers/NAME`),
   and each compiles to the trainer's model with no difference (`PoBox/Mj/Check Every Boxer Against Training`).
-- `Assets/Scenes/Testbed.unity` is the scene every rung is checked in: one boxer, the floor, the pool of 8 cubes,
-  a HUD with reset, shoves, a cube and a behaviour selector. It holds no Rigidbody, ArticulationBody or collider.
-  Report with the screen before and after: `DOCS/reports/2026-10-02-retrofit-testbed.html`.
-- The runtime is `Assets/Scripts/Mj`: `MjBoxer` (observation out of mjData, policy, targets into mjData.ctrl),
-  `MjCubePool`, `MjTestbed` (the control step every fourth physics step), `TestbedHud`. The importer is
-  `Assets/Scripts/Editor/MjRetrofit.cs`. The plugin is embedded in `Packages/org.mujoco` with three small changes
-  marked `PoBox:` (it did not compile on Unity 6000.6 and its scenes did not load in MuJoCo 3.5.0).
+- `Assets/Scenes/Testbed.unity` is the scene every rung is checked in: the floor, the pool of 8 cubes,
+  a HUD with reset, shoves, a cube and a behaviour selector. Report: `DOCS/reports/2026-10-02-retrofit-testbed.html`.
+- The plugin is embedded in `Packages/org.mujoco` with three small changes marked `PoBox:` (it did not compile on
+  Unity 6000.6 and its scenes did not load in MuJoCo 3.5.0).
 - Play-mode tests `MjParityTests`: no Unity physics in the scene; the compiled model is the trainer's; a
   zero-action run of 5 s with a cube strike matches plain C MuJoCo 3.5.0 to 1.8e-05 rad a joint.
 - Two things worth knowing before touching this: the plugin copies each `MjActuator.Control` over `mjData.ctrl`
   after every step, so targets are written again before each one; and `mj_step` leaves body positions one step
   behind `qpos`, so they are brought up to date (`mj_kinematics`) before the boxer observes, as the trainer does.
+- Running the whole play-mode suite runs the plugin's own tests after ours, and five of them then fail on a
+  scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
+  `PoBox.Tests`.
 
 The sections below describe the game before the retrofit.
 
