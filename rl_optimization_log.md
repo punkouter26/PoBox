@@ -545,3 +545,8 @@ and `m2_zombie` are queued behind it.
 against 19, 10.5%; on a 10 s reference 4.10 against 3.80 a second, and the test passes). Arena spot check, Matt v
 Zombie on their match policies, two minutes: both up throughout, Matt lands 206 of 227 (all to the body), Zombie lands
 none, as in C MuJoCo: a one-sided pairing, for the next round.
+
+**Nick, second match round (`m2_nick`, 400 iterations, fall charge 8, from his handover bank, 10:15 to 10:41).** Exam
+against the five left in the game: **footing 0.00** (from 1.33), attack 1.38 a second at 6.8 m/s, guard 66%, chin 0.00,
+getting up 30 of 30, carrying on 29 of 30: **every line passes. Nick passes the whole ladder**, the second after Zombie.
+Promoted (match.onnx from `m2_nick`).
