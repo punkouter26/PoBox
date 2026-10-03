@@ -473,3 +473,8 @@ him, all to the body).
 **Lil Matt, match (`m1_lilmatt`, 02:06 to 02:34).** Footing 0.00; attack 0.93 a second at 6.8 m/s; **guard stops 70%**
 (from 13%); chin 1.44 legs a minute (mark 1.5; 8.67 against Zombie, who lands 2.22 head shots a second on him); getting
 up 30 of 30 in 1.6 s. **Carrying on 21 of 30** (mark 90%): FAIL, the only line.
+
+**Trump, match (`m1_trump`, 02:37 to 03:05).** Attack 0.81 a second at 6.8 m/s, 85% to the head; getting up 30 of 30.
+FAIL: **guard stops 26%** (0.85 head shots taken a second; 2.32 against Nick), **chin 1.72** legs a minute (10.33 against
+Nick), **footing 0.33** a minute (all against Nick), carrying on 26 of 30. The match line trains with no pay for blocks
+(`--block-w 0`, the default); a second round for him should pay for them.
