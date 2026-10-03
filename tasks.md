@@ -150,7 +150,7 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
       on a fall, a stall or the end of a task.
 - [x] D4 HUD anchors (title, FPS and telemetry, menu and behaviour selector, reset and shove, version); layout
       audit; before/after report.
-- [ ] D5 Play-mode tests updated; the old transfer probe replaced by the parity tests.
+- [x] D5 Play-mode tests updated; the old transfer probe replaced by the parity tests.
       2026-10-02: TransferProbe deleted; 15/16 PoBox tests pass. Open: the arena pairing test fails until the
       boxers have match policies (Zombie, on the zero brain, falls). The plugin's own tests pass alone (11/11) but
       not after ours (a scene with raw object names lingers).
