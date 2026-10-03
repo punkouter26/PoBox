@@ -413,3 +413,7 @@ with new references); the gate in Unity: replay 8.6e-06; closed loop 4.80 agains
 torque 59.45 against 59.63 N m, 2.859 against 2.853 m; 25 episodes 0% against 0% on the floor, 25 of 25 the same.
 19/19 PoBox tests. Report with the charts explained: `DOCS/reports/2026-10-02-training-turning.html`.
 `f_nick` started at 22:06 from `r2b_matt`.
+
+**Nick (`f_nick`, 1600 iterations from `r2b_matt`, 22:06 to 22:40).** Exam, C MuJoCo 3.5.0: stand 100%, walk off
+by 0.01 m/s with no falls, turn 100%, joints 0.61; his old get-up policy, widened, on the new body: **100%** in 2.7 s
+on average (mark 80%). R0 to R3 passed; promoted. The Unity gate is run for the five together once all are in.
