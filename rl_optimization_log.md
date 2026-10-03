@@ -478,3 +478,8 @@ up 30 of 30 in 1.6 s. **Carrying on 21 of 30** (mark 90%): FAIL, the only line.
 FAIL: **guard stops 26%** (0.85 head shots taken a second; 2.32 against Nick), **chin 1.72** legs a minute (10.33 against
 Nick), **footing 0.33** a minute (all against Nick), carrying on 26 of 30. The match line trains with no pay for blocks
 (`--block-w 0`, the default); a second round for him should pay for them.
+
+**Grandma, match (`m1_grandma`, 03:07 to 03:35).** Attack 1.03 a second at 5.8 m/s (her mark 3.0); guard stops 69%; chin
+0.00; getting up 22 of 30 (mark 60% in 9 s). FAIL: **footing 1.33 a minute, all against Nick**; carrying on 11 of 22.
+Nick is the one boxer the others fall against unprovoked (Trump 0.33, Grandma 1.33, all of it against him): he
+fights at close quarters, and a fall from being bumped is not a fall from a punch in the exam's count.
