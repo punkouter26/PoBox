@@ -714,3 +714,23 @@ The wider start is what carrying on wanted for Matt and Grandpa, with their atta
 (500 from `m6`: his attack fails on the three who stand off, which may be the same not walking in), `m5_grandma` (400
 from `m2`, fall charge 8), `m3_zombie` (300 from `m1`: he has not met the current opponents). The human-rules retrain
 (D8) does not fit in tonight's five hours.
+
+**Block 3 (22:46 to 00:19) and what 120 trials say.** The 30-trial carrying-on line moves by three either way by
+chance, so each candidate was put through 120 knockdowns (carry_diag): falls after the handover, of those handed over.
+
+| Boxer | Before tonight | Block 2 (`--sep-max 3.5`) | Block 3 (300 more) |
+|---|---|---|---|
+| Matt | `m2`: 53 of 119 | `m4`: **13 of 119** | `m5`: 16 of 119 |
+| Grandpa | `m1`: 17 of 117 | `m3`: **8 of 117** | `m4`: 9 of 117 |
+
+**The wider start is a real fix (Matt stays up 89% of the time, from 55%); more of it adds nothing.** Kept: `m4_matt`,
+`m3_grandpa`. Rejected: `m5_matt`, `m4_grandpa` (footing 1.00 a minute), `m7_trump` (attack 0.31 a second at 2.5 m/s,
+from 0.37 at 4.3: the wider start is not what his attack wants). **`m5_grandma` (400 from `m2`, `--sep-max 3.5`, fall
+charge 8): passes every line** (footing 0.00, attack 0.82 at 3.7 m/s, guard 72%, carrying on 29 of 30): kept; she is the
+third to pass the whole ladder. Exams from here use 60 knockdowns (`--trials 60`).
+
+**From 00:44, unattended (the owner: eight more hours): tasks.md D8**, a boxer at a time, by `overnight.sh` and `d8.sh`
+(session scratchpad; detached, so no tool time limit ends it): rules on in the boxer's configs, footwork 800
+iterations, get-up 800, match 600 with `--sep-max 3.5`, an exam after each. Kept if the footwork exam passes and the
+bout keeps footing, attack and getting up; otherwise the rules come back off for that boxer and its runs are put
+aside. Order: Matt, Nick, Zombie, Grandma, Grandpa. Its log is `training/logs/overnight.log`.
