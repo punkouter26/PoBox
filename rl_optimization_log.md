@@ -700,3 +700,17 @@ training begins (0.85 to 2.2 m), and a match policy that has never had to walk i
 
 **Block 2 (21:22):** `--sep-max 3.5` (new: the furthest apart an episode begins), handover bank 30%, nothing else
 changed: `m4_matt` and `m4_grandma` from their `m2`, `m3_grandpa` from `m1` with the fall charge at 8.
+
+**Block 2 (21:20 to 22:43): episodes begun up to 3.5 m apart (`--sep-max 3.5`), 500 iterations each.**
+
+| Run | Carrying on | Other lines | Verdict |
+|---|---|---|---|
+| `m4_matt` (from `m2`) | **26 of 30** (from 23; needs 27) | attack 1.96 a second at 6.4 m/s, all else passes | better, one short: kept |
+| `m3_grandpa` (from `m1`, fall charge 8) | **30 of 30** (from 26): pass | attack 0.64 at 3.6 m/s: pass; **footing 0.33 a minute** (from 2.00; mark 0.2: one fall in three minutes) | 8 of 9 (from 7): kept |
+| `m4_grandma` (from `m2`) | 24 of 29, unchanged | **footing 1.67 a minute, all of it against Zombie** (from 0.00) | rejected |
+
+The wider start is what carrying on wanted for Matt and Grandpa, with their attack kept. Not for Grandma.
+**Block 3 (22:46), all with `--sep-max 3.5`:** `m5_matt` and `m4_grandpa` (300 more each, from the runs above), `m7_trump`
+(500 from `m6`: his attack fails on the three who stand off, which may be the same not walking in), `m5_grandma` (400
+from `m2`, fall charge 8), `m3_zombie` (300 from `m1`: he has not met the current opponents). The human-rules retrain
+(D8) does not fit in tonight's five hours.
