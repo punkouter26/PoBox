@@ -734,3 +734,28 @@ third to pass the whole ladder. Exams from here use 60 knockdowns (`--trials 60`
 iterations, get-up 800, match 600 with `--sep-max 3.5`, an exam after each. Kept if the footwork exam passes and the
 bout keeps footing, attack and getting up; otherwise the rules come back off for that boxer and its runs are put
 aside. Order: Matt, Nick, Zombie, Grandma, Grandpa. Its log is `training/logs/overnight.log`.
+
+## 2026-10-04, 00:44 to 04:39: the human-rules retrain (D8), unattended; nothing kept, by a fault in the script
+
+**`m3_zombie` (300 from `m1`, `--sep-max 3.5`): rejected.** Attack 0.24 a second, carrying on 40 of 59. `m1_zombie` stands.
+
+**D8 for Matt, Nick, Zombie, Grandma and Grandpa: every boxer reverted, rules off again, earlier policies standing.**
+The fault was mine: `d8.sh` asked for the footwork top-up with `--iters 800`, and a footwork checkpoint carried on in
+its own stage counts from where it stopped (1,600 to 3,950), so **no footwork run trained at all** (each ended in under
+a minute with no save). With no footwork exam the script's rule read every boxer as failed. The get-up and match
+stages did train under the rules, without a footwork policy to go with them. Their exams (60 knockdowns), for what
+they say about boxing under the speed limit and fatigue, each from the boxer's own current policy:
+
+| Run | Result under the rules |
+|---|---|
+| `m4_zombie` | **passes every line**: attack 0.59 a second at 4.2 m/s, guard 81%, carrying on 55 of 58 |
+| `m6_matt` | footing 1.33 falls a minute FAILS; carrying on 60 of 60, attack 1.35 at 4.2 m/s |
+| `m3_nick` | carrying on 47 of 60 FAILS; all else passes, attack 1.33 at 4.8 m/s |
+| `m5_grandpa` | attack 0.58 at 2.6 m/s (his mark 3.0) and carrying on 51 of 59 FAIL |
+| `m6_grandma` | footing 4.33 a minute, attack 0.58 at 3.0, carrying on 32 of 51 FAIL |
+
+What the rules cost the present footwork policies, untrained (5 seeds): Matt stand 93% and walk 0.40 falls a minute
+(both fail), Grandpa stand 87%, Grandma turn 80%. All five match runs hold `REJECTED.txt`; the get-up runs are
+`checkpoints/x_u1_h_*`. Punches slow under the rules: 4.2 to 4.8 m/s where the same boxers had 5.2 to 6.8.
+**The GPU then stood idle from 04:39** (the owner had asked for training to about 08:00). To do it again: footwork with
+the iteration count taken from the checkpoint plus 800, and Zombie first, since his bout already passes.

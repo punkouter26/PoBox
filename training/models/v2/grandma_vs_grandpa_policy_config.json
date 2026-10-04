@@ -246,7 +246,9 @@
         "bag": "grandma_bag.xml",
         "spar": "grandma_spar.xml"
       },
-      "cubes": 8
+      "cubes": 8,
+      "speed_limit": false,
+      "fatigue_j": 0.0
     },
     {
       "name": "grandpa",
@@ -490,7 +492,9 @@
         "bag": "grandpa_bag.xml",
         "spar": "grandpa_spar.xml"
       },
-      "cubes": 8
+      "cubes": 8,
+      "speed_limit": false,
+      "fatigue_j": 0.0
     }
   ],
   "ring_half": 3.05
