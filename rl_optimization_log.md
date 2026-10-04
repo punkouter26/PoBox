@@ -674,3 +674,29 @@ minute (from 2.00): pass.** Guard 73%, chin 0.53, getting up 30 of 30. **Attack 
 unchanged, FAIL. Still 7 of 9, with a different line failing: **not promoted; `m1_grandpa` stays in the game.** Half a
 round under harder shoves taught him to keep his feet and cost him his punch; whether the second half brings it back
 is not known. The queue is still held; released, it carries this run on from iteration 247 to 500. `m2_zombie` not run.
+
+## 2026-10-03 evening: a five-hour session (19:58 to about 01:00), editor closed
+
+**Block 1 (19:58 to 21:17): the wider starts and harder shoves, on three more boxers, and rejected.** Each 400 to 500
+iterations against everybody's current policy, handover bank 30%, `--push-vel 0.5 --start-spread 3`.
+
+| Run | Carrying on | Other lines | Verdict |
+|---|---|---|---|
+| `m3_matt` | 24 of 30 (from 23) | attack 1.36 a second (from 1.99) | no better |
+| `m3_grandma` | 19 of 30 (from 24 of 29) | attack 0.57 (from 1.09), chin 0.67 (from 0.00) | worse |
+| `m2_zombie` | 22 of 30 (from 27) | footing 2.00 falls a minute (from 0.00) | worse: he had passed everything |
+
+All three, and the half-round `m2_grandpa`, hold `REJECTED.txt`; `tools/exam_v2.py` now passes such runs over.
+`m2_grandpa` did not run again here (`train_resilient.py` will not carry on a gauntlet run that has a save).
+**`--start-spread` and a harder `--push-vel` are not a fix for carrying on.** Trump's 23 to 28 this afternoon, which I
+put down to them, was one result on 30 trials; four boxers since say otherwise.
+
+**What carrying on is (carry_diag, 60 trials each, C MuJoCo 3.5.0).** Every trial was handed over (the get-up policy
+stood its 1.5 s every time). Matt then fell in 22 of 60, 1.7 to 2.8 s after the match policy took the body, with
+the two pelvises 1.9 to 3.5 m apart when it did (median 2.3 m); and as often with the other boxer a ghost (27) or held
+still in its guard (30). Nobody is knocking him over: **a knockdown leaves the boxers further apart than any episode of
+training begins (0.85 to 2.2 m), and a match policy that has never had to walk in falls over on the way.** Grandma:
+8 of 60, the same distances.
+
+**Block 2 (21:22):** `--sep-max 3.5` (new: the furthest apart an episode begins), handover bank 30%, nothing else
+changed: `m4_matt` and `m4_grandma` from their `m2`, `m3_grandpa` from `m1` with the fall charge at 8.

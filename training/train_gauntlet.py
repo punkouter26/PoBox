@@ -93,6 +93,7 @@ def main() -> None:
     ap.add_argument("--effort-free-iters", type=int, default=0,
                     help="no charge for power or for action size and change for this many iterations of the run, then "
                          "brought back over as many again: for a stage in which a skill has first to be found")
+    ap.add_argument("--sep-max", type=float, default=2.2, help="the furthest apart the two boxers begin an episode, m")
     ap.add_argument("--no-onnx", action="store_true")
     ap.add_argument("--handover", default="", help="states the learner's get-up policy leaves it in (tools/make_handover_bank.py); "
                                                    "a share of its episodes begin in one")
@@ -119,7 +120,7 @@ def main() -> None:
                         ko_bonus=args.ko_bonus, survivor_bootstrap=not args.no_survivor_bootstrap, daze=args.daze,
                         daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
-                        handover_share=args.handover_share, start_spread=args.start_spread, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, **extra_env)
+                        handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))

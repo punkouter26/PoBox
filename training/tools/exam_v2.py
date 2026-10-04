@@ -52,7 +52,9 @@ def policies() -> dict:
         with open(sys.argv[sys.argv.index("--book") + 1], "r", encoding="utf-8") as f:
             override = json.load(f)
     for n in NAMES:
-        trained = glob.glob(os.path.join(ck, f"m[0-9]_{n}", f"latest_{n}.pt"))
+        # A run that was tried and not kept has REJECTED.txt in its folder, as the game's importer expects.
+        trained = [p for p in glob.glob(os.path.join(ck, f"m[0-9]_{n}", f"latest_{n}.pt"))
+                   if not os.path.exists(os.path.join(os.path.dirname(p), "REJECTED.txt"))]
         match = max(trained, key=os.path.getmtime) if trained else os.path.join(ck, "wide", f"match_{n}.pt")
         ups = glob.glob(os.path.join(ck, "u1_*", f"latest_{n}.pt"))
         getup = max(ups, key=os.path.getmtime) if ups else os.path.join(ck, "wide", f"getup_{n}.pt")

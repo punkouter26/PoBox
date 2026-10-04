@@ -82,7 +82,7 @@ class BoxingEnv:
                  legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
                  handover: dict = None, handover_share: float = 0.15,
                  speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4,
-                 start_spread: float = 1.0):
+                 start_spread: float = 1.0, sep_hi: float = 2.2):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -119,6 +119,10 @@ class BoxingEnv:
         # How far from the guard an episode may begin, as a multiple of the usual 0.06 rad a joint and 0.15 m/s:
         # a boxer that has only ever started in its guard is lost when it is handed a body in any other state.
         self.start_spread = start_spread
+        # The furthest apart two boxers begin. At 2.2 m a match policy never has to walk in: put 2.5 to 3.5 m from
+        # its opponent, as a boxer is after a knockdown, Matt's fell over on the way in 22 of 60 trials, whether
+        # the opponent boxed, stood still or was not there (carry_diag, 2026-10-03). That was "carrying on".
+        self.sep_hi = sep_hi
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -405,7 +409,7 @@ class BoxingEnv:
             # Somewhere in the ring, some distance apart, roughly facing each other.
             centre = self._u(N, 2, lo=-1.4, hi=1.4)
             bearing = self._u(N, lo=-math.pi, hi=math.pi)
-            sep = self._u(N, lo=0.85, hi=2.2)
+            sep = self._u(N, lo=0.85, hi=self.sep_hi)
             u = torch.stack([torch.cos(bearing), torch.sin(bearing)], -1)
             spots = [centre - u * sep[:, None] * 0.5, centre + u * sep[:, None] * 0.5]
             facing = [bearing, bearing + math.pi]
