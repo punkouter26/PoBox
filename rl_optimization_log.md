@@ -759,3 +759,8 @@ What the rules cost the present footwork policies, untrained (5 seeds): Matt sta
 `checkpoints/x_u1_h_*`. Punches slow under the rules: 4.2 to 4.8 m/s where the same boxers had 5.2 to 6.8.
 **The GPU then stood idle from 04:39** (the owner had asked for training to about 08:00). To do it again: footwork with
 the iteration count taken from the checkpoint plus 800, and Zombie first, since his bout already passes.
+
+**Into Unity, 2026-10-04 11:00.** Promoted (`MjRetrofit.PromoteBoxing`): Grandma `m5_grandma`, Matt `m4_matt`, Grandpa
+`m3_grandpa`, each with the get-up policy it had. The gate: 18 of 18 (a first run hung in play on the Menu scene and
+was cancelled; run again from the Testbed). Arena, a minute each: Matt v Grandma 100 landed to 87, Matt put down on
+command and up; Grandpa v Nick 58 landed to 0 of 117 thrown, Grandpa put down and up at the count of 4, boxing on.
