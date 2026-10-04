@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox Architecture Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one column of full-width bands, like a fight card: a title band, then sections ruled off by a rope line. */
+:root {
+  --bg: #f3f4f6; --surface: #fcfcfb; --sunk: #e9ebee; --ink: #101418; --ink-2: #4a525c; --muted: #7b838d;
+  --line: #d6dae0; --rope: #b3261e; --red-corner: #c0392f; --blue-corner: #2a63c4;
+  --good: #1f7a2e; --good-bg: #dff1e2; --warn: #8a5a00; --warn-bg: #fbeccb; --bad: #a3231c; --bad-bg: #f8dedb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #4a3aa7;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1215; --surface: #1a1d21; --sunk: #23272c; --ink: #f3f4f6; --ink-2: #c1c6cd; --muted: #8b939d;
+  --line: #333940; --rope: #e5655c; --red-corner: #e5655c; --blue-corner: #6b9cf0;
+  --good: #6fd07f; --good-bg: #17331c; --warn: #f0c060; --warn-bg: #3a2c0c; --bad: #f08a82; --bad-bg: #3d1a17;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1215; --surface: #1a1d21; --sunk: #23272c; --ink: #f3f4f6; --ink-2: #c1c6cd; --muted: #8b939d;
+  --line: #333940; --rope: #e5655c; --red-corner: #e5655c; --blue-corner: #6b9cf0;
+  --good: #6fd07f; --good-bg: #17331c; --warn: #f0c060; --warn-bg: #3a2c0c; --bad: #f08a82; --bad-bg: #3d1a17;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body) }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 36px }
+header.top { display: flex; flex-direction: column; gap: 8px; border-bottom: 3px solid var(--rope); padding-bottom: 16px }
+.eyebrow { font: 600 13px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+h1 { font: 700 clamp(34px, 5vw, 54px)/1 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance }
+h2 { font: 700 30px/1.1 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .02em; text-wrap: balance }
+h3 { font: 600 17px/1.3 var(--body); margin: 0 }
+p { margin: 0; max-width: 72ch }
+.lede { font-size: 18px; color: var(--ink-2) }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.tier { font: 600 12px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--rope) }
+.note { color: var(--ink-2); font-size: 14px }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px; min-width: 0 }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
+.scroll { overflow-x: auto; min-width: 0 }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { font: 600 12px/1.2 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap }
+td.num, th.num { text-align: right }
+code { font: 13px var(--mono); background: var(--sunk); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 600 12px/1 var(--body); padding: 4px 8px; border-radius: 99px; white-space: nowrap }
+.pill.good { color: var(--good); background: var(--good-bg) } .pill.warn { color: var(--warn); background: var(--warn-bg) }
+.pill.bad { color: var(--bad); background: var(--bad-bg) } .pill.plain { color: var(--ink-2); background: var(--sunk) }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; align-self: flex-start }
+.seg button { font: 600 14px var(--body); padding: 9px 16px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg) }
+.seg button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--blue-corner); outline-offset: 2px }
+select { font: 15px var(--body); padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+.meter { height: 8px; background: var(--sunk); border-radius: 4px; position: relative }
+.meter > i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--ink-2) }
+.meter > b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--rope) }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2) }
+.legend span { display: inline-flex; align-items: center; gap: 6px }
+.chart { position: relative }
+.chart svg { display: block; width: 100%; height: auto }
+.chart text { font: 12px var(--body); fill: var(--muted) }
+.chart .lab { fill: var(--ink-2); font-weight: 600 }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgb(0 0 0 / .18); white-space: nowrap; z-index: 2 }
+.tip div { display: flex; align-items: center; gap: 6px }
+details > summary { cursor: pointer; font-size: 13px; color: var(--ink-2) }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px }
+figcaption { font-size: 13px; color: var(--ink-2) }
+@media (max-width: 520px) { .wrap { padding-inline: 16px } h2 { font-size: 26px } }
+
+nav.tabs { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 10px; z-index: 3; border-bottom: 1px solid var(--line) }
+nav.tabs a { font: 600 14px var(--body); color: var(--ink-2); text-decoration: none; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface) }
+nav.tabs a:hover, nav.tabs a:focus-visible { color: var(--ink); border-color: var(--ink-2); outline: none }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.diagram .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap }
+.diagram .scroll { border-top: 1px solid var(--line); padding-top: 12px }
+pre.mermaid { margin: 0; width: 100%; min-width: 760px; background: none; font: 14px var(--body); color: var(--ink) }
+pre.mermaid svg { max-width: none !important; width: 100% !important; height: auto !important }
+.steps { counter-reset: s; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); list-style: none; margin: 0; padding: 0 }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 6px }
+.steps li::before { content: counter(s); font: 700 28px/1 var(--display); color: var(--rope) }
+.steps li p { font-size: 14px; color: var(--ink-2) }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">PoBox &middot; Unity 6000.6 &middot; MuJoCo 3.5.0 &middot; as of 4 October 2026</span>
+    <h1>Architecture Map</h1>
+    <p class="lede">PoBox is a boxing broadcast. Two boxers, each a trained neural network driving a physics body, fight in a ring while the game films, scores and commentates. This page maps the parts, follows the main journeys step by step, and shows what data is kept where.</p>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <a href="#components">Components</a><a href="#journeys">Journeys</a><a href="#data">Data</a><a href="#story">In plain English</a>
+  </nav>
+
+  <section id="components">
+    <h2>Components</h2>
+    <p>Three groups. The <b>trainer</b> (Python, on the PC) teaches each boxer. The <b>bridge</b> (a Unity editor tool) copies a trained boxer into the project and proves it behaves the same. The <b>game</b> (Unity) runs the fight. One physics model file is used on both sides, which is why a boxer that stands in training stands in the game.</p>
+    <div class="diagram">
+      <div class="bar"><h3>Top-level modules and how they connect</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+flowchart TB
+  subgraph TRAIN["Trainer: Python and MuJoCo Warp on the GPU"]
+    direction LR
+    RIG["Rig tools<br/>glb_to_rig, rig_to_mjcf<br/>mesh to physics body"]
+    MODELS[("Body models<br/>training/models/v2")]
+    ENVS["Practice worlds<br/>footwork, getup, match"]
+    PPO["Learner<br/>ppo.py, train_box,<br/>train_gauntlet, train_getup"]
+    EXAM["Exam<br/>plain C MuJoCo 3.5.0<br/>footwork_c, exam_v2"]
+    TB[("Logs<br/>TensorBoard, csv")]
+    CKPT[("Checkpoints<br/>and ONNX brains")]
+    RIG --> MODELS --> ENVS
+    ENVS <--> PPO
+    PPO --> CKPT
+    PPO --> TB
+    CKPT --> EXAM
+  end
+  subgraph BRIDGE["Bridge: Unity editor"]
+    direction LR
+    RETRO["MjRetrofit<br/>BuildBoxer, Promote, Check"]
+    ASSETS[("Assets/Boxers/NAME<br/>prefabs, config.json,<br/>3 ONNX brains,<br/>fingerprint, recordings")]
+    GATE["Gate tests<br/>MjGateTests, MjParityTests"]
+    RETRO --> ASSETS --> GATE
+  end
+  subgraph GAME["Game: Unity runtime"]
+    direction LR
+    MENU["Menu<br/>MenuView, MatchSelection"]
+    SETUP["MatchSetup<br/>switches on the picked pair"]
+    RING["MjRing<br/>steps both boxers,<br/>finds punches and landings"]
+    BOXER["MjBoxer x2<br/>sense, decide, drive"]
+    PLUGIN["MuJoCo plugin<br/>MjScene, 200 steps a second"]
+    SENTIS["Inference Engine<br/>runs the ONNX brain on CPU"]
+    BRAIN["MjBrain<br/>names punches,<br/>swaps brains"]
+    FIGHTER["Fighter<br/>health, daze, down, stats"]
+    BUS(("SimBus<br/>events"))
+    BOUT["Bout and Judges<br/>rounds, count, decision"]
+    SHOW["Broadcast<br/>cameras, commentary,<br/>HUD, sound, effects"]
+    LEAGUE[("LeagueTable<br/>saved ladder")]
+    MENU --> SETUP --> RING
+    RING <--> PLUGIN
+    RING --> BOXER
+    BOXER <--> SENTIS
+    BOXER --> PLUGIN
+    RING --> BRAIN --> FIGHTER --> BUS
+    BUS --> BOUT
+    BUS --> SHOW
+    BOUT --> LEAGUE
+    BOUT --> RING
+  end
+  MODELS --> RETRO
+  CKPT --> RETRO
+  EXAM --> RETRO
+  ASSETS --> SETUP
+      </pre></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>Trainer</h3><p class="note">Thousands of copies of the ring run at once on the GPU. The learner tries actions, the practice world pays or charges for what happened, and the brain's numbers are nudged towards what paid. Three practice worlds teach three skills.</p></div>
+      <div class="panel"><h3>Bridge</h3><p class="note"><code>MjRetrofit</code> builds each boxer's prefab from the trainer's model and copies in the brains. The gate tests then replay a recording made in plain MuJoCo and fail if Unity's boxer answers differently.</p></div>
+      <div class="panel"><h3>Game</h3><p class="note"><code>MjRing</code> owns the fight's physics loop. <code>Fighter</code> keeps score of damage and decides nothing. Everything the audience sees and hears listens to <code>SimBus</code> and never reaches into the physics.</p></div>
+    </div>
+  </section>
+
+  <section id="journeys">
+    <h2>Journeys</h2>
+    <div class="diagram">
+      <div class="bar"><h3>1. From the menu to the first bell</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+sequenceDiagram
+  actor P as Player
+  participant M as MenuView
+  participant S as MatchSelection
+  participant X as MatchSetup
+  participant R as MjRing
+  participant J as MuJoCo plugin
+  participant B as Bout
+  participant D as BroadcastDirector
+  P->>M: pick red and blue, tap FIGHT
+  M->>S: Choose red, blue
+  Note over S: also saved on the device
+  M->>X: load the Arena scene
+  X->>X: find the two boxers by name
+  X->>R: set red and blue, switch both on
+  X->>B: set red and blue fighters
+  X->>D: set who to film
+  J->>R: model compiled
+  R->>R: bind joints and shapes, set 200 steps a second
+  B->>D: phase WalkOn, 5 seconds
+  D->>P: walk-on cameras and announcer
+  B->>R: place boxers on their marks
+  B->>B: phase Intro, 2.5 seconds
+  B->>P: phase Fight, ROUND 1
+      </pre></div>
+    </div>
+    <div class="diagram">
+      <div class="bar"><h3>2. One decision: sense, decide, move, score (50 times a second)</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+sequenceDiagram
+  participant J as MuJoCo plugin
+  participant R as MjRing
+  participant A as MjBoxer
+  participant I as Inference Engine
+  participant N as MjBrain
+  participant F as Fighter
+  participant U as SimBus
+  participant O as Bout, HUD, cameras
+  J->>R: before the physics step
+  R->>A: Observe
+  Note over A: 103 numbers read from MuJoCo
+  A->>I: run the brain
+  I-->>A: 21 joint targets and a confidence value
+  A->>J: Drive: write the joint targets
+  loop 4 physics steps of 0.005 s
+    J->>J: step the bodies
+    R->>J: write the same targets again
+  end
+  J->>R: after the 4th step
+  R->>R: TrackPunches, TrackCanvas
+  alt a glove arrived within 12 mm at over 1 m/s
+    R->>N: PunchLanded
+    N->>F: OnPunchLanded
+    F->>F: damage and daze on the one who was hit
+    F->>U: Hit
+    U->>O: judges score, HUD flashes, camera may cut
+  end
+      </pre></div>
+    </div>
+    <div class="diagram">
+      <div class="bar"><h3>3. A knockdown, the count, and getting up</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+sequenceDiagram
+  participant F as Fighter, hit
+  participant U as SimBus
+  participant B as Bout
+  participant R as MjRing
+  participant N as MjBrain, hit
+  participant A as MjBoxer, hit
+  participant W as MjBrain, standing
+  F->>F: daze reaches 42 or health reaches 0
+  F->>U: Knockdown
+  U->>B: phase Count, one number every 0.7 s
+  F->>A: joints slack for 1.2 to 2.4 s
+  R->>R: the downed boxer becomes a ghost
+  W->>R: Hold: the standing boxer waits in its guard
+  F->>N: BeginGetUp
+  N->>A: swap to the get-up brain
+  A->>A: stands up by itself
+  F->>F: on its feet for 1.5 s
+  F->>N: EndGetUp
+  N->>A: swap back to the boxing brain
+  F->>U: GotUp
+  U->>B: phase Fight
+  W->>R: Release
+  Note over B: if the count reaches 10 first, the bout ends by KO
+      </pre></div>
+    </div>
+    <div class="diagram">
+      <div class="bar"><h3>4. From training to the game</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+sequenceDiagram
+  actor O as Owner
+  participant T as Trainer
+  participant G as GPU practice worlds
+  participant L as TensorBoard
+  participant E as Exam, plain MuJoCo
+  participant K as MjRetrofit
+  participant Q as Gate tests
+  participant Y as Game
+  O->>T: start a run for one boxer and one skill
+  loop every training round
+    T->>G: act in thousands of rings for 24 steps
+    G-->>T: what happened and what it paid
+    T->>T: nudge the brain towards what paid
+    T->>L: write the charts
+  end
+  T->>E: newest brain
+  E-->>O: pass or fail on each exam line
+  alt it passes, or is better than the brain in the game
+    T->>K: ONNX brain and a 5 s recording
+    K->>Y: copy into Assets/Boxers
+    K->>Q: run the gate
+    Q-->>O: same answers, same run, same fall rate
+  else it is worse
+    O->>T: mark the run REJECTED
+  end
+      </pre></div>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2>Data and state</h2>
+    <p>What each part remembers. Only two things outlive a session on the device: the ladder and the last pick. Everything else is rebuilt when the arena loads.</p>
+    <div class="diagram">
+      <div class="bar"><h3>Data model</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+erDiagram
+  BOUT ||--|{ FIGHTER : "has two"
+  BOUT ||--|| JUDGES : scores
+  BOUT ||--o| LEAGUE_TABLE : reports
+  LEAGUE_TABLE ||--o{ LEAGUE_ROW : keeps
+  LEAGUE_ROW }o--|| POLICY_PROFILE : "by display name"
+  FIGHTER ||--|| MJ_BOXER : "body and brains"
+  FIGHTER ||--|| FIGHTER_STATS : counts
+  FIGHTER ||--o{ HIT_EVENT : "gives and takes"
+  MJ_RING ||--|{ MJ_BOXER : "steps two"
+  MJ_BOXER ||--|| BOXER_CONFIG : "reads"
+  MJ_BOXER ||--|{ BRAIN_FILE : "footwork, get-up, boxing"
+  BOXER_CONFIG ||--|| MODEL_FINGERPRINT : "checked against"
+  BRAIN_FILE ||--o| REFERENCE_RECORDING : "proved by"
+  MATCH_SELECTION ||--|{ MJ_BOXER : "names the pair"
+  BOUT {
+    enum phase "WalkOn Intro Fight Count RoundBreak Results"
+    int round "1 to 3"
+    float clock "45 s a round"
+    int count "0 to 10"
+  }
+  FIGHTER {
+    string displayName
+    int corner "0 red 1 blue"
+    float Health "100 at the bell"
+    float Daze "legs go at 42"
+    float Stamina
+    bool IsDown
+    bool IsRising
+    float DriveScale "joint strength now"
+  }
+  FIGHTER_STATS {
+    int thrown
+    int landed
+    int clean
+    int blocked
+    int knockdowns
+    float peakImpulse
+  }
+  HIT_EVENT {
+    enum zone "Head Torso"
+    enum punch "Jab Cross Hook Uppercut Body"
+    float gloveSpeed "capped at 9 m per s"
+    float impulse "2.2 kg times speed"
+    float damage
+    bool clean
+  }
+  JUDGES {
+    int total "3 judges by 2 corners"
+    string names "POWER VOLUME CRAFT"
+  }
+  MJ_BOXER {
+    string prefix "a_ red b_ blue"
+    enum Kind "Stand Walk Turn Match"
+    float Obs "103 numbers"
+    float Action "21 numbers"
+    float Value "the brain's confidence"
+    float Reserve "fatigue tank"
+  }
+  BOXER_CONFIG {
+    string joint_order "21 joints"
+    float force_limit
+    float velocity_limit
+    float strength
+    float speed
+    bool speed_limit
+    float fatigue_j
+  }
+  BRAIN_FILE {
+    string file "policy getup match .onnx"
+    int inputs "103"
+    int outputs "21 actions and 1 value"
+    string run "the training run it came from"
+  }
+  MODEL_FINGERPRINT {
+    string mujoco "3.5.0"
+    int bodies
+    int joints
+    int shapes
+  }
+  REFERENCE_RECORDING {
+    float control_dt "0.02 s"
+    string rows "what plain MuJoCo did"
+    float fall_rate
+  }
+  MATCH_SELECTION {
+    string Red "saved as pobox.pick.red"
+    string Blue "saved as pobox.pick.blue"
+  }
+  LEAGUE_TABLE {
+    string key "pobox.league.v1"
+  }
+  LEAGUE_ROW {
+    string name
+    float elo "starts at 1000"
+    int wins
+    int losses
+    int draws
+    int knockouts
+  }
+  POLICY_PROFILE {
+    string displayName
+    int generation
+  }
+      </pre></div>
+    </div>
+    <div class="diagram">
+      <div class="bar"><h3>The bout's states</h3><div class="seg" role="group" aria-label="Diagram size"><button data-z="100" aria-pressed="true">Fit</button><button data-z="160" aria-pressed="false">160%</button><button data-z="240" aria-pressed="false">240%</button></div></div>
+      <div class="scroll"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> WalkOn
+  WalkOn --> Intro: 5 s, boxers placed on their marks
+  Intro --> Fight: 2.5 s, ROUND n
+  Fight --> Count: a boxer goes down
+  Count --> Fight: it gets up
+  Count --> Results: count of 10, KO
+  Fight --> RoundBreak: 45 s up, rounds 1 and 2
+  RoundBreak --> Intro: 3 s
+  Fight --> Results: 45 s up in round 3, judges decide
+  Results --> WalkOn: 18 s, same pair again
+  Results --> [*]: BOXERS, back to the menu
+      </pre></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>Where state lives</h3><div class="scroll"><table>
+        <tr><th>State</th><th>Owner</th><th>Kept after quitting</th></tr>
+        <tr><td>Body positions and speeds</td><td>MuJoCo (<code>mjData</code>)</td><td>No</td></tr>
+        <tr><td>Health, daze, down or rising</td><td><code>Fighter</code></td><td>No</td></tr>
+        <tr><td>Round, clock, count, phase</td><td><code>Bout</code></td><td>No</td></tr>
+        <tr><td>Scorecards</td><td><code>Judges</code></td><td>No</td></tr>
+        <tr><td>Ladder ratings</td><td><code>LeagueTable</code></td><td>Yes, on the device</td></tr>
+        <tr><td>Last pair picked, 30 or 60 FPS</td><td><code>MatchSelection</code>, <code>HudView</code></td><td>Yes, on the device</td></tr>
+      </table></div></div>
+      <div class="panel"><h3>Files that travel with a boxer</h3><p class="note">In <code>Assets/Boxers/NAME</code>: three prefabs (plain, red kit, blue kit), <code>config.json</code> (joints, strength, rules), three brains (<code>policy.onnx</code>, <code>getup.onnx</code>, <code>match.onnx</code>), <code>fingerprint.json</code> (what the trainer's model must compile to) and recordings from plain MuJoCo that the gate tests replay.</p></div>
+    </div>
+  </section>
+
+  <section id="story">
+    <h2>In plain English</h2>
+    <h3>A fight, step by step</h3>
+    <ol class="steps">
+      <li><h3>Pick two boxers</h3><p>The menu shows six cards for each corner. The same boxer cannot take both. FIGHT remembers the pick and loads the arena.</p></li>
+      <li><h3>The arena wakes two of twelve</h3><p>Every boxer waits in the scene twice, once in red kit and once in blue, switched off. <code>MatchSetup</code> switches on the two that were picked before the physics is built, so only those two are simulated.</p></li>
+      <li><h3>Each boxer looks</h3><p>Fifty times a second a boxer reads 103 numbers: its own balance and joints, where the opponent's head, body and gloves are, and where it stands in the ring.</p></li>
+      <li><h3>Its brain answers</h3><p>The brain file turns those numbers into 21 joint targets: where each joint should move to next. Nothing is animated or scripted.</p></li>
+      <li><h3>Muscles pull, physics decides</h3><p>Springy joint drives pull towards the targets with human strength. MuJoCo steps the bodies four times before the next decision. If a boxer is dazed or tired its drives weaken.</p></li>
+      <li><h3>The ring watches the gloves</h3><p><code>MjRing</code> checks every glove against the other boxer's head and body. A glove arriving fast enough is a hit, and its speed is its strength.</p></li>
+      <li><h3>A hit becomes a story</h3><p><code>Fighter</code> turns the hit into damage and daze and announces it on <code>SimBus</code>. Judges score it, the HUD shows it, the director may cut to the impact camera, the crowd reacts.</p></li>
+      <li><h3>Down, and up again</h3><p>Enough daze and the legs go. The referee counts. The boxer's get-up brain takes over, stands it up, and after a second and a half the boxing brain has the body back.</p></li>
+      <li><h3>A result</h3><p>Three rounds of 45 seconds. A count of ten is a knockout. Otherwise three judges (power, volume, craft) give a decision, and the ladder is updated.</p></li>
+    </ol>
+    <h3>How a boxer is made</h3>
+    <ol class="steps">
+      <li><h3>A mesh becomes a body</h3><p>A rigged character file is measured. Simple shapes are fitted inside it and given the mass a person of that size would have.</p></li>
+      <li><h3>It learns to stand, walk and turn</h3><p>In thousands of practice rings at once, while being shoved and having cubes thrown at it.</p></li>
+      <li><h3>It learns to get up</h3><p>Dropped with slack joints, with a helping hand at first that fades as it improves.</p></li>
+      <li><h3>It learns to box</h3><p>Against the other boxers, who are frozen as they are. Landing punches pays; being hit, falling and wasting effort cost.</p></li>
+      <li><h3>It sits an exam</h3><p>Nine lines, in plain MuJoCo with no luck added. A run that makes any line worse is rejected and the earlier brain stays.</p></li>
+      <li><h3>It is checked in Unity</h3><p>The gate replays a recording. Unity's boxer must give the same answers, walk the same run and fall as rarely as the recording did. All six pass, 18 checks of 18.</p></li>
+    </ol>
+  </section>
+</div>
+
+<script>
+// Size buttons: widen the diagram inside its own scroll box.
+document.querySelectorAll('.diagram').forEach(d => d.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  d.querySelector('pre.mermaid').style.width = b.dataset.z + '%';
+  d.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+})));
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"default",maxTextSize:200000});</script>
+</html>

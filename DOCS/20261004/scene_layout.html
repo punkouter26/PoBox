@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox Arena Layout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one column of full-width bands, like a fight card: a title band, then sections ruled off by a rope line. */
+:root {
+  --bg: #f3f4f6; --surface: #fcfcfb; --sunk: #e9ebee; --ink: #101418; --ink-2: #4a525c; --muted: #7b838d;
+  --line: #d6dae0; --rope: #b3261e; --red-corner: #c0392f; --blue-corner: #2a63c4;
+  --good: #1f7a2e; --good-bg: #dff1e2; --warn: #8a5a00; --warn-bg: #fbeccb; --bad: #a3231c; --bad-bg: #f8dedb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #4a3aa7;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1215; --surface: #1a1d21; --sunk: #23272c; --ink: #f3f4f6; --ink-2: #c1c6cd; --muted: #8b939d;
+  --line: #333940; --rope: #e5655c; --red-corner: #e5655c; --blue-corner: #6b9cf0;
+  --good: #6fd07f; --good-bg: #17331c; --warn: #f0c060; --warn-bg: #3a2c0c; --bad: #f08a82; --bad-bg: #3d1a17;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1215; --surface: #1a1d21; --sunk: #23272c; --ink: #f3f4f6; --ink-2: #c1c6cd; --muted: #8b939d;
+  --line: #333940; --rope: #e5655c; --red-corner: #e5655c; --blue-corner: #6b9cf0;
+  --good: #6fd07f; --good-bg: #17331c; --warn: #f0c060; --warn-bg: #3a2c0c; --bad: #f08a82; --bad-bg: #3d1a17;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body) }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 36px }
+header.top { display: flex; flex-direction: column; gap: 8px; border-bottom: 3px solid var(--rope); padding-bottom: 16px }
+.eyebrow { font: 600 13px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+h1 { font: 700 clamp(34px, 5vw, 54px)/1 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance }
+h2 { font: 700 30px/1.1 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .02em; text-wrap: balance }
+h3 { font: 600 17px/1.3 var(--body); margin: 0 }
+p { margin: 0; max-width: 72ch }
+.lede { font-size: 18px; color: var(--ink-2) }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.tier { font: 600 12px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--rope) }
+.note { color: var(--ink-2); font-size: 14px }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px; min-width: 0 }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
+.scroll { overflow-x: auto; min-width: 0 }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { font: 600 12px/1.2 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap }
+td.num, th.num { text-align: right }
+code { font: 13px var(--mono); background: var(--sunk); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 600 12px/1 var(--body); padding: 4px 8px; border-radius: 99px; white-space: nowrap }
+.pill.good { color: var(--good); background: var(--good-bg) } .pill.warn { color: var(--warn); background: var(--warn-bg) }
+.pill.bad { color: var(--bad); background: var(--bad-bg) } .pill.plain { color: var(--ink-2); background: var(--sunk) }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; align-self: flex-start }
+.seg button { font: 600 14px var(--body); padding: 9px 16px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg) }
+.seg button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--blue-corner); outline-offset: 2px }
+select { font: 15px var(--body); padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+.meter { height: 8px; background: var(--sunk); border-radius: 4px; position: relative }
+.meter > i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--ink-2) }
+.meter > b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--rope) }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2) }
+.legend span { display: inline-flex; align-items: center; gap: 6px }
+.chart { position: relative }
+.chart svg { display: block; width: 100%; height: auto }
+.chart text { font: 12px var(--body); fill: var(--muted) }
+.chart .lab { fill: var(--ink-2); font-weight: 600 }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgb(0 0 0 / .18); white-space: nowrap; z-index: 2 }
+.tip div { display: flex; align-items: center; gap: 6px }
+details > summary { cursor: pointer; font-size: 13px; color: var(--ink-2) }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px }
+figcaption { font-size: 13px; color: var(--ink-2) }
+@media (max-width: 520px) { .wrap { padding-inline: 16px } h2 { font-size: 26px } }
+
+.plan svg { width: 100%; height: auto; display: block; background: var(--sunk); border-radius: 6px }
+.plan text { font: 12px var(--body); fill: var(--ink) }
+.plan .dim { fill: var(--ink-2); font-size: 11px }
+.two { display: grid; gap: 20px; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); align-items: start }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr } }
+.key { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 14px; align-items: start }
+.sw { width: 18px; height: 18px; border-radius: 3px; margin-top: 2px }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">PoBox &middot; scene guide &middot; 4 October 2026</span>
+    <h1>Arena Layout</h1>
+    <p class="lede">The game has three scenes. The menu picks two boxers, the arena is the ring they fight in, and the testbed is a bare floor where one boxer is checked alone. Every measurement below is read from the scene files and the physics model.</p>
+  </header>
+
+  <section>
+    <span class="tier">Tier 1 &middot; Quick look</span>
+    <h2>The ring, from above</h2>
+    <div class="two">
+      <figure class="plan"><div id="arena"></div>
+        <figcaption>Top view to scale, 1 square = 1 m. Red starts bottom-left, blue top-right. Hover or tap a mark for its position.</figcaption></figure>
+      <div class="panel"><div class="key" id="key"></div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>Ring</h3><p class="note">6.1 m square inside the ropes. The physics ropes are four solid walls 1.5 m high. The four ropes you see (at 0.45, 0.75, 1.05 and 1.35 m) are drawn only and bow when a boxer leans on the wall.</p></div>
+      <div class="panel"><h3>Spawn points</h3><p class="note">Walk-on spots 6.1 m apart, then start marks 2.04 m apart on the diagonal, facing each other. After a knockdown with no get-up brain, a boxer is stood up at least 1.3 m from the other.</p></div>
+      <div class="panel"><h3>No obstacles, no goals</h3><p class="note">The ring is empty. The only target is the other boxer's head and body. The arena holds eight 1 kg cubes parked 40 m away; only the testbed throws them.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="tier">Tier 2 &middot; Core mechanics</span>
+    <h2>The testbed, and what can be interacted with</h2>
+    <div class="two">
+      <figure class="plan"><div id="testbed"></div>
+        <figcaption>Testbed top view, 1 square = 1 m. One boxer at the centre faces a stand-in point 1.3 m ahead. It resets if it strays 5 m or stays down 2 seconds.</figcaption></figure>
+      <div class="panel scroll"><table>
+        <tr><th>Object</th><th>Where</th><th>What it does</th></tr>
+        <tr><td>Thrown cube</td><td>Testbed HUD</td><td>A 20 cm, 1 kg cube thrown at the boxer. Stays in play 2 s, then parks 40 m away.</td></tr>
+        <tr><td>Shove</td><td>Testbed HUD</td><td>A push on the trunk. In training and the exam these are 10 to 30 N s from any side.</td></tr>
+        <tr><td>Behaviour selector</td><td>Testbed HUD</td><td>Stand, walk, turn. Sets the three command numbers the brain reads.</td></tr>
+        <tr><td>Reset</td><td>Testbed HUD</td><td>Back to the guard pose at the centre.</td></tr>
+        <tr><td>Head and body</td><td>Each boxer</td><td>Hit zones. A glove within 12 mm, closing faster than 1 m/s, scores. Head counts 1.6 times a body shot.</td></tr>
+        <tr><td>Glove and forearm</td><td>Each boxer</td><td>Block zones. A punch at the head that meets them is stopped.</td></tr>
+        <tr><td>Canvas</td><td>Arena floor</td><td>Any body part other than a foot landing on it raises dust, a thud and a mark.</td></tr>
+        <tr><td>Rope walls</td><td>Arena</td><td>Hold boxers in. A downed boxer is still held by them.</td></tr>
+      </table></div>
+    </div>
+    <p class="note">There are no Unity trigger zones. Hits, blocks, footsteps and landings are all worked out from MuJoCo's positions and contacts once per brain decision (50 times a second) by <code>MjRing</code>.</p>
+  </section>
+
+  <section>
+    <span class="tier">Tier 3 &middot; Setup guide</span>
+    <h2>Engine setup</h2>
+    <div class="grid">
+      <div class="panel"><h3>Layers and tags</h3><p class="note">None to set. The project has no custom tags or layers, and the three scenes hold no Collider, Rigidbody or Joint. Unity physics is set to Script mode and never stepped. A test (<code>TheTestbedHasNoUnityPhysicsInIt</code>) fails if any appear.</p></div>
+      <div class="panel"><h3>Collision groups (MuJoCo)</h3><div class="scroll"><table>
+        <tr><th>Group</th><th>Who</th><th>Touches</th></tr>
+        <tr><td>1</td><td>A standing boxer</td><td>The other boxer, floor, ropes, cubes</td></tr>
+        <tr><td>2</td><td>A downed boxer (ghost)</td><td>Floor and ropes only</td></tr>
+        <tr><td>3</td><td>Floor, ropes, cubes</td><td>Everything</td></tr>
+      </table></div><p class="note">A boxer that gets up stays a ghost until the two are 0.6 m apart or 3 s pass, so nobody trips on it.</p></div>
+      <div class="panel"><h3>Self-collision</h3><p class="note">Each boxer has 17 simple shapes (capsules, boxes, spheres) fitted inside its mesh. All pairs collide except the 11 pairs joined by a joint.</p></div>
+      <div class="panel"><h3>Navigation mesh</h3><p class="note">Not used. Boxers walk by balance and joint drives, not by pathfinding. The ring position (two numbers, as a share of the 3.05 m half-width) is part of what each brain sees.</p></div>
+      <div class="panel"><h3>Time</h3><p class="note">Fixed timestep is forced to 0.005 s at start (<code>MjRing.Awake</code>, <code>Bout</code>). The project file still says 0.02; leave it. Speed-up changes <code>Time.timeScale</code> (1 to 4), never the step.</p></div>
+      <div class="panel"><h3>Scenes in the build</h3><p class="note"><code>Assets/Scenes/Menu.unity</code> then <code>Assets/Scenes/Arena.unity</code>. <code>Testbed.unity</code> is editor only. The arena holds each boxer twice (red kit and blue kit), all switched off; <code>MatchSetup</code> switches on the picked pair before MuJoCo compiles.</p></div>
+    </div>
+    <div class="panel scroll"><h3>Where things are (Unity metres: x right, y up, z forward)</h3><table>
+      <tr><th>Object</th><th>Position</th><th>Notes</th></tr>
+      <tr><td>Rope walls (physics)</td><td>x or z = &plusmn;3.1, centre height 0.75</td><td>Boxes 6.3 long, 0.1 thick, 1.5 high; inner face at &plusmn;3.05</td></tr>
+      <tr><td>Floor (physics)</td><td>y = 0</td><td>Infinite plane, friction 1.0</td></tr>
+      <tr><td>Canvas (drawn)</td><td>(0, &minus;0.15, 0)</td><td>7 &times; 0.3 &times; 7; apron 7.2 wide below it</td></tr>
+      <tr><td>Red Corner / Blue Corner</td><td>(&minus;0.72, 0, &minus;0.72) / (0.72, 0, 0.72)</td><td>Start marks, red turned 45&deg; to face blue</td></tr>
+      <tr><td>Red Stool / Blue Stool</td><td>(&minus;2.15, 0, &minus;2.15) / (2.15, 0, 2.15)</td><td>Walk-on spots (empty transforms)</td></tr>
+      <tr><td>Posts</td><td>(&plusmn;3.2, 0.575, &plusmn;3.2)</td><td>Drawn only</td></tr>
+      <tr><td>Cube Pool</td><td>x 40 to 43.5, y 0.3, z 40</td><td>8 cubes, 0.2 m, 1 kg, parked</td></tr>
+      <tr><td>Main Camera</td><td>(0, 3, &minus;7)</td><td>Eleven Cinemachine shots move it; the director cuts between them</td></tr>
+      <tr><td>Spot lights</td><td>(&plusmn;3.3, 6.05, &plusmn;3.3)</td><td>Four, baked</td></tr>
+      <tr><td>Sweep Red / Sweep Blue</td><td>(2.97, 6, 2.97) / (&minus;2.97, 6, &minus;2.97)</td><td>Follow-spots, each on its own boxer</td></tr>
+      <tr><td>House lights</td><td>y = 7.5, about 11 m out</td><td>Six, baked; live with shadows until the scene is baked</td></tr>
+    </table></div>
+  </section>
+</div>
+
+<script>
+// Shared helpers for the PoBox docs pages. D is the measured data, written into the page by the build.
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
+const colour = b => `var(--s${b.slot})`;
+const pill = (grade) => `<span class="pill ${{Strong: 'good', Pass: 'good', 'Just short': 'warn', Fails: 'bad'}[grade] || 'plain'}">${{Strong: '&#10003;&#10003;', Pass: '&#10003;', 'Just short': '&#9651;', Fails: '&#10007;'}[grade] || ''} ${grade}</span>`;
+const legend = () => `<div class="legend">${D.boxers.map(b => `<span><i class="dot" style="background:${colour(b)}"></i>${b.name}</span>`).join('')}</div>`;
+
+// A line chart: one y axis, 2px lines, end labels, a crosshair with every boxer's value, and a table behind it.
+function lineChart(host, series, o) {
+  const W = 720, H = 330, L = 46, R = 96, T = 14, B = 38;
+  const xMax = Math.max(...series.flatMap(s => s.pts.map(p => p[0])));
+  const yTop = o.yMax ?? Math.max(...series.flatMap(s => s.pts.map(p => p[1]))) * 1.08;
+  const X = v => L + (W - L - R) * v / xMax, Y = v => H - B - (H - T - B) * Math.min(v, yTop) / yTop;
+  const fmt = v => v.toFixed(o.digits ?? 2);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = yTop * i / 4; g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${fmt(v)}</text>`; }
+  for (let i = 0; i <= 4; i++) { const v = xMax * i / 4; g += `<text x="${X(v)}" y="${H - B + 18}" text-anchor="middle">${Math.round(v)}</text>`; }
+  g += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">${o.xLabel}</text>`;
+  if (o.mark != null) g += `<line x1="${L}" x2="${W - R}" y1="${Y(o.mark)}" y2="${Y(o.mark)}" stroke="var(--rope)" stroke-width="1.5" stroke-dasharray="6 5"/><text x="${L + 6}" y="${Y(o.mark) - 6}" style="fill:var(--rope)">${o.markLabel}</text>`;
+  // End labels, pushed apart so none sits on another.
+  const ends = series.map(s => ({ s, y: Y(s.pts.at(-1)[1]) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
+  for (const s of series) g += `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" points="${s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}"/>`;
+  for (const e of ends) { const p = e.s.pts.at(-1); g += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${e.s.color}" stroke="var(--surface)" stroke-width="2"/><text class="lab" x="${W - R + 8}" y="${e.y + 4}">${e.s.name} ${fmt(p[1])}</text>`; }
+  g += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  host.classList.add('chart');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.title}">${g}</svg><div class="tip" hidden></div>
+    <details><summary>The numbers as a table</summary><div class="scroll"><table><tr><th>Boxer</th><th class="num">Start</th><th class="num">Middle</th><th class="num">End</th></tr>${series.map(s => `<tr><td>${s.name}</td><td class="num">${fmt(s.pts[0][1])}</td><td class="num">${fmt(s.pts[s.pts.length >> 1][1])}</td><td class="num">${fmt(s.pts.at(-1)[1])}</td></tr>`).join('')}</table></div></details>`;
+  const svg = $('svg', host), tip = $('.tip', host), cross = $('.cross', host);
+  svg.addEventListener('pointermove', ev => {
+    const r = svg.getBoundingClientRect(), xv = ((ev.clientX - r.left) / r.width * W - L) / (W - L - R) * xMax;
+    if (xv < 0 || xv > xMax) { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); return; }
+    const rows = series.filter(s => s.pts.at(-1)[0] >= xv).map(s => ({ s, p: s.pts.reduce((a, b) => Math.abs(b[0] - xv) < Math.abs(a[0] - xv) ? b : a) })).sort((a, b) => b.p[1] - a.p[1]);
+    cross.setAttribute('x1', X(xv)); cross.setAttribute('x2', X(xv)); cross.setAttribute('visibility', 'visible');
+    tip.innerHTML = `<b>${o.xLabel.split(' (')[0]} ${Math.round(xv)}</b>` + rows.map(x => `<div><i class="dot" style="background:${x.s.color}"></i>${x.s.name} <b>${fmt(x.p[1])}</b></div>`).join('');
+    tip.hidden = false;
+    const px = ev.clientX - r.left;
+    tip.style.left = (px > r.width / 2 ? px - tip.offsetWidth - 14 : px + 14) + 'px'; tip.style.top = '20px';
+  });
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); });
+}
+
+// Horizontal bars, one per boxer, with the value written at the end and an optional pass-mark tick.
+function bars(host, rows, o) {
+  const max = o.max ?? Math.max(...rows.map(r => r.v)) * 1.1;
+  host.innerHTML = `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center;font-size:14px">` + rows.map(r =>
+    `<span>${r.name}</span><div class="meter" style="height:14px" title="${r.name}: ${r.v.toFixed(o.digits ?? 2)} ${o.unit}"><i style="width:${Math.min(100, r.v / max * 100)}%;background:${r.color}"></i>${o.mark != null ? `<b style="left:${o.mark / max * 100}%"></b>` : ''}</div><b style="font-variant-numeric:tabular-nums">${r.v.toFixed(o.digits ?? 2)} ${o.unit}</b>`).join('') + `</div>`;
+}
+
+// Top views drawn to one scale: S pixels to the metre, Unity z up the page.
+function plan(host, half, marks, extra) {
+  const S = 44, W = half * 2 * S, P = v => half * S + v * S, Q = v => half * S - v * S;
+  let g = `<defs><pattern id="g${host.id}" width="${S}" height="${S}" patternUnits="userSpaceOnUse"><path d="M${S} 0H0V${S}" fill="none" stroke="var(--line)" stroke-width="1"/></pattern></defs><rect width="${W}" height="${W}" fill="url(#g${host.id})"/>` + extra(P, Q, S);
+  for (const m of marks) {
+    const x = P(m.x), y = Q(m.z);
+    g += `<g tabindex="0"><title>${m.label}: x ${m.x}, z ${m.z} m. ${m.tip || ''}</title>` +
+      (m.shape === 'sq' ? `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" fill="${m.c}" stroke="var(--surface)" stroke-width="2"/>`
+        : m.shape === 'tri' ? `<path d="M${x} ${y - 9}L${x + 9} ${y + 7}H${x - 9}Z" fill="${m.c}" stroke="var(--surface)" stroke-width="2"/>`
+        : `<circle cx="${x}" cy="${y}" r="${m.r || 8}" fill="${m.c}" stroke="var(--surface)" stroke-width="2"/>`) +
+      (m.text ? `<text x="${x + (m.dx ?? 12)}" y="${y + (m.dy ?? 4)}" text-anchor="${m.anchor || 'start'}">${m.text}</text>` : '') + `</g>`;
+  }
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${W}" role="img" aria-label="${host.id} top view">${g}</svg>`;
+}
+const RED = 'var(--red-corner)', BLUE = 'var(--blue-corner)';
+plan($('#arena'), 4.5, [
+  { x: -2.15, z: -2.15, c: RED, shape: 'sq', label: 'Red Stool', text: 'Red walk-on', tip: 'Where red stands for the 5 s walk-on.' },
+  { x: 2.15, z: 2.15, c: BLUE, shape: 'sq', label: 'Blue Stool', text: 'Blue walk-on', dx: -12, anchor: 'end', tip: 'Where blue stands for the 5 s walk-on.' },
+  { x: -0.72, z: -0.72, c: RED, label: 'Red Corner', text: 'Red start', dx: -12, anchor: 'end', tip: 'Start mark for every round.' },
+  { x: 0.72, z: 0.72, c: BLUE, label: 'Blue Corner', text: 'Blue start', tip: 'Start mark for every round.' },
+  { x: 3.3, z: 3.3, c: 'var(--s4)', shape: 'tri', label: 'Spot light', tip: '6.05 m up.' }, { x: -3.3, z: 3.3, c: 'var(--s4)', shape: 'tri', label: 'Spot light', tip: '6.05 m up.' },
+  { x: 3.3, z: -3.3, c: 'var(--s4)', shape: 'tri', label: 'Spot light', tip: '6.05 m up.' }, { x: -3.3, z: -3.3, c: 'var(--s4)', shape: 'tri', label: 'Spot light', tip: '6.05 m up.' },
+  { x: 0, z: 0, c: 'var(--muted)', r: 4, label: 'Ring centre', tip: 'The teeth announcer is lowered here for introductions.' },
+], (P, Q, S) =>
+  `<rect x="${P(-3.6)}" y="${Q(3.6)}" width="${7.2 * S}" height="${7.2 * S}" fill="var(--line)"/>
+   <rect x="${P(-3.5)}" y="${Q(3.5)}" width="${7 * S}" height="${7 * S}" fill="var(--surface)" stroke="var(--muted)" stroke-width="1"/>
+   <rect x="${P(-3.05)}" y="${Q(3.05)}" width="${6.1 * S}" height="${6.1 * S}" fill="none" stroke="var(--rope)" stroke-width="4"/>
+   <line x1="${P(-0.72)}" y1="${Q(-0.72)}" x2="${P(0.72)}" y2="${Q(0.72)}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+   <text class="dim" x="${P(0.25)}" y="${Q(-0.3)}">2.04 m apart</text>
+   <text class="dim" x="${P(0)}" y="${Q(3.05) - 8}" text-anchor="middle">ropes: 6.1 m inside, walls 1.5 m high</text>
+   <text class="dim" x="${P(0)}" y="${Q(-3.5) + 18}" text-anchor="middle">canvas 7 m &middot; apron 7.2 m &middot; main camera 7 m this side, 3 m up</text>
+   <path d="M${P(0) - 10} ${Q(-4.3)}h20l-10 -14z" fill="var(--ink-2)"/>`);
+$('#key').innerHTML = [
+  ['var(--rope)', 'Rope walls', 'What the physics collides with. Inner face 3.05 m from centre.'],
+  [RED, 'Red marks', 'Square: walk-on spot. Circle: start mark.'], [BLUE, 'Blue marks', 'The same for the blue corner.'],
+  ['var(--s4)', 'Spot lights', 'Four over the corners, 6 m up. Two follow-spots sit just inside them.'],
+  ['var(--ink-2)', 'Main camera', 'Triangle at the bottom edge points at the ring. The director moves it between eleven shots.'],
+].map(k => `<span class="sw" style="background:${k[0]}"></span><div><b>${k[1]}</b><div class="note">${k[2]}</div></div>`).join('');
+
+plan($('#testbed'), 5.5, [
+  { x: 0, z: 0, c: RED, label: 'Boxer', text: 'boxer, facing right', dy: 24, dx: 0, anchor: 'middle', tip: 'Resets here.' },
+  { x: 1.3, z: 0, c: 'var(--muted)', r: 5, label: 'Stand-in opponent', text: 'stand-in', dy: -12, dx: 0, anchor: 'middle', tip: 'A point to face, not a body.' },
+  { x: 4.2, z: 0, c: 'var(--ink-2)', shape: 'tri', label: 'Main Camera', text: 'camera', dy: 24, dx: 0, anchor: 'middle', tip: '1.25 m up, looking back at the boxer.' },
+], (P, Q, S) =>
+  `<rect x="${P(-3)}" y="${Q(3)}" width="${6 * S}" height="${6 * S}" fill="var(--surface)" stroke="var(--muted)" stroke-width="1"/>
+   <circle cx="${P(0)}" cy="${Q(0)}" r="${5 * S}" fill="none" stroke="var(--rope)" stroke-width="2" stroke-dasharray="8 6"/>
+   <circle cx="${P(0)}" cy="${Q(0)}" r="${2 * S}" fill="none" stroke="var(--s4)" stroke-width="1.5" stroke-dasharray="3 5"/>
+   <circle cx="${P(0)}" cy="${Q(0)}" r="${3 * S}" fill="none" stroke="var(--s4)" stroke-width="1.5" stroke-dasharray="3 5"/>
+   <text class="dim" x="${P(0)}" y="${Q(2.45)}" text-anchor="middle">in training, cubes come from 2 to 3 m</text>
+   <text class="dim" x="${P(0)}" y="${Q(4.6)}" text-anchor="middle">auto-reset beyond 5 m</text>
+   <text class="dim" x="${P(-2.9)}" y="${Q(-2.75)}">drawn ground 6 m (the physics floor has no edge)</text>`);
+</script>
+
+</html>

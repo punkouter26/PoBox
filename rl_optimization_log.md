@@ -764,3 +764,14 @@ the iteration count taken from the checkpoint plus 800, and Zombie first, since 
 `m3_grandpa`, each with the get-up policy it had. The gate: 18 of 18 (a first run hung in play on the Menu scene and
 was cancelled; run again from the Testbed). Arena, a minute each: Matt v Grandma 100 landed to 87, Matt put down on
 command and up; Grandpa v Nick 58 landed to 0 of 117 thrown, Grandpa put down and up at the count of 4, boxing on.
+
+**On a phone, 2026-10-04 (tasks.md D6).** `PoBox/Android/Build APK` (237 MB, IL2CPP, arm64, MuJoCo 3.5.0), installed on
+a Pixel 9 Pro (Android 17) as `com.po.pobox`. Menu with six boxers; Trump v Zombie, two rounds: **60 FPS, frame 16.7 ms
+(worst 16.9), physics 0.46 ms a frame, render scale 0.70, 1,209 MB, no garbage.**
+
+The first build (three minutes, on data left from 2 October) drew the ring's lit materials magenta and the boxers'
+glTF materials not at all (only the outline shader showed), and logged the post-processing shaders as stripped. A build
+with the pipeline's variant stripping switched off was abandoned after an hour (55,296 variants of one unused terrain
+shader). **What cured it was the next ordinary build, stripping on as before, after that attempt had thrown the stale
+shader data away:** ring, ropes, boxers and post-processing all draw. The settings file is as committed. Left: the
+depth-of-field and Panini shaders are logged as stripped (unused effects). The editor is still on the Android target.

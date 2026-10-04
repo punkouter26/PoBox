@@ -5,6 +5,10 @@ the action, a live scoreboard, three judges, a ladder, a crowd and a commentary 
 a screen where the two boxers are chosen. Portrait, one screen, nothing scrolls. Unity 6000.6.0f1, URP
 17.6, Cinemachine 6.6, Timeline 6.6, UI Toolkit.
 
+**Current documentation set (2026-10-04): `DOCS/20261004/`** (architecture, boxer dashboard, abilities grid,
+model inventory, scene layout, benchmarks, training charts guide). The overview is the root `README.md`.
+This file is the running history.
+
 Read `AGENTS.md` for the owner's house rules. The sibling project `../PoDecath` is the older, larger
 relative: same engine version, same house style, and the source of the render settings, icons and sound
 recordings copied in here.

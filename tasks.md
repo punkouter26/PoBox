@@ -160,6 +160,8 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
 - [ ] D6 Android build with the 3.5.0 arm64 library; run on a phone; frame pacing and inference cost measured.
       2026-10-02: the 3.5.0 tag's Android library is MuJoCo 3.3.7; a 3.5.0 one is built here with NDK r27c and
       embedded (Packages/bin.mujoco). The APK builds (219 MB, IL2CPP, arm64). Open: no phone attached to run it on.
+      2026-10-04: runs on a Pixel 9 Pro (Android 17): 60 FPS, frame 16.7 ms, physics 0.46 ms, 1.2 GB; shaders right after a
+      clean shader build (rl_optimization_log.md). Open: a longer session on the phone, and heat.
 - [ ] D8 **When the GPU has spare time (owner, 2026-10-03):** retrain every boxer under the two human rules, the
       speed limit and fatigue (`--speed-limit --fatigue-j 30000`; `rl_optimization_log.md`, 2026-10-03 afternoon).
       Per boxer: top up footwork, get-up and match under the rules, pass the exam and the Unity gate, then
