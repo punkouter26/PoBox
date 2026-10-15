@@ -60,6 +60,9 @@ class FootworkEnv(BoxingEnv):
         kw.setdefault("nconmax", 96)  # cubes on the floor and on the boxer
         kw.setdefault("njmax", 384)
         super().__init__(xml_path, num_envs, **kw)
+        # Fatigue is a bout's (the footwork exam has none and no bout runs this brain): off here, whatever the
+        # config says, rather than a reserve drawn at reset and never spent.
+        self.fatigue_on = False
 
     # ---- set-up --------------------------------------------------------------------------------
     def _init_extra(self) -> None:

@@ -6,8 +6,10 @@ namespace PoBox.Broadcast
     /// <summary>
     /// The ticker's writer. Turns what the simulation measured into one line at a time: who landed what and
     /// how hard, who is on the canvas, and, when nothing has happened for a while, a number worth knowing
-    /// (accuracy, the joint working hardest, how much energy has been spent). Every figure it quotes is one
-    /// the telemetry holds; it makes nothing up.
+    /// (accuracy, the joint working hardest, how much energy has been spent). A boxer trained to tire gets a
+    /// line as its muscles' reserve (MjBoxer.Reserve) falls through half, where its drives start to weaken,
+    /// and another through a fifth: once each time it goes down through one, not again until it has rested
+    /// back above it. Every figure it quotes is one the telemetry holds; it makes nothing up.
     /// </summary>
     public class Commentary : MonoBehaviour
     {
@@ -19,6 +21,10 @@ namespace PoBox.Broadcast
 
         float _lastLine, _lastHitLine;
         int _idleIndex;
+        /// <summary>The reserve a tiring boxer's line is read at, and what it has to climb back over before it is read again.</summary>
+        static readonly double[] TiredAt = { 0.5, 0.2 };
+        const double Rested = 0.1;
+        readonly bool[,] _tiredSaid = new bool[2, 2];
 
         void OnEnable()
         {
@@ -80,9 +86,11 @@ namespace PoBox.Broadcast
         void Update()
         {
             if (bout == null || bout.Phase != BoutPhase.Fight) return;
-            if (Time.unscaledTime - _lastLine < idleSeconds) return;
             Fighter a = bout.red, b = bout.blue;
             if (a == null || b == null) return;
+            Tiring(0, a);
+            Tiring(1, b);
+            if (Time.unscaledTime - _lastLine < idleSeconds) return;
 
             string line = null;
             for (int tries = 0; tries < 4 && line == null; tries++)
@@ -122,6 +130,20 @@ namespace PoBox.Broadcast
 
             _lastLine = Time.unscaledTime;
             if (line != null) SimBus.Say(line, 0);
+        }
+
+        /// <summary>The reserve falling through a line is said once; climbing back over it (with some rest to spare) lets it be said again.</summary>
+        void Tiring(int corner, Fighter f)
+        {
+            Mj.MjBoxer body = f.boxer;
+            if (body == null || !body.Bound || body.Cfg.fatigue_j <= 0.0) return;
+            for (int t = 0; t < TiredAt.Length; t++)
+            {
+                if (_tiredSaid[corner, t]) { if (body.Reserve > TiredAt[t] + Rested) _tiredSaid[corner, t] = false; continue; }
+                if (body.Reserve >= TiredAt[t]) continue;
+                _tiredSaid[corner, t] = true;
+                SimBus.Say(t == 0 ? $"{f.displayName}'s arms are getting heavy" : $"{f.displayName} is running on empty", 1);
+            }
         }
 
         static string PunchName(PunchType t)

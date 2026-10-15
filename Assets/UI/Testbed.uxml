@@ -1,29 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    PoBox: the testbed, on the same stylesheet and the same five anchors as the HUD. TestbedHud.cs fills
-    it in. The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
+    PoBox: the testbed, on the same stylesheet and the same five anchors as the HUD: the name top-left, the
+    frame rate top-centre (tap: the readings), the menu top-right (STAND, RESET, SHOVES, CUBE), DEBUG
+    bottom-left (the readings) and the versions bottom-right. Under the name the boxer and its brain. The
+    menu and the readings open over the picture, docked at the bottom, one at a time; a tap on the picture
+    closes them. TestbedHud.cs fills it in. The same warning as in Hud.uxml: no two hyphens in a row inside
+    a comment.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/Theme.uss" />
 
-    <ui:VisualElement name="frame" class="root" picking-mode="Ignore">
-        <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
-            <ui:Label name="title" class="chip frame-title" text="TESTBED" picking-mode="Ignore" />
-            <ui:VisualElement class="spacer" picking-mode="Ignore" />
-            <ui:Button name="behaviour" class="btn btn--primary" text="STAND" />
-        </ui:VisualElement>
+    <ui:VisualElement name="root" class="root" picking-mode="Ignore">
+        <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
 
-        <ui:VisualElement name="top-centre" class="board" picking-mode="Ignore">
-            <ui:Label name="boxer" class="tb-line" text="" picking-mode="Ignore" />
-            <ui:Label name="telemetry" class="tb-line" text="" picking-mode="Ignore" />
-        </ui:VisualElement>
+            <ui:VisualElement name="picture" class="picture" />
 
-        <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom">
-            <ui:Button name="reset" class="btn tb-btn" text="RESET" />
-            <ui:Button name="shove" class="btn tb-btn" text="SHOVES OFF" />
-            <ui:Button name="cube" class="btn tb-btn" text="CUBE" />
-            <ui:VisualElement class="spacer" picking-mode="Ignore" />
-            <ui:Label name="version" class="chip frame-version" text="" picking-mode="Ignore" />
+            <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
+                <ui:Label name="title" class="chip frame-title" text="TESTBED" picking-mode="Ignore" />
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Button name="menu" class="btn btn--ghost btn--icon">
+                    <PoBox.UI.Glyph name="menu-glyph" kind="Menu" class="glyph--btn" />
+                </ui:Button>
+                <ui:VisualElement class="frame-centre" picking-mode="Ignore">
+                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="board" class="board tb-board" picking-mode="Ignore">
+                <ui:Label name="boxer" class="tb-line" text="" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+                <ui:VisualElement class="grid" picking-mode="Ignore">
+                    <ui:Button name="behaviour" class="btn btn--primary grid-2" text="STAND" />
+                    <ui:Button name="reset" class="btn grid-2" text="RESET" />
+                </ui:VisualElement>
+                <ui:VisualElement class="grid" picking-mode="Ignore">
+                    <ui:Button name="shove" class="btn grid-2" text="SHOVES OFF" />
+                    <ui:Button name="cube" class="btn grid-2" text="CUBE" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="debug-panel" class="debug-panel tb-debug over">
+                <ui:Label name="telemetry" class="tb-line" text="" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
+                <ui:Button name="debug" class="chip frame-debug">
+                    <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
+                    <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="" picking-mode="Ignore" />
+            </ui:VisualElement>
+
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

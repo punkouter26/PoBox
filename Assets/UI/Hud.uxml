@@ -4,22 +4,25 @@
 
     Five anchors that never move:
         top-left      the game's name
-        top-centre    the frame rate (tap: frame-time graph and the debug panel)
+        top-centre    the frame rate (tap: frame-time graph, and the debug panel opens or closes)
         top-right     the menu (three bars; a cross while it is open)
         bottom-left   DEBUG
         bottom-right  the version
 
     Between them, top to bottom: the scoreboard, the picture, the dock (one graph).
 
-    The scoreboard is three rows. The names sit on the health bars with the clock between them; under
-    that the win-probability bar; under that three chips, each a pair of numbers either side of an icon
-    (landed, hardest hit, and a third that cycles on a tap). In the picture's top corners are two small
-    pods, one a fighter: where it has been hit, and where its balance is. The commentary is a caption
-    over the bottom of the picture that goes away when it has nothing to say.
+    The scoreboard is three rows. The names sit on the health bars with the clock between them (a hit
+    leaves a pale chunk on the bar that drains a moment later); under that the win-probability bar; under
+    that three chips, each a pair of numbers either side of an icon (landed, hardest hit, and a third that
+    cycles on a tap anywhere on the scoreboard). In the picture's top corners are two small pods, one a
+    fighter: where it has been hit, where its balance is, its tank, what its muscles have left (boxers
+    trained to tire only), what it is doing, and ON THE ROPES or TIRED when it is. The commentary is a
+    caption over the bottom of the picture that goes away when it has nothing to say.
 
     The menu, the debug panel and the results card are absolutely positioned and open over that, docked at
-    the bottom and one at a time; nothing here scrolls and nothing pushes anything else off the screen.
-    A tap on the picture closes the menu. HudView.cs fills in the numbers.
+    the bottom and one at a time; each carries the class "over". Nothing here scrolls and nothing pushes
+    anything else off the screen. A tap on the picture or the scoreboard closes whichever is open.
+    HudView.cs fills in the numbers.
 
     A warning for whoever edits this: XML does not allow two hyphens in a row inside a comment, and the
     importer answers by silently producing an empty document. Class names with a double hyphen stay out
@@ -27,6 +30,7 @@
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/Theme.uss" />
+    <ui:Template name="Settings" src="project://database/Assets/UI/Settings.uxml" />
 
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
         <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
@@ -45,9 +49,10 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="board" class="board" picking-mode="Ignore">
+            <ui:VisualElement name="board" class="board">
                 <ui:VisualElement class="board-row" picking-mode="Ignore">
                     <ui:VisualElement class="plate plate--red" picking-mode="Ignore">
+                        <ui:VisualElement name="red-ghost" class="plate-ghost plate-ghost--red" picking-mode="Ignore" />
                         <ui:VisualElement name="red-hp" class="plate-fill plate-fill--red" picking-mode="Ignore" />
                         <ui:Label name="red-name" class="plate-name" text="RED" picking-mode="Ignore" />
                         <ui:Label name="red-badge" class="plate-rank" text="#1" picking-mode="Ignore" />
@@ -59,6 +64,7 @@
                         <ui:Label name="clock" class="clock-time" text="0:45" picking-mode="Ignore" />
                     </ui:VisualElement>
                     <ui:VisualElement class="plate plate--blue" picking-mode="Ignore">
+                        <ui:VisualElement name="blue-ghost" class="plate-ghost plate-ghost--blue" picking-mode="Ignore" />
                         <ui:VisualElement name="blue-hp" class="plate-fill plate-fill--blue" picking-mode="Ignore" />
                         <ui:Label name="blue-name" class="plate-name" text="BLUE" picking-mode="Ignore" />
                         <ui:Label name="blue-badge" class="plate-rank" text="#2" picking-mode="Ignore" />
@@ -85,11 +91,11 @@
                         <PoBox.UI.Glyph kind="Burst" class="glyph" />
                         <ui:Label name="peak-blue" class="stat-val stat-val--r" text="0 N·s" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <ui:Button name="cycle" class="stat stat--tap">
+                    <ui:VisualElement name="cycle" class="stat stat--tap" picking-mode="Ignore">
                         <ui:Label name="cycle-red" class="stat-val stat-val--l" text="0.0 kJ" picking-mode="Ignore" />
                         <PoBox.UI.Glyph name="cycle-glyph" kind="Bolt" class="glyph glyph--tap" />
                         <ui:Label name="cycle-blue" class="stat-val stat-val--r" text="0.0 kJ" picking-mode="Ignore" />
-                    </ui:Button>
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -99,7 +105,12 @@
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-red" class="tank-fill" picking-mode="Ignore" />
                 </ui:VisualElement>
+                <ui:VisualElement name="reserve-bar-red" class="tank tank--reserve hidden" picking-mode="Ignore">
+                    <ui:VisualElement name="reserve-red" class="tank-fill tank-fill--reserve" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label name="act-red" class="act" text="GUARD" picking-mode="Ignore" />
+                <ui:Label name="ropes-red" class="pod-flag pod-flag--ropes hidden" text="ON THE ROPES" picking-mode="Ignore" />
+                <ui:Label name="tired-red" class="pod-flag hidden" text="TIRED" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement name="pod-blue" class="pod pod--blue" picking-mode="Ignore">
                 <PoBox.UI.HitMap name="hit-blue" class="hitmap" mirror="true" />
@@ -107,7 +118,12 @@
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-blue" class="tank-fill" picking-mode="Ignore" />
                 </ui:VisualElement>
+                <ui:VisualElement name="reserve-bar-blue" class="tank tank--reserve hidden" picking-mode="Ignore">
+                    <ui:VisualElement name="reserve-blue" class="tank-fill tank-fill--reserve" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label name="act-blue" class="act" text="GUARD" picking-mode="Ignore" />
+                <ui:Label name="ropes-blue" class="pod-flag pod-flag--ropes hidden" text="ON THE ROPES" picking-mode="Ignore" />
+                <ui:Label name="tired-blue" class="pod-flag hidden" text="TIRED" picking-mode="Ignore" />
             </ui:VisualElement>
 
             <ui:Label name="banner" class="banner hidden" text="ROUND 1" picking-mode="Ignore" />
@@ -136,6 +152,12 @@
                         <PoBox.UI.Glyph kind="Shield" class="glyph" />
                         <ui:Label name="break-blocked-blue" class="stat-val stat-val--r" text="0" picking-mode="Ignore" />
                     </ui:VisualElement>
+                    <!-- Who held the centre of the ring in the round: each corner's share of the time one of them did. -->
+                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                        <ui:Label name="break-centre-red" class="stat-val stat-val--l" text="50%" picking-mode="Ignore" />
+                        <PoBox.UI.Glyph kind="Ring" class="glyph" />
+                        <ui:Label name="break-centre-blue" class="stat-val stat-val--r" text="50%" picking-mode="Ignore" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -143,7 +165,7 @@
             <ui:VisualElement name="pip" class="pip hidden" picking-mode="Ignore" />
 
             <!-- A hard clean punch: the glove's speed, written where it landed. -->
-            <ui:Label name="flash" class="flash hidden" text="" picking-mode="Ignore" />
+            <ui:Label name="flash" class="flash over hidden" text="" picking-mode="Ignore" />
 
             <ui:Label name="ticker" class="ticker" text="" picking-mode="Ignore" />
 
@@ -157,11 +179,11 @@
                         <ui:VisualElement name="dot1" class="dot dot--page" picking-mode="Ignore" />
                         <ui:VisualElement name="dot2" class="dot dot--page" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <PoBox.UI.Sparkline name="strip-graph" class="strip-graph" />
+                    <PoBox.UI.Sparkline name="strip-graph" class="strip-graph spark--excite" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="results" class="sheet results hidden">
+            <ui:VisualElement name="results" class="sheet results over hidden">
                 <ui:VisualElement class="res-head" picking-mode="Ignore">
                     <ui:VisualElement class="icon icon--trophy res-icon" picking-mode="Ignore" />
                     <ui:VisualElement class="res-title" picking-mode="Ignore">
@@ -176,17 +198,17 @@
                     <ui:VisualElement name="res-tape" class="tape tape--card" picking-mode="Ignore" />
                     <PoBox.UI.HitMap name="res-hit-blue" class="res-hitmap" mirror="true" />
                 </ui:VisualElement>
-                <PoBox.UI.Sparkline name="res-graph" class="res-graph" />
+                <PoBox.UI.Sparkline name="res-graph" class="res-graph spark--share" />
                 <ui:VisualElement class="res-actions" picking-mode="Ignore">
                     <ui:Button name="res-boxers" class="btn btn--tool">
                         <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
-                        <ui:Label class="btn-word" text="BOXERS" picking-mode="Ignore" />
+                        <ui:Label name="res-boxers-word" class="btn-word" text="BOXERS" picking-mode="Ignore" />
                     </ui:Button>
                     <ui:Button name="res-next" class="btn btn--primary res-go" text="NEXT BOUT" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet hidden">
+            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
                 <ui:VisualElement class="seg" picking-mode="Ignore">
                     <ui:Button name="tab-match" class="seg-btn seg-btn--on" text="MATCH" />
                     <ui:Button name="tab-league" class="seg-btn" text="LEAGUE" />
@@ -225,7 +247,7 @@
                     <ui:VisualElement class="grid grid--last" picking-mode="Ignore">
                         <ui:Button name="m-boxers" class="btn btn--tool grid-2">
                             <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
-                            <ui:Label class="btn-word" text="CHANGE BOXERS" picking-mode="Ignore" />
+                            <ui:Label name="m-boxers-word" class="btn-word" text="CHANGE BOXERS" picking-mode="Ignore" />
                         </ui:Button>
                     </ui:VisualElement>
                 </ui:VisualElement>
@@ -233,18 +255,12 @@
                 <ui:VisualElement name="page-league" class="page hidden" picking-mode="Ignore" />
 
                 <ui:VisualElement name="page-settings" class="page hidden" picking-mode="Ignore">
-                    <ui:VisualElement class="grid" picking-mode="Ignore">
-                        <ui:Button name="s-sound" class="btn grid-2" text="SOUND ON" />
-                        <ui:Button name="s-quality" class="btn grid-2" text="QUALITY PC" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="grid" picking-mode="Ignore">
-                        <ui:Button name="s-fps" class="btn grid-2" text="60 FPS" />
-                        <ui:Button name="s-reset" class="btn grid-2" text="RESET LADDER" />
-                    </ui:VisualElement>
+                    <ui:Instance template="Settings" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="debug-panel" class="debug-panel hidden" picking-mode="Ignore" />
+            <!-- Takes the taps that land on it, so a tap on the panel does not reach the picture under it. -->
+            <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
 
             <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
                 <ui:Button name="debug" class="chip frame-debug">

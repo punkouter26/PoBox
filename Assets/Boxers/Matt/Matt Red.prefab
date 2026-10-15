@@ -748,7 +748,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2163462865412399259, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2163462865412399259, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -828,7 +828,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6038853405142472232, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6038853405142472232, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1207,8 +1207,6 @@ MonoBehaviour:
   - {fileID: 2225711512198880452}
   - {fileID: 452479284975766009}
   - {fileID: 822037799733668989}
-  - {fileID: 2373608732415398635}
-  - {fileID: 7870246776952448088}
   overlayRenderers:
   - {fileID: 1677096071953998619}
   - {fileID: 985434627415264544}
@@ -1276,11 +1274,6 @@ Transform:
 --- !u!137 &2225711512198880452 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: 7916696399424706567, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
-  m_PrefabInstance: {fileID: 8304235006860870851}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &2373608732415398635 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 6038853405142472232, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
   m_PrefabInstance: {fileID: 8304235006860870851}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &2509791422381060179 stripped
@@ -1635,11 +1628,6 @@ Transform:
 --- !u!4 &7866550088389860997 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2167647719936875078, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
-  m_PrefabInstance: {fileID: 8304235006860870851}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &7870246776952448088 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 2163462865412399259, guid: 803baa18c28dfa04dab04893cdf24c90, type: 3}
   m_PrefabInstance: {fileID: 8304235006860870851}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &8170238277769323203 stripped

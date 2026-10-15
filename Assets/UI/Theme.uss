@@ -20,7 +20,13 @@
  *    the walk-on name (76), the round banner (96) and the referee's count (220).
  *
  *  - What opens over the fight (menu, results, debug) is docked at the bottom, where a thumb is, one at a
- *    time; the picture keeps the top of the screen.
+ *    time; the picture keeps the top of the screen. Each of them carries the class "over", which is how the
+ *    one-screen audit (LayoutAudit.cs) knows it may lie over the furniture and must never lie over another.
+ *
+ *  - Where something sits is a token, never a number written into its rule: the screen is cut into bands
+ *    (the frame rows, the scoreboard, the overlays over the picture, the dock) and every offset below is
+ *    one of the band edges in :root. USS has no calc(), so each edge is written out with its sum beside it;
+ *    change a band and change the sums with it.
  */
 
 :root {
@@ -41,6 +47,7 @@
     --shade:          rgba(0, 0, 0, 0.35);
 
     --accent:         rgb(46, 191, 140);
+    --accent-hover:   rgb(60, 210, 156);
     --accent-press:   rgb(32, 150, 110);
     --accent-tint:    rgba(46, 191, 140, 0.18);
     --accent-tint-2:  rgba(46, 191, 140, 0.32);
@@ -51,6 +58,12 @@
     --warn:           rgb(255, 198, 84);
     --red:            rgb(226, 62, 62);
     --blue:           rgb(52, 124, 240);
+    /* What a fighter has left in its muscles (MjBoxer.Reserve), beside the tank of joint work. */
+    --reserve:        rgb(120, 196, 255);
+    /* The pale chunk of a health bar that a hit has just taken, before it drains away. */
+    --ghost:          rgba(255, 255, 255, 0.55);
+    /* Under text laid straight on the picture. */
+    --shadow:         rgba(0, 0, 0, 0.8);
 
     --t-micro:        26px;
     --t-small:        28px;
@@ -64,9 +77,31 @@
     --gap-4:          16px;
     --gap-5:          20px;
 
+    /* Anything a thumb presses is at least this tall (a 44 pt target at 2x). */
+    --touch:          88px;
+
     /* Height of a frame row and the distance anything else keeps from the top and bottom edges. */
     --frame-row:      88px;
-    --frame-clear:   104px;
+    --frame-clear:   104px;          /* gap-2 + frame-row + gap-2 */
+
+    /* The bands of the HUD, from the top. */
+    --board-h:       208px;          /* the scoreboard: 12 + plates 72 + 8 + win bar 40 + 8 + chips 56 + 12 */
+    --under-board:   320px;          /* frame-clear + board-h + gap-2: where the overlays on the picture start */
+    --pod-w:         132px;
+    --beside-pods:   156px;          /* gap-4 + pod-w + gap-2: what a full-width overlay leaves either side for the pods */
+    --banner-top:    470px;          /* under-board + 150: the round's name across the middle of the pods */
+    --count-top:     500px;          /* under-board + 180 */
+    --break-top:     776px;          /* under-board + the tallest a pod gets (about 444, both flags up) + gap-3 */
+
+    /* And from the bottom. */
+    --dock-h:        196px;
+    --over-dock:     308px;          /* frame-clear + dock-h + gap-2: the caption sits on the dock */
+    --over-caption:  380px;          /* over-dock + caption 56 + gap-4: the inset sits on the caption */
+    --walkon-bottom: 520px;          /* over-caption + 140 */
+
+    /* The first screen. */
+    --fight-h:       144px;
+    --picker-bottom: 264px;          /* frame-clear + fight-h + gap-4 */
 
     --radius-lg:      16px;
     --radius:         12px;
@@ -106,8 +141,8 @@ Label { margin: 0; padding: 0; }
     -unity-font-style: bold;
     padding: 0 20px;
     margin: 0;
-    height: 88px;
-    min-height: 88px;
+    height: var(--touch);
+    min-height: var(--touch);
     transition-property: background-color, scale;
     transition-duration: 0.12s;
     transition-timing-function: ease-out;
@@ -117,15 +152,20 @@ Label { margin: 0; padding: 0; }
 .btn:active { scale: 0.97 0.97; background-color: var(--accent-press); }
 
 .btn--primary { background-color: var(--accent); color: var(--on-accent); }
-.btn--primary:hover { background-color: rgb(60, 210, 156); }
+.btn--primary:hover { background-color: var(--accent-hover); }
 .btn--ghost { background-color: var(--overlay); }
 .btn--on { background-color: var(--accent-tint-2); border-width: 2px; border-color: var(--accent); }
 .btn--danger { background-color: var(--danger); color: var(--on-danger); }
+.btn--danger .glyph--btn { color: var(--on-danger); }
+/* A button whose scene is loading: dimmed, its word trailing dots (MenuView, HudView). */
+.btn--busy { opacity: 0.55; }
 
 /* An icon and a word side by side, and an icon alone. */
 .btn--tool { flex-direction: row; align-items: center; justify-content: center; }
-.btn--icon { width: 88px; padding: 0; align-items: center; justify-content: center; }
+.btn--icon { width: var(--touch); padding: 0; align-items: center; justify-content: center; }
 .btn-word { font-size: var(--t-body); -unity-font-style: bold; margin-left: 10px; }
+.btn-word--lead { margin-left: 0; }
+.badge--btn { font-size: var(--t-small); margin: 0 0 0 12px; padding: 4px 10px; color: var(--ink); background-color: var(--shade); -unity-font-style: bold; }
 
 .icon {
     width: 44px;
@@ -136,6 +176,7 @@ Label { margin: 0; padding: 0; }
 .icon--trophy { background-image: url("project://database/Assets/UI/Icons/trophy.png"); }
 .icon--return { background-image: url("project://database/Assets/UI/Icons/return.png"); }
 .icon--next   { background-image: url("project://database/Assets/UI/Icons/next.png"); }
+.icon--gear   { background-image: url("project://database/Assets/UI/Icons/gear.png"); }
 
 /* ------------------------------------------------------------------ frame: the five anchors */
 
@@ -198,6 +239,7 @@ Label { margin: 0; padding: 0; }
     top: var(--frame-clear);
     left: var(--gap-4);
     right: var(--gap-4);
+    height: var(--board-h);
     background-color: var(--overlay);
     border-radius: var(--radius);
     padding: 12px 16px;
@@ -222,7 +264,20 @@ Label { margin: 0; padding: 0; }
 .plate-fill { position: absolute; top: 0; bottom: 0; width: 100%; }
 .plate-fill--red { left: 0; background-color: var(--red); }
 .plate-fill--blue { right: 0; background-color: var(--blue); }
-.plate-name { font-size: var(--t-title); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+/* Under the fill: the health a hit has just taken, left pale for a moment and then drained to the fill. */
+.plate-ghost {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 100%;
+    background-color: var(--ghost);
+    transition-property: width;
+    transition-duration: 0.35s;
+    transition-delay: 0.6s;
+    transition-timing-function: ease-in;
+}
+.plate-ghost--red { left: 0; }
+.plate-ghost--blue { right: 0; }
+.plate-name { font-size: var(--t-title); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px var(--shadow); }
 .plate-rank {
     font-size: var(--t-micro);
     background-color: var(--shade);
@@ -231,7 +286,11 @@ Label { margin: 0; padding: 0; }
     margin: 0 10px;
     flex-shrink: 0;
 }
-.plate-hp { font-size: var(--t-body); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+.plate-hp { font-size: var(--t-body); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px var(--shadow); }
+
+/* A number that has just changed, or a badge that has just gone up, swells for a tenth of a second (HudView.Pop). */
+.plate-hp, .stat-val, .judge-card, .pod-flag { transition-property: scale; transition-duration: 0.15s; transition-timing-function: ease-out; }
+.pop { scale: 1.3 1.3; }
 
 .badge {
     font-size: var(--t-micro);
@@ -268,17 +327,18 @@ Label { margin: 0; padding: 0; }
     padding: 0;
     border-width: 0;
     border-radius: var(--radius-xs);
-    background-color: rgba(0, 0, 0, 0);
+    background-color: transparent;
 }
 .tape-val { flex: 1 1 0; font-size: var(--t-body); -unity-font-style: bold; color: var(--ink); }
 .tape-val--l { -unity-text-align: middle-right; padding-right: 20px; }
 .tape-val--r { -unity-text-align: middle-left; padding-left: 20px; }
-.tape-key { width: 250px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
+.tape-key { width: 60px; flex-direction: row; align-items: center; justify-content: center; flex-shrink: 0; }
 .glyph { width: 30px; height: 30px; margin-right: 10px; color: var(--ink-dim); }
-.tape-code { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
+.tape-key .glyph { margin: 0; }
 
 /* On the scoreboard the tape is one row of three chips: red's number, an icon, blue's number. The icon is
-   the label. The third chip is pressed to change what it shows, and is tinted to say so. */
+   the label. The third chip changes what it shows on a tap anywhere on the scoreboard, and is tinted to
+   say so: the whole board is the target, because a chip is shorter than a thumb. */
 .chips { flex-direction: row; margin-top: var(--gap-2); margin-left: -4px; margin-right: -4px; }
 .stat {
     flex: 1 1 0;
@@ -293,7 +353,6 @@ Label { margin: 0; padding: 0; }
     background-color: var(--row);
 }
 .stat--tap { background-color: var(--accent-tint); }
-.stat--tap:active { background-color: var(--accent-tint-2); }
 .stat-val { flex: 1 1 0; font-size: var(--t-small); -unity-font-style: bold; color: var(--ink); }
 .stat-val--l { -unity-text-align: middle-right; padding-right: 10px; }
 .stat-val--r { -unity-text-align: middle-left; padding-left: 10px; }
@@ -303,8 +362,8 @@ Label { margin: 0; padding: 0; }
 /* A fighter's pod, in the picture's top corner: where it has been hit, and where its balance is. */
 .pod {
     position: absolute;
-    top: 320px;
-    width: 132px;
+    top: var(--under-board);
+    width: var(--pod-w);
     padding: 8px;
     align-items: center;
     background-color: var(--overlay);
@@ -318,6 +377,24 @@ Label { margin: 0; padding: 0; }
 .tank { width: 116px; height: 10px; margin-top: 4px; border-radius: 5px; background-color: var(--row-lead); overflow: hidden; }
 .tank-fill { height: 10px; width: 100%; background-color: var(--accent); }
 .tank-fill--low { background-color: var(--warn); }
+/* Under the tank, for a boxer trained to tire: what its muscles have left. Below half its drives weaken. */
+.tank--reserve { height: 6px; border-radius: 3px; }
+.tank-fill--reserve { height: 6px; background-color: var(--reserve); }
+.tank-fill--weak { background-color: var(--danger); }
+/* A word about the boxer's state under the action badge: ON THE ROPES, TIRED. */
+.pod-flag {
+    width: 116px;
+    margin-top: 4px;
+    padding: 2px 0;
+    font-size: var(--t-micro);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    border-radius: var(--radius-xs);
+    color: var(--on-danger);
+    background-color: var(--warn);
+}
+.pod-flag--ropes { background-color: var(--danger); }
 .act { width: 116px; height: 36px; margin-top: 4px; font-size: var(--t-micro); -unity-font-style: bold; -unity-text-align: middle-center; color: var(--ink-dim); border-radius: var(--radius-xs); }
 .act--punch { color: rgb(12, 16, 22); background-color: var(--ink); }
 .act--alarm { color: var(--on-danger); background-color: var(--warn); }
@@ -328,22 +405,22 @@ Label { margin: 0; padding: 0; }
 
 .banner {
     position: absolute;
-    top: 470px;
-    left: 0; right: 0;
+    top: var(--banner-top);
+    left: var(--beside-pods); right: var(--beside-pods);
     -unity-text-align: middle-center;
     font-size: 96px;
     -unity-font-style: bold;
     letter-spacing: 6px;
-    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+    text-shadow: 0 4px 10px var(--shadow);
 }
-.banner--count { top: 500px; font-size: 220px; letter-spacing: 0; color: var(--warn); }
+.banner--count { top: var(--count-top); font-size: 220px; letter-spacing: 0; color: var(--warn); }
 
 /* Between rounds: the cards and the round's numbers, over the middle of the picture. */
 .break {
     position: absolute;
     left: var(--gap-4);
     right: var(--gap-4);
-    top: 700px;
+    top: var(--break-top);
     padding: var(--gap-4);
     background-color: var(--overlay);
     border-radius: var(--radius);
@@ -353,7 +430,7 @@ Label { margin: 0; padding: 0; }
 .pip {
     position: absolute;
     right: var(--gap-4);
-    bottom: 380px;
+    bottom: var(--over-caption);
     width: 270px;
     height: 360px;
     border-width: 4px;
@@ -372,7 +449,7 @@ Label { margin: 0; padding: 0; }
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     color: var(--warn);
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+    text-shadow: 0 2px 6px var(--shadow);
     background-color: var(--overlay);
     border-radius: var(--radius-sm);
 }
@@ -382,7 +459,7 @@ Label { margin: 0; padding: 0; }
     position: absolute;
     left: var(--gap-4);
     right: var(--gap-4);
-    bottom: 520px;
+    bottom: var(--walkon-bottom);
     height: 196px;
     flex-direction: row;
     background-color: var(--overlay);
@@ -402,7 +479,7 @@ Label { margin: 0; padding: 0; }
     position: absolute;
     left: var(--gap-4);
     right: var(--gap-4);
-    bottom: 308px;
+    bottom: var(--over-dock);
     height: 56px;
     font-size: var(--t-body);
     -unity-text-align: middle-left;
@@ -413,6 +490,7 @@ Label { margin: 0; padding: 0; }
     padding: 0 18px;
     overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------------ dock */
@@ -424,11 +502,17 @@ Label { margin: 0; padding: 0; }
     bottom: var(--frame-clear);
 }
 
-.strip { height: 196px; background-color: var(--overlay); border-radius: var(--radius); padding: 10px 16px 12px 16px; }
+.strip { height: var(--dock-h); background-color: var(--overlay); border-radius: var(--radius); padding: 10px 16px 12px 16px; }
 .strip-head { flex-direction: row; align-items: center; height: 40px; }
 .strip-title { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
 .strip-value { font-size: var(--t-body); -unity-font-style: bold; margin-left: 16px; }
 .strip-graph { flex-grow: 1; margin-top: 6px; }
+
+/* The graphs' colours (Sparkline.cs reads them), one class a page: --warn, --ink and --accent, written out because a
+   custom property is read as it is written. */
+.spark--excite { --line-color: rgb(255, 198, 84); --fill-color: rgba(255, 198, 84, 0.16); }
+.spark--share  { --line-color: rgb(240, 244, 249); --fill-color: rgba(255, 255, 255, 0.12); }
+.spark--frame  { --line-color: rgb(46, 191, 140); --fill-color: rgba(46, 191, 140, 0.16); }
 
 /* ------------------------------------------------------------------ sheets */
 
@@ -449,6 +533,8 @@ Label { margin: 0; padding: 0; }
 .res-icon { width: 72px; height: 72px; margin-right: 16px; -unity-background-image-tint-color: var(--warn); }
 .res-title { flex: 1 1 0; }
 .res-winner { font-size: var(--t-display); -unity-font-style: bold; }
+.res-winner--red { color: var(--red); }
+.res-winner--blue { color: var(--blue); }
 .res-method { font-size: var(--t-body); color: var(--ink-dim); }
 .res-graph { height: 96px; margin-top: var(--gap-3); background-color: var(--row); border-radius: var(--radius-sm); }
 
@@ -473,7 +559,6 @@ Label { margin: 0; padding: 0; }
 /* Both fighters' numbers, with each one's hit map beside its column. */
 .res-mid { flex-direction: row; align-items: center; margin-top: var(--gap-3); }
 .res-mid .tape { flex: 1 1 0; margin-top: 0; }
-.res-mid .tape-key { width: 220px; }
 .res-hitmap { width: 116px; height: 176px; flex-shrink: 0; }
 .res-actions { flex-direction: row; align-items: center; margin-top: var(--gap-4); }
 .res-actions .btn { margin-right: var(--gap-2); }
@@ -482,14 +567,14 @@ Label { margin: 0; padding: 0; }
 /* Menu: one sheet, three tabs, docked at the bottom where the results card sits. Every page is the same
    height so the sheet does not jump between them. */
 .menu-sheet { bottom: var(--frame-clear); }
-.seg { flex-direction: row; height: 88px; background-color: var(--row); border-radius: var(--radius); padding: 6px; }
+.seg { flex-direction: row; height: var(--touch); background-color: var(--row); border-radius: var(--radius); padding: 0; }
 .seg-btn {
     flex: 1 1 0;
     margin: 0 3px;
     padding: 0;
     border-width: 0;
     border-radius: var(--radius-sm);
-    background-color: rgba(0, 0, 0, 0);
+    background-color: transparent;
     color: var(--ink-dim);
     font-size: var(--t-body);
     -unity-font-style: bold;
@@ -539,50 +624,34 @@ Label { margin: 0; padding: 0; }
 /* The value takes the rest of its cell: sized to its text, a count that goes from 99 to 104 is clipped
    for the frame it takes the layout to catch up, and the one-screen audit says so. */
 .dbg-val { font-size: var(--t-small); -unity-font-style: bold; flex-grow: 1; }
+/* A switch at the foot of the panel: X-RAY draws the boxers' collision shapes over the picture. */
+.dbg-chip { width: 50%; margin-top: var(--gap-2); }
 
 /* ------------------------------------------------------------------ the testbed (Testbed.uxml) */
 
+.tb-board { height: auto; }
 .tb-line { font-size: var(--t-small); white-space: normal; -unity-text-align: middle-center; }
-.tb-btn { margin-right: var(--gap-2); }
+.tb-debug { width: auto; right: var(--gap-4); }
+.tb-debug .tb-line { width: 100%; -unity-text-align: middle-left; }
 
 /* ------------------------------------------------------------------ the first screen: choose the boxers */
 
 .menu-root { background-color: var(--scrim); }
 
-.menu-heading {
-    position: absolute;
-    top: var(--frame-clear);
-    left: 0; right: 0;
-    height: 88px;
-    font-size: var(--t-display);
-    -unity-font-style: bold;
-    letter-spacing: 4px;
-    -unity-text-align: middle-center;
-}
-
-/* Two corners side by side, between the heading and the pairing line. */
+/* Two corners side by side, between the frame and FIGHT. Each is told by its colour along the top and a
+   glove in that colour: no heading, no labels, the height goes to the portraits. */
 .picker {
     position: absolute;
-    top: 208px;
-    bottom: 344px;
+    top: var(--frame-clear);
+    bottom: var(--picker-bottom);
     left: var(--gap-4);
     right: var(--gap-4);
     flex-direction: row;
 }
-.pick-col { flex: 1 1 0; }
-.pick-col--red { margin-right: 6px; }
-.pick-col--blue { margin-left: 6px; }
-.pick-corner {
-    height: 64px;
-    margin-bottom: var(--gap-2);
-    border-radius: var(--radius-sm);
-    font-size: var(--t-body);
-    -unity-font-style: bold;
-    letter-spacing: 3px;
-    -unity-text-align: middle-center;
-}
-.pick-corner--red { background-color: var(--red); }
-.pick-corner--blue { background-color: var(--blue); }
+.pick-col { flex: 1 1 0; border-top-width: 8px; border-radius: var(--radius-sm); padding-top: var(--gap-2); }
+.pick-col--red { margin-right: 6px; border-top-color: var(--red); }
+.pick-col--blue { margin-left: 6px; border-top-color: var(--blue); }
+.pick-glove { width: 40px; height: 40px; align-self: center; margin-bottom: var(--gap-2); }
 .pick-cards { flex-grow: 1; }
 
 /* One boxer. The cards share the column, so they are as tall as the number of boxers allows. */
@@ -616,23 +685,16 @@ Label { margin: 0; padding: 0; }
 .pick-name { font-size: var(--t-title); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; }
 .pick-detail { font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); -unity-text-align: middle-left; }
 
-.versus {
-    position: absolute;
-    bottom: 240px;
-    left: var(--gap-4);
-    right: var(--gap-4);
-    height: 88px;
-    font-size: var(--t-display);
-    -unity-font-style: bold;
-    letter-spacing: 2px;
-    -unity-text-align: middle-center;
-}
+/* FIGHT, with the pairing as it stands written under the word. */
 .fight {
     position: absolute;
     bottom: var(--frame-clear);
     left: var(--gap-4);
     right: var(--gap-4);
-    height: 120px;
-    font-size: var(--t-display);
-    letter-spacing: 8px;
+    height: var(--fight-h);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
+.fight-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 8px; color: var(--on-accent); }
+.fight-pair { font-size: var(--t-body); -unity-font-style: bold; letter-spacing: 1px; color: var(--on-accent); }

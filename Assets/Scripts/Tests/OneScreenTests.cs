@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -12,10 +13,13 @@ namespace PoBox.Tests
     /// <summary>
     /// The one-screen rule as a test. Loads the arena, points the HUD at a texture the shape of a phone, and
     /// fails if anything is drawn off the screen, anything scrolls, any text is under the legibility floor,
-    /// any label is cut off, or one of the five frame anchors has left its corner. Run for a small 9:16
-    /// phone, the 1080 x 1920 reference and a tall 9:20 phone, with the menu and the debug panel open as
-    /// well as closed. The first screen, where the boxers are chosen, gets the same treatment, and the
-    /// arena is checked to field the pair that was picked.
+    /// any label is cut off, any button is smaller than a thumb, two overlays (or two pieces of furniture)
+    /// lie over each other, one of the five frame anchors has left its corner, or the UI writes a warning
+    /// to the log. Run for a small 9:16 phone, the 1080 x 1920 reference, a tall 9:20 phone and a taller
+    /// 9:21 one, each with and without a notch (130 px off the top, 80 off the bottom), through every state
+    /// the HUD has: the walk-on, the round's banner, the fight with the menu, the debug panel and each graph,
+    /// a count with its inset, the round break and the result. The first screen, where the boxers are
+    /// chosen, gets the same treatment, and the arena is checked to field the pair that was picked.
     /// </summary>
     public class OneScreenTests
     {
@@ -24,10 +28,11 @@ namespace PoBox.Tests
             new Vector2Int(720, 1280),
             new Vector2Int(1080, 1920),
             new Vector2Int(1080, 2400),
+            new Vector2Int(1080, 2520),
         };
 
         [UnityTest]
-        public IEnumerator HudFitsOneScreenWithNoScrolling([ValueSource(nameof(Phones))] Vector2Int phone)
+        public IEnumerator HudFitsOneScreenWithNoScrolling([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
         {
             yield return SceneManager.LoadSceneAsync("Arena", LoadSceneMode.Single);
             yield return null;
@@ -41,34 +46,75 @@ namespace PoBox.Tests
             RenderTexture previous = panel.targetTexture;
             var target = new RenderTexture(phone.x, phone.y, 24);
             panel.targetTexture = target;
+            var warnings = new UiWarnings();
+            string at = notch ? "notched " : "";
             try
             {
-                // The fight itself, then with each thing that can open over it.
+                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                // The walk-on, then each thing that can open over the picture.
                 yield return Settle();
-                Check(hud.Root, phone, "fight");
+                Bout bout = Bout.Instance;
+                Assert.IsNotNull(bout, "the Arena scene has no Bout");
+                Check(hud.Root, phone, at + (bout.Phase == BoutPhase.WalkOn ? "walk-on" : "fight"));
 
                 for (int tab = 0; tab < 3; tab++)
                 {
                     hud.OpenMenu(tab);
                     yield return Settle();
-                    Check(hud.Root, phone, "menu tab " + tab);
+                    Check(hud.Root, phone, at + "menu tab " + tab);
                 }
-                hud.CloseMenu();
+                // The one overlay rule: a tap on what is left of the picture puts the menu or the panel away.
+                VisualElement picture = hud.Root.Q<VisualElement>("picture");
+                yield return Tap(picture);
+                Assert.IsFalse(hud.MenuOpen, "a tap on the picture did not close the menu");
 
                 hud.ToggleDebug();
                 yield return Settle();
-                Check(hud.Root, phone, "debug panel");
-                hud.ToggleDebug();
+                Check(hud.Root, phone, at + "debug panel");
+                yield return Tap(picture);
+                Assert.IsFalse(hud.DebugOpen, "a tap on the picture did not close the debug panel");
 
                 for (int page = 0; page < 3; page++)
                 {
                     hud.SetStripPage(page);
                     yield return Settle();
-                    Check(hud.Root, phone, "graph page " + page);
+                    Check(hud.Root, phone, at + "graph page " + page);
                 }
+
+                // The round's banner, the fight, a count with its inset, a round break and the result, quickly:
+                // two half-second rounds at four times the speed, off the owner's ladder.
+                bout.league = null;
+                bout.userTimeScale = 4f;
+                bout.rounds = 2;
+                yield return Until(() => bout.Phase == BoutPhase.Intro);
+                yield return Settle();
+                Check(hud.Root, phone, at + "round banner");
+                yield return UntilTheBell();
+                yield return Settle();
+                Check(hud.Root, phone, at + "fight");
+
+                bout.red.ForceDown();
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.Count, bout.Phase, "a knockdown did not start a count");
+                Check(hud.Root, phone, at + "count");
+
+                bout.roundSeconds = 0.5f;           // set now: the count above needs a round that is still going
+                bout.Restart();
+                yield return Until(() => bout.Phase == BoutPhase.RoundBreak);
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.RoundBreak, bout.Phase, "the first round never ended");
+                Check(hud.Root, phone, at + "round break");
+
+                yield return Until(() => bout.Phase == BoutPhase.Results);
+                yield return Settle();
+                Assert.AreEqual(BoutPhase.Results, bout.Phase, "the bout never reached a result");
+                Check(hud.Root, phone, at + "results");
+                warnings.AssertNone(at + "HUD");
             }
             finally
             {
+                warnings.Dispose();
+                HudView.SafeAreaOverride = null;
                 panel.targetTexture = previous;
                 target.Release();
                 Object.Destroy(target);
@@ -76,7 +122,7 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator BoxerMenuFitsOneScreenAndKeepsTheCornersDifferent([ValueSource(nameof(Phones))] Vector2Int phone)
+        public IEnumerator BoxerMenuFitsOneScreenAndKeepsTheCornersDifferent([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
         {
             if (!MatchSelection.HasMenu) Assert.Ignore("no trained boxers, so the build has no menu scene");
             yield return SceneManager.LoadSceneAsync(MatchSelection.MenuScene, LoadSceneMode.Single);
@@ -90,10 +136,23 @@ namespace PoBox.Tests
             RenderTexture previous = panel.targetTexture;
             var target = new RenderTexture(phone.x, phone.y, 24);
             panel.targetTexture = target;
+            var warnings = new UiWarnings();
             try
             {
+                if (notch) HudView.SafeAreaOverride = Notch(phone);
                 yield return Settle();
                 Check(menu.Root, phone, "boxer menu", LayoutAudit.MenuAnchors);
+
+                menu.ToggleSettings();
+                yield return Settle();
+                Assert.IsTrue(menu.SettingsOpen, "the settings icon did not open the settings");
+                Check(menu.Root, phone, "boxer menu, settings", LayoutAudit.MenuAnchors);
+                menu.ToggleDebug();
+                yield return Settle();
+                Assert.IsFalse(menu.SettingsOpen, "the settings and the debug panel are both open");
+                Check(menu.Root, phone, "boxer menu, debug panel", LayoutAudit.MenuAnchors);
+                yield return Tap(menu.Root.Q<VisualElement>("picture"));
+                Assert.IsFalse(menu.DebugOpen, "a tap outside did not close the debug panel");
 
                 if (menu.boxers.Length > 1)
                 {
@@ -105,9 +164,12 @@ namespace PoBox.Tests
                     yield return Settle();
                     Check(menu.Root, phone, "boxer menu, corners swapped", LayoutAudit.MenuAnchors);
                 }
+                warnings.AssertNone("boxer menu");
             }
             finally
             {
+                warnings.Dispose();
+                HudView.SafeAreaOverride = null;
                 panel.targetTexture = previous;
                 target.Release();
                 Object.Destroy(target);
@@ -276,6 +338,47 @@ namespace PoBox.Tests
             for (int i = 0; i < 4; i++) yield return null;
         }
 
+        /// <summary>A finger down and up on the middle of an element, then the frames the panel takes to answer.</summary>
+        static IEnumerator Tap(VisualElement target)
+        {
+            Assert.IsNotNull(target, "nothing to tap");
+            Vector2 at = target.worldBound.center;
+            using (PointerDownEvent down = PointerDownEvent.GetPooled(new Event { type = EventType.MouseDown, mousePosition = at, button = 0, clickCount = 1 }))
+                target.SendEvent(down);
+            using (PointerUpEvent up = PointerUpEvent.GetPooled(new Event { type = EventType.MouseUp, mousePosition = at, button = 0, clickCount = 1 }))
+                target.SendEvent(up);
+            yield return Settle();
+        }
+
+        /// <summary>
+        /// A notch 130 phone pixels deep and a home bar 80, in the screen pixels the safe area is given in. The panel
+        /// is drawn into a texture the shape of the phone but measured against the game view's width, so a phone's
+        /// pixel is the game view's width over the phone's.
+        /// </summary>
+        static Rect Notch(Vector2Int phone)
+        {
+            float k = (float)Screen.width / phone.x;
+            return new Rect(0f, 80f * k, Screen.width, Screen.height - 210f * k);
+        }
+
+        /// <summary>Every warning UI Toolkit or the game's interface writes while it is listening.</summary>
+        sealed class UiWarnings : System.IDisposable
+        {
+            readonly List<string> _seen = new List<string>();
+            public UiWarnings() => Application.logMessageReceived += Heard;
+            public void Dispose() => Application.logMessageReceived -= Heard;
+
+            void Heard(string text, string stack, LogType type)
+            {
+                if (type != LogType.Warning) return;
+                if (text.Contains("UIElements") || text.Contains("UI Toolkit") || text.Contains(".uss") || text.Contains(".uxml")
+                    || (stack != null && (stack.Contains("UnityEngine.UIElements") || stack.Contains("PoBox.UI"))))
+                    _seen.Add(text);
+            }
+
+            public void AssertNone(string what) => Assert.IsEmpty(_seen, $"{what} wrote UI warnings:\n{string.Join("\n", _seen)}");
+        }
+
         /// <summary>Waits out the walk-on and the introduction: until the first bell, or twenty seconds.</summary>
         static IEnumerator UntilTheBell()
         {
@@ -316,6 +419,29 @@ namespace PoBox.Tests
                 Assert.AreEqual(10, judges.total[j, 0], Judges.Names[j] + " did not give the round to the fighter who scored the knockdown");
                 Assert.AreEqual(8, judges.total[j, 1], Judges.Names[j] + " did not take a second point for the knockdown");
             }
+        }
+
+        [Test]
+        public void RingGeneralshipOnlyBreaksALevelRound()
+        {
+            var judges = new Judges { impulseFloor = 2.2f };
+            var hit = new HitEvent { impulse = 8f, zone = PartKind.Head, clean = true };
+            // An even round in which red held the centre: all three give it to red.
+            for (int i = 0; i < 5; i++) { judges.OnHit(0, hit); judges.OnHit(1, hit); }
+            judges.OnCentre(0, 20f);
+            judges.OnCentre(1, 5f);
+            judges.CloseRound();
+            Assert.AreEqual(0.8f, judges.LastCentreShare, 1e-4f);
+            for (int j = 0; j < Judges.Count; j++)
+                Assert.AreEqual("10-9", judges.Card(j), Judges.Names[j] + " did not break a level round for the fighter who held the centre");
+
+            // A round blue won on punches stays blue's however long red held the centre.
+            judges.OnHit(0, hit);
+            for (int i = 0; i < 6; i++) judges.OnHit(1, hit);
+            judges.OnCentre(0, 30f);
+            judges.CloseRound();
+            for (int j = 0; j < Judges.Count; j++)
+                Assert.AreEqual("19-19", judges.Card(j), Judges.Names[j] + " let the centre outweigh the punches");
         }
 
         static void Check(VisualElement root, Vector2Int phone, string what, string[] anchors = null)

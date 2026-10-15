@@ -326,18 +326,14 @@ namespace PoBox.EditorTools
                 skin.trails = new[] { Trail(FindDeep(go.transform, prefix + "glove_l"), trail, CornerColour[corner]),
                                       Trail(FindDeep(go.transform, prefix + "glove_r"), trail, CornerColour[corner]) };
                 var mesh = go.GetComponent<SkinBinder>()?.skin;
-                // The gloves are drawn as what they are to MuJoCo, the glove spheres, in the corner's colour.
-                var gloveLook = AssetDatabase.LoadAssetAtPath<Material>($"Assets/Materials/Glove_{side}.mat");
-                var gloves = new List<Renderer>();
+                // The glove spheres are MuJoCo's (punches are measured with them) but not drawn: the owner took
+                // the red and blue gloves off on 2026-10-14, and the mesh's own hands show.
                 foreach (string hand in new[] { "glove_l", "glove_r" })
                 {
                     var r = FindDeep(go.transform, prefix + hand)?.GetComponent<MeshRenderer>();
-                    if (r == null) continue;
-                    r.enabled = true;
-                    if (gloveLook != null) r.sharedMaterial = gloveLook;
-                    gloves.Add(r);
+                    if (r != null) r.enabled = false;
                 }
-                skin.extraRenderers = (mesh != null ? mesh.GetComponentsInChildren<Renderer>(true) : new Renderer[0]).Concat(gloves).ToArray();
+                skin.extraRenderers = mesh != null ? mesh.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
                 skin.overlayRenderers = Overlays(skin.extraRenderers, overlay);
 
                 string path = $"{dir}/{title} {side}.prefab";

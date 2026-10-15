@@ -25,6 +25,7 @@ Unity plugin 3.5.0 for the fight's physics, and Unity Inference Engine for the b
 | Zombie | 9 | |
 | Nick | 9 | |
 | Grandma | 9 | |
+| Kim | 9 | (new 2026-10-15: hit-and-move, 1.65 m, 55 kg; gate 3 of 3) |
 | Matt | 8 | carrying on after a knockdown: 26 of 30 (needs 27) |
 | Trump | 8 | attack: 0.37 punches landed a second (needs 0.5) |
 | Grandpa | 8 | footing: 0.33 unprovoked falls a minute (at most 0.2) |

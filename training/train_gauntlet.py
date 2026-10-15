@@ -67,6 +67,7 @@ def main() -> None:
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--lr-max", type=float, default=5e-4)
+    ap.add_argument("--gamma", type=float, default=0.99, help="0.99 at 50 Hz looks 2 s ahead; 0.995 looks 4 s")
     ap.add_argument("--entropy-coef", type=float, default=0.0)
     ap.add_argument("--reset-std", type=float, default=0.0)
     ap.add_argument("--max-std", type=float, default=0.35)
@@ -84,6 +85,10 @@ def main() -> None:
     ap.add_argument("--daze-hi", type=float, default=42.0)
     ap.add_argument("--daze-weak", type=float, default=0.45)
     ap.add_argument("--block-w", type=float, default=0.0)
+    ap.add_argument("--rope-w", type=float, default=0.0,
+                    help="ringcraft: charge a step for being on the ropes or in a corner while a close opponent holds the centre. Try 0.05")
+    ap.add_argument("--cutoff-w", type=float, default=0.0,
+                    help="ringcraft: pay a step for cutting the ring off (between a roped opponent and the centre, facing it in reach). Try 0.05")
     ap.add_argument("--speed-limit", action="store_true",
                     help="a drive's torque falls to nothing as its joint nears its speed limit (envs/boxing.py)")
     ap.add_argument("--fatigue-j", type=float, default=0.0,
@@ -120,7 +125,8 @@ def main() -> None:
                         ko_bonus=args.ko_bonus, survivor_bootstrap=not args.no_survivor_bootstrap, daze=args.daze,
                         daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
-                        handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, **extra_env)
+                        handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
+                        rope_w=args.rope_w, cutoff_w=args.cutoff_w, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -132,7 +138,7 @@ def main() -> None:
     total_n = int(sum(e.N for e in envs))
     minibatches = max(1, round(args.steps * total_n / 24576))
     cfg = PPOConfig(steps_per_env=args.steps, lr=args.lr, entropy_coef=args.entropy_coef, minibatches=minibatches, lr_adapt=1.2,
-                    init_std=0.5, max_std=args.max_std, lr_max=args.lr_max)
+                    init_std=0.5, max_std=args.max_std, lr_max=args.lr_max, gamma=args.gamma)
     ppo = PPO(D, A, total_n, dev, cfg)
     extra = ppo.load(args.resume if os.path.isabs(args.resume) else os.path.join(HERE, args.resume))
     cfg.lr = min(args.lr, args.lr_max)
@@ -166,7 +172,7 @@ def main() -> None:
         return t.reshape(env.N, 2, *t.shape[1:])[:, k]
 
     obs = [e.reset() for e in envs]
-    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step")
+    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step", "rope", "cutoff")
     t_start = time.time()
     total = 0
     for it in range(start, iters):
@@ -192,9 +198,11 @@ def main() -> None:
         stats = ppo.update(torch.cat([mine(e, k, o) for e, k, o in zip(envs, side, obs)]))
         total += args.steps * total_n
         sps = args.steps * total_n / max(1e-6, time.time() - t0)
-        rows = {}
+        rows, terms = {}, {}
         for (opp, _), e in zip(opponents, envs):
             s = e.get_stats()
+            for k in e.TERMS:      # the reward's terms, both fighters' mean, weighted by rings (as train_box.py logs them)
+                terms[k] = terms.get(k, 0.0) + s[f"rt_{k}"] * e.N / total_n
             rows[opp] = {"fall_rate": s["fall_rate"], "ep_return": s["ep_return"], "their_hits_per_s": s[f"{opp}_hits_per_s"],
                          "their_falls": s[f"{opp}_falls"], "their_head_share": s[f"{opp}_head_share"]}
             rows[opp].update({k: s[f"{args.name}_{k}"] for k in per})
@@ -219,6 +227,8 @@ def main() -> None:
                 writer.add_scalar(f"v_{o.upper()}/{k}", v, it)
         for k, v in stats.items():
             writer.add_scalar(f"ppo_{args.name}/{k}", v, it)
+        for k, v in terms.items():
+            writer.add_scalar(f"reward/{k}", v, it)
         writer.add_scalar("perf/fps", sps, it)
         if it % 10 == 0:
             print(f"it {it:6d} | {sps:7.0f} sps | {args.name}: {mean['hits_per_s']:.2f} hits/s at {mean['hit_speed']:.1f} m/s, down {mean['falls']:.0%}, "
@@ -240,7 +250,7 @@ def main() -> None:
                           "action_scale": envs[0].action_scale, "run_name": run, "career": career, "against": [o for o, _ in opponents],
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models)),
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
-                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j}})
+                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j}})
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))
             if not args.no_onnx:
                 try:

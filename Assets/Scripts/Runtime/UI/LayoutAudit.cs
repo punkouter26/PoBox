@@ -8,13 +8,24 @@ namespace PoBox.UI
     /// <summary>
     /// The one-screen rule, as something that can fail. Walks a live panel and reports anything that breaks
     /// it: an element drawn outside the screen, a scroll view of any kind, text under the legibility floor,
-    /// a label whose words do not fit its box, and each of the five frame anchors not being in its corner.
-    /// The play-mode test runs it at three phone shapes; the editor capture tool prints it beside each picture.
+    /// a label whose words do not fit its box, a button smaller than a thumb, two absolutely positioned
+    /// neighbours drawn over each other, and each of the five frame anchors not being in its corner.
+    ///
+    /// Overlap is judged between the screen's layers: the visible, absolutely positioned children of the safe
+    /// area (inside a widget, a bar's fill lying over its track is the point of it). A layer that covers its
+    /// whole parent is a backdrop (the picture) and is left out; one marked with the class "over" (a sheet,
+    /// the debug panel, the punch-speed flash) is meant to lie over the furniture and is only checked against
+    /// other such overlays, so two of them open at once is a failure.
+    /// The play-mode test runs it at four phone shapes; the editor capture tool prints it beside each picture.
     /// </summary>
     public static class LayoutAudit
     {
         /// <summary>Smallest text allowed, in panel units at the 1080-wide reference (about 10 sp on a phone).</summary>
         public const float MinFontSize = 26f;
+        /// <summary>Smallest thing a thumb presses: a 44 pt target at 2x.</summary>
+        public const float MinTouch = 88f;
+        /// <summary>The class an overlay carries: it may lie over the furniture, never over another overlay.</summary>
+        public const string OverClass = "over";
 
         public class Report
         {
@@ -25,24 +36,27 @@ namespace PoBox.UI
             public readonly List<string> smallText = new List<string>();
             public readonly List<string> clipped = new List<string>();
             public readonly List<string> anchors = new List<string>();
+            public readonly List<string> smallTouch = new List<string>();
+            public readonly List<string> overlaps = new List<string>();
 
-            public bool Passed => offScreen.Count == 0 && scroll.Count == 0 && smallText.Count == 0 && clipped.Count == 0 && anchors.Count == 0;
+            public bool Passed => offScreen.Count == 0 && scroll.Count == 0 && smallText.Count == 0 && clipped.Count == 0 && anchors.Count == 0
+                                  && smallTouch.Count == 0 && overlaps.Count == 0;
 
             public string Summary()
             {
                 var s = new StringBuilder();
-                s.Append($"{width:0}x{height:0} elements={elements} offscreen={offScreen.Count} scroll={scroll.Count} small={smallText.Count} clipped={clipped.Count} anchors={(anchors.Count == 0 ? "ok" : "BAD")}");
+                s.Append($"{width:0}x{height:0} elements={elements} offscreen={offScreen.Count} scroll={scroll.Count} small={smallText.Count} clipped={clipped.Count} touch={smallTouch.Count} overlap={overlaps.Count} anchors={(anchors.Count == 0 ? "ok" : "BAD")}");
                 void Dump(string label, List<string> items)
                 {
                     foreach (string i in items) s.Append($"\n  {label}: {i}");
                 }
-                Dump("offscreen", offScreen); Dump("scroll", scroll); Dump("small", smallText); Dump("clipped", clipped); Dump("anchor", anchors);
+                Dump("offscreen", offScreen); Dump("scroll", scroll); Dump("small", smallText); Dump("clipped", clipped); Dump("touch", smallTouch); Dump("overlap", overlaps); Dump("anchor", anchors);
                 return s.ToString();
             }
         }
 
-        /// <summary>The anchors the first screen has: it carries no frame rate, menu or debug chip.</summary>
-        public static readonly string[] MenuAnchors = { "title", "version" };
+        /// <summary>The anchors the first screen has: all five, as the HUD and the testbed do.</summary>
+        public static readonly string[] MenuAnchors = { "title", "fps", "menu", "debug", "version" };
 
         /// <param name="anchors">Which of the five frame anchors this screen is expected to have. Null is all of them.</param>
         public static Report Check(VisualElement root, string[] anchors = null)
@@ -58,6 +72,7 @@ namespace PoBox.UI
             // The corners are the corners of the safe area: on a phone with a notch the frame sits inside it.
             VisualElement safe = root.Q<VisualElement>("safe");
             Rect frame = safe != null && safe.worldBound.width > 1f ? safe.worldBound : screen;
+            Overlaps(safe ?? root, report);
             bool Has(string name) => anchors == null || System.Array.IndexOf(anchors, name) >= 0;
             if (Has("title")) Anchor(root, "title", frame, report, left: true, top: true);
             if (Has("fps")) Anchor(root, "fps", frame, report, centre: true, top: true);
@@ -95,9 +110,40 @@ namespace PoBox.UI
                     if (need.x > content.width + 1.5f || need.y > content.height + 1.5f)
                         report.clipped.Add($"{Path(e)} needs {need.x:0}x{need.y:0} has {content.width:0}x{content.height:0} '{t.text}'");
                 }
+
+                if (e is Button && e.enabledInHierarchy && e.pickingMode == PickingMode.Position && (b.width < MinTouch - 1.5f || b.height < MinTouch - 1.5f))   // one device pixel of snapping at 720 wide
+                    report.smallTouch.Add($"{Path(e)} {b.width:0}x{b.height:0}");
             }
 
             for (int i = 0; i < e.hierarchy.childCount; i++) Walk(e.hierarchy[i], screen, report);
+        }
+
+        static void Overlaps(VisualElement parent, Report report)
+        {
+            int n = parent.hierarchy.childCount;
+            for (int i = 0; i < n; i++)
+            {
+                VisualElement a = parent.hierarchy[i];
+                if (!Layered(a, parent)) continue;
+                for (int j = i + 1; j < n; j++)
+                {
+                    VisualElement b = parent.hierarchy[j];
+                    if (!Layered(b, parent) || a.ClassListContains(OverClass) != b.ClassListContains(OverClass)) continue;
+                    Rect ra = a.worldBound, rb = b.worldBound;
+                    float w = Mathf.Min(ra.xMax, rb.xMax) - Mathf.Max(ra.xMin, rb.xMin), h = Mathf.Min(ra.yMax, rb.yMax) - Mathf.Max(ra.yMin, rb.yMin);
+                    if (w > 1f && h > 1f) report.overlaps.Add($"{Path(a)} and {Path(b)} share {w:0}x{h:0}");
+                }
+            }
+        }
+
+        /// <summary>Drawn, absolutely positioned, and not a backdrop the size of its parent.</summary>
+        static bool Layered(VisualElement e, VisualElement parent)
+        {
+            IResolvedStyle s = e.resolvedStyle;
+            if (s.position != Position.Absolute || s.display == DisplayStyle.None || s.visibility != Visibility.Visible || s.opacity <= 0.01f) return false;
+            Rect b = e.worldBound, p = parent.worldBound;
+            if (b.width <= 0.5f || b.height <= 0.5f) return false;
+            return b.width < p.width - 1f || b.height < p.height - 1f;
         }
 
         static void Anchor(VisualElement root, string name, Rect screen, Report report,

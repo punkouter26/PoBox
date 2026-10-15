@@ -428,7 +428,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 112805010890364914, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 112805010890364914, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -436,7 +436,7 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 04d24069755247042806612685faf12f, type: 2}
     - target: {fileID: 1236919539455512652, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1236919539455512652, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -589,11 +589,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 4095247486468699345}
   m_SourcePrefab: {fileID: 100100000, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
---- !u!23 &13092343749521753 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 112805010890364914, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
-  m_PrefabInstance: {fileID: 125609194479330987}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &84663819453459848 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 41246727196330787, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
@@ -639,11 +634,6 @@ Transform:
 --- !u!4 &1191426870105794266 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1240333265579294833, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
-  m_PrefabInstance: {fileID: 125609194479330987}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &1194627222389585639 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 1236919539455512652, guid: 28f113dd4527c5447bf8fe7ec003616e, type: 3}
   m_PrefabInstance: {fileID: 125609194479330987}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1209900700284333988 stripped
@@ -858,8 +848,6 @@ MonoBehaviour:
   headOffset: {x: 0, y: 0, z: 0}
   extraRenderers:
   - {fileID: 2588292985873113977}
-  - {fileID: 1194627222389585639}
-  - {fileID: 13092343749521753}
   overlayRenderers:
   - {fileID: 2077451450846804372}
   trailSpeed: 4.5

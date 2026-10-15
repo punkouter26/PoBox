@@ -69,7 +69,7 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
 
 class BoxingEnv:
     TERMS = ["alive", "upright", "height", "face", "range", "close", "hit", "taken", "block", "lin_z", "ang", "act",
-             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style"]
+             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style", "rope", "cutoff"]
     MODE = ""          # a subclass that is its own stage of training names it here
 
     def __init__(self, xml_path: str, num_envs: int, device: str = "cuda", seed: int = 0,
@@ -82,7 +82,7 @@ class BoxingEnv:
                  legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
                  handover: dict = None, handover_share: float = 0.15,
                  speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4,
-                 start_spread: float = 1.0, sep_hi: float = 2.2):
+                 start_spread: float = 1.0, sep_hi: float = 2.2, rope_w: float = 0.0, cutoff_w: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -123,6 +123,9 @@ class BoxingEnv:
         # its opponent, as a boxer is after a knockdown, Matt's fell over on the way in 22 of 60 trials, whether
         # the opponent boxed, stood still or was not there (carry_diag, 2026-10-03). That was "carrying on".
         self.sep_hi = sep_hi
+        # Ringcraft, both off unless asked for: a charge for being walked onto the ropes by an opponent that holds
+        # the middle of the ring, and a payment for doing that to the opponent (cutting the ring off). See step().
+        self.rope_w, self.cutoff_w = rope_w, cutoff_w
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -337,7 +340,7 @@ class BoxingEnv:
                       "sat_sum", "ko_sum", "daze_sum", "weak_sum", "reserve_sum")}
         self._acc.update({f"rt_{t}": torch.zeros((), device=device) for t in self.TERMS})
         # The same counts kept per fighter, for a match between two different ones.
-        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head")}
+        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head", "rope", "cutoff")}
         # Carrying on after a knockdown: a share of a fighter's episodes begin in a state its own get-up
         # policy left its body in (tools/make_handover_bank.py), not in its guard. `handover` maps a
         # fighter's name to that file; a fighter with no file starts every episode in its guard, as before.
@@ -583,6 +586,13 @@ class BoxingEnv:
             want = q + scale[..., None] * (want - q)
         self.ctrl.copy_(want.reshape(N, K * A))
 
+    def _spend(self, tau: torch.Tensor, jv: torch.Tensor) -> None:
+        """Takes the step's joules from the reserve and lets it fill again. Every stage's step calls this: footwork
+        and get-up once skipped it, and their reserve stayed where the reset drew it."""
+        if self.fatigue_on:
+            spent = (tau * jv).abs().sum(-1) / self.fatigue_j
+            self.reserve = (self.reserve + self.dt * ((1.0 - self.reserve) / self.fatigue_rec_s - spent)).clamp(0.0, 1.0)
+
     def _tired(self) -> torch.Tensor:
         """Share of drive strength a tiring body has: all of it down to half its reserve, then less."""
         return 1.0 - self.fatigue_weak * (1.0 - self.reserve / 0.5).clamp(0.0, 1.0)
@@ -706,6 +716,30 @@ class BoxingEnv:
         near = (nearest < 0.6).float()                                         # (N,K,2) glove within reach
         reaching = (closing.max(-1).values.clamp(0.0, 8.0) * near).max(-1).values
 
+        # ---- ringcraft: who holds the middle of the ring. Measured always (logged per fighter, so a run with the
+        # weights at 0 is the baseline for one with them on); paid only with --rope-w / --cutoff-w.
+        rope_q = cut_q = torch.zeros(N, K, device=self.device)
+        if self.spar:
+            xy = pos[..., :2]                                                  # the ring's centre is (0, 0)
+            # How far into the last metre before each rope: 0 a metre or more off, about 0.7 against it (a pelvis
+            # gets no nearer), so a corner, two ropes at once, counts twice.
+            pinned = (xy.abs() - (self.ring_half - 1.0)).clamp(0.0, 1.0).sum(-1)                     # (N,K)
+            # Under pressure: the opponent is close and nearer the centre than I am, so it has the middle.
+            from_centre = xy.norm(dim=-1)
+            pressed = (dist < self.s_range + 0.8).float() * ((from_centre - from_centre.flip(1)) / 0.5).clamp(0.0, 1.0)
+            rope_q = pinned * pressed
+            # Cutting off: standing in the opponent's way to the centre (at the opponent, the cosine between the
+            # way to the centre and the way to me; 1 squarely in it) while it is near the ropes, doubled while its
+            # way out closes (its speed out from the centre, -1 to 1 m/s, so stepping in and out pays as standing).
+            # Only facing it within reach: at the centre the cosine is 1 against anybody, and pays nothing unless
+            # the opponent is also on the ropes and in range, so it cannot be farmed from the middle.
+            unit = lambda v: v / v.norm(dim=-1, keepdim=True).clamp_min(1e-3)
+            opp_xy = xy.flip(1)
+            in_way = (unit(-opp_xy) * unit(xy - opp_xy)).sum(-1).clamp_min(0.0)
+            out_v = (lin_w.flip(1)[..., :2] * unit(opp_xy)).sum(-1).clamp(-1.0, 1.0)
+            engaged = ((dist < self.s_range + 0.3) & (face > 0.7)).float()
+            cut_q = engaged * in_way * pinned.flip(1) * (1.0 + out_v)
+
         # ---- feet
         contact = g["foot_contact"]
         foot_v = (g["foot_xy"] - self.prev_foot_xy) / self.dt
@@ -714,9 +748,7 @@ class BoxingEnv:
         jp = self.qpos[:, self.jq]
         jv = self.qvel[:, self.jv]
         tau = self.act_force.reshape(N, K, A)
-        if self.fatigue_on:
-            spent = (tau * jv).abs().sum(-1) / self.fatigue_j
-            self.reserve = (self.reserve + self.dt * ((1.0 - self.reserve) / self.fatigue_rec_s - spent)).clamp(0.0, 1.0)
+        self._spend(tau, jv)
 
         # ---- reward
         r = {}
@@ -733,6 +765,11 @@ class BoxingEnv:
         toward = (lin_w[..., :2] * to_t[..., :2]).sum(-1) / dist.clamp_min(0.1)
         r["style"] = self.s_press * toward.clamp(-1.0, 1.0) * (dist > self.s_range).float() \
             - self.s_crowd * (self.s_range - 0.12 - dist).clamp_min(0.0)
+        # At 0.05 each: about 0.035 a step on a rope, at most about 0.07 and 0.14 in a corner, all under the 0.4 that
+        # alive and upright pay, so neither is worth ending an episode for, nor worth more than landing punches.
+        none = torch.zeros(N, K, device=self.device)
+        r["rope"] = -self.rope_w * rope_q if self.rope_w else none
+        r["cutoff"] = self.cutoff_w * cut_q if self.cutoff_w else none
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
@@ -798,6 +835,8 @@ class BoxingEnv:
         ka["fell"] += (fell.float() * df[:, None]).sum(0)
         ka["ko"] += (r["ko"] >= self.ko_bonus).float().sum(0)
         ka["ret"] += reward.sum(0)
+        ka["rope"] += rope_q.sum(0)
+        ka["cutoff"] += cut_q.sum(0)
 
         self.prev_glove, self.prev_head, self.prev_body = glove.clone(), g["t_head"].clone(), g["t_body"].clone()
         self.prev_foot_xy = g["foot_xy"].clone()
@@ -854,6 +893,9 @@ class BoxingEnv:
                 out[f"{name}_blocks_per_s"] = ka["blocks"][i] / seconds
                 out[f"{name}_legs_gone_per_min"] = ka["legs"][i] / seconds * 60.0
                 out[f"{name}_reward_per_step"] = ka["ret"][i] / (s * self.N)
+                # Ringcraft, unweighted, a step: on the ropes under pressure (charged by --rope-w) and cutting off (paid by --cutoff-w).
+                out[f"{name}_rope"] = ka["rope"][i] / (s * self.N)
+                out[f"{name}_cutoff"] = ka["cutoff"][i] / (s * self.N)
         for v in list(self._acc.values()) + list(self._kacc.values()):
             v.zero_()
         return out

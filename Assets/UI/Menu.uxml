@@ -1,39 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    PoBox: the first screen, laid out for a 1080 x 1920 portrait screen like the HUD.
+    PoBox: the first screen, laid out for a 1080 x 1920 portrait screen like the HUD, on the same five
+    anchors: the game's name top-left, the frame rate top-centre (tap: the debug panel), the settings
+    top-right, DEBUG bottom-left and the version bottom-right.
 
-    Top to bottom: the game's name, the heading, the two corners side by side (a card for every boxer in
-    each, built by MenuView.cs), the pairing as it stands, and FIGHT. Nothing scrolls.
+    Between them: the two corners side by side, each told by its colour along the top and a glove in it (a
+    card for every boxer in each, built by MenuView.cs), and FIGHT with the pairing as it stands written
+    under the word. The settings sheet is the HUD's settings page (Settings.uxml), docked at the bottom like
+    the HUD's menu; it and the debug panel open one at a time and carry the class "over". Nothing scrolls.
 
     The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/Theme.uss" />
+    <ui:Template name="Settings" src="project://database/Assets/UI/Settings.uxml" />
 
     <ui:VisualElement name="root" class="root menu-root" picking-mode="Ignore">
         <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
 
+            <!-- Under everything else: a tap on what is left of the screen closes the sheet or the panel. -->
+            <ui:VisualElement name="picture" class="picture" />
+
             <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
                 <ui:Label name="title" class="chip frame-title" text="POBOX" picking-mode="Ignore" />
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Button name="menu" class="btn btn--ghost btn--icon">
+                    <ui:VisualElement class="icon icon--gear" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:VisualElement class="frame-centre" picking-mode="Ignore">
+                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
+                </ui:VisualElement>
             </ui:VisualElement>
-
-            <ui:Label name="heading" class="menu-heading" text="CHOOSE THE BOXERS" picking-mode="Ignore" />
 
             <ui:VisualElement name="picker" class="picker" picking-mode="Ignore">
                 <ui:VisualElement class="pick-col pick-col--red" picking-mode="Ignore">
-                    <ui:Label class="pick-corner pick-corner--red" text="RED CORNER" picking-mode="Ignore" />
+                    <PoBox.UI.Glyph kind="Glove" class="pick-glove glyph--red" />
                     <ui:VisualElement name="red-cards" class="pick-cards" picking-mode="Ignore" />
                 </ui:VisualElement>
                 <ui:VisualElement class="pick-col pick-col--blue" picking-mode="Ignore">
-                    <ui:Label class="pick-corner pick-corner--blue" text="BLUE CORNER" picking-mode="Ignore" />
+                    <PoBox.UI.Glyph kind="Glove" class="pick-glove glyph--blue" />
                     <ui:VisualElement name="blue-cards" class="pick-cards" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:Label name="versus" class="versus" text="" picking-mode="Ignore" />
-            <ui:Button name="fight" class="btn btn--primary fight" text="FIGHT" />
+            <ui:Button name="fight" class="btn btn--primary fight">
+                <ui:Label name="fight-word" class="fight-word" text="FIGHT" picking-mode="Ignore" />
+                <ui:Label name="versus" class="fight-pair" text="" picking-mode="Ignore" />
+            </ui:Button>
+
+            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+                <ui:Instance template="Settings" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
 
             <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
+                <ui:Button name="debug" class="chip frame-debug">
+                    <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
+                    <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
+                </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
                 <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
             </ui:VisualElement>

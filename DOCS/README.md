@@ -69,6 +69,29 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## Broadcast, sound and portrait pass (2026-10-14)
+
+26 of 30 proposed options (all but features 1, 5, 8, 9). Pictures before and after:
+`SCREENSHOTS/2026-10-14/report.html`. 44 of 44 play-mode tests pass (`PoBox.Tests`).
+
+- **New on `SimBus`: `Block(defender, at, speed)`**, raised from `MjRing.PunchStopped` via `MjBrain`; the block
+  pop (AudioDirector) and puff (ImpactVfx) listen to it. `MjRing.RopeLoad(boxer, out at)` is the rope force the
+  creak and twang read.
+- **HUD:** fatigue bar and TIRED badge (boxers with fatigue on), ON THE ROPES, centre control on the round card
+  (and a tie-break in `Judges`), damage ghost bar, X-RAY chip, VOICE and BUZZ in Settings (`SettingsPage.cs`,
+  `Settings.uxml`, shared by HUD and first screen), one safe-area helper (`SafeArea.cs`), five anchors on the
+  first screen and testbed (`TestbedHud.cs` moved to `Runtime/UI`), scene loads in the background.
+- **Picture:** shockwave ring (`Shaders/Resources/Shockwave.shader`), the dazed look (a runtime volume on
+  ImpactVfx), knockdown spot and desaturation (`ArenaMood.downSpot`), corner props from Blender
+  (`Assets/Prefabs/Props`, sources in `BLENDER/2026-10-14_corner-props/` and `Assets/Models/Props/CREDITS.txt`;
+  stools and buckets are `ArenaMood.breakProps`), the X-ray (`Fx/Xray/XrayShapes.cs`, its own assembly for
+  unsafe code; dev command `xray on|off`). The director cuts to the impact camera ~0.13 s before a punch lands.
+- **Phone only, untried:** haptics (`Audio/Haptics.cs`), spoken commentary (`Audio/SpeechCommentary.cs`; the
+  TTS query is added to the manifest by `Editor/AndroidTtsQueries.cs`), the thermal governor in `PerfTelemetry`.
+- **Training (staged, nothing run):** fatigue reserve now spent in footwork and get-up too (`BoxingEnv._spend`);
+  `--gamma`, `--rope-w`, `--cutoff-w` on `train_gauntlet.py`; queues `training/queue_d8_staged.json` and
+  `training/queue_ringcraft_staged.json`. See `rl_optimization_log.md`.
+
 The sections below describe the game before the retrofit.
 
 ## Portrait compaction and integrity (2026-10-03)

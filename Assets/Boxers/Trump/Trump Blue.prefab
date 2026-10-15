@@ -568,7 +568,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3081384792399139335, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3081384792399139335, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -672,7 +672,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4559740442332286389, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4559740442332286389, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1251,8 +1251,6 @@ MonoBehaviour:
   headOffset: {x: 0, y: 0, z: 0}
   extraRenderers:
   - {fileID: 7063693527413624548}
-  - {fileID: 7224139864006744544}
-  - {fileID: 8198090693857723986}
   overlayRenderers:
   - {fileID: 8697276465860025436}
   trailSpeed: 4.5
@@ -1365,11 +1363,6 @@ SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: 3208053994347201795, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
   m_PrefabInstance: {fileID: 5657097048149822439}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &7224139864006744544 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 3081384792399139335, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
-  m_PrefabInstance: {fileID: 5657097048149822439}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7236265641935768664 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3093527134469326783, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
@@ -1442,11 +1435,6 @@ MonoBehaviour:
 --- !u!4 &8008446933954494680 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2423415731615763263, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
-  m_PrefabInstance: {fileID: 5657097048149822439}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &8198090693857723986 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 4559740442332286389, guid: 8f883cee7f730f64e86dff43f22724e3, type: 3}
   m_PrefabInstance: {fileID: 5657097048149822439}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &8205403885302531814 stripped

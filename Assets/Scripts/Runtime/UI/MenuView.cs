@@ -13,7 +13,12 @@ namespace PoBox.UI
     /// always hold different boxers: tapping the one already in the other corner swaps them over. (A boxer
     /// against a copy of itself was tried on 2026-10-01: two Matts settle into a perfectly matched stand-off
     /// and neither throws a punch.) One portrait screen, nothing scrolls: the cards share the column's
-    /// height, so more boxers means shorter cards, not a list.
+    /// height, so more boxers means shorter cards, not a list. The pairing is written on FIGHT itself.
+    ///
+    /// The HUD's five anchors are here too: the frame rate top-centre and DEBUG bottom-left open a small
+    /// panel of readings, and the settings icon top-right opens the HUD's settings page as a sheet. FIGHT
+    /// loads the arena in the background; while it does the button is dimmed with its word trailing dots
+    /// and the cards are locked.
     ///
     /// It runs in the editor too, so the cards are in the Game view without pressing Play; the buttons
     /// only do anything while the game is running.
@@ -34,49 +39,78 @@ namespace PoBox.UI
         }
 
         public Boxer[] boxers = new Boxer[0];
+        [Tooltip("Not drawn any more: the corners take their colours from Theme.uss. Kept because the scene builder sets them.")]
         public Color redColor = new Color(0.89f, 0.24f, 0.24f);
         public Color blueColor = new Color(0.20f, 0.49f, 0.94f);
 
         public int Red { get; private set; }
         public int Blue { get; private set; }
         public VisualElement Root => _root;
+        public bool SettingsOpen => Showing(_sheet);
+        public bool DebugOpen => Showing(_debugPanel);
 
-        VisualElement _root, _safe, _redHost;
-        Label _versus;
+        static readonly string[] BusyWords = { "FIGHT ·", "FIGHT ··", "FIGHT ···" };
+        static readonly string[] DebugKeys = { "FRAME", "MEMORY", "SCREEN", "SAFE" };
+
+        UIDocument _doc;
+        VisualElement _root, _safe, _redHost, _sheet, _debugPanel;
+        Label _versus, _fightWord;
+        Button _fight, _fps;
         Button[][] _cards = new Button[2][];
-        Rect _lastSafe;
-        Vector2Int _lastScreen;
-        bool _scaleKnown, _leaving;
+        readonly Label[] _debugValues = new Label[4];
+        readonly SafeArea _safeArea = new SafeArea();
+        SettingsPage _settings;
+        bool _leaving;
+        float _smoothed = 1f / 60f, _nextText;
 
         void OnEnable()
         {
-            if (Application.isPlaying) Application.targetFrameRate = 60;
+            if (Application.isPlaying)
+            {
+                Application.targetFrameRate = 60;
+                SettingsPage.Load();
+            }
             Build();
         }
 
         /// <summary>
-        /// Fills the document in: the cards, the version, the pairing. Run again whenever the document has
-        /// been rebuilt underneath this, which in the editor is every time the layout or the stylesheet is saved.
+        /// Fills the document in and hooks its buttons: once a document, which in the editor is every time the
+        /// layout or the stylesheet is saved.
         /// </summary>
         void Build()
         {
-            _root = GetComponent<UIDocument>().rootVisualElement;
-            if (_root == null) return;
+            if (_doc == null) _doc = GetComponent<UIDocument>();
+            VisualElement root = _doc.rootVisualElement;
+            if (root == null || root == _root) return;
+            _root = root;
             _safe = _root.Q<VisualElement>("safe");
             _versus = _root.Q<Label>("versus");
+            _fightWord = _root.Q<Label>("fight-word");
+            _sheet = _root.Q<VisualElement>("menu-sheet");
+            _debugPanel = _root.Q<VisualElement>("debug-panel");
+            _fps = _root.Q<Button>("fps");
             Label version = _root.Q<Label>("version");
             if (version != null) version.text = "v" + Application.version;
 
             _redHost = _root.Q<VisualElement>("red-cards");
-            BuildCards(0, _redHost);
-            BuildCards(1, _root.Q<VisualElement>("blue-cards"));
-            Button fight = _root.Q<Button>("fight");
-            if (fight != null)
+            BuildCards();
+            _fight = _root.Q<Button>("fight");
+            if (_fight != null)
             {
-                fight.clicked -= Fight;
-                fight.clicked += Fight;
-                fight.SetEnabled(boxers.Length > 0);
+                _fight.clicked += Fight;
+                _fight.SetEnabled(boxers.Length > 0);
             }
+            Button settings = _root.Q<Button>("menu");
+            if (settings != null) settings.clicked += ToggleSettings;
+            Button debug = _root.Q<Button>("debug");
+            if (debug != null) debug.clicked += ToggleDebug;
+            if (_fps != null) _fps.clicked += ToggleDebug;
+            // A tap on what is left of the screen puts away whatever is open, as on the HUD.
+            VisualElement picture = _root.Q<VisualElement>("picture");
+            if (picture != null) picture.RegisterCallback<PointerDownEvent>(_ => CloseAll());
+            BuildDebugPanel();
+            // The first screen has no ladder to reset: that is the arena's.
+            _settings = new SettingsPage(_root, null);
 
             // The pair fought last time; failing that the first boxer against the second.
             Red = Mathf.Max(0, IndexOf(MatchSelection.LastRed));
@@ -84,22 +118,39 @@ namespace PoBox.UI
             Blue = blue >= 0 ? blue : Mathf.Min(1, boxers.Length - 1);
             if (Blue == Red && boxers.Length > 1) Blue = (Red + 1) % boxers.Length;
             Refresh();
-            ApplySafeArea();
+            _safeArea.Fit(_root, _safe);
         }
 
         void Update()
         {
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            if (_doc == null) _doc = GetComponent<UIDocument>();
+            VisualElement root = _doc.rootVisualElement;
             if (root == null) return;
-            if (root != _root || (_redHost != null && _redHost.childCount == 0 && boxers.Length > 0)) Build();
+            if (root != _root) Build();
+            else if (_redHost != null && _redHost.childCount == 0 && boxers.Length > 0) { BuildCards(); Refresh(); }
             if (_root == null) return;
-            if (!_scaleKnown || _lastSafe != Screen.safeArea || _lastScreen.x != Screen.width || _lastScreen.y != Screen.height) ApplySafeArea();
+            _safeArea.Fit(_root, _safe);
+            if (!Application.isPlaying) return;
+
+            if (_leaving) Set(_fightWord, BusyWords[(int)(Time.unscaledTime * 3f) % BusyWords.Length]);
+            _smoothed = Mathf.Lerp(_smoothed, Time.unscaledDeltaTime, 0.05f);
+            if (Time.unscaledTime < _nextText) return;
+            _nextText = Time.unscaledTime + 0.25f;      // four times a second: text made every frame is garbage every frame
+            if (_fps != null) _fps.text = $"{1f / Mathf.Max(_smoothed, 1e-4f):0} FPS";
+            if (DebugOpen) RefreshDebug();
+            if (_settings != null && SettingsOpen && _settings.Armed) _settings.Refresh();
         }
 
         int IndexOf(string name)
         {
             for (int i = 0; i < boxers.Length; i++) if (boxers[i].name == name) return i;
             return -1;
+        }
+
+        void BuildCards()
+        {
+            BuildCards(0, _redHost);
+            BuildCards(1, _root.Q<VisualElement>("blue-cards"));
         }
 
         void BuildCards(int corner, VisualElement host)
@@ -134,10 +185,57 @@ namespace PoBox.UI
             }
         }
 
+        void BuildDebugPanel()
+        {
+            if (_debugPanel == null) return;
+            _debugPanel.Clear();
+            for (int i = 0; i < DebugKeys.Length; i++)
+            {
+                var cell = new VisualElement { pickingMode = PickingMode.Ignore };
+                cell.AddToClassList("dbg-cell");
+                var k = new Label(DebugKeys[i]) { pickingMode = PickingMode.Ignore };
+                k.AddToClassList("dbg-key");
+                _debugValues[i] = new Label("-") { pickingMode = PickingMode.Ignore };
+                _debugValues[i].AddToClassList("dbg-val");
+                cell.Add(k);
+                cell.Add(_debugValues[i]);
+                _debugPanel.Add(cell);
+            }
+        }
+
+        void RefreshDebug()
+        {
+            Rect sa = SafeArea.Current;
+            Set(_debugValues[0], $"{_smoothed * 1000f:0.0} ms");
+            Set(_debugValues[1], $"{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f):0} MB");
+            Set(_debugValues[2], $"{Screen.width}x{Screen.height}");
+            Set(_debugValues[3], $"{sa.width:0}x{sa.height:0}");
+        }
+
+        static bool Showing(VisualElement e) => e != null && !e.ClassListContains("hidden");
+
+        public void ToggleSettings() => Open(_sheet, !SettingsOpen);
+        public void ToggleDebug() => Open(_debugPanel, !DebugOpen);
+        void CloseAll() { Open(_sheet, false); Open(_debugPanel, false); }
+
+        /// <summary>One at a time: they are docked in the same place.</summary>
+        void Open(VisualElement which, bool open)
+        {
+            if (which == null) return;
+            if (open)
+            {
+                VisualElement other = which == _sheet ? _debugPanel : _sheet;
+                if (other != null) other.AddToClassList("hidden");
+                if (which == _sheet && _settings != null) _settings.Refresh();
+            }
+            which.EnableInClassList("hidden", !open);
+            if (open && which == _debugPanel) RefreshDebug();
+        }
+
         /// <summary>Corner 0 is red, 1 is blue.</summary>
         public void Pick(int corner, int index)
         {
-            if (index < 0 || index >= boxers.Length) return;
+            if (_leaving || index < 0 || index >= boxers.Length) return;
             int was = corner == 0 ? Red : Blue, other = corner == 0 ? Blue : Red;
             // Already in the other corner: the two change places.
             if (index == other && boxers.Length > 1) other = was;
@@ -155,8 +253,7 @@ namespace PoBox.UI
                 for (int i = 0; i < _cards[corner].Length; i++)
                     if (_cards[corner][i] != null) _cards[corner][i].EnableInClassList("pick--on", i == picked);
             }
-            if (_versus != null && boxers.Length > 0)
-                _versus.text = $"<color=#{ColorUtility.ToHtmlStringRGB(redColor)}>{boxers[Red].displayName}</color>  v  <color=#{ColorUtility.ToHtmlStringRGB(blueColor)}>{boxers[Blue].displayName}</color>";
+            if (_versus != null && boxers.Length > 0) _versus.text = $"{boxers[Red].displayName}  v  {boxers[Blue].displayName}";
         }
 
         public void Fight()
@@ -164,28 +261,18 @@ namespace PoBox.UI
             // Once: the arena takes seconds to load, and a second tap in that time would load it twice.
             if (boxers.Length == 0 || !Application.isPlaying || _leaving) return;
             _leaving = true;
+            CloseAll();
+            if (_fight != null) _fight.AddToClassList("btn--busy");
+            for (int corner = 0; corner < 2; corner++)
+                if (_cards[corner] != null)
+                    foreach (Button card in _cards[corner]) if (card != null) card.SetEnabled(false);
             MatchSelection.Choose(boxers[Red].name, boxers[Blue].name);
-            SceneManager.LoadScene(MatchSelection.ArenaScene);
+            SceneManager.LoadSceneAsync(MatchSelection.ArenaScene);
         }
 
-        /// <summary>The safe element's edges moved in by the notch and the home bar, as the HUD does it.</summary>
-        void ApplySafeArea()
+        static void Set(Label l, string text)
         {
-            _lastSafe = Screen.safeArea;
-            _lastScreen = new Vector2Int(Screen.width, Screen.height);
-            if (_safe == null || Screen.width <= 0 || Screen.height <= 0) return;
-
-            Rect sa = Screen.safeArea;
-            if (sa.width <= 0f || sa.height <= 0f || sa.xMax > Screen.width + 1f || sa.yMax > Screen.height + 1f)
-                sa = new Rect(0f, 0f, Screen.width, Screen.height);
-
-            float panelWidth = _root.panel != null ? _root.panel.visualTree.layout.width : float.NaN;
-            _scaleKnown = panelWidth > 1f;
-            float scale = _scaleKnown ? panelWidth / Screen.width : 1f;
-            _safe.style.left = sa.xMin * scale;
-            _safe.style.right = (Screen.width - sa.xMax) * scale;
-            _safe.style.top = (Screen.height - sa.yMax) * scale;
-            _safe.style.bottom = sa.yMin * scale;
+            if (l != null && l.text != text) l.text = text;
         }
     }
 }

@@ -188,6 +188,7 @@ class GetUpEnv(BoxingEnv):
         jp = self.qpos[:, self.jq]
         jv = self.qvel[:, self.jv]
         tau = self.act_force.reshape(N, K, A)
+        self._spend(tau, jv)
         to_t = g["t_body"] - pos
         face = torch.cos(torch.atan2(to_t[..., 1], to_t[..., 0]) - yaw)
         contact = g["foot_contact"]

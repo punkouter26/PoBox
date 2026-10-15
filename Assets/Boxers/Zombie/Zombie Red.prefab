@@ -559,7 +559,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8314337632231411127, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8314337632231411127, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -571,7 +571,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9093210407333702592, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9093210407333702592, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1039,8 +1039,6 @@ MonoBehaviour:
   headOffset: {x: 0, y: 0, z: 0}
   extraRenderers:
   - {fileID: 3157784875187026529}
-  - {fileID: 8897117145893252701}
-  - {fileID: 8514913065942337578}
   overlayRenderers:
   - {fileID: 4592192867635211804}
   trailSpeed: 4.5
@@ -1433,11 +1431,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 9086782684282110388, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
   m_PrefabInstance: {fileID: 583953794288706538}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &8514913065942337578 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 9093210407333702592, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
-  m_PrefabInstance: {fileID: 583953794288706538}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &8644634628847381537 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 9218155425422954443, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
@@ -1473,11 +1466,6 @@ Transform:
 --- !u!4 &8883032716743373573 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8312591377057222895, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
-  m_PrefabInstance: {fileID: 583953794288706538}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &8897117145893252701 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 8314337632231411127, guid: 39f7181c47de9e747a3204b46e9aae7b, type: 3}
   m_PrefabInstance: {fileID: 583953794288706538}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &8899532713135645857 stripped

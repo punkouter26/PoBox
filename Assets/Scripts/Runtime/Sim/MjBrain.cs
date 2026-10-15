@@ -67,9 +67,11 @@ namespace PoBox.Sim
             if (attacker == boxer) fighter.OnPunchLanded(hand == 0 ? -1 : 1, head, speed, at, ring.GloveVelocity(boxer, hand));
         }
 
-        void OnStopped(MjBoxer defender, float speed)
+        void OnStopped(MjBoxer defender, float speed, Vector3 at)
         {
-            if (defender == boxer && Bout.Fighting) fighter.stats.blocked++;
+            if (defender != boxer || !Bout.Fighting) return;
+            fighter.stats.blocked++;
+            SimBus.RaiseBlock(fighter, at, speed);
         }
 
         void OnFoot(MjBoxer whose, Vector3 at, float speed)

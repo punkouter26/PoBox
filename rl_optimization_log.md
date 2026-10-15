@@ -775,3 +775,129 @@ with the pipeline's variant stripping switched off was abandoned after an hour (
 shader). **What cured it was the next ordinary build, stripping on as before, after that attempt had thrown the stale
 shader data away:** ring, ropes, boxers and post-processing all draw. The settings file is as committed. Left: the
 depth-of-field and Panini shaders are logged as stripped (unused effects). The editor is still on the Android target.
+
+## 2026-10-14: audit and D8 staged (no training run)
+
+- **Fatigue froze in footwork and get-up.** Only `BoxingEnv.step` spent the reserve; `FootworkEnv.step` and
+  `GetUpEnv.step` never did, so a boxer with `fatigue_j` in its config trained at whatever reserve the reset drew
+  (0.3-1.0) for the whole episode. Now one `BoxingEnv._spend(tau, jv)` is called by all three steps.
+- **`--speed-limit` / `--fatigue-j` on the command line reach every fighter**, frozen opponents included
+  (`boxing.py:175, :303`). The staged get-up jobs leave the flag off; each learner gets the rules from its config
+  (`tools/set_rules.py`) just before its own runs.
+- `train_gauntlet.py --gamma` (default 0.99, unchanged); `queue_runner.py` passes a job's `"env"` (exams need
+  `PYTHONPATH=.mj350`).
+- **Staged, not queued: `training/queue_d8_staged.json`** (38 jobs, ~330 GPU minutes): per boxer set_rules ->
+  footwork -> exam -> get-up -> handover bank -> gauntlet -> exam (12 rounds, 60 trials), Zombie, Nick, Grandma,
+  Grandpa, Matt, then Trump (`--gamma 0.995`, double rings against Matt and the grandparents).
+- **Blocked:** this checkout has no `training/logs`, no `.mj350`, only `r0_matt`/`r1_matt` in `checkpoints`, and
+  the `../PoDecath` venv is gone. Restore those before copying the file to `logs/queue.json`.
+- Open for the owner: fatigue as a torque ceiling rather than a weaker spring (a tired drive still reaches full
+  torque on a big command); asymmetric human force ranges (ankle dorsiflexion ~5x, hip_z ~3-4x, knee flexion ~2x
+  too strong); footing exam over 12 rounds (4 rounds: one fall already fails).
+
+## 2026-10-14: ringcraft reward terms, staged behind D8 (no training run)
+
+Boxers stand where they are put and get walked onto the ropes. Two reward terms, **off by default** (weights 0.0,
+so every existing run and job is unchanged), on the match line (`envs/boxing.py`, used by `envs/match.py`):
+
+- **`rope` (charge, `train_gauntlet.py --rope-w`).** How far into the last metre before each rope the pelvis is (0 a
+  metre or more off, about 0.7 against a rope; a corner adds both ropes, about 1.4), times "under pressure": the
+  opponent within range + 0.8 m and nearer the centre than me (full at 0.5 m nearer).
+- **`cutoff` (payment, `--cutoff-w`).** Paid only facing the opponent (cos > 0.7) within range + 0.3 m: how squarely
+  I stand in its way to the centre (cosine at the opponent between the way to the centre and the way to me) times
+  how roped it is (the same last-metre measure), times 1 + its speed out from the centre (-1 to 1 m/s). Standing at
+  the centre pays nothing unless the opponent is on the ropes and in range; stepping in and out pays as standing.
+- **Suggested 0.05 each:** about 0.035 a step on a rope, at most about 0.07 (rope, corner) and 0.14 (cutoff, corner,
+  driving in). Standing in range pays up to 0.95 a step and a 7 m/s head shot 6.3 once; both new terms stay under
+  the 0.4 that alive + upright pay, so neither makes ending an episode or not punching worth it.
+- **Logged:** the unweighted measures per fighter (`v_NAME/rope`, `v_NAME/cutoff`, `env/rope`, `env/cutoff`, so a
+  D8 run is the baseline) and, new to the gauntlet, every reward term weighted (`reward/<term>`, both fighters'
+  mean, as `train_box.py` logs them). The gauntlet CSV gains two columns: a run begun before this change and
+  resumed after it appends rows one wider than its header.
+- `tools/exam_v2.py` now also takes `checkpoints/rc<round>_<name>` as match rounds (newest kept wins, as for `m*`).
+  No rope-time line in the exam (`tools/exam.py` untouched); TensorBoard's `rope`/`cutoff` are the measure.
+- CPU smoke (PoOlympic venv, MuJoCo 3.11, 4 worlds): obs 103, actions 21; Matt 0.25 m off a rope with Zombie 0.75 m
+  nearer the centre, facing: Matt's `rope` 0.70, Zombie's `cutoff` 0.72, the other two 0; weights 0 give 0.
+- **Staged, not queued: `training/queue_ringcraft_staged.json`** (12 jobs, ~120 GPU minutes): per boxer `rc1_NAME`
+  (400 iterations, `--rope-w 0.05 --cutoff-w 0.05`, warm start from its D8 match run, the D8 job's handover and flags,
+  against the others' D8 match runs) then a 60-trial, 12-round exam. Order Zombie, Nick, Grandma, Grandpa, Matt,
+  Trump. Run after `queue_d8_staged.json`; before queuing, swap any D8 run that holds `REJECTED.txt` (and `m8_trump`
+  if it was skipped) for the boxer's standing checkpoint. Kept if R4-R7 all hold (no line worse than the D8 exam)
+  and `rope` falls / `cutoff` rises against the D8 run.
+
+## 2026-10-14 (evening): Kim, the seventh boxer
+
+- **Body:** `Kim.glb` (the owner's; not in metres, 1.06 units tall) built with `build_roster.py --only kim --rigs rigs/v2
+  --models models/v2 --cubes 8`: 1.65 m (chosen), 55.1 kg (mass given as 54, PoOlympic's; the mesh's loose top reads
+  106 litres), strength 0.71, speed 1.10. 17 shapes on 12 parts; no pair touches in the 25 check poses. Pair models
+  with every boxer. Speed limit and fatigue (30 kJ) on from the first run (`set_rules.py --only kim`).
+- **Style, "hit-and-move"** (owner: "a fast and agile woman"): head 1.3, body 0.9, power 0.6, pace 0.25 s, taken 1.5,
+  counter 1.4, range 0.78 m, press 0.1, crowd 0.6, energy 0.7, and the gauntlet's rope charge `--rope-w 0.08`, which
+  no other boxer trains with.
+- **Trainer on this machine:** `../PoDecath` is gone; runs use `../PoOlympic/training/.venv` (Python 3.11.9, MuJoCo
+  Warp 3.11.0, torch 2.14). `training/.mj350` re-installed (MuJoCo 3.5.0, `pip --no-deps --target`). The retrofit's
+  checkpoints are not on this disk: warm starts and frozen opponents are rebuilt from the shipped ONNX brains by the
+  new `tools/onnx_to_pt.py` (into `checkpoints/onnx/`; each checked against its graph), action noise reset to 0.3.
+- **Queue** (`logs/queue.json`): `f_kim` footwork 1600 iterations from Nick's footwork brain -> exam -> `u1_kim_matt`
+  get-up from Nick's (Matt frozen, assisted at first) -> handover bank -> `m1_kim` gauntlet 800 iterations from Nick's
+  match brain against all six -> exam (60 trials, 12 rounds). Unity closed for the run.
+- **22:40, the owner: "train and improve all behaviours for next 10 hours".** After Kim's queue, D8 for the old
+  boxers (36 jobs appended to `logs/queue.json`, built by a one-off script): per boxer, rules on -> footwork 800
+  iterations from its shipped footwork brain -> exam -> get-up 600 (Matt frozen; Matt's own with Zombie) -> handover
+  bank -> gauntlet 600 from its shipped match brain against the other six, Kim included (each opponent the newest
+  of its shipped brain and its D8 run) -> exam. Order Zombie, Nick, Grandma, Grandpa, Matt; then Trump's exam (he is
+  already under the rules). Kim's follow-ups go in front of D8 as her exams come in.
+- Footwork no longer runs fatigue (`FootworkEnv` sets `fatigue_on = False`): the footwork exam has none and no bout
+  runs that brain. `f_kim` itself started before this change and drains the reserve.
+- **23:40, two faults, fixed.** (1) `m1_kim` stopped at iteration 359: `train_gauntlet.py`'s default `--max-hours 0.6`.
+  Kim continues as `m2_kim` (600 more, up to 1 h) before D8 resumes; the D8 gauntlets now carry `--max-hours 0.75`.
+  (2) `exam_v2.py` knew six names (Kim added) and found opponents only among this disk's runs; it now falls back to
+  the shipped brains in `checkpoints/onnx`. (3) `f1_zombie` collapsed at the first update (KL 291, every episode a
+  fall in 1.2 s): `onnx_to_pt.py` gave the shipped observation statistics a weight of 1e5 samples, and one rollout of
+  98k moved them. Rebuilt at 1e9; `f1_zombie` stopped after 2 minutes, re-queued as `f1b_zombie`. Kim's runs began
+  from the 1e5 files and survived it (KL 36 at iteration 0).
+- **00:00, Kim's first boxing exam** (`m1_kim`, 359 iterations; 60 trials, 12 rounds): footing 0.00, guard 71%, chin
+  0.00, getting up 59 of 60 in 1.5 s, carrying on 56 of 59: pass. **Attack 0.14 a second at 1.1 m/s (mark 0.5 at
+  4.4): FAIL**; she landed nothing on Grandma, Grandpa or Matt. Restyled (roster note) and `restyle.py` (now
+  `--rigs/--models`) wrote it to models/v2; `m2_kim` stopped after minutes (REJECTED); `m2b_kim` from `m1_kim`,
+  600 iterations up to 1 h, `--hit-w 1.2`, twice the rings against Grandma, Grandpa and Matt.
+- **02:50.** `bag_kim` (700 iterations from `m2b_kim`, `--hit-w 2`, noise reset to 0.35): 0.13 -> 3.5 hits a second at
+  8.3 m/s on the bag. `m3_kim` (600 from the bag): **footing, guard 62%, chin 0.09, getting up 59/60, carrying on 59/59
+  pass; attack 1.11 a second at 3.4 m/s (mark 4.4): FAIL**, the average dragged down by Grandma 0.04, Grandpa 0 and
+  Matt 0 (Nick 2.67 at 7.0, Trump 3.07 at 6.4, Zombie 0.87 at 5.3): she does not walk in on the three who stand off.
+  Next `m4_kim` from `m3_kim`: press 0.3 -> 0.6, `--cutoff-w 0.05`, three times the rings against those three.
+  Zombie under the rules (`f1b_zombie`, 800 from his shipped brain): stand 100%, walk 0.01 m/s off and no falls, turn
+  93%, joints 0.32: R0 to R2 pass. (`exam_v2.py --book` was being dropped before it was read; fixed.)
+- **04:00, `m4_kim`** (press 0.6, cutoff 0.05, three times the stand-off three): attack 1.03 a second at 3.8 m/s (mark
+  4.4): FAIL, the other five pass. The exam averages speed over opponents, and on Grandma, Grandpa and Matt she lands
+  0.02 a second at 1.0 to 1.8 m/s; in training Matt lands 1.44 a second on her and she 0.03 on him. Noise had fallen
+  to 0.14. Next `m5_kim` (after `m1_zombie`): noise reset 0.35, `--hit-w 2 --taken-w 0.3 --effort-free-iters 50
+  --sep-max 2.5`, four times the rings against those three.
+- **05:40, `m5_kim`** (noise reset, hit 2, taken 0.3, starts within 2.5 m, four times Grandma/Grandpa/Matt): **attack
+  1.43 a second at 5.2 m/s: pass** (Matt 2.60 at 6.3, Grandpa 0.71 at 3.2, Grandma 0.22 at 3.9); guard 80%, chin, getting
+  up pass; **footing 1.00 falls a minute (against Zombie) and carrying on 43 of 59: FAIL**. Next `m6_kim` from it:
+  fall penalty 12, taken back to 0.5, hit 1.5, starts to 3.5 m, half from the handover bank, Zombie x3, Matt/Grandpa x2.
+- **06:45, `m6_kim`**: attack 1.52 a second at 5.2 m/s, guard 85%, chin 0.00, getting up 59/60, carrying on 56/59: pass;
+  **footing 0.33 falls a minute, all against Zombie: FAIL** (mark 0.2). But the exam's Zombie was `m1_zombie`, his
+  D8 run, not the shipped brain Kim trained against. **`m1_zombie` (D8): footing 15.00 falls a minute (against Kim),
+  attack 0.54 at 3.3 m/s (mark 4.0): FAIL**; guard, chin, getting up 60/60 in 2.2 s, carrying on 59/60 pass. Marked
+  REJECTED (the shipped Zombie passes 9 of 9); Kim's m6 re-examined against the shipped Zombie.
+- **11:00, Kim in the game.** Re-examined against the shipped Zombie (`m1_zombie` REJECTED), **`m6_kim` passes all six
+  boxing lines** (footing 0.00, attack 1.55 a second at 5.2 m/s, guard 80%, chin 0.00, getting up 59/60, carrying on
+  56/59); with the footwork exam (R0-R2 and joints, `f_kim`) every line. Unity: `MjRetrofit.BuildBoxer/BuildCorners`
+  (0 differences from the trainer's model), `Promote("kim", "f_kim")`, `PromoteBoxing("kim", "m6_kim", "u1_kim_matt")`
+  (get-up exported at 103 inputs with `ppo.export_onnx`), testbed roster and both arena corners, menu card and portrait.
+  **Gate: 3 of 3** (policy answers, same run, fall rate). First screen with seven cards: one screen at 720x1280,
+  1080x1920 and 1080x2520. In the arena against Matt: 55 punches landed in 19 s.
+- **The lost morning:** a full play-mode run started 07:13 with the editor in the background ran at a tenth of real
+  time and was stopped at 10:58; the queue was held (07:07) for the editor work and stayed held. D8 done so far:
+  Zombie footwork passes under the rules (`f1b_zombie`), his match (`m1_zombie`) REJECTED; Nick's footwork (`f1_nick`)
+  trained, not examined. Grandma, Grandpa, Matt not started.
+- **11:30, `m6_kim` again with `--seed 2`: all six boxing lines pass** (footing 0.11 a minute at worst, attack 1.55 at 5.2 m/s, guard 78%, chin 0.00, getting up 60/60 in 1.7 s, carrying on 59/60). Kim: 9 of 9 exam lines and the Unity gate.
+- **12:00, finished up at the owner's word.** `m7_kim` (400 more from `m6_kim`, 60% of episodes from the handover bank,
+  fall penalty 12, noise at most 0.25) trained to the end; its first exam was left running (`logs/exam_m7_kim.log`) and
+  `logs/queue.stop` + `logs/queue.hold` end the queue after it. Why it was run: a stand-alone get-up check of `m6_kim`
+  (seed 1) gave getting up 60/60 but carrying on 52 of 60, under the 54 mark; the two full exams had 56/59 and 59/60.
+  Kim plays on `m6_kim` until `m7_kim` passes two seeds and is promoted. D8 left: Nick's footwork passes under the rules
+  (`f1_nick`: joints 0.41); his get-up and match, and all of Grandma, Grandpa and Matt, not run.
+- **12:30, `m7_kim` promoted** (`PromoteBoxing("kim", "m7_kim", "u1_kim_matt")`): its exam (seed 1) passes every line, carrying on 54 of 58 (93%) where `m6_kim` had given 52/60 on a stand-alone check; footing 0, attack and guard pass, getting up 58/60. Its seed-2 exam was still running at the commit (`logs/exam_m7_kim_seed2.log`). The gate tests run the footwork brain (`f_kim`), unchanged. Also fixed: the arena drew black (only the HUD) after a `shot-begin` without `shot-end` left `PoBoxPanel.asset` clearing the screen; `DevTools` now restores the panel when play stops.

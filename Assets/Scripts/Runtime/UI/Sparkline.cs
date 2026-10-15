@@ -8,7 +8,8 @@ namespace PoBox.UI
     /// <summary>
     /// A line graph drawn with the UI Toolkit vector painter: no texture, no package, one draw.
     /// The caller hands it a sampler and a range; it keeps its own copy so a repaint never reads a buffer
-    /// that is being written.
+    /// that is being written. Its colours are the stylesheet's (--line-color, --fill-color, --marker-color,
+    /// --base-color on the element or a class on it), so a graph changes colour by changing class.
     /// </summary>
     [UxmlElement]
     public partial class Sparkline : VisualElement
@@ -21,6 +22,10 @@ namespace PoBox.UI
         public Color lineColor = new Color(0.18f, 0.75f, 0.55f);
         public Color fillColor = new Color(0.18f, 0.75f, 0.55f, 0.18f);
         public Color markerColor = new Color(1f, 0.78f, 0.33f);
+        public Color baseColor = new Color(1f, 1f, 1f, 0.22f);
+        static readonly CustomStyleProperty<Color> LineProp = new CustomStyleProperty<Color>("--line-color"),
+            FillProp = new CustomStyleProperty<Color>("--fill-color"), MarkerProp = new CustomStyleProperty<Color>("--marker-color"),
+            BaseProp = new CustomStyleProperty<Color>("--base-color");
         /// <summary>A horizontal reference line at this value. NaN for none.</summary>
         public float baseline = float.NaN;
         /// <summary>Fill between the line and the baseline rather than the floor.</summary>
@@ -30,6 +35,17 @@ namespace PoBox.UI
         {
             generateVisualContent += Draw;
             pickingMode = PickingMode.Ignore;
+            RegisterCallback<CustomStyleResolvedEvent>(OnStyle);
+        }
+
+        void OnStyle(CustomStyleResolvedEvent e)
+        {
+            ICustomStyle s = e.customStyle;
+            if (s.TryGetValue(LineProp, out Color c)) lineColor = c;
+            if (s.TryGetValue(FillProp, out c)) fillColor = c;
+            if (s.TryGetValue(MarkerProp, out c)) markerColor = c;
+            if (s.TryGetValue(BaseProp, out c)) baseColor = c;
+            MarkDirtyRepaint();
         }
 
         public void Set(Func<int, float> sampler, int count, float min, float max)
@@ -60,7 +76,7 @@ namespace PoBox.UI
 
             if (!float.IsNaN(baseline))
             {
-                p.strokeColor = new Color(1f, 1f, 1f, 0.22f);
+                p.strokeColor = baseColor;
                 p.lineWidth = 2f;
                 p.BeginPath();
                 p.MoveTo(new Vector2(r.xMin, Y(baseline)));

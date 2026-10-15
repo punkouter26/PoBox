@@ -40,6 +40,7 @@ namespace PoBox.EditorTools
     ///     gc-begin, gc-report         record the profiler for a while, then list what allocated garbage, by method
     ///     governor on|off             let the render-scale governor run in the editor and ask for a frame rate it cannot reach
     ///     skip                        end the walk-on now
+    ///     xray on|off                 the collision shapes over the boxers (Fx/PhysicsXray)
     ///
     /// The picture is rendered into textures of an exact size, so it is the phone's shape whatever shape
     /// the Game view happens to be. The capture technique and the Game view reflection are the ones proven
@@ -101,6 +102,7 @@ namespace PoBox.EditorTools
                 case "gc-begin": return GcBegin();
                 case "gc-report": return GcReport();
                 case "governor": return Governor(a.Length > 1 && a[1] == "on");
+                case "xray": PoBox.Fx.PhysicsXray.On = a.Length > 1 && a[1] == "on"; return "x-ray " + (PoBox.Fx.PhysicsXray.On ? "on" : "off");
                 case "skip": if (Bout.Instance != null) Bout.Instance.walkOnSeconds = 0.01f; return "walk-on cut short";
                 default: return "unknown command";
             }
@@ -344,6 +346,12 @@ namespace PoBox.EditorTools
                 ShotRestore();
             }
         }
+
+        // A shot-begin with no shot-end before play stops left the shared panel asset clearing the screen to black
+        // (2026-10-15: the arena drew only the HUD): the saved state does not outlive the next domain reload.
+        [InitializeOnLoadMethod]
+        static void RestoreShotOnStop() =>
+            EditorApplication.playModeStateChanged += s => { if (s == PlayModeStateChange.ExitingPlayMode) ShotRestore(); };
 
         /// <summary>Puts the shared panel asset back exactly as it was: a target texture left on it would be saved.</summary>
         static void ShotRestore()

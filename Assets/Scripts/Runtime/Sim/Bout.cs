@@ -122,6 +122,7 @@ namespace PoBox.Sim
 
         public void NewBout()
         {
+            if (red == null || blue == null) return;   // an empty corner: the HUD's NEXT BOUT still calls this
             BoutNumber++;
             Winner = null;
             Method = "";
@@ -151,6 +152,7 @@ namespace PoBox.Sim
         /// <summary>Throws the current bout away and starts the same two again.</summary>
         public void Restart()
         {
+            if (red == null || blue == null) return;
             BoutNumber++;
             Winner = null; Method = ""; EloDelta = 0f; Round = 1; Clock = 0f; Count = 0; Downed = null;
             Decision = false;
@@ -226,6 +228,7 @@ namespace PoBox.Sim
                 case BoutPhase.Fight:
                     Clock += dt;
                     RoundTimeLeft -= dt;
+                    NoteCentre(dt);
                     if (RoundTimeLeft <= 0f) EndRound();
                     break;
 
@@ -324,6 +327,26 @@ namespace PoBox.Sim
         // ------------------------------------------------------------ helpers
 
         public Fighter Other(Fighter f) => f == red ? blue : red;
+
+        /// <summary>
+        /// Ring generalship for the judges: whoever stands clearly nearer the middle of the ring (by a third of a
+        /// metre or more, measured to the nearer pair of ropes) is holding the centre for that time.
+        /// </summary>
+        void NoteCentre(float dt)
+        {
+            float r = FromCentre(red), b = FromCentre(blue);
+            if (r < 0f || b < 0f || red.IsDown || blue.IsDown || Mathf.Abs(r - b) < 0.33f) return;
+            judges.OnCentre(r < b ? 0 : 1, dt);
+        }
+
+        /// <summary>How far a fighter's pelvis is from the middle of its ring towards the nearer ropes, metres; -1 when there is no ring.</summary>
+        public static float FromCentre(Fighter f)
+        {
+            if (f == null || f.ring == null || f.pelvis == null) return -1f;
+            Vector3 p = f.pelvis.transform.position;
+            Vector2 c = f.ring.centre;
+            return Mathf.Max(Mathf.Abs(p.x - c.x), Mathf.Abs(p.z - c.y));
+        }
 
         /// <summary>Damage done, with a knockdown worth a clear round: one number for a fighter's bout so far.</summary>
         public static float Score(Fighter f) => f == null ? 0f : f.stats.damageDealt + 15f * f.stats.knockdowns;

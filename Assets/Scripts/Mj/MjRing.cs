@@ -39,7 +39,7 @@ namespace PoBox.Mj
         /// <summary>A punch landed: who threw it, which hand (0 left, 1 right), on the head or not, its closing speed (m/s, to 9), and where (Unity).</summary>
         public event Action<MjBoxer, int, bool, float, Vector3> PunchLanded;
         /// <summary>A punch stopped on a glove or a forearm on its way to the head: who stopped it, and how fast it was coming.</summary>
-        public event Action<MjBoxer, float> PunchStopped;
+        public event Action<MjBoxer, float, Vector3> PunchStopped;   // defender, closing speed m/s, where the glove was stopped
         /// <summary>A foot has come down: whose, where (Unity), and how fast it was moving.</summary>
         public event Action<MjBoxer, Vector3, float> FootStep;
         /// <summary>
@@ -66,6 +66,9 @@ namespace PoBox.Mj
         readonly double[,] _slide = new double[2, 2];
         int[] _owner = new int[0];          // which boxer a shape belongs to, -1 for none; feet are -1 here
         double[] _load = new double[0], _clear = new double[0], _at = new double[0];
+        bool[] _rope = new bool[0];
+        readonly float[] _ropeLoad = new float[2];
+        readonly Vector3[] _ropeAt = new Vector3[2];
         readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
         long _began;
 
@@ -118,6 +121,9 @@ namespace PoBox.Mj
             for (int k = 0; k < 2; k++)
                 foreach (int g in _geoms[k])
                     if (g != _b[k].FootGeom(0) && g != _b[k].FootGeom(1)) _owner[g] = k;
+            _rope = new bool[_m->ngeom];
+            foreach (MjGeom s in FindObjectsByType<MjGeom>(FindObjectsInactive.Exclude))
+                if (s.name.StartsWith("rope") && s.MujocoId >= 0 && s.MujocoId < _rope.Length) _rope[s.MujocoId] = true;
             // Everything that is not a boxer (floor, ropes, cubes) goes on both layers, so that a boxer moved to
             // layer 2 while it is down still lies on the canvas, and only the other boxer passes through it.
             var mine = new System.Collections.Generic.HashSet<int>(_geoms[0]);
@@ -200,6 +206,14 @@ namespace PoBox.Mj
             double* f = Geom(b.FootGeom(foot));
             at = ToUnity(f[0], f[1], 0.0);
             return (float)_slide[k, foot];
+        }
+
+        /// <summary>How hard a boxer is pressed into the ropes, N (the solver's normal force at the last control step; 0 off them), and where (Unity).</summary>
+        public float RopeLoad(MjBoxer b, out Vector3 at)
+        {
+            int k = Slot(b);
+            at = _ropeAt[k];
+            return _ropeLoad[k];
         }
 
         // ---------------------------------------------------------------- stepping
@@ -358,10 +372,25 @@ namespace PoBox.Mj
         void TrackCanvas()
         {
             double* force = stackalloc double[6];
+            float* most = stackalloc float[2];
+            _ropeLoad[0] = _ropeLoad[1] = 0f;
+            most[0] = most[1] = 0f;
             for (int i = 0; i < _d->ncon; i++)
             {
                 MujocoLib.mjContact_* c = _d->contact + i;
                 int g = c->geom1, floor = c->geom2;
+                // A boxer against the ropes: the push summed, placed where it is hardest.
+                int rope = _rope[g] ? g : _rope[floor] ? floor : -1;
+                if (rope >= 0)
+                {
+                    int part = rope == g ? floor : g;
+                    if (_owner[part] < 0 || c->efc_address < 0) continue;
+                    MujocoLib.mj_contactForce(_m, _d, i, force);
+                    int k = _owner[part];
+                    _ropeLoad[k] += (float)force[0];
+                    if ((float)force[0] > most[k]) { most[k] = (float)force[0]; _ropeAt[k] = ToUnity(c->pos[0], c->pos[1], c->pos[2]); }
+                    continue;
+                }
                 if (_m->geom_type[g] == 0) { g = c->geom2; floor = c->geom1; }
                 if (_m->geom_type[floor] != 0 || _owner[g] < 0 || c->efc_address < 0) continue;
                 MujocoLib.mj_contactForce(_m, _d, i, force);
@@ -413,7 +442,7 @@ namespace PoBox.Mj
                     if (Math.Sqrt(px * px + py * py + pz * pz) < rTheirs + fr + 0.03) touching = true;
                 }
                 bool blocked = touching && coming > 2.0 && near;
-                if (blocked && !_blocking[k, hand]) PunchStopped?.Invoke(me, (float)coming);
+                if (blocked && !_blocking[k, hand]) PunchStopped?.Invoke(me, (float)coming, ToUnity(tg[0], tg[1], tg[2]));
                 _blocking[k, hand] = blocked;
             }
         }

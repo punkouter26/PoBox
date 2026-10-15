@@ -684,7 +684,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6370163268786275417, guid: 57aec688f0390424f807182851361070, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6370163268786275417, guid: 57aec688f0390424f807182851361070, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -760,7 +760,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8203101259496020792, guid: 57aec688f0390424f807182851361070, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8203101259496020792, guid: 57aec688f0390424f807182851361070, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -904,11 +904,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8559923315184840044, guid: 57aec688f0390424f807182851361070, type: 3}
   m_PrefabInstance: {fileID: 8477663126145558457}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &320301551455616129 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 8203101259496020792, guid: 57aec688f0390424f807182851361070, type: 3}
-  m_PrefabInstance: {fileID: 8477663126145558457}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &346046743060496600 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8172856982543804257, guid: 57aec688f0390424f807182851361070, type: 3}
@@ -1003,11 +998,6 @@ MonoBehaviour:
   side: -1
   joints: 0300000004000000i
   renderers: []
---- !u!23 &3297171541966070752 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 6370163268786275417, guid: 57aec688f0390424f807182851361070, type: 3}
-  m_PrefabInstance: {fileID: 8477663126145558457}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &3765018049567663325 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4748678868917764964, guid: 57aec688f0390424f807182851361070, type: 3}
@@ -1381,8 +1371,6 @@ MonoBehaviour:
   headOffset: {x: 0, y: 0, z: 0}
   extraRenderers:
   - {fileID: 4371765074499084296}
-  - {fileID: 3297171541966070752}
-  - {fileID: 320301551455616129}
   overlayRenderers:
   - {fileID: 4253639208504507058}
   trailSpeed: 4.5

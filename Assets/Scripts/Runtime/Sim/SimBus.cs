@@ -43,6 +43,7 @@ namespace PoBox.Sim
         public static event Action<Vector3, float> FootStep;         // where a foot came down, how fast it was moving m/s
         public static event Action<BoutPhase, BoutPhase> PhaseChanged; // from, to
         public static event Action<string, int> Line;                // commentary text, priority
+        public static event Action<Fighter, Vector3, float> Block;   // defender, where the glove was stopped, its speed m/s
 
         public static void RaiseFootStep(Vector3 p, float speed) => FootStep?.Invoke(p, speed);
         public static void RaiseHit(in HitEvent e) => Hit?.Invoke(e);
@@ -52,6 +53,7 @@ namespace PoBox.Sim
         public static void RaiseFloorImpact(Vector3 p, float impulse) => FloorImpact?.Invoke(p, impulse);
         public static void RaisePhase(BoutPhase from, BoutPhase to) => PhaseChanged?.Invoke(from, to);
         public static void Say(string text, int priority = 1) => Line?.Invoke(text, priority);
+        public static void RaiseBlock(Fighter defender, Vector3 at, float speed) => Block?.Invoke(defender, at, speed);
 
         // Statics outlive a play session when domain reload is off; a subscriber from the last run would
         // then be called on a destroyed object.
@@ -59,7 +61,7 @@ namespace PoBox.Sim
         static void Reset()
         {
             Hit = null; PunchThrown = null; Knockdown = null; GotUp = null;
-            FloorImpact = null; FootStep = null; PhaseChanged = null; Line = null;
+            FloorImpact = null; FootStep = null; PhaseChanged = null; Line = null; Block = null;
         }
     }
 }

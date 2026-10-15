@@ -19,6 +19,8 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--only", action="append", default=[])
+ap.add_argument("--rigs", default="rigs", help="as build_roster.py: rigs/v2 for the retrofit's bodies")
+ap.add_argument("--models", default="models", help="models/v2 for the retrofit's bodies")
 args = ap.parse_args()
 
 with open(os.path.join(HERE, "roster.json"), "r", encoding="utf-8") as f:
@@ -28,14 +30,14 @@ for name, spec in roster.items():
     if args.only and name not in args.only:
         continue
     style = spec.get("style", {})
-    rig_path = os.path.join(HERE, "rigs", f"{name}.json")
+    rig_path = os.path.join(HERE, args.rigs, f"{name}.json")
     with open(rig_path, "r", encoding="utf-8") as f:
         rig = json.load(f)
     rig["style"] = style
     with open(rig_path, "w", encoding="utf-8") as f:
         json.dump(rig, f, indent=2)
     touched = 0
-    for path in glob.glob(os.path.join(HERE, "models", "*_policy_config.json")):
+    for path in glob.glob(os.path.join(HERE, args.models, "*_policy_config.json")):
         with open(path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         entries = cfg["fighters"] if "fighters" in cfg else [cfg]

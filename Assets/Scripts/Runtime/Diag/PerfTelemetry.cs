@@ -11,8 +11,9 @@ namespace PoBox.Diag
     ///
     /// It also holds the frame rate: on a phone, if the frame time sits over budget for two seconds the
     /// render scale steps down (never below <see cref="minScale"/>), and steps back up once there has been
-    /// headroom for five. That is the heat governor. With the Adaptive Performance package's Android
-    /// provider switched on it could act on the device's own thermal warning instead of on the symptom.
+    /// headroom for five. It also listens to the phone's own thermal forecast (Android's PowerManager, once a
+    /// second): a phone heading for throttling steps down before the frame time shows it, and nothing steps
+    /// back up until it has cooled.
     /// </summary>
     public class PerfTelemetry : MonoBehaviour
     {
@@ -28,6 +29,16 @@ namespace PoBox.Diag
         public int StepsDown { get; private set; }
         public int StepsUp { get; private set; }
         [Range(0.5f, 1f)] public float minScale = 0.6f;
+        [Tooltip("Seconds ahead the phone is asked to forecast its heat.")]
+        public int thermalForecast = 10;
+        [Tooltip("Thermal headroom (1 = the phone throttles) at which the render scale steps down whatever the frame time.")]
+        public float hotHeadroom = 0.85f;
+        [Tooltip("Thermal headroom under which the render scale may step back up.")]
+        public float coolHeadroom = 0.7f;
+        /// <summary>The phone's forecast thermal headroom, 0 cool to 1 throttling (more is past it); -1 not known (the editor, or a phone that does not say).</summary>
+        public float ThermalHeadroom { get; private set; } = -1f;
+        /// <summary>Android's PowerManager thermal status, 0 none to 6 shutdown; -1 not known.</summary>
+        public int ThermalStatus { get; private set; } = -1;
 
         public const int HistoryLength = 120;
         public readonly float[] frameHistory = new float[HistoryLength];
@@ -54,6 +65,8 @@ namespace PoBox.Diag
         float _smoothed = 16.6f, _over, _under, _originalScale = -1f;
         UniversalRenderPipelineAsset _asset;
         Mj.MjRing _ring;
+        AndroidJavaObject _power;
+        float _nextThermal;
 
         void Awake() => Instance = this;
 
@@ -80,6 +93,8 @@ namespace PoBox.Diag
             _draw.Dispose(); _batches.Dispose(); _setPass.Dispose();
             _tris.Dispose(); _gc.Dispose(); _memory.Dispose();
             if (_asset != null && _originalScale > 0f) _asset.renderScale = _originalScale;
+            _power?.Dispose();
+            _power = null;
             if (Instance == this) Instance = null;
         }
 
@@ -122,7 +137,36 @@ namespace PoBox.Diag
             if (_ring == null) _ring = FindAnyObjectByType<Mj.MjRing>();
             PhysicsMs = _ring != null ? (float)_ring.PhysicsMs : 0f;
 
+            ReadThermal();
             Govern(ms);
+        }
+
+        /// <summary>
+        /// PowerManager.getThermalHeadroom (API 30) and getCurrentThermalStatus (API 29); the player's minimum
+        /// is 31. Once a second at most: asked more often, the headroom comes back NaN.
+        /// </summary>
+        void ReadThermal()
+        {
+            if (Application.platform != RuntimePlatform.Android || Time.unscaledTime < _nextThermal) return;
+            _nextThermal = Time.unscaledTime + 1.1f;
+            try
+            {
+                if (_power == null)
+                {
+                    using var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                    using var activity = player.GetStatic<AndroidJavaObject>("currentActivity");
+                    _power = activity.Call<AndroidJavaObject>("getSystemService", "power");
+                }
+                ThermalStatus = _power.Call<int>("getCurrentThermalStatus");
+                float headroom = _power.Call<float>("getThermalHeadroom", thermalForecast);
+                // No forecast on this phone: the status, on the headroom's scale (3, severe, is 1).
+                ThermalHeadroom = float.IsNaN(headroom) ? ThermalStatus / 3f : headroom;
+            }
+            catch (System.Exception)
+            {
+                _nextThermal = float.MaxValue;      // a phone without the service: frame time alone
+                ThermalHeadroom = -1f;
+            }
         }
 
         void Govern(float ms)
@@ -131,8 +175,8 @@ namespace PoBox.Diag
             float budget = Budget;
             float dt = Time.unscaledDeltaTime;
 
-            if (ms > budget * 1.15f) { _over += dt; _under = 0f; }
-            else if (ms < budget * 0.8f) { _under += dt; _over = 0f; }
+            if (ms > budget * 1.15f || ThermalHeadroom >= hotHeadroom) { _over += dt; _under = 0f; }
+            else if (ms < budget * 0.8f && ThermalHeadroom < coolHeadroom) { _under += dt; _over = 0f; }
             else { _over = 0f; _under = 0f; }
 
             if (_over > 2f && RenderScale > minScale)

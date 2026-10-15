@@ -129,7 +129,8 @@ def main() -> None:
         cmd = [sys.executable] + [str(c) for c in job["cmd"]]
         log(f"start  {run}: {' '.join(str(c) for c in job['cmd'])}")
         with open(os.path.join(LOGS, f"{run}.log"), "a", encoding="utf-8") as out:
-            p = subprocess.Popen(cmd, cwd=HERE, stdout=out, stderr=subprocess.STDOUT)
+            # A job's "env" (e.g. PYTHONPATH=.mj350 for an exam on the game's MuJoCo) is added to ours.
+            p = subprocess.Popen(cmd, cwd=HERE, stdout=out, stderr=subprocess.STDOUT, env={**os.environ, **job.get("env", {})})
             with open(os.path.join(LOGS, f"{run}.pid"), "w") as f:
                 f.write(str(p.pid))
             shown = False

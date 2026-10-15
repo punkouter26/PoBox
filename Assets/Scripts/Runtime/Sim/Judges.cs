@@ -16,6 +16,10 @@ namespace PoBox.Sim
     ///
     /// A round goes 10-9 to whoever a judge had ahead, 10-10 when that judge's two totals are within 4% of
     /// each other, and a fighter put down in the round loses a further point for each time (10-8, 10-7).
+    ///
+    /// Ring generalship is a tie-break and nothing more: a round all three would otherwise call level goes to
+    /// the fighter who held the centre of the ring for at least 60% of the time either of them clearly did
+    /// (<see cref="OnCentre"/>, fed by the bout). It never outweighs a punch landed, only an even round.
     /// </summary>
     public class Judges
     {
@@ -27,14 +31,24 @@ namespace PoBox.Sim
         /// <summary>The running tally of the round being fought, in each judge's own units: [judge, corner].</summary>
         public readonly float[,] round = new float[Count, 2];
         readonly int[] _downs = new int[2];
+        readonly float[] _centre = new float[2];
         public int RoundsScored { get; private set; }
         public float impulseFloor = 2.2f;
+        /// <summary>The share of centre time that breaks a level round.</summary>
+        public const float GeneralshipShare = 0.6f;
+
+        /// <summary>Red's share of the time either corner held the centre, in the round being fought (0.5 when neither has).</summary>
+        public float CentreShare => _centre[0] + _centre[1] > 0f ? _centre[0] / (_centre[0] + _centre[1]) : 0.5f;
+        /// <summary>The same for the round last closed: what the round-break card shows.</summary>
+        public float LastCentreShare { get; private set; } = 0.5f;
 
         public void Reset()
         {
             Array.Clear(total, 0, total.Length);
             Array.Clear(round, 0, round.Length);
             Array.Clear(_downs, 0, _downs.Length);
+            Array.Clear(_centre, 0, _centre.Length);
+            LastCentreShare = 0.5f;
             RoundsScored = 0;
         }
 
@@ -60,12 +74,19 @@ namespace PoBox.Sim
         /// <param name="corner">Who went down.</param>
         public void OnKnockdown(int corner) => _downs[corner]++;
 
+        /// <param name="corner">Who held the centre of the ring, with the other nearer the ropes, for this many seconds.</param>
+        public void OnCentre(int corner, float seconds) => _centre[corner] += seconds;
+
         /// <summary>Who a judge has ahead in the round being fought: +1 red, -1 blue, 0 level.</summary>
         public int Lean(int judge)
         {
             float r = round[judge, 0], b = round[judge, 1];
             if (_downs[0] != _downs[1]) return _downs[0] < _downs[1] ? 1 : -1;
-            if (Mathf.Abs(r - b) <= 0.04f * (r + b) + 1e-4f) return 0;
+            if (Mathf.Abs(r - b) <= 0.04f * (r + b) + 1e-4f)
+            {
+                float share = CentreShare;
+                return share >= GeneralshipShare ? 1 : share <= 1f - GeneralshipShare ? -1 : 0;
+            }
             return r > b ? 1 : -1;
         }
 
@@ -84,8 +105,10 @@ namespace PoBox.Sim
                 total[j, 0] += red;
                 total[j, 1] += blue;
             }
+            LastCentreShare = CentreShare;
             Array.Clear(round, 0, round.Length);
             Array.Clear(_downs, 0, _downs.Length);
+            Array.Clear(_centre, 0, _centre.Length);
             RoundsScored++;
         }
 

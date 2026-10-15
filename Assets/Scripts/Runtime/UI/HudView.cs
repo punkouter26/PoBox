@@ -16,24 +16,28 @@ namespace PoBox.UI
     ///
     /// Five things never move: the game's name top-left, the frame rate top-centre, the menu top-right, DEBUG
     /// bottom-left and the version bottom-right. Between them: a scoreboard of three rows (the names
-    /// written on the health bars with the clock between them; a tug-of-war win-probability bar; three
-    /// chips, each a pair of numbers either side of an icon, the third cycling through five readings on a
-    /// tap), the picture, and a dock at the bottom with one graph that pages sideways between excitement,
-    /// win probability and frame time.
+    /// written on the health bars with the clock between them, a hit leaving a pale chunk on the bar that
+    /// drains a moment later; a tug-of-war win-probability bar; three chips, each a pair of numbers either
+    /// side of an icon, the third cycling through five readings on a tap anywhere on the scoreboard), the
+    /// picture, and a dock at the bottom with one graph that pages sideways between excitement, win
+    /// probability and frame time.
     ///
     /// Over the picture: a pod in each top corner showing where that fighter has been hit and where its
-    /// balance is, what it has left in the tank and what it is doing this moment; the commentary as a caption
+    /// balance is, what it has left in the tank (and, for a boxer trained to tire, in its muscles), what it
+    /// is doing this moment, and ON THE ROPES or TIRED when it is; the commentary as a caption
     /// along the bottom that fades when it has nothing to say; during the walk-on each fighter's name across
-    /// the lower third; between rounds the three cards and the round's numbers; during a count an inset of
+    /// the lower third; between rounds the three cards and the round's numbers (who held the centre of the
+    /// ring among them); during a count an inset of
     /// the boxer left standing; and at a hard clean punch the glove's speed, written where it landed. A
     /// sideways drag on the picture takes the orbit camera and turns it.
     ///
     /// Everything else opens over that rather than replacing it, docked at the bottom where a thumb is and
-    /// one at a time: the menu is a sheet with three tabs (a tap on the picture closes it), the debug
-    /// readings are a panel that grows out of the DEBUG chip, and the end of a bout is a single sheet
+    /// one at a time: the menu is a sheet with three tabs, the debug readings are a panel that grows out of
+    /// the DEBUG chip (the frame-rate chip opens and closes it too), and a tap anywhere outside either puts it
+    /// away; the end of a bout is a single sheet
     /// carrying the result, the three judges' cards, both fighters' numbers with a hit map each, and the
     /// win-probability graph of the whole bout. BOXERS, in the menu and on that sheet, goes back to the
-    /// first screen to choose another pair.
+    /// first screen to choose another pair, loading it in the background with the button dimmed meanwhile.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class HudView : MonoBehaviour
@@ -41,8 +45,6 @@ namespace PoBox.UI
         public Bout bout;
         public LeagueTable league;
         public BroadcastDirector director;
-        public Color redColor = new Color(0.91f, 0.29f, 0.29f);
-        public Color blueColor = new Color(0.25f, 0.55f, 1f);
 
         const int StripPages = 3;
         const int CycleModes = 5;
@@ -50,9 +52,10 @@ namespace PoBox.UI
         const int ResultRows = 5;
 
         VisualElement _root, _safe;
+        readonly SafeArea _safeArea = new SafeArea();
 
         // frame
-        Button _fps, _menu, _debug;
+        Button _fps, _menu, _debug, _xray;
         Label _version, _debugText;
         VisualElement _debugDot, _debugPanel;
         Glyph _menuGlyph;
@@ -75,9 +78,13 @@ namespace PoBox.UI
         System.Func<int, float> _sampleExcitement, _sampleShare;
         int _walkShown = -1;
 
-        // pods: the tank and the action badge
-        readonly VisualElement[] _tank = new VisualElement[2];
-        readonly Label[] _act = new Label[2];
+        // pods: the tank, the reserve, the action badge and the two flags
+        readonly VisualElement[] _tank = new VisualElement[2], _reserve = new VisualElement[2], _reserveBar = new VisualElement[2], _ghost = new VisualElement[2];
+        readonly Label[] _act = new Label[2], _ropes = new Label[2], _tired = new Label[2];
+        /// <summary>A boxer within this of the ropes, metres, with the other nearer the middle and this close to it, is on the ropes.</summary>
+        const float RopesBand = 0.8f, PressureRange = 1.6f;
+        // what has just changed, swollen until the next tick (Theme.uss .pop)
+        readonly List<VisualElement> _popped = new List<VisualElement>(16);
         readonly PunchType[] _punch = new PunchType[2];
         readonly float[] _punchAt = { -99f, -99f };
         static readonly string[] PunchNames = { "JAB", "CROSS", "HOOK", "UPPER", "BODY" };
@@ -87,7 +94,7 @@ namespace PoBox.UI
         // between rounds, the inset, the speed of a punch
         VisualElement _break, _pip, _picture;
         Label _breakTitle, _flash;
-        readonly Label[] _breakLanded = new Label[2], _breakBlocked = new Label[2];
+        readonly Label[] _breakLanded = new Label[2], _breakBlocked = new Label[2], _breakCentre = new Label[2];
         readonly VisualElement[] _breakCards = new VisualElement[Judges.Count];
         readonly Label[] _breakScores = new Label[Judges.Count];
         readonly FighterStats[] _roundStart = new FighterStats[2];
@@ -96,7 +103,7 @@ namespace PoBox.UI
         const float FlashSeconds = 0.9f;
         Vector3 _flashPoint;
         float _flashAt = -99f, _dragX;
-        bool _dragging;
+        bool _dragging, _stripPressed;
 
         // dock
         VisualElement _dock, _strip;
@@ -121,37 +128,43 @@ namespace PoBox.UI
         readonly Button[] _tabs = new Button[3];
         readonly VisualElement[] _pages = new VisualElement[3];
         readonly Button[] _camButtons = new Button[4], _speedButtons = new Button[2], _focusButtons = new Button[2];
-        Button _sSound, _sQuality, _sFps, _sReset;
+        SettingsPage _settings;
         readonly Label[][] _leagueCells = new Label[LeagueRows][];
         readonly VisualElement[] _leagueRows = new VisualElement[LeagueRows];
-        float _resetArmedUntil;
+        // BOXERS in the menu and on the result card, and their words, which trail dots while the first screen loads
+        readonly Button[] _boxers = new Button[2];
+        readonly Label[] _boxersWords = new Label[2];
+        static readonly string[] BusyWords = { "BOXERS ·", "BOXERS ··", "BOXERS ···" };
 
         float _nextFast, _nextSlow;
         int _lastBout = -1;
         BoutPhase _lastPhase = (BoutPhase)(-1);
-        Rect _lastSafe;
-        Vector2Int _lastScreen;
-        bool _scaleKnown;
 
         public bool MenuOpen => _menuSheet != null && !_menuSheet.ClassListContains("hidden");
         public bool DebugOpen => _debugPanel != null && !_debugPanel.ClassListContains("hidden");
         public bool ResultsOpen => _results != null && !_results.ClassListContains("hidden");
         public VisualElement Root => _root;
 
-#if UNITY_EDITOR
-        /// <summary>A pretend notch for the editor, in screen pixels. Null is the real safe area.</summary>
+        /// <summary>A pretend notch for the editor and the tests, in screen pixels, for every document (<see cref="SafeArea"/>). Null is the real safe area.</summary>
         public static Rect? SafeAreaOverride;
-        static Rect SafeArea => SafeAreaOverride ?? Screen.safeArea;
-#else
-        static Rect SafeArea => Screen.safeArea;
-#endif
 
         // ------------------------------------------------------------ build
 
         void OnEnable()
         {
-            _root = GetComponent<UIDocument>().rootVisualElement;
-            if (_root == null) return;
+            // Built and hooked once a document: enabled again on the same tree, the buttons keep the handlers they have.
+            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
+            if (root == null) return;
+            if (root != _root) Build(root);
+
+            SimBus.Line += OnLine;
+            SimBus.PunchThrown += OnPunch;
+            SimBus.Hit += OnHit;
+        }
+
+        void Build(VisualElement root)
+        {
+            _root = root;
             _safe = _root.Q<VisualElement>("safe");
 
             _fps = _root.Q<Button>("fps");
@@ -189,9 +202,15 @@ namespace PoBox.UI
             for (int i = 0; i < 2; i++)
             {
                 _tank[i] = _root.Q<VisualElement>("tank-" + corners[i]);
+                _reserve[i] = _root.Q<VisualElement>("reserve-" + corners[i]);
+                _reserveBar[i] = _root.Q<VisualElement>("reserve-bar-" + corners[i]);
+                _ghost[i] = _root.Q<VisualElement>(corners[i] + "-ghost");
                 _act[i] = _root.Q<Label>("act-" + corners[i]);
+                _ropes[i] = _root.Q<Label>("ropes-" + corners[i]);
+                _tired[i] = _root.Q<Label>("tired-" + corners[i]);
                 _breakLanded[i] = _root.Q<Label>("break-landed-" + corners[i]);
                 _breakBlocked[i] = _root.Q<Label>("break-blocked-" + corners[i]);
+                _breakCentre[i] = _root.Q<Label>("break-centre-" + corners[i]);
             }
             _break = _root.Q<VisualElement>("break");
             _breakTitle = _root.Q<Label>("break-title");
@@ -229,8 +248,15 @@ namespace PoBox.UI
 
             Hook(_menu, ToggleMenu);
             Hook(_debug, ToggleDebug);
-            Hook(_fps, () => { SetStripPage(2); if (!DebugOpen) ToggleDebug(); });
-            Hook(_root.Q<Button>("cycle"), () => { _cycle = (_cycle + 1) % CycleModes; RefreshCycleKey(); RefreshTape(); });
+            Hook(_fps, () => { SetStripPage(2); ToggleDebug(); });
+            // The third chip is shorter than a thumb, so the whole scoreboard is its button.
+            if (_board != null) _board.RegisterCallback<ClickEvent>(_ =>
+            {
+                if (CloseOverlays()) return;
+                _cycle = (_cycle + 1) % CycleModes;
+                RefreshCycleKey();
+                if (bout != null) RefreshTape();
+            });
 
             BuildResultsTape();
             BuildJudges("res-judges", _judgeCards, _judgeScores);
@@ -245,12 +271,9 @@ namespace PoBox.UI
             RefreshCycleKey();
             SetStripPage(0);
             ShowTab(0);
-            LoadSettings();
-            ApplySafeArea();
-
-            SimBus.Line += OnLine;
-            SimBus.PunchThrown += OnPunch;
-            SimBus.Hit += OnHit;
+            SettingsPage.Load();
+            RefreshMenu();
+            _safeArea.Fit(_root, _safe);
         }
 
         void OnDisable()
@@ -270,8 +293,8 @@ namespace PoBox.UI
             VisualElement host = _root.Q<VisualElement>("res-tape");
             if (host == null) return;
             host.Clear();
+            // Landed, blocked, hardest, energy, damage: the icon is the key, as on the scoreboard's chips.
             GlyphKind[] kinds = { GlyphKind.Glove, GlyphKind.Shield, GlyphKind.Burst, GlyphKind.Bolt, GlyphKind.Heat };
-            string[] codes = { "LANDED", "BLOCKED", "PEAK", "ENERGY", "DAMAGE" };
             for (int i = 0; i < ResultRows; i++)
             {
                 var row = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -279,7 +302,7 @@ namespace PoBox.UI
                 _resRed[i] = TapeValue(true);
                 _resBlue[i] = TapeValue(false);
                 row.Add(_resRed[i]);
-                row.Add(TapeKey(kinds[i], codes[i]));
+                row.Add(TapeKey(kinds[i]));
                 row.Add(_resBlue[i]);
                 host.Add(row);
             }
@@ -293,16 +316,13 @@ namespace PoBox.UI
             return l;
         }
 
-        static VisualElement TapeKey(GlyphKind kind, string code)
+        static VisualElement TapeKey(GlyphKind kind)
         {
             var key = new VisualElement { pickingMode = PickingMode.Ignore };
             key.AddToClassList("tape-key");
             var g = new Glyph { kind = kind };
             g.AddToClassList("glyph");
-            var c = new Label(code) { pickingMode = PickingMode.Ignore };
-            c.AddToClassList("tape-code");
             key.Add(g);
-            key.Add(c);
             return key;
         }
 
@@ -352,6 +372,19 @@ namespace PoBox.UI
                 _debugPanel.Add(cell);
                 _debugValues.Add(v);
             }
+            // The boxers' collision shapes drawn over the picture (Fx/PhysicsXray.cs).
+            _xray = new Button(() => { PhysicsXray.On = !PhysicsXray.On; RefreshXray(); }) { name = "x-ray" };
+            _xray.AddToClassList("btn");
+            _xray.AddToClassList("dbg-chip");
+            _debugPanel.Add(_xray);
+            RefreshXray();
+        }
+
+        void RefreshXray()
+        {
+            if (_xray == null) return;
+            _xray.text = PhysicsXray.On ? "X-RAY ON" : "X-RAY OFF";
+            _xray.EnableInClassList("btn--on", PhysicsXray.On);
         }
 
         void BuildLeagueRows()
@@ -382,7 +415,7 @@ namespace PoBox.UI
         {
             Hook(_root.Q<Button>("m-restart"), () => { if (bout != null) bout.Restart(); CloseMenu(); });
             Hook(_root.Q<Button>("m-next"), () => { if (bout != null) bout.NewBout(); CloseMenu(); });
-            HookBoxers(_root.Q<Button>("m-boxers"));
+            HookBoxers(0, _root.Q<Button>("m-boxers"), _root.Q<Label>("m-boxers-word"));
 
             string[] cams = { "cam-auto", "cam-wide", "cam-orbit", "cam-top" };
             Shot?[] shots = { null, Shot.Wide, Shot.Orbit, Shot.Overhead };
@@ -409,48 +442,37 @@ namespace PoBox.UI
                 Hook(_speedButtons[i], () => { if (bout != null) bout.userTimeScale = scales[index]; RefreshMenu(); });
             }
 
-            _sSound = _root.Q<Button>("s-sound");
-            _sQuality = _root.Q<Button>("s-quality");
-            _sFps = _root.Q<Button>("s-fps");
-            _sReset = _root.Q<Button>("s-reset");
-
-            Hook(_sSound, () => { AudioDirector.Muted = !AudioDirector.Muted; SaveSettings(); RefreshMenu(); });
-            Hook(_sQuality, () =>
-            {
-                int n = QualitySettings.names.Length;
-                if (n > 0) QualitySettings.SetQualityLevel((QualitySettings.GetQualityLevel() + 1) % n, true);
-                SaveSettings(); RefreshMenu();
-            });
-            Hook(_sFps, () =>
-            {
-                PerfTelemetry perf = PerfTelemetry.Instance;
-                if (perf != null) perf.SetTargetFps(perf.targetFps >= 60 ? 30 : 60);
-                SaveSettings(); RefreshMenu();
-            });
-            Hook(_sReset, () =>
-            {
-                // Twice, because it throws away every result the ladder has.
-                if (Time.unscaledTime < _resetArmedUntil)
-                {
-                    if (league != null) league.ResetAll();
-                    _resetArmedUntil = 0f;
-                }
-                else _resetArmedUntil = Time.unscaledTime + 3f;
-                RefreshMenu();
-            });
+            // Sound, quality, voice, buzz, frame rate, the ladder: the page the first screen has too.
+            _settings = new SettingsPage(_root, league);
         }
 
         void HookStrip()
         {
             if (_strip == null) return;
-            // A sideways swipe pages the graph; a tap goes to the next one.
-            _strip.RegisterCallback<PointerDownEvent>(e => _stripDownX = e.position.x);
+            // A sideways swipe pages the graph; a tap goes to the next one. A touch the system takes back (a call
+            // coming in, the swipe turning into the system's gesture) pages nothing.
+            _strip.RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (CloseOverlays()) return;
+                _stripDownX = e.position.x;
+                _stripPressed = true;
+                _strip.CapturePointer(e.pointerId);
+            });
             _strip.RegisterCallback<PointerUpEvent>(e =>
             {
+                if (!_stripPressed) return;
+                _stripPressed = false;
+                if (_strip.HasPointerCapture(e.pointerId)) _strip.ReleasePointer(e.pointerId);
                 float dx = e.position.x - _stripDownX;
                 int step = Mathf.Abs(dx) < 40f ? 1 : dx < 0f ? 1 : -1;
                 SetStripPage((_stripPage + step + StripPages) % StripPages);
             });
+            _strip.RegisterCallback<PointerCancelEvent>(e =>
+            {
+                _stripPressed = false;
+                if (_strip.HasPointerCapture(e.pointerId)) _strip.ReleasePointer(e.pointerId);
+            });
+            _strip.RegisterCallback<PointerCaptureOutEvent>(_ => _stripPressed = false);
         }
 
         /// <summary>A sideways drag on the picture turns the orbit camera, taking it on air first. AUTO in the menu gives the cameras back.</summary>
@@ -459,8 +481,8 @@ namespace PoBox.UI
             if (_picture == null) return;
             _picture.RegisterCallback<PointerDownEvent>(e =>
             {
-                // The menu is a sheet over the picture: a tap on what is left of the picture puts it away.
-                if (MenuOpen) { CloseMenu(); return; }
+                // The menu and the debug panel lie over the picture: a tap on what is left of it puts them away.
+                if (CloseOverlays()) return;
                 _dragX = e.position.x;
                 _dragging = true;
                 _picture.CapturePointer(e.pointerId);
@@ -474,55 +496,58 @@ namespace PoBox.UI
                 _dragX = e.position.x;
                 director.TurnOrbit(-dx * 0.25f);
             });
-            _picture.RegisterCallback<PointerUpEvent>(e =>
-            {
-                if (!_dragging) return;
-                _dragging = false;
-                _picture.ReleasePointer(e.pointerId);
-                RefreshMenu();
-            });
+            _picture.RegisterCallback<PointerUpEvent>(e => EndDrag(e.pointerId));
+            // A touch the system cancels, or a capture lost to anything else, ends the drag: otherwise the next
+            // touch anywhere would turn the camera.
+            _picture.RegisterCallback<PointerCancelEvent>(e => EndDrag(e.pointerId));
+            _picture.RegisterCallback<PointerCaptureOutEvent>(_ => _dragging = false);
+        }
+
+        void EndDrag(int pointerId)
+        {
+            if (!_dragging) return;
+            _dragging = false;
+            if (_picture.HasPointerCapture(pointerId)) _picture.ReleasePointer(pointerId);
+            RefreshMenu();
         }
 
         void HookResults()
         {
-            HookBoxers(_root.Q<Button>("res-boxers"));
+            HookBoxers(1, _root.Q<Button>("res-boxers"), _root.Q<Label>("res-boxers-word"));
             Hook(_resNext, () => { if (bout != null) bout.NewBout(); });
         }
 
         /// <summary>Back to the first screen to choose another pair. Not offered when the build has no such screen.</summary>
-        void HookBoxers(Button b)
+        void HookBoxers(int slot, Button b, Label word)
         {
+            _boxers[slot] = b;
+            _boxersWords[slot] = word;
             if (b == null) return;
             b.EnableInClassList("hidden", !MatchSelection.HasMenu);
             b.clicked += ToBoxers;
         }
 
-        /// <summary>Leaves for the first screen, once: a second tap while the scene is loading would load it twice.</summary>
+        /// <summary>
+        /// Leaves for the first screen, once: a second tap while the scene is loading would load it twice. It
+        /// loads in the background; meanwhile both BOXERS buttons are dimmed and their word trails dots.
+        /// </summary>
         public void ToBoxers()
         {
             if (_leaving || !MatchSelection.HasMenu) return;
             _leaving = true;
-            SceneManager.LoadScene(MatchSelection.MenuScene);
-        }
-
-        // ------------------------------------------------------------ settings
-
-        void LoadSettings()
-        {
-            AudioDirector.Muted = PlayerPrefs.GetInt("pobox.muted", 0) == 1;
-            PerfTelemetry perf = PerfTelemetry.Instance;
-            if (perf != null) perf.SetTargetFps(PlayerPrefs.GetInt("pobox.fps", perf.targetFps));
-            RefreshMenu();
-        }
-
-        void SaveSettings()
-        {
-            PlayerPrefs.SetInt("pobox.muted", AudioDirector.Muted ? 1 : 0);
-            if (PerfTelemetry.Instance != null) PlayerPrefs.SetInt("pobox.fps", PerfTelemetry.Instance.targetFps);
-            PlayerPrefs.Save();
+            foreach (Button b in _boxers) if (b != null) b.AddToClassList("btn--busy");
+            SceneManager.LoadSceneAsync(MatchSelection.MenuScene);
         }
 
         // ------------------------------------------------------------ sheets
+
+        /// <summary>The one overlay rule: a tap outside the menu or the debug panel puts it away. True when there was one to put away.</summary>
+        bool CloseOverlays()
+        {
+            if (MenuOpen) { CloseMenu(); return true; }
+            if (DebugOpen) { ToggleDebug(); return true; }
+            return false;
+        }
 
         public void ToggleMenu()
         {
@@ -597,27 +622,7 @@ namespace PoBox.UI
             for (int i = 0; i < _speedButtons.Length; i++)
                 if (_speedButtons[i] != null) _speedButtons[i].EnableInClassList("btn--on", Mathf.Approximately(scale, scales[i]));
 
-            Toggle(_sSound, "SOUND", !AudioDirector.Muted);
-            if (_sQuality != null)
-            {
-                string[] names = QualitySettings.names;
-                int level = QualitySettings.GetQualityLevel();
-                _sQuality.text = "QUALITY " + (level >= 0 && level < names.Length ? names[level].ToUpperInvariant() : "-");
-            }
-            if (_sFps != null) _sFps.text = (PerfTelemetry.Instance != null ? PerfTelemetry.Instance.targetFps : 60) + " FPS";
-            if (_sReset != null)
-            {
-                bool armed = Time.unscaledTime < _resetArmedUntil;
-                _sReset.text = armed ? "SURE?" : "RESET LADDER";
-                _sReset.EnableInClassList("btn--danger", armed);
-            }
-        }
-
-        static void Toggle(Button b, string label, bool on)
-        {
-            if (b == null) return;
-            b.text = label + (on ? " ON" : " OFF");
-            b.EnableInClassList("btn--on", on);
+            if (_settings != null) _settings.Refresh();
         }
 
         void RefreshLeague()
@@ -672,10 +677,15 @@ namespace PoBox.UI
         void Update()
         {
             if (_root == null) return;
-            if (!_scaleKnown || _lastSafe != SafeArea || _lastScreen.x != Screen.width || _lastScreen.y != Screen.height) ApplySafeArea();
+            _safeArea.Fit(_root, _safe);
+            float now = Time.unscaledTime;
+            if (_leaving)
+            {
+                string word = BusyWords[(int)(now * 3f) % BusyWords.Length];
+                foreach (Label l in _boxersWords) Set(l, word);
+            }
             if (bout == null) return;
 
-            float now = Time.unscaledTime;
             if (bout.BoutNumber != _lastBout || bout.Phase != _lastPhase)
             {
                 _lastBout = bout.BoutNumber;
@@ -689,6 +699,7 @@ namespace PoBox.UI
             if (now >= _nextFast)
             {
                 _nextFast = now + 0.1f;
+                Unpop();
                 RefreshClock();
                 RefreshTape();
                 RefreshPods();
@@ -703,13 +714,14 @@ namespace PoBox.UI
                 if (_stripPage != 2) RefreshStrip();
                 if (DebugOpen) RefreshDebug();
                 ReportPictureBand();
-                if (MenuOpen && now < _resetArmedUntil + 0.3f) RefreshMenu();
+                if (MenuOpen && _settings != null && _settings.Armed) _settings.Refresh();
             }
 
-            // The caption is there while it is news, and gone after: five seconds, then a second of fading.
+            // The caption is there while it is news, and gone after: five seconds, then a second of fading. Never
+            // under anything open over the picture.
             if (_ticker != null)
             {
-                float opacity = ResultsOpen || MenuOpen || string.IsNullOrEmpty(_ticker.text) ? 0f : Mathf.Clamp01(6f - (now - _tickerAt));
+                float opacity = ResultsOpen || MenuOpen || DebugOpen || string.IsNullOrEmpty(_ticker.text) ? 0f : Mathf.Clamp01(6f - (now - _tickerAt));
                 if (!Mathf.Approximately(opacity, _tickerOpacity)) { _tickerOpacity = opacity; _ticker.style.opacity = opacity; }
             }
         }
@@ -795,6 +807,9 @@ namespace PoBox.UI
             if (red == null || blue == null) return;
             if (_redHp != null) _redHp.style.width = Length.Percent(red.Health);
             if (_blueHp != null) _blueHp.style.width = Length.Percent(blue.Health);
+            // The pale chunk behind each bar follows the health too, but its stylesheet holds it back 0.6 s first.
+            if (_ghost[0] != null) _ghost[0].style.width = Length.Percent(red.Health);
+            if (_ghost[1] != null) _ghost[1].style.width = Length.Percent(blue.Health);
             if (_momFill != null) _momFill.style.width = Length.Percent(Excitement.RedShare * 100f);
         }
 
@@ -804,8 +819,8 @@ namespace PoBox.UI
             if (_clock != null) _clock.text = Bout.ClockText(bout.RoundTimeLeft);
             Fighter red = bout.red, blue = bout.blue;
             if (red == null || blue == null) return;
-            if (_redHpText != null) _redHpText.text = Mathf.CeilToInt(red.Health).ToString();
-            if (_blueHpText != null) _blueHpText.text = Mathf.CeilToInt(blue.Health).ToString();
+            SetPop(_redHpText, Mathf.CeilToInt(red.Health).ToString());
+            SetPop(_blueHpText, Mathf.CeilToInt(blue.Health).ToString());
             int share = Mathf.RoundToInt(Excitement.RedShare * 100f);
             if (_momRed != null) _momRed.text = share + "%";
             if (_momBlue != null) _momBlue.text = (100 - share) + "%";
@@ -823,10 +838,10 @@ namespace PoBox.UI
         {
             Fighter red = bout.red, blue = bout.blue;
             if (red == null || blue == null) return;
-            Set(_landedRed, $"{red.stats.landed}/{red.stats.thrown}");
-            Set(_landedBlue, $"{blue.stats.landed}/{blue.stats.thrown}");
-            Set(_peakRed, $"{red.stats.peakImpulse:0} N·s");
-            Set(_peakBlue, $"{blue.stats.peakImpulse:0} N·s");
+            SetPop(_landedRed, $"{red.stats.landed}/{red.stats.thrown}");
+            SetPop(_landedBlue, $"{blue.stats.landed}/{blue.stats.thrown}");
+            SetPop(_peakRed, $"{red.stats.peakImpulse:0} N·s");
+            SetPop(_peakBlue, $"{blue.stats.peakImpulse:0} N·s");
             Set(_cycleRed, CycleText(red));
             Set(_cycleBlue, CycleText(blue));
         }
@@ -857,7 +872,11 @@ namespace PoBox.UI
             RefreshStatus(1, blue);
         }
 
-        /// <summary>The tank, and the badge under it: down, getting up, dazed, the punch just thrown, or in its guard.</summary>
+        /// <summary>
+        /// The tank; under it the muscles' reserve, for a boxer whose config has it tire (for any other it would
+        /// always be full); the badge under that: down, getting up, dazed, the punch just thrown, or in its
+        /// guard; and the two flags, ON THE ROPES and TIRED (the reserve under half, where the drives weaken).
+        /// </summary>
         void RefreshStatus(int corner, Fighter f)
         {
             if (_tank[corner] != null)
@@ -865,6 +884,18 @@ namespace PoBox.UI
                 _tank[corner].style.width = Length.Percent(f.Stamina * 100f);
                 _tank[corner].EnableInClassList("tank-fill--low", f.Stamina < 0.35f);
             }
+            Mj.MjBoxer body = f.boxer;
+            bool tires = body != null && body.Bound && body.Cfg.fatigue_j > 0.0;
+            float reserve = tires ? (float)body.Reserve : 1f;
+            if (_reserveBar[corner] != null) _reserveBar[corner].EnableInClassList("hidden", !tires);
+            if (_reserve[corner] != null)
+            {
+                _reserve[corner].style.width = Length.Percent(reserve * 100f);
+                _reserve[corner].EnableInClassList("tank-fill--weak", reserve < 0.5f);
+            }
+            Flag(_tired[corner], tires && reserve < 0.5f);
+            Flag(_ropes[corner], OnTheRopes(f));
+
             if (_act[corner] == null) return;
             bool punching = Time.time - _punchAt[corner] < PunchShown;
             bool alarm = f.IsDown || f.Staggered;
@@ -873,7 +904,26 @@ namespace PoBox.UI
             _act[corner].EnableInClassList("act--punch", punching && !alarm);
         }
 
-        /// <summary>Between rounds: the cards as they stand, and landed of thrown and punches stopped in the round just ended.</summary>
+        /// <summary>A flag shown or put away; one going up swells as it does.</summary>
+        void Flag(Label flag, bool on)
+        {
+            if (flag == null || flag.ClassListContains("hidden") != on) return;
+            flag.EnableInClassList("hidden", !on);
+            if (on) Pop(flag);
+        }
+
+        /// <summary>Near the ropes, with the other boxer nearer the middle of the ring and close enough to be pressing.</summary>
+        static bool OnTheRopes(Fighter f)
+        {
+            Fighter o = f.opponent;
+            float mine = Bout.FromCentre(f), theirs = Bout.FromCentre(o);
+            if (mine < 0f || theirs < 0f || f.IsDown || o.IsDown) return false;
+            Vector3 gap = o.pelvis.transform.position - f.pelvis.transform.position;
+            gap.y = 0f;
+            return mine > f.ring.ringHalf - RopesBand && theirs < mine - 0.3f && gap.sqrMagnitude < PressureRange * PressureRange;
+        }
+
+        /// <summary>Between rounds: the cards as they stand, and landed of thrown, punches stopped and the share of the centre in the round just ended.</summary>
         void FillBreak()
         {
             Set(_breakTitle, "END OF ROUND " + bout.Round);
@@ -892,6 +942,9 @@ namespace PoBox.UI
                 Set(_breakLanded[i], $"{f.stats.landed - _roundStart[i].landed}/{f.stats.thrown - _roundStart[i].thrown}");
                 Set(_breakBlocked[i], (f.stats.blocked - _roundStart[i].blocked).ToString());
             }
+            float centre = bout.judges.LastCentreShare;
+            Set(_breakCentre[0], $"{centre * 100f:0}%");
+            Set(_breakCentre[1], $"{(1f - centre) * 100f:0}%");
         }
 
         /// <summary>The impulse that is drawn fully hot: the most that has landed on any one part of either fighter, and never less than a few punches' worth.</summary>
@@ -905,6 +958,28 @@ namespace PoBox.UI
         static void Set(Label l, string text)
         {
             if (l != null && l.text != text) l.text = text;
+        }
+
+        /// <summary>Set, and if the number changed, swell it until the next tick.</summary>
+        void SetPop(Label l, string text)
+        {
+            if (l == null || l.text == text) return;
+            bool first = string.IsNullOrEmpty(l.text);
+            l.text = text;
+            if (!first) Pop(l);
+        }
+
+        void Pop(VisualElement e)
+        {
+            if (_popped.Contains(e)) return;
+            e.AddToClassList("pop");
+            _popped.Add(e);
+        }
+
+        void Unpop()
+        {
+            for (int i = 0; i < _popped.Count; i++) _popped[i].RemoveFromClassList("pop");
+            _popped.Clear();
         }
 
         void RefreshOverlays(float now)
@@ -936,7 +1011,7 @@ namespace PoBox.UI
             {
                 float age = now - _flashAt;
                 Camera cam = director != null ? director.mainCamera : null;
-                bool show = age < FlashSeconds && cam != null && _safe != null && !ResultsOpen && !MenuOpen;
+                bool show = age < FlashSeconds && cam != null && _safe != null && !ResultsOpen && !MenuOpen && !DebugOpen;
                 _flash.EnableInClassList("hidden", !show);
                 if (show)
                 {
@@ -977,6 +1052,10 @@ namespace PoBox.UI
             if (_stripGraph == null) return;
             Excitement ex = Excitement.Instance;
             PerfTelemetry perf = PerfTelemetry.Instance;
+            // Each page's colours are a class in the stylesheet.
+            _stripGraph.EnableInClassList("spark--excite", _stripPage == 0);
+            _stripGraph.EnableInClassList("spark--share", _stripPage == 1);
+            _stripGraph.EnableInClassList("spark--frame", _stripPage == 2);
             switch (_stripPage)
             {
                 case 0:
@@ -984,18 +1063,14 @@ namespace PoBox.UI
                     Set(_stripValue, $"{Excitement.Value * 100f:0}%");
                     _stripGraph.baseline = float.NaN;
                     _stripGraph.fillFromBaseline = false;
-                    _stripGraph.lineColor = new Color(1f, 0.78f, 0.33f);
-                    _stripGraph.fillColor = new Color(1f, 0.78f, 0.33f, 0.16f);
                     if (ex != null) _stripGraph.Set(_sampleExcitement ??= i => Excitement.Instance.Sample(Excitement.Instance.excitementHistory, i), ex.HistoryCount, 0f, 1f);
                     break;
                 case 1:
                     // The cards, what each has left, and, with trained fighters, what their critics expect.
                     Set(_stripTitle, ex != null && ex.HasCritic ? "WIN CHANCE · AI" : "WIN CHANCE");
-                    Set(_stripValue, $"{Excitement.RedShare * 100f:0}% {(bout.red != null ? bout.red.displayName : "RED")}");
+                    Set(_stripValue, $"{Excitement.RedShare * 100f:0}% {(bout != null && bout.red != null ? bout.red.displayName : "RED")}");
                     _stripGraph.baseline = 0.5f;
                     _stripGraph.fillFromBaseline = true;
-                    _stripGraph.lineColor = Color.white;
-                    _stripGraph.fillColor = new Color(1f, 1f, 1f, 0.12f);
                     if (ex != null) _stripGraph.Set(_sampleShare ??= i => Excitement.Instance.Sample(Excitement.Instance.shareHistory, i), ex.HistoryCount, 0f, 1f);
                     break;
                 default:
@@ -1003,8 +1078,6 @@ namespace PoBox.UI
                     Set(_stripValue, perf != null ? $"{perf.FrameMs:0.0} ms · worst {perf.WorstMs:0}" : "-");
                     _stripGraph.baseline = perf != null ? 1000f / Mathf.Max(15, perf.targetFps) : 16.7f;
                     _stripGraph.fillFromBaseline = false;
-                    _stripGraph.lineColor = new Color(0.18f, 0.75f, 0.55f);
-                    _stripGraph.fillColor = new Color(0.18f, 0.75f, 0.55f, 0.16f);
                     if (perf != null) _stripGraph.Set(perf.Sample, PerfTelemetry.HistoryLength, 0f, 50f);
                     break;
             }
@@ -1049,7 +1122,8 @@ namespace PoBox.UI
             if (_resWinner != null)
             {
                 _resWinner.text = w != null ? w.displayName + " WINS" : "DRAW";
-                _resWinner.style.color = w == null ? Color.white : w == red ? redColor : blueColor;
+                _resWinner.EnableInClassList("res-winner--red", w != null && w == red);
+                _resWinner.EnableInClassList("res-winner--blue", w != null && w == blue);
             }
             Set(_resMethod, bout.Method);
             if (_resElo != null)
@@ -1089,8 +1163,6 @@ namespace PoBox.UI
             {
                 _resGraph.baseline = 0.5f;
                 _resGraph.fillFromBaseline = true;
-                _resGraph.lineColor = Color.white;
-                _resGraph.fillColor = new Color(1f, 1f, 1f, 0.12f);
                 _resGraph.Set(i => ex.Sample(ex.shareHistory, i), ex.HistoryCount, 0f, 1f);
             }
             RefreshNext();
@@ -1108,33 +1180,6 @@ namespace PoBox.UI
         static void Set2(Button b, string text)
         {
             if (b != null && b.text != text) b.text = text;
-        }
-
-        // ------------------------------------------------------------ safe area
-
-        /// <summary>
-        /// Moves the safe element's edges in by the notch and the home bar, converted from screen pixels to
-        /// the panel's own units. Edges, not padding: everything inside is absolutely positioned and would
-        /// ignore padding. Re-applied until the panel has a width, because on the first frame it has none
-        /// and the conversion would be wrong on any phone that is not exactly the reference width.
-        /// </summary>
-        void ApplySafeArea()
-        {
-            _lastSafe = SafeArea;
-            _lastScreen = new Vector2Int(Screen.width, Screen.height);
-            if (_safe == null || Screen.width <= 0 || Screen.height <= 0) return;
-
-            Rect sa = SafeArea;
-            if (sa.width <= 0f || sa.height <= 0f || sa.xMax > Screen.width + 1f || sa.yMax > Screen.height + 1f)
-                sa = new Rect(0f, 0f, Screen.width, Screen.height);
-
-            float panelWidth = _root.panel != null ? _root.panel.visualTree.layout.width : float.NaN;
-            _scaleKnown = panelWidth > 1f;
-            float scale = _scaleKnown ? panelWidth / Screen.width : 1f;
-            _safe.style.left = sa.xMin * scale;
-            _safe.style.right = (Screen.width - sa.xMax) * scale;
-            _safe.style.top = (Screen.height - sa.yMax) * scale;
-            _safe.style.bottom = sa.yMin * scale;
         }
     }
 }

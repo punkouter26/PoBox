@@ -3,12 +3,14 @@ using UnityEngine.UIElements;
 
 namespace PoBox.UI
 {
-    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze, Menu, Close }
+    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze, Menu, Close, Speaker, Trash, Voice, Buzz, Ring }
 
     /// <summary>
     /// The small icons that stand in for words on the tale of the tape: a glove for punches landed, a burst
     /// for the hardest hit, a bolt for energy, and so on. Drawn as vectors so they are sharp at any
-    /// resolution and take the text colour, and so the game ships no icon it had to licence.
+    /// resolution and take the text colour, and so the game ships no icon it had to licence. The settings
+    /// page has a speaker (sound), a speech bubble (the commentator's voice), a buzzing phone (haptics) and a
+    /// bin (resetting the ladder); the round-break card has the ring seen from above, for who held its centre.
     /// </summary>
     [UxmlElement]
     public partial class Glyph : VisualElement
@@ -120,6 +122,54 @@ namespace PoBox.UI
                 case GlyphKind.Close:
                     p.BeginPath(); p.MoveTo(P(-0.65f, -0.65f)); p.LineTo(P(0.65f, 0.65f)); p.Stroke();
                     p.BeginPath(); p.MoveTo(P(0.65f, -0.65f)); p.LineTo(P(-0.65f, 0.65f)); p.Stroke();
+                    break;
+
+                case GlyphKind.Speaker:
+                    // A speaker: a box, a cone, and two waves coming off it.
+                    p.BeginPath();
+                    p.MoveTo(P(-0.85f, -0.3f)); p.LineTo(P(-0.45f, -0.3f)); p.LineTo(P(0.05f, -0.75f));
+                    p.LineTo(P(0.05f, 0.75f)); p.LineTo(P(-0.45f, 0.3f)); p.LineTo(P(-0.85f, 0.3f));
+                    p.ClosePath(); p.Fill();
+                    p.BeginPath(); p.Arc(P(0.05f, 0f), u * 0.45f, -45f, 45f); p.Stroke();
+                    p.BeginPath(); p.Arc(P(0.05f, 0f), u * 0.82f, -45f, 45f); p.Stroke();
+                    break;
+
+                case GlyphKind.Trash:
+                    // A bin: a lid with a handle, and a can with two ribs.
+                    p.BeginPath(); p.MoveTo(P(-0.8f, -0.6f)); p.LineTo(P(0.8f, -0.6f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(-0.25f, -0.6f)); p.LineTo(P(-0.25f, -0.85f)); p.LineTo(P(0.25f, -0.85f)); p.LineTo(P(0.25f, -0.6f)); p.Stroke();
+                    p.BeginPath();
+                    p.MoveTo(P(-0.6f, -0.4f)); p.LineTo(P(0.6f, -0.4f)); p.LineTo(P(0.48f, 0.9f)); p.LineTo(P(-0.48f, 0.9f));
+                    p.ClosePath(); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(-0.18f, -0.15f)); p.LineTo(P(-0.18f, 0.65f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(0.18f, -0.15f)); p.LineTo(P(0.18f, 0.65f)); p.Stroke();
+                    break;
+
+                case GlyphKind.Voice:
+                    // A speech bubble with its tail.
+                    p.BeginPath();
+                    p.MoveTo(P(-0.85f, -0.7f)); p.LineTo(P(0.85f, -0.7f)); p.LineTo(P(0.85f, 0.35f)); p.LineTo(P(-0.1f, 0.35f));
+                    p.LineTo(P(-0.55f, 0.85f)); p.LineTo(P(-0.5f, 0.35f)); p.LineTo(P(-0.85f, 0.35f));
+                    p.ClosePath(); p.Fill();
+                    break;
+
+                case GlyphKind.Buzz:
+                    // A phone, with the shake drawn either side of it.
+                    p.BeginPath();
+                    p.MoveTo(P(-0.32f, -0.85f)); p.LineTo(P(0.32f, -0.85f)); p.LineTo(P(0.32f, 0.85f)); p.LineTo(P(-0.32f, 0.85f));
+                    p.ClosePath(); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(-0.62f, -0.4f)); p.LineTo(P(-0.62f, 0.4f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(0.62f, -0.4f)); p.LineTo(P(0.62f, 0.4f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(-0.9f, -0.2f)); p.LineTo(P(-0.9f, 0.2f)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(P(0.9f, -0.2f)); p.LineTo(P(0.9f, 0.2f)); p.Stroke();
+                    break;
+
+                case GlyphKind.Ring:
+                    // The ring from above, with a boxer in the middle of it.
+                    p.BeginPath();
+                    p.MoveTo(P(-0.8f, -0.8f)); p.LineTo(P(0.8f, -0.8f)); p.LineTo(P(0.8f, 0.8f)); p.LineTo(P(-0.8f, 0.8f));
+                    p.ClosePath(); p.Stroke();
+                    p.BeginPath(); p.Arc(P(0f, 0f), u * 0.3f, 0f, 360f); p.Fill();
                     break;
 
                 default: // Power: a gauge

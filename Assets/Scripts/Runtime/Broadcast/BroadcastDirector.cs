@@ -20,7 +20,11 @@ namespace PoBox.Broadcast
     /// Which: an ambient rotation whose pace follows the excitement reading (long holds on the wide when
     /// nothing is landing, short ones and over-the-shoulder shots when it is), interrupted by the things
     /// that must be seen: a clean heavy hit cuts to a close-up of whoever took it, and a knockdown goes to
-    /// the close-up and then overhead for the count. Everything is a hard cut, as on a broadcast.
+    /// the close-up and then overhead for the count. Everything is a hard cut, as on a broadcast. A heavy
+    /// punch is cut to before it lands, as a director who knows the fighters would: once a control step the
+    /// gloves are read for one closing fast enough, or one the policy is still driving out (its elbow target
+    /// straighter than the elbow), that will be there in about a tenth of a second, and the close-up of
+    /// whoever it is coming at goes on air in time to catch it.
     ///
     /// Where: the game is portrait, and a lens angle is vertical, so a two-shot is framed from the
     /// <i>horizontal</i> angle the screen actually has. Each camera's distance is solved from how far apart
@@ -73,6 +77,16 @@ namespace PoBox.Broadcast
         public float impactHold = 1.15f;
         [Tooltip("Camera kick for an impulse of 25 N s, m/s.")]
         public float shakeVelocity = 0.35f;
+        [Tooltip("Seconds ahead of a glove arriving that the close-up is cut to.")]
+        public float anticipation = 0.13f;
+        [Tooltip("Closing speed of a glove worth cutting ahead of on its own, m/s.")]
+        public float incomingSpeed = 6f;
+        [Tooltip("Radians the policy is still asking an elbow to straighten for a slower glove to count: a punch still being thrown.")]
+        public float incomingIntent = 0.35f;
+        [Tooltip("Excitement under which a punch on its way is not cut ahead of, unless whoever it is coming at is already hurt.")]
+        [Range(0f, 1f)] public float incomingExcitement = 0.35f;
+        [Tooltip("Seconds the shot on air has to have been up before a punch on its way may cut away from it.")]
+        public float minShot = 0.8f;
 
         public Shot Current { get; private set; } = Shot.Wide;
         /// <summary>A shot chosen by hand in the menu. Null hands the cameras back to the director.</summary>
@@ -102,7 +116,7 @@ namespace PoBox.Broadcast
         CinemachineImpulseSource _impulse;
         Fighter _initiative, _impactVictim;
         Shot _forced;
-        float _forcedUntil, _nextCut, _lastImpactCut = -99f, _orbitAngle, _orbitHeldUntil, _sepSmooth = 1.2f, _sepVelocity;
+        float _forcedUntil, _nextCut, _lastImpactCut = -99f, _cutAt, _orbitAngle, _orbitHeldUntil, _sepSmooth = 1.2f, _sepVelocity;
         Vector3 _mid, _midVelocity, _side = Vector3.back;
         bool _hasMid;
 
@@ -141,6 +155,8 @@ namespace PoBox.Broadcast
             SimBus.Knockdown -= OnKnockdown;
             SimBus.PunchThrown -= OnPunch;
             SimBus.PhaseChanged -= OnPhase;
+            if (_ring != null) _ring.ControlStep -= OnControlStep;
+            _ring = null;
             if (Instance == this) Instance = null;
         }
 
@@ -186,6 +202,61 @@ namespace PoBox.Broadcast
             if (_impulse != null) _impulse.GenerateImpulseAtPositionWithVelocity(f.pelvis.transform.position, Vector3.down * shakeVelocity);
         }
 
+        Mj.MjRing _ring;
+        readonly Fighter[] _brainOf = new Fighter[2];
+        readonly MjBrain[] _brains = new MjBrain[2];
+        readonly int[] _elbow = new int[4];
+
+        /// <summary>
+        /// Once a control step: is a punch about to land? A glove's time to arrive is its gap to the other's head
+        /// or body over its closing speed (the ring's, measured in MuJoCo). It counts when it is under
+        /// <see cref="anticipation"/> and the glove is either flat out or still being driven: the policy's elbow
+        /// target is ahead of the elbow, so the glove will be faster yet when it gets there.
+        /// </summary>
+        void OnControlStep()
+        {
+            float now = Time.unscaledTime;
+            if (Pinned.HasValue || bout == null || bout.Phase != BoutPhase.Fight || now < _forcedUntil) return;
+            if (now - _lastImpactCut < 2.5f || now - _cutAt < minShot) return;
+            for (int k = 0; k < 2; k++)
+            {
+                Fighter a = k == 0 ? bout.red : bout.blue;
+                Fighter v = a != null ? a.opponent : null;
+                if (v == null || a.IsDown || v.IsDown || a.boxer == null || !a.boxer.Bound) continue;
+                if (Excitement.Value < incomingExcitement && !v.Staggered) continue;
+                if (_brainOf[k] != a)
+                {
+                    _brainOf[k] = a;
+                    _brains[k] = a.GetComponent<MjBrain>();
+                    _elbow[2 * k] = System.Array.IndexOf(a.boxer.Cfg.joint_order, "elbow_l");
+                    _elbow[2 * k + 1] = System.Array.IndexOf(a.boxer.Cfg.joint_order, "elbow_r");
+                }
+                if (_brains[k] == null) continue;
+                for (int hand = 0; hand < 2; hand++)
+                {
+                    Transform glove = _brains[k].Glove(hand);
+                    if (glove == null) continue;
+                    // ponytail: the gaps are to the head's centre and the torso link's origin less a typical radius
+                    // and glove; the ring's exact surface gaps, if this ever cuts late on body shots.
+                    float headGap = Vector3.Distance(glove.position, v.HeadPosition) - 0.18f;
+                    float bodyGap = v.torso != null ? Vector3.Distance(glove.position, v.torso.transform.position) - 0.25f : 9f;
+                    float headSpeed = _ring.HitSpeed(a.boxer, hand, true), bodySpeed = _ring.HitSpeed(a.boxer, hand, false);
+                    float headTime = headGap / Mathf.Max(0.1f, headSpeed), bodyTime = bodyGap / Mathf.Max(0.1f, bodySpeed);
+                    bool toHead = headTime <= bodyTime;
+                    float speed = toHead ? headSpeed : bodySpeed, gap = toHead ? headGap : bodyGap;
+                    if (speed < 2.5f || gap < 0.04f || gap > anticipation * speed) continue;
+                    // Both elbows straighten towards 0 (left from below, right from above).
+                    int e = _elbow[2 * k + hand];
+                    float driving = e >= 0 ? (float)(System.Math.Abs(a.boxer.JointPosition(e)) - System.Math.Abs(a.boxer.Target(e))) : 0f;
+                    if (speed < incomingSpeed && driving < incomingIntent) continue;
+                    _lastImpactCut = now;
+                    _impactVictim = v;
+                    Force(Shot.Impact, impactHold + anticipation);
+                    return;
+                }
+            }
+        }
+
         void Force(Shot shot, float realSeconds)
         {
             _forced = shot;
@@ -221,6 +292,11 @@ namespace PoBox.Broadcast
         {
             if (bout == null || redLive == null || blueLive == null) return;
             float now = Time.unscaledTime;
+            if (_ring == null && bout.red != null && bout.red.ring != null)
+            {
+                _ring = bout.red.ring;
+                _ring.ControlStep += OnControlStep;
+            }
             // The walk-on Timeline keeps the bout's clock, not its own: it is moved to the phase's age and
             // evaluated by hand, so the pictures and the name cards cannot drift apart.
             if (walkOn != null && bout.Phase == BoutPhase.WalkOn)
@@ -285,6 +361,7 @@ namespace PoBox.Broadcast
 
             Current = shot;
             CutCount++;
+            _cutAt = Time.unscaledTime;
             Set(wideCam, Shot.Wide); Set(orbitCam, Shot.Orbit); Set(cornerCam, Shot.HighCorner);
             Set(lowCam, Shot.LowRopes); Set(shoulderRedCam, Shot.ShoulderRed); Set(shoulderBlueCam, Shot.ShoulderBlue);
             Set(impactCam, Shot.Impact); Set(overheadCam, Shot.Overhead);

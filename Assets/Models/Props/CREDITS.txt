@@ -1,0 +1,14 @@
+Corner props (decoration only: outside the MuJoCo world, no MjBody/MjGeom). Blender source and the
+original scene: BLENDER/2026-10-14_corner-props/ (corner_props.blend; original.blend/.glb is the scene as
+it was before editing).
+
+CornerStool.glb       "Metal Stool 02" by Ulan Cabanilla, Poly Haven, https://polyhaven.com/a/metal_stool_02
+                      Licence CC0 1.0. 1k textures, decimated to 1,862 triangles. 0.47 x 0.45 x 0.46 m.
+WaterBucket.glb       "Wooden Bucket 01" by James Ray Cock, Poly Haven, https://polyhaven.com/a/wooden_bucket_01
+                      Licence CC0 1.0. 1k textures, handle joined, decimated to 1,861 triangles. 0.37 x 0.34 x 0.55 m.
+RingBell.glb          Modelled for PoBox in Blender (own work, CC0). Brass bell on a wooden board with a
+                      striker, 428 triangles. 0.32 x 0.16 x 0.36 m; back on the wall plane, facing Unity +Z.
+TurnbucklePad_*.glb   Modelled for PoBox in Blender (own work, CC0). Rounded pad 0.22 x 0.22 x 1.05 m,
+                      236 triangles, red / blue / white; origin at its centre, as the scene's Pad_ cubes.
+
+Poly Haven: all assets CC0, no attribution required (credited anyway).

@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using PoBox.Broadcast;
 using PoBox.Sim;
 
 namespace PoBox.Fx
@@ -19,6 +21,12 @@ namespace PoBox.Fx
     /// second: <see cref="pulse"/> is a volume laid over the house look (more bloom, a little lens distortion,
     /// fringing and motion blur) whose weight is how far out of the ordinary the punch was. And a boxer whose
     /// tank is running down steams from the head, more the emptier it is.
+    ///
+    /// A punch a quarter harder than usual also throws a shockwave: one additive ring on one quad, laid flat
+    /// on the surface it hit and growing with the impulse. A punch stopped on a guard puffs chalk and a
+    /// little sweat off the gloves. And while the boxer on camera is rocked, the picture drains of colour and
+    /// closes in at the edges, as much as it is dazed: a second volume of its own (colour and vignette, which
+    /// the house look already pays for), weighted here.
     /// </summary>
     public class ImpactVfx : MonoBehaviour
     {
@@ -48,6 +56,41 @@ namespace PoBox.Fx
         public float stepDustSpeed = 1.4f;
         [Tooltip("Height of the canvas.")]
         public float canvasY = 0f;
+        [Tooltip("Seconds the shockwave ring takes to spread and go.")]
+        public float ringSeconds = 0.22f;
+        [Tooltip("Speed of a stopped punch that gives the biggest puff, m/s.")]
+        public float fullBlock = 9f;
+
+        static readonly int ProgressId = Shader.PropertyToID("_Progress");
+        static readonly int StrengthId = Shader.PropertyToID("_Strength");
+        Volume _rocked;
+        float _rockedW, _ringT = 1f, _ringSize, _ringStrength;
+        Vector3 _ringAt, _ringNormal;
+        Material _ring;
+        Mesh _quad;
+
+        void Awake()
+        {
+            // Rocked: drained of colour, closed in. Above the house look and the count's grey.
+            _rocked = gameObject.AddComponent<Volume>();
+            _rocked.isGlobal = true;
+            _rocked.priority = 12f;
+            _rocked.weight = 0f;
+            _rocked.profile.Add<ColorAdjustments>().saturation.Override(-55f);
+            Vignette v = _rocked.profile.Add<Vignette>();
+            v.intensity.Override(0.55f);
+            v.smoothness.Override(0.65f);
+
+            // The shader sits in a Resources folder, so a build carries it with nothing in the scene pointing at it.
+            Shader ring = Shader.Find("PoBox/Shockwave");
+            if (ring != null) _ring = new Material(ring);
+            _quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+        }
+
+        void OnDestroy()
+        {
+            if (_ring != null) Destroy(_ring);
+        }
 
         void OnEnable()
         {
@@ -55,6 +98,7 @@ namespace PoBox.Fx
             SimBus.Knockdown += OnKnockdown;
             SimBus.FloorImpact += OnFloor;
             SimBus.FootStep += OnFootStep;
+            SimBus.Block += OnBlock;
         }
 
         void OnDisable()
@@ -63,6 +107,8 @@ namespace PoBox.Fx
             SimBus.Knockdown -= OnKnockdown;
             SimBus.FloorImpact -= OnFloor;
             SimBus.FootStep -= OnFootStep;
+            SimBus.Block -= OnBlock;
+            if (_rocked != null) _rocked.weight = _rockedW = 0f;
         }
 
         float _pulse;
@@ -77,6 +123,26 @@ namespace PoBox.Fx
             if (pulse != null) pulse.weight = _pulse;
 
             Bout bout = Bout.Instance;
+            // The one locked on by hand, or whichever of the two in the picture is the more rocked.
+            float dazed = 0f;
+            if (bout != null && Bout.SimRunning)
+            {
+                int on = BroadcastDirector.Instance != null ? BroadcastDirector.Instance.Focused : -1;
+                if (on != 1 && bout.red != null && bout.red.Staggered) dazed = bout.red.Daze01;
+                if (on != 0 && bout.blue != null && bout.blue.Staggered) dazed = Mathf.Max(dazed, bout.blue.Daze01);
+            }
+            _rockedW = Mathf.MoveTowards(_rockedW, dazed, Time.unscaledDeltaTime / 0.4f);
+            _rocked.weight = _rockedW;
+
+            if (_ringT < 1f && _ring != null)
+            {
+                _ringT += Time.deltaTime / Mathf.Max(0.05f, ringSeconds);
+                _ring.SetFloat(ProgressId, _ringT);
+                _ring.SetFloat(StrengthId, _ringStrength);
+                var rp = new RenderParams(_ring) { worldBounds = new Bounds(_ringAt, Vector3.one * _ringSize), shadowCastingMode = ShadowCastingMode.Off, receiveShadows = false };
+                Graphics.RenderMesh(rp, _quad, 0, Matrix4x4.TRS(_ringAt, Quaternion.LookRotation(_ringNormal), Vector3.one * _ringSize));
+            }
+
             if (steam == null || bout == null || !Bout.SimRunning) return;
             for (int i = 0; i < 2; i++)
             {
@@ -98,13 +164,20 @@ namespace PoBox.Fx
         void OnHit(HitEvent e)
         {
             float k = Mathf.Clamp01(e.impulse / fullImpulse);
-            if (e.clean)
-            {
-                Excitement ex = Excitement.Instance;
-                float usual = ex != null ? ex.UsualImpulse : 12f;
-                _pulse = Mathf.Max(_pulse, Mathf.Clamp01((e.impulse - usual * 1.1f) / Mathf.Max(1f, usual * 0.5f)));
-            }
+            Excitement ex = Excitement.Instance;
+            float usual = ex != null ? ex.UsualImpulse : 12f;
+            if (e.clean) _pulse = Mathf.Max(_pulse, Mathf.Clamp01((e.impulse - usual * 1.1f) / Mathf.Max(1f, usual * 0.5f)));
             Vector3 normal = e.normal.sqrMagnitude > 0.01f ? e.normal.normalized : Vector3.up;
+
+            if (e.impulse > usual * 1.25f)
+            {
+                float over = Mathf.InverseLerp(usual * 1.25f, usual * 2.5f, e.impulse);
+                _ringT = 0f;
+                _ringAt = e.point + normal * 0.015f;
+                _ringNormal = normal;
+                _ringSize = Mathf.Lerp(0.35f, 0.95f, over);
+                _ringStrength = Mathf.Lerp(0.5f, 1.4f, over);
+            }
 
             if (shock != null && k > 0.12f)
             {
@@ -150,6 +223,34 @@ namespace PoBox.Fx
             if (dust == null) return;
             dust.transform.position = new Vector3(point.x, canvasY + 0.03f, point.z);
             dust.Emit(Mathf.RoundToInt(Mathf.Lerp(2f, 26f, Mathf.Clamp01(impulse / fullFall))));
+        }
+
+        void OnBlock(Fighter defender, Vector3 at, float speed)
+        {
+            float k = Mathf.Clamp01(speed / fullBlock);
+            // Chalk off the gloves, and a little sweat: eight and four at the most.
+            if (dust != null)
+                for (int i = 0, n = Mathf.RoundToInt(Mathf.Lerp(2f, 8f, k)); i < n; i++)
+                {
+                    var puff = new ParticleSystem.EmitParams
+                    {
+                        position = at + Random.insideUnitSphere * 0.05f,
+                        velocity = Random.insideUnitSphere * Mathf.Lerp(0.3f, 0.9f, k) + Vector3.up * 0.15f,
+                        startSize = Random.Range(0.06f, 0.14f) * Mathf.Lerp(0.7f, 1.2f, k),
+                        startLifetime = Random.Range(0.3f, 0.55f),
+                    };
+                    dust.Emit(puff, 1);
+                }
+            if (sweat != null)
+                for (int i = 0, n = Mathf.RoundToInt(Mathf.Lerp(0f, 4f, k)); i < n; i++)
+                {
+                    var drop = new ParticleSystem.EmitParams
+                    {
+                        position = at,
+                        velocity = (Random.insideUnitSphere + Vector3.up * 0.4f) * Mathf.Lerp(1f, 2.5f, k),
+                    };
+                    sweat.Emit(drop, 1);
+                }
         }
 
         void OnFootStep(Vector3 point, float speed)
