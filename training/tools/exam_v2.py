@@ -26,7 +26,7 @@ from ppo import PPO, PPOConfig  # noqa: E402
 
 MODELS = os.path.join(HERE, "models", "v2")
 # Lil Matt was taken out of the game on 2026-10-03 (his models and checkpoints stay in training/). Trump came back the same day on a new mesh.
-NAMES = ("grandma", "grandpa", "kim", "matt", "nick", "trump", "zombie")
+NAMES = ("grandma", "grandpa", "kim", "matt", "nick", "sokol", "trump", "zombie")
 OBS = 103
 
 

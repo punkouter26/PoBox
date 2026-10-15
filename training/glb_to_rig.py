@@ -185,7 +185,9 @@ PATTERNS = {
 
 def build_map(bones: List[dict]) -> Dict[str, str]:
     by_key: Dict[str, str] = {}
-    cleaned = [(b["name"], strip_side(clean(b["name"])), side_of(b["name"])) for b in bones]
+    # A side given as a suffix (Blender's "thigh.L") is dropped before cleaning; strip_side takes prefixes.
+    cleaned = [(b["name"], strip_side(clean(re.sub(r"[._\- ][lrLR]$", "", b["name"]))), side_of(b["name"]))
+               for b in bones]
 
     def find(key: str, side: str) -> Optional[str]:
         for want in PATTERNS[key]:

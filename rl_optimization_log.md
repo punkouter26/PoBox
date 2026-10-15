@@ -903,3 +903,24 @@ so every existing run and job is unchanged), on the match line (`envs/boxing.py`
 - **12:30, `m7_kim` promoted** (`PromoteBoxing("kim", "m7_kim", "u1_kim_matt")`): its exam (seed 1) passes every line, carrying on 54 of 58 (93%) where `m6_kim` had given 52/60 on a stand-alone check; footing 0, attack and guard pass, getting up 58/60. Its seed-2 exam was still running at the commit (`logs/exam_m7_kim_seed2.log`). The gate tests run the footwork brain (`f_kim`), unchanged. Also fixed: the arena drew black (only the HUD) after a `shot-begin` without `shot-end` left `PoBoxPanel.asset` clearing the screen; `DevTools` now restores the panel when play stops.
 - **12:40, `m7_kim` seed 2: every line passes** (footing 0.00, attack 1.49 a second at 5.5 m/s, guard pass on head shots taken 0.40/s, chin 0.09, getting up 60/60 in 1.7 s, carrying on 58 of 60). With seed 1 (54/58): Kim passes on both seeds with the brain the game now runs.
 - **12:50, stand-alone get-up check of the shipped pair (`m7_kim` + `u1_kim_matt`), three seeds:** getting up 60/60, 60/60, 58/60 (1.6 to 1.8 s); carrying on 56/60, 55/60, 55/58 (mark 90%): pass on every seed, where `m6_kim` had failed seed 1 at 52/60. `Assets/Boxers/Kim/match.onnx` is byte-identical to `m7_kim/latest_kim.onnx`.
+
+## 2026-10-15 (afternoon): Sokol, the eighth boxer
+
+- **Body:** the owner's `Sokol_TPose` character (`Character_TPose.glb` -> `Assets/Models/Sokol.glb`; plaid shirt, jeans;
+  in metres, 19 Blender bones `thigh.L`...). `glb_to_rig.py` read no names off it: a side given as a suffix (`.L`) was
+  never stripped, so the shape fallback took over and put the shins on the thighs. Fixed where names are cleaned; the
+  other seven rigs are not rebuilt. `build_roster.py --only sokol --rigs rigs/v2 --models models/v2 --cubes 8`: 1.83 m,
+  83.1 kg (mass given as 82: the mesh's volume reads 123 litres, BMI 36), strength 1.03, speed 1.00; 17 shapes on 12
+  parts, no pair touches in the 25 check poses; pair models with every boxer. `set_rules.py --only sokol
+  --speed-limit 1 --fatigue-j 30000` before the first run. `exam_v2.NAMES` gains `sokol`.
+- **Style, "boxer-puncher"** (chosen to fill the roster's gap; the owner can change it): head 1.3, body 1.0, power 1.3,
+  pace 0.5 s, taken 0.8, block 0.03, range 0.72 m, press 0.5, energy 1.0. Kim's lessons from the start: power and press
+  up and taken under 1, so standing off does not pay; gauntlet `--hit-w 1.5 --cutoff-w 0.05`, `--max-hours 1.5`.
+- **Warm starts from Matt** (1.86 m, 84 kg, the nearest body). Queue, in front of the D8 jobs: `f_sokol` footwork 1600
+  -> exam -> `u1_sokol_matt` get-up 800 (Matt frozen, assisted at first) -> handover bank -> `m1_sokol` gauntlet 800
+  against all seven (Kim's `m7_kim`) -> exam. The queue had died at 12:59 inside `m1_nick` (iteration 50; its paths
+  still pointed at `Downloads/PoBox`, the repo is now `Downloads/CODE_MATT/PoBox`); `m1_nick` reruns after Sokol.
+- **14:13, `f_sokol` cut at iteration 1050 of 1600** (the owner gave training 30 minutes; queue stopped with
+  `logs/queue.stop`, run killed right after its 1050 save). Footwork exam in C MuJoCo 3.5.0, 30 episodes each:
+  **stand 97% (mark 95%), walk off by 0.01 m/s with 0 falls a minute, turn 100%, joints at 0.38 of the speed limit:
+  every line passes** (`logs/exam_f_sokol.json`). Not yet done: get-up, handover bank, boxing gauntlet, Unity.

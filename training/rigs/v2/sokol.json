@@ -1,0 +1,301 @@
+{
+  "source": "C:/Users/punko/Downloads/CODE_MATT/PoBox/Assets/Models/Sokol.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.833,
+  "mass_kg": 82.0,
+  "notes": [
+    "turned 180 degrees about the vertical: the file's toes pointed along +y",
+    "left and right are swapped relative to the bone names; kept the names, mirrored x"
+  ],
+  "bones": [
+    {
+      "name": "hips",
+      "parent": null,
+      "head": [
+        0.0,
+        -0.0,
+        0.9365
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.0865
+      ]
+    },
+    {
+      "name": "spine",
+      "parent": "hips",
+      "head": [
+        0.0,
+        -0.0,
+        1.0865
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.2865
+      ]
+    },
+    {
+      "name": "chest",
+      "parent": "spine",
+      "head": [
+        0.0,
+        -0.0,
+        1.2865
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.4865
+      ]
+    },
+    {
+      "name": "neck",
+      "parent": "chest",
+      "head": [
+        0.0,
+        -0.0,
+        1.4865
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.5865
+      ]
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "head": [
+        0.0,
+        -0.0,
+        1.5865
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.8335
+      ]
+    },
+    {
+      "name": "arm.L",
+      "parent": "shoulder.L",
+      "head": [
+        0.17,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        0.4702,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "forearm.L",
+      "parent": "arm.L",
+      "head": [
+        0.4702,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        0.7304,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "hand.L",
+      "parent": "forearm.L",
+      "head": [
+        0.7304,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        0.8104,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "arm.R",
+      "parent": "shoulder.R",
+      "head": [
+        -0.17,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        -0.4702,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "forearm.R",
+      "parent": "arm.R",
+      "head": [
+        -0.4702,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        -0.7304,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "hand.R",
+      "parent": "forearm.R",
+      "head": [
+        -0.7304,
+        -0.0,
+        1.4365
+      ],
+      "tail": [
+        -0.8104,
+        -0.0,
+        1.4365
+      ]
+    },
+    {
+      "name": "thigh.L",
+      "parent": "hips",
+      "head": [
+        0.1,
+        -0.0,
+        0.9165
+      ],
+      "tail": [
+        0.11,
+        0.01,
+        0.5065
+      ]
+    },
+    {
+      "name": "shin.L",
+      "parent": "thigh.L",
+      "head": [
+        0.11,
+        0.01,
+        0.5065
+      ],
+      "tail": [
+        0.12,
+        -0.0,
+        0.0765
+      ]
+    },
+    {
+      "name": "foot.L",
+      "parent": "shin.L",
+      "head": [
+        0.12,
+        -0.0,
+        0.0765
+      ],
+      "tail": [
+        0.123,
+        -0.003,
+        -0.0525
+      ]
+    },
+    {
+      "name": "thigh.R",
+      "parent": "hips",
+      "head": [
+        -0.1,
+        -0.0,
+        0.9165
+      ],
+      "tail": [
+        -0.11,
+        0.01,
+        0.5065
+      ]
+    },
+    {
+      "name": "shin.R",
+      "parent": "thigh.R",
+      "head": [
+        -0.11,
+        0.01,
+        0.5065
+      ],
+      "tail": [
+        -0.12,
+        -0.0,
+        0.0765
+      ]
+    },
+    {
+      "name": "foot.R",
+      "parent": "shin.R",
+      "head": [
+        -0.12,
+        -0.0,
+        0.0765
+      ],
+      "tail": [
+        -0.123,
+        -0.003,
+        -0.0525
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "hips",
+    "neck": "neck",
+    "head": "head",
+    "spine": "spine",
+    "torso": "chest",
+    "thigh_l": "thigh.L",
+    "shin_l": "shin.L",
+    "foot_l": "foot.L",
+    "upper_arm_l": "arm.L",
+    "forearm_l": "forearm.L",
+    "hand_l": "hand.L",
+    "thigh_r": "thigh.R",
+    "shin_r": "shin.R",
+    "foot_r": "foot.R",
+    "upper_arm_r": "arm.R",
+    "forearm_r": "forearm.R",
+    "hand_r": "hand.R"
+  },
+  "all_bones": 19,
+  "radii": {
+    "thigh": 0.0778,
+    "shin": 0.0563,
+    "upper_arm": 0.0562,
+    "forearm": 0.0449,
+    "torso": 0.0918,
+    "pelvis": 0.0946,
+    "head": 0.1235
+  },
+  "mesh": {
+    "vertices": 11383,
+    "height_m": 1.833,
+    "volume_l": 123.1,
+    "bmi_from_volume": 36.1
+  },
+  "strength": 1.026,
+  "speed": 1.0,
+  "style": {
+    "head": 1.3,
+    "body": 1.0,
+    "power": 1.3,
+    "pace_s": 0.5,
+    "taken": 0.8,
+    "block_w": 0.03,
+    "range_m": 0.72,
+    "press": 0.5,
+    "energy": 1.0
+  },
+  "display": "SOKOL",
+  "persona": "boxer-puncher",
+  "says": "a stiff jab and the straight right behind it; balanced, walks his man down to the ropes"
+}
