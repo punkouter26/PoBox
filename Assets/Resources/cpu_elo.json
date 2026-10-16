@@ -1,0 +1,71 @@
+{
+ "when": "2026-10-16 14:56:42",
+ "bouts": 168,
+ "bouts_per_pair": 6,
+ "rows": [
+  {
+   "name": "MATT",
+   "elo": 1546.6,
+   "brain": "checkpoints/onnx/match_matt.pt",
+   "wins": 40,
+   "losses": 0,
+   "draws": 2
+  },
+  {
+   "name": "SOKOL",
+   "elo": 1147.0,
+   "brain": "checkpoints/m2_sokol/latest_sokol.pt",
+   "wins": 29,
+   "losses": 12,
+   "draws": 1
+  },
+  {
+   "name": "KIM",
+   "elo": 1072.3,
+   "brain": "checkpoints/m7_kim/latest_kim.pt",
+   "wins": 24,
+   "losses": 14,
+   "draws": 4
+  },
+  {
+   "name": "GRANDPA",
+   "elo": 939.3,
+   "brain": "checkpoints/onnx/match_grandpa.pt",
+   "wins": 18,
+   "losses": 22,
+   "draws": 2
+  },
+  {
+   "name": "TRUMP",
+   "elo": 911.6,
+   "brain": "checkpoints/onnx/match_trump.pt",
+   "wins": 17,
+   "losses": 24,
+   "draws": 1
+  },
+  {
+   "name": "ZOMBIE",
+   "elo": 911.6,
+   "brain": "checkpoints/onnx/match_zombie.pt",
+   "wins": 16,
+   "losses": 23,
+   "draws": 3
+  },
+  {
+   "name": "NICK",
+   "elo": 786.6,
+   "brain": "checkpoints/onnx/match_nick.pt",
+   "wins": 8,
+   "losses": 28,
+   "draws": 6
+  },
+  {
+   "name": "GRANDMA",
+   "elo": 685.0,
+   "brain": "checkpoints/onnx/match_grandma.pt",
+   "wins": 6,
+   "losses": 35,
+   "draws": 1
+  }
+ ]
+}

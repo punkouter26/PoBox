@@ -27,7 +27,7 @@ namespace PoBox.UI
         readonly Button _sound, _quality, _voice, _buzz, _bullet, _fps, _xray, _brain, _reset;
         readonly Label _qualityBadge, _resetWord;
         readonly Glyph _resetGlyph;
-        readonly TextField _twitch;
+        readonly TextField _twitch, _corner;
         readonly LeagueTable _league;
         float _armedUntil;
 
@@ -57,6 +57,7 @@ namespace PoBox.UI
             _brain = root.Q<Button>("s-brain");
             _reset = root.Q<Button>("s-reset"); _resetWord = root.Q<Label>("s-reset-word"); _resetGlyph = root.Q<Glyph>("s-reset-glyph");
             _twitch = root.Q<TextField>("s-twitch");
+            _corner = root.Q<TextField>("s-corner");
             _reset?.EnableInClassList("hidden", league == null);
             _brain?.EnableInClassList("hidden", !brain);
 
@@ -88,6 +89,15 @@ namespace PoBox.UI
                 _twitch.RegisterValueChangedCallback(e =>
                 {
                     PlayerPrefs.SetString(TwitchChat.PrefKey, (e.newValue ?? "").Trim().TrimStart('#').ToLowerInvariant());
+                    PlayerPrefs.Save();
+                });
+            }
+            if (_corner != null)
+            {
+                _corner.value = Broadcast.CornerAI.Url;
+                _corner.RegisterValueChangedCallback(e =>
+                {
+                    PlayerPrefs.SetString(Broadcast.CornerAI.PrefKey, (e.newValue ?? "").Trim());
                     PlayerPrefs.Save();
                 });
             }

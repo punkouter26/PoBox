@@ -101,6 +101,32 @@ Earlier in the day (Phase B):
   `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
   same rules as the baseline). See `rl_optimization_log.md`.
 
+## Features pass: punch card, AI cornerman, ringcraft, fight log, CPU Elo (2026-10-16 afternoon)
+
+Owner picked 3, 5, 7 and 9 of ten feature options and asked for an Elo for every boxer from CPU bouts. Report with before/after
+shots, the training charts and the Elo table: `SCREENSHOTS/2026-10-16-features/report.html`.
+
+- **Punch card** (`UI/PunchCard.cs`, on the arena's HUD): after a clean punch of 11 N s or more (at most every 12 s) a card bottom
+  right shows the half second before it from MuJoCo: hip, shoulder, elbow and glove peak speed and when each came
+  (`MjBoxer.Chain`, mj_objectVelocity), IN SEQUENCE or ARMS ONLY, glove km/h, impulse, the floor's push in body weights. It gives
+  way to the brain cam, the replay and the results, and rebuilds when the HUD's tree is rebuilt.
+- **AI cornerman** (`Broadcast/CornerAI.cs`, `server/corner_proxy.py`, self-check `server/test_corner_proxy.py`): 6 s before the bell
+  the round's numbers go to a proxy that holds the key and asks Claude Opus 5.5 (low effort, refusal fallback "default") for one
+  line; it is said in the break if back in time, else the old rule-based tip. After a win the winner gets one line. Settings,
+  DEBUG, CORNER: the proxy's address (editor default `http://127.0.0.1:8787/corner`; `?token=` if the proxy has `--token`).
+  Not tried against the real API: no key on this machine. A phone needs Player Settings' plain-HTTP option or an https proxy.
+- **Ringcraft**: commentary calls "trapped on the ropes" (2 s on the ropes under pressure; the HUD's rule, now
+  `Fighter.OnTheRopes`) and clinches (pelvises within 0.55 m for 1.5 s). Training: `--clinch-w` and rc1_matt
+  (`rl_optimization_log.md`): 37% less time on the ropes, not promoted (fails carrying on, as m9 does).
+- **Fight log** (`League/FightLog.cs`, on the arena's Bout): each 1-on-1 bout with 10 s or more of fighting is a line in
+  `Application.persistentDataPath/fightlog.ndjson`: result, cards, Elo change, each corner's brain, punches by kind and zone, impulse,
+  blocks, knockdowns, metres walked, seconds on the ropes and chest to chest, effort per joint group, lowest reserve, and a sample a
+  second (position, speed, reserve, effort). A first full bout: Matt threw 175 crosses and 97 body shots and nothing else.
+- **CPU Elo** (`training/tools/elo.py`): 168 C MuJoCo bouts between the game's brains; `Assets/Resources/cpu_elo.json`. The ladder
+  (`LeagueTable`) starts from those ratings and re-seeds when the file changes; watched bouts keep moving them. The league tab shows
+  each boxer's CPU record. KIM and SOKOL have entrants now and the ladder has 8 rows.
+- Tests: OneScreen 47/47 (the label first read CORNER AI and was clipped: 30 failures, renamed CORNER), StateFlow 1/1, FreeForAll 1/1, MjParity 3/3.
+
 ## Do-all pass and the overnight queue (2026-10-16)
 
 Owner: run /init, /simplify, /code-review and /security-review, then "do all" of 50 options (features, graphics and

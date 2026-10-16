@@ -107,6 +107,8 @@ def main() -> None:
     ap.add_argument("--seek-w", type=float, default=0.0,
                     help="pay per m/s of closing on the opponent while outside punching range, whatever the style "
                          "(tasks.md F2); 0 = off. Try 0.3")
+    ap.add_argument("--clinch-w", type=float, default=0.0,
+                    help="ringcraft: pay a hurt boxer (needs --daze) for tying up, both gloves resting on the opponent's trunk, chest to chest. Try 0.1")
     ap.add_argument("--ropes-start", type=float, default=0.0,
                     help="share of episodes that begin as a free-for-all round does: both boxers at the ropes, facing the "
                          "middle (tasks.md F3); 0 = none. Try 0.3")
@@ -143,7 +145,7 @@ def main() -> None:
                         daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
                         handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
-                        rope_w=args.rope_w, cutoff_w=args.cutoff_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
+                        rope_w=args.rope_w, cutoff_w=args.cutoff_w, clinch_w=args.clinch_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
                         seek_w=args.seek_w, ropes_start=args.ropes_start, hit_push=args.hit_push, stagger_v=args.stagger_v,
                         hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (), **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
@@ -202,7 +204,7 @@ def main() -> None:
         return t.reshape(env.N, 2, *t.shape[1:])[:, k]
 
     obs = [e.reset() for e in envs]
-    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step", "rope", "cutoff")
+    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step", "rope", "cutoff", "clinch")
     t_start = time.time()
     total = 0
     for it in range(start, iters):
@@ -280,7 +282,7 @@ def main() -> None:
                           "action_scale": envs[0].action_scale, "run_name": run, "career": career, "against": [o for o, _ in opponents],
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models)),
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
-                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
+                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "clinch_w": args.clinch_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
                                   "hit_push": args.hit_push, "stagger_v": args.stagger_v, "hurt_full": args.hurt_full, "body_drain": args.body_drain,
                                   "obs_state": args.obs_state}})
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))

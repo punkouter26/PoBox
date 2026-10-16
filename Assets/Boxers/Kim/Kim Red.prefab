@@ -789,7 +789,7 @@ MonoBehaviour:
   displayName: KIM
   cornerColor: {r: 0.89, g: 0.24, b: 0.24, a: 1}
   corner: 0
-  profile: {fileID: 0}
+  profile: {fileID: 11400000, guid: 16ea416a6d5349240aef02d573993fcc, type: 2}
   opponent: {fileID: 0}
   pelvis: {fileID: 389629600766325714}
   torso: {fileID: 7263716911141894790}
@@ -839,6 +839,15 @@ MonoBehaviour:
   dazeBody: 0.3
   slackSeconds: {x: 1.2, y: 2.4}
   handOverSeconds: 1.5
+  staggerSpeed: 5
+  staggerSeconds: 0.3
+  staggerDrive: 0.55
+  hurtFull: 400
+  hurtHi: 0.4
+  hurtWeak: 0.25
+  hurtTau: 600
+  hurtRest: 0.15
+  bodyDrain: 0.0025
 --- !u!114 &2015690938405476309
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -855,6 +864,8 @@ MonoBehaviour:
   boxer: {fileID: 2159791759002204560}
   ring: {fileID: 0}
   punchSpeed: 3.5
+  squareFacing: 0.26
+  squareSpeed: 0.3
 --- !u!114 &8795436543908570651
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -906,6 +917,11 @@ MonoBehaviour:
   - {fileID: 8625561968132440110}
   trailSpeed: 4.5
   bruiseRadius: 0.09
+  snapPerSpeed: 70
+  snapHz: 2.6
+  snapDamping: 0.35
+  snapMax: 38
+  tiredDroop: 14
 --- !u!1 &5271994832395995664 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3720406048254316123, guid: 6eaf0d6c6c444b34cbefc329563518a9, type: 3}

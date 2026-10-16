@@ -221,3 +221,17 @@ Done and tested the same night; details in `DOCS/README.md` (2026-10-16) and `SC
 - [ ] G9 Point `envs/cgetup.boxer_names()` at `models/v2`, then `git rm` the v1 models and rigs.
 - [ ] G10 A device run of SHARE and Twitch chat (the Android paths are not compiled in the editor).
 - [ ] G11 Free-for-all slips in the first 20 s: Phase F crowd training.
+
+## Phase H: the features pass (owner, 2026-10-16 afternoon)
+
+Details in `DOCS/README.md` (features pass) and `SCREENSHOTS/2026-10-16-features/report.html`.
+
+- [x] H1 Punch card (kinetic chain from MuJoCo) on the arena HUD.
+- [x] H2 AI cornerman through a key-holding proxy, rule-based fallback.
+- [x] H3 Ringcraft: commentary calls, `--clinch-w`, rc1_matt trained and examined (not promoted: carrying on 52/58).
+- [x] H4 Fight log, one line a bout on the device.
+- [x] H5 CPU Elo (`tools/elo.py`), ladder seeded from it, KIM and SOKOL on the ladder.
+- [ ] H6 The cornerman against the real API (needs `ANTHROPIC_API_KEY` for `server/corner_proxy.py`), and on a phone (plain HTTP or https).
+- [ ] H7 Clinch training: episodes that start dazed, so `--clinch-w` is ever paid.
+- [ ] H8 Matt's carrying on (52/58): `--handover-share` up from 0.3, then rc2 with the ringcraft terms; re-run `tools/elo.py` after any promotion.
+

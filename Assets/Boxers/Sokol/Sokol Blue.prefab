@@ -921,7 +921,7 @@ MonoBehaviour:
   displayName: SOKOL
   cornerColor: {r: 0.2, g: 0.49, b: 0.94, a: 1}
   corner: 1
-  profile: {fileID: 0}
+  profile: {fileID: 11400000, guid: f50c408dc07f7c6499458f9bdaa3db32, type: 2}
   opponent: {fileID: 0}
   pelvis: {fileID: 6121612749299521784}
   torso: {fileID: 3999989397443013885}
@@ -971,6 +971,15 @@ MonoBehaviour:
   dazeBody: 0.3
   slackSeconds: {x: 1.2, y: 2.4}
   handOverSeconds: 1.5
+  staggerSpeed: 5
+  staggerSeconds: 0.3
+  staggerDrive: 0.55
+  hurtFull: 400
+  hurtHi: 0.4
+  hurtWeak: 0.25
+  hurtTau: 600
+  hurtRest: 0.15
+  bodyDrain: 0.0025
 --- !u!114 &3773909483069621999
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -987,6 +996,8 @@ MonoBehaviour:
   boxer: {fileID: 3823746727295906574}
   ring: {fileID: 0}
   punchSpeed: 3.5
+  squareFacing: 0.26
+  squareSpeed: 0.3
 --- !u!114 &7848723442533643152
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1038,6 +1049,11 @@ MonoBehaviour:
   - {fileID: 3506863846831156564}
   trailSpeed: 4.5
   bruiseRadius: 0.09
+  snapPerSpeed: 70
+  snapHz: 2.6
+  snapDamping: 0.35
+  snapMax: 38
+  tiredDroop: 14
 --- !u!4 &585886045979402233 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4280354561483788626, guid: d37b9da52037dca46a17c06a02d0ceb6, type: 3}

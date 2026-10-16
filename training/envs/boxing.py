@@ -72,7 +72,7 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
 
 class BoxingEnv:
     TERMS = ["alive", "upright", "height", "face", "range", "close", "hit", "taken", "block", "lin_z", "ang", "act",
-             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style", "rope", "cutoff"]
+             "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style", "rope", "cutoff", "clinch"]
     MODE = ""          # a subclass that is its own stage of training names it here
 
     def __init__(self, xml_path: str, num_envs: int, device: str = "cuda", seed: int = 0,
@@ -89,7 +89,7 @@ class BoxingEnv:
                  action_rate_w: float = 0.0, obs_delay_max: int = 0, seek_w: float = 0.0, ropes_start: float = 0.0,
                  hit_push: float = 0.0, stagger_v: float = 0.0, stagger_s: float = 0.3, stagger_drive: float = 0.55,
                  hurt_full: float = 0.0, hurt_hi: float = 0.4, hurt_weak: float = 0.25, hurt_tau: float = 600.0,
-                 obs_state: tuple = (), body_drain: float = 0.0):
+                 obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -133,6 +133,9 @@ class BoxingEnv:
         # Ringcraft, both off unless asked for: a charge for being walked onto the ropes by an opponent that holds
         # the middle of the ring, and a payment for doing that to the opponent (cutting the ring off). See step().
         self.rope_w, self.cutoff_w = rope_w, cutoff_w
+        # Tying up, off unless asked for: paid to a hurt boxer (daze past half of where its legs go) for both gloves
+        # resting on the opponent's trunk at no punching speed, chest to chest. Needs --daze; see step().
+        self.clinch_w = clinch_w
         # Four more, all off unless asked for (2026-10-16, staged). action_rate_w: a charge on the squared change in
         # action between control steps on top of every stage's own small one, for smoother drives. obs_delay_max: the
         # observation is 0 to this many control steps late, drawn per fighter per episode (the last action, which
@@ -385,7 +388,7 @@ class BoxingEnv:
                       "sat_sum", "ko_sum", "daze_sum", "weak_sum", "reserve_sum")}
         self._acc.update({f"rt_{t}": torch.zeros((), device=device) for t in self.TERMS})
         # The same counts kept per fighter, for a match between two different ones.
-        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head", "rope", "cutoff")}
+        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head", "rope", "cutoff", "clinch")}
         # Carrying on after a knockdown: a share of a fighter's episodes begin in a state its own get-up
         # policy left its body in (tools/make_handover_bank.py), not in its guard. `handover` maps a
         # fighter's name to that file; a fighter with no file starts every episode in its guard, as before.
@@ -856,6 +859,16 @@ class BoxingEnv:
             engaged = ((dist < self.s_range + 0.3) & (face > 0.7)).float()
             cut_q = engaged * in_way * pinned.flip(1) * (1.0 + out_v)
 
+        # ---- the clinch: how much of a hug this is (0..1, half a glove each), weighted by how hurt the hugger is.
+        # Measured always, paid only with --clinch-w. A glove counts resting on the trunk (within 5 cm) and not
+        # punching (under 1 m/s), with the pelvises within 0.55 m. ponytail: a glove on the chest is the stand-in for
+        # an arm round the back; a reach-round measure if the brains learn to pat instead of tie up.
+        clinch_q = torch.zeros(N, K, device=self.device)
+        if self.spar and self.daze_on:
+            resting = ((gap[..., 1] < 0.05) & (speed[..., 1] < 1.0)).float().mean(-1)
+            hurt = (self.daze / self.legs_at.clamp_min(1.0) * 2.0 - 1.0).clamp(0.0, 1.0)
+            clinch_q = resting * (dist < 0.55).float() * hurt
+
         # ---- feet
         contact = g["foot_contact"]
         foot_v = (g["foot_xy"] - self.prev_foot_xy) / self.dt
@@ -890,6 +903,7 @@ class BoxingEnv:
         none = torch.zeros(N, K, device=self.device)
         r["rope"] = -self.rope_w * rope_q if self.rope_w else none
         r["cutoff"] = self.cutoff_w * cut_q if self.cutoff_w else none
+        r["clinch"] = self.clinch_w * clinch_q if self.clinch_w else none
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
@@ -958,6 +972,7 @@ class BoxingEnv:
         ka["ret"] += reward.sum(0)
         ka["rope"] += rope_q.sum(0)
         ka["cutoff"] += cut_q.sum(0)
+        ka["clinch"] += clinch_q.sum(0)
 
         self.prev_glove, self.prev_head, self.prev_body = glove.clone(), g["t_head"].clone(), g["t_body"].clone()
         self.prev_foot_xy = g["foot_xy"].clone()
@@ -1017,6 +1032,7 @@ class BoxingEnv:
                 # Ringcraft, unweighted, a step: on the ropes under pressure (charged by --rope-w) and cutting off (paid by --cutoff-w).
                 out[f"{name}_rope"] = ka["rope"][i] / (s * self.N)
                 out[f"{name}_cutoff"] = ka["cutoff"][i] / (s * self.N)
+                out[f"{name}_clinch"] = ka["clinch"][i] / (s * self.N)
         for v in list(self._acc.values()) + list(self._kacc.values()):
             v.zero_()
         return out

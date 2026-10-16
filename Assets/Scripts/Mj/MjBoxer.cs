@@ -77,7 +77,7 @@ namespace PoBox.Mj
         MujocoLib.mjData_* _d;
         int[] _jq, _jv, _act;
         int _pelvis, _torsoBody, _head, _torso, _rootQ, _rootV;
-        readonly int[] _glove = new int[2], _foot = new int[2], _forearm = new int[2];
+        readonly int[] _glove = new int[2], _foot = new int[2], _forearm = new int[2], _upperBody = new int[2], _foreBody = new int[2];
 
         // Where the things a punch is measured against are in the model (for MjRing).
         public int PelvisBody => _pelvis;
@@ -158,6 +158,11 @@ namespace PoBox.Mj
             _glove[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "glove_l"); _glove[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "glove_r");
             _foot[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "foot_l_geom"); _foot[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "foot_r_geom");
             _forearm[0] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "forearm_l_geom"); _forearm[1] = Id(MujocoLib.mjtObj.mjOBJ_GEOM, "forearm_r_geom");
+            for (int h = 0; h < 2; h++)
+            {
+                _upperBody[h] = Id(MujocoLib.mjtObj.mjOBJ_BODY, h == 0 ? "upper_arm_l" : "upper_arm_r");
+                _foreBody[h] = Id(MujocoLib.mjtObj.mjOBJ_BODY, h == 0 ? "forearm_l" : "forearm_r");
+            }
             Bound = true;
 
             // Where the head, the body and the gloves are from the pelvis in the guard: the stand-in's shape.
@@ -418,6 +423,33 @@ namespace PoBox.Mj
             return gp[2] - (Math.Abs(gm[6]) * size[0] + Math.Abs(gm[7]) * size[1] + Math.Abs(gm[8]) * size[2]) < 0.005;
         }
         public double Upright => _d->xmat[9 * _pelvis + 8];
+
+        /// <summary>
+        /// One arm's kinetic chain this instant (hand 0 left, 1 right): how fast the hip (pelvis), the shoulder, the
+        /// elbow and the glove are moving, m/s, each MuJoCo's own velocity of that point (mj_objectVelocity on the
+        /// pelvis, the upper arm's and the forearm's frames, which sit on the joints, and the glove); and the floor's
+        /// push up through both feet, N, from the solver's contact forces.
+        /// </summary>
+        public void Chain(int hand, float[] speeds, out float floorN)
+        {
+            double* v = stackalloc double[6];
+            for (int i = 0; i < 3; i++)
+            {
+                MujocoLib.mj_objectVelocity(_m, _d, (int)MujocoLib.mjtObj.mjOBJ_BODY, i == 0 ? _pelvis : i == 1 ? _upperBody[hand] : _foreBody[hand], v, 0);
+                speeds[i] = (float)Math.Sqrt(v[3] * v[3] + v[4] * v[4] + v[5] * v[5]);
+            }
+            MujocoLib.mj_objectVelocity(_m, _d, (int)MujocoLib.mjtObj.mjOBJ_GEOM, _glove[hand], v, 0);
+            speeds[3] = (float)Math.Sqrt(v[3] * v[3] + v[4] * v[4] + v[5] * v[5]);
+            floorN = 0f;
+            for (int i = 0; i < _d->ncon; i++)
+            {
+                MujocoLib.mjContact_* c = _d->contact + i;
+                int foot = c->geom1 == _foot[0] || c->geom1 == _foot[1] ? c->geom1 : c->geom2 == _foot[0] || c->geom2 == _foot[1] ? c->geom2 : -1;
+                if (foot < 0 || c->efc_address < 0 || _m->geom_type[foot == c->geom1 ? c->geom2 : c->geom1] != 0) continue;
+                MujocoLib.mj_contactForce(_m, _d, i, v);
+                floorN += (float)v[0];
+            }
+        }
         public bool Fallen => PelvisHeight < Cfg.stand_height * 0.6 || Upright < 0.4;
         /// <summary>The whole body's centre of mass, Unity's frame.</summary>
         public Vector3 CentreOfMass

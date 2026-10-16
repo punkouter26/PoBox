@@ -567,6 +567,30 @@ Label { margin: 0; padding: 0; }
 .brain-bar--neg { background-color: var(--reserve); }
 .brain-key { font-size: var(--t-micro); color: var(--ink-dim); -unity-text-align: middle-center; }
 
+/* The punch card (UI/PunchCard.cs): a heavy punch's kinetic chain, bottom right; it gives way to the brain cam. */
+.punch-card {
+    position: absolute;
+    right: var(--gap-4);
+    bottom: var(--over-caption);
+    width: 560px;
+    padding: var(--gap-2) var(--gap-3);
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+    border-right-width: 6px;
+    border-right-color: var(--red);
+}
+.punch-card--blue { border-right-color: var(--blue); }
+.punch-card-title { font-size: var(--t-micro); -unity-font-style: bold; letter-spacing: 1px; color: var(--ink); margin-bottom: var(--gap-1); }
+.punch-card-row { flex-direction: row; align-items: center; height: 34px; }
+.punch-card-link { width: 150px; font-size: var(--t-micro); color: var(--ink-dim); }
+.punch-card-track { flex-grow: 1; height: 12px; margin-right: var(--gap-2); border-radius: 6px; background-color: var(--row-lead); overflow: hidden; }
+.punch-card-bar { height: 12px; background-color: var(--accent); }
+.punch-card-value { width: 120px; font-size: var(--t-micro); color: var(--ink); -unity-text-align: middle-right; }
+.punch-card-ago { width: 96px; font-size: var(--t-micro); color: var(--ink-dim); -unity-text-align: middle-right; }
+.punch-card-verdict { margin-top: var(--gap-1); font-size: var(--t-micro); -unity-font-style: bold; color: var(--accent); white-space: normal; }
+.punch-card-verdict--off { color: var(--warn); }
+.punch-card-foot { font-size: var(--t-micro); color: var(--ink-dim); white-space: normal; }
+
 /* The commentary: a caption over the bottom of the picture. It fades out when it has nothing new to say,
    so most of the time it is not there and the picture has that space. */
 .ticker {

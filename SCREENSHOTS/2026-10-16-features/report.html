@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox features pass</title>
+<style>
+  :root { --bg: #0b0d12; --card: #141821; --ink: #eef2f7; --dim: #a8b2c0; --accent: #2ebf8c; --warn: #ffc654; --line: rgba(255,255,255,.1); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 12px; border-top: 1px solid var(--line); padding-top: 20px; }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p.lede { color: var(--dim); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .shot { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot .cap { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 6px; font-size: 12px; letter-spacing: 1px; }
+  .shot.after .cap { background: var(--accent); color: #06140f; font-weight: 700; }
+  .pin { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--warn); color: #1e0604;
+         font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px rgba(0,0,0,.6); }
+  ol.changes { padding-left: 0; list-style: none; counter-reset: c; }
+  ol.changes li { counter-increment: c; position: relative; padding: 10px 12px 10px 52px; background: var(--card); border-radius: 8px; margin-bottom: 8px; }
+  ol.changes li::before { content: counter(c); position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: var(--warn); color: #1e0604; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .chart { background: #fff; border-radius: 10px; overflow: hidden; margin: 8px 0; }
+  .chart img { display: block; width: 100%; height: auto; }
+  .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .levels div { background: var(--card); border-radius: 8px; padding: 10px 12px; }
+  .levels b { display: block; color: var(--accent); font-size: 12px; letter-spacing: 1px; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th { color: var(--dim); font-weight: 600; font-size: 13px; }
+  td.up { color: var(--accent); } td.down { color: #ff6c5c; }
+  .note { color: var(--dim); font-size: 13px; }
+  @media (max-width: 720px) { .pair, .levels { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>PoBox features pass, 2026-10-16 afternoon</h1>
+<p class="lede">The owner picked four features (punch card, AI cornerman, ring smarts, fight log) and asked for an Elo for every boxer from
+CPU bouts. All at 1080x1920, rendered by the dev script's shot-begin/shot-end. The before picture is the do-all pass's arena shot from
+this morning; there is no before shot of the ladder (it had six rows, KIM and SOKOL were not on it, and every row said SCRIPTED).</p>
+
+<h2>1. The punch card, and the ringcraft calls</h2>
+<div class="pair">
+  <div class="shot"><img src="before_arena.webp" alt="Arena before: no punch card"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_punch_card.webp" alt="Arena after: punch card bottom right">
+    <span class="cap">AFTER</span>
+    <span class="pin" style="left:73%;top:66%">1</span>
+    <span class="pin" style="left:66%;top:76%">2</span>
+    <span class="pin" style="left:6%;top:82.5%">3</span>
+  </div>
+</div>
+<ol class="changes">
+  <li><b>Punch card</b> (UI/PunchCard.cs). After a clean punch of 11 N s or more (at most every 12 s), the half second before it is read
+    back from MuJoCo: the peak speed of the hip, shoulder, elbow and glove (mj_objectVelocity, MjBoxer.Chain) and how long before the
+    landing each came. This one is a real Zombie right cross: glove 8.4 m/s, but the shoulder peaked before the elbow and slower than
+    the hip, so it reads ARMS ONLY. Gives way to the brain cam, the replay and the results.</li>
+  <li><b>Under it</b>: glove speed in km/h, the impulse, and the floor's hardest push through both feet in body weights (the solver's
+    contact forces on the foot boxes).</li>
+  <li><b>Ringcraft calls</b> (Broadcast/Commentary.cs): "X has Y trapped on the ropes" after 2 s on the ropes under pressure (the HUD's
+    ON THE ROPES rule, now <code>Fighter.OnTheRopes</code>), and "They're tied up" after 1.5 s chest to chest.</li>
+</ol>
+<p class="note">The shot was held: when the card appeared during a live bout the game was paused (timeScale 0) and the card's timer
+pinned, because the dev capture takes longer than the card's 4 s. The numbers on it are the live ones.</p>
+
+<h2>2. The ladder, rated by the CPU</h2>
+<div class="pair">
+  <div class="shot after"><img src="after_ladder.webp" alt="League tab with eight boxers and CPU records">
+    <span class="cap">AFTER</span>
+    <span class="pin" style="left:58%;top:68%">1</span>
+    <span class="pin" style="left:78%;top:68%">2</span>
+    <span class="pin" style="left:4%;top:85%">3</span>
+  </div>
+  <div class="shot after"><img src="after_settings_debug.webp" alt="Settings, DEBUG tab, with the CORNER field">
+    <span class="cap">AFTER</span>
+    <span class="pin" style="left:5%;top:85%">4</span>
+  </div>
+</div>
+<ol class="changes">
+  <li><b>CPU record</b> in the middle column, from <code>Assets/Resources/cpu_elo.json</code> (training/tools/elo.py). It replaces the
+    old badge, which said SCRIPTED for six boxers whose brains were deleted in the retrofit.</li>
+  <li><b>The rating starts from the CPU's</b> (LeagueTable): a new ratings file re-seeds every rating; the bouts watched on this device
+    (the right column) keep moving it.</li>
+  <li><b>Eight rows</b>: KIM and SOKOL now have entrants (Assets/League/Entrant_KIM/SOKOL) and are on the arena's ladder.</li>
+  <li><b>CORNER</b> (settings, DEBUG): the cornerman proxy's address. In the editor it defaults to this PC; empty means the old
+    rule-based tips. (The dark blocks round the fields are how this capture composites the panel; the layout audit passes this tab at
+    every phone size.)</li>
+</ol>
+
+<h3>The CPU Elo (168 bouts, 6 a pair, 3 rounds of 45 s, the game's brains and punch rules, C MuJoCo 3.5.0)</h3>
+<table>
+  <tr><th>#</th><th>Boxer</th><th>Elo</th><th>W-L-D</th><th>Brain</th></tr>
+  <tr><td>1</td><td>MATT</td><td>1547</td><td>40-0-2</td><td>shipped</td></tr>
+  <tr><td>2</td><td>SOKOL</td><td>1147</td><td>29-12-1</td><td>m2_sokol</td></tr>
+  <tr><td>3</td><td>KIM</td><td>1072</td><td>24-14-4</td><td>m7_kim</td></tr>
+  <tr><td>4</td><td>GRANDPA</td><td>939</td><td>18-22-2</td><td>shipped</td></tr>
+  <tr><td>5</td><td>TRUMP</td><td>912</td><td>17-24-1</td><td>shipped</td></tr>
+  <tr><td>6</td><td>ZOMBIE</td><td>912</td><td>16-23-3</td><td>shipped</td></tr>
+  <tr><td>7</td><td>NICK</td><td>787</td><td>8-28-6</td><td>shipped</td></tr>
+  <tr><td>8</td><td>GRANDMA</td><td>685</td><td>6-35-1</td><td>shipped</td></tr>
+</table>
+<p class="note">A Bradley-Terry fit of all 168 results on the Elo scale (400 points = 10 to 1), centred on 1000, so the order the bouts
+ran in does not matter. One card per round in place of the game's three judges (knockdowns first, then landed punch speed, 10-10
+within 4%). Every bout is in <code>training/logs/cpu_bouts.ndjson</code>.</p>
+
+<h2>3. Training: rc1_matt, ringcraft on top of m9</h2>
+<p class="lede">30 minutes (271 iterations, 4608 rings) from m9_matt, against the same seven opponents and punch rules, with the rope
+charge 0.05, the cut-off pay 0.05 and the new clinch pay 0.1 (envs/boxing.py, <code>--clinch-w</code>). Blue is m9 (the baseline,
+ringcraft only measured), red is rc1. Both start at step 0 on TensorBoard's axis.</p>
+
+<table>
+  <tr><th>Last 20 iterations</th><th>m9_matt</th><th>rc1_matt</th><th>Change</th></tr>
+  <tr><td>On the ropes under pressure (a step)</td><td>0.182</td><td>0.115</td><td class="up">-37%</td></tr>
+  <tr><td>Cutting the ring off (a step)</td><td>0.031</td><td>0.034</td><td class="up">+10%</td></tr>
+  <tr><td>Punches landed a second</td><td>1.11</td><td>1.11</td><td>same</td></tr>
+  <tr><td>Punches taken a second</td><td>0.435</td><td>0.348</td><td class="up">-20%</td></tr>
+  <tr><td>Falls an episode</td><td>0.018</td><td>0.016</td><td class="up">-11%</td></tr>
+  <tr><td>Clinch (a step)</td><td>not measured</td><td>0.000</td><td class="down">never paid</td></tr>
+</table>
+
+<h3>Chart 1: time on the ropes</h3>
+<div class="chart"><img src="tb_rope.webp" alt="TensorBoard env/rope, m9 blue, rc1 red"></div>
+<div class="levels">
+  <div><b>TODDLER</b>The red line is lower. Lower is good: Matt gets stuck against the ropes less.</div>
+  <div><b>CHILD</b>Being pushed against the ropes is bad in boxing because you can't step back. Matt now gets a small minus point
+    for it, so he learned to stay off them about a third less of the time.</div>
+  <div><b>ADULT</b>env/rope is the pelvis's depth into the last metre before the ropes times an "opponent holds the centre" gate, per
+    step. With a 0.05 charge it fell from 0.18 to 0.115 while hits landed stayed at 1.11/s: the charge moved positioning without
+    costing offence.</div>
+</div>
+
+<h3>Chart 2: cutting the ring off</h3>
+<div class="chart"><img src="tb_cutoff.webp" alt="TensorBoard env/cutoff, m9 blue, rc1 red"></div>
+<div class="levels">
+  <div><b>TODDLER</b>The two lines are almost the same. Matt didn't learn much new here.</div>
+  <div><b>CHILD</b>Cutting off the ring means standing where the other boxer wants to escape to. Matt does it a little more, but only
+    a little.</div>
+  <div><b>ADULT</b>0.031 to 0.034 (+10%), inside the noise of the curves. The term pays only when the opponent is already on the ropes
+    and in reach, which is rare (Matt's opponents seldom get pinned), so the gradient is thin. A longer run or a ropes start
+    (<code>--ropes-start</code>) would give it more to work with.</div>
+</div>
+
+<h3>Chart 3: punches landed a second</h3>
+<div class="chart"><img src="tb_hits.webp" alt="TensorBoard env/hits_per_s, m9 blue, rc1 red"></div>
+<div class="levels">
+  <div><b>TODDLER</b>Both lines end at the same height. Matt still hits just as much.</div>
+  <div><b>CHILD</b>Learning the new footwork didn't make him forget how to punch, and he gets hit less now.</div>
+  <div><b>ADULT</b>1.11/s in both, while punches taken fell 20% (0.435 to 0.348/s). The exam in C MuJoCo agrees on attack (rc1 1.42/s at
+    5.0 m/s, m9 1.55/s at 4.5 m/s, mark 0.5/s at 4.0) but not on defence: there rc1 stops 14% of head shots (m9: 0%) yet takes
+    0.08 a second to m9's 0.04, so "taken 20% less" in training does not carry over to the exam's head shots.</div>
+</div>
+
+<h3>The exam (C MuJoCo 3.5.0, 12 rounds against each opponent, 60 knockdowns)</h3>
+<table>
+  <tr><th>Line</th><th>m9_matt</th><th>rc1_matt</th></tr>
+  <tr><td>footing</td><td>pass, 0.00 falls/min</td><td>pass, 0.00 falls/min</td></tr>
+  <tr><td>attack</td><td>pass, 1.55/s at 4.5 m/s</td><td>pass, 1.42/s at 5.0 m/s</td></tr>
+  <tr><td>guard</td><td>pass, stops 0%, takes 0.04/s</td><td>pass, stops 14%, takes 0.08/s</td></tr>
+  <tr><td>chin</td><td>pass, 0.00/min</td><td>pass, 0.00/min</td></tr>
+  <tr><td>getting up</td><td>pass, 58/60 in 1.7 s</td><td>pass, 58/60 in 1.7 s</td></tr>
+  <tr><td>carrying on</td><td class="down">FAIL, 52/58 (mark 90%)</td><td class="down">FAIL, 52/58 (mark 90%)</td></tr>
+</table>
+<p class="note">Neither is promoted: both miss "carrying on" by one get-up (52 of 58 is 89.7%). That line is the hand-over from the get-up
+brain, which neither run trained; it is the next thing to fix, not ringcraft. <b>The clinch was never paid</b>: it pays only a boxer
+whose daze is past half of where its legs go, and Matt is almost never hurt (legs taken 0.00/min). Teaching it needs episodes that
+start dazed (a hurt-start share in the handover bank).</p>
+</main>
+</body>
+</html>

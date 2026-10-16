@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Networking;
 using PoBox.Sim;
 
 namespace PoBox.Broadcast
@@ -12,8 +13,10 @@ namespace PoBox.Broadcast
     /// back above it. Every figure it quotes is one the telemetry holds; it makes nothing up.
     ///
     /// Between rounds, a moment after the bell, the corner of whoever had the worse of the round says one thing to
-    /// its boxer, chosen by rules from that round's numbers (<see cref="CornerTip"/>). Rules and not a language
-    /// model: a model behind an API needs a key, and a key shipped inside a phone's app is anyone's key.
+    /// its boxer. With a cornerman proxy set (<see cref="CornerAI"/>: Claude, through a proxy that holds the key, so
+    /// none ships in the app) the round's numbers go to it <see cref="askBefore"/> seconds before the bell and its
+    /// line is said if it is back in time; otherwise, or without a proxy, the line is chosen by rules from the same
+    /// numbers (<see cref="CornerTip"/>). After a win the winner gets one line to the interviewer the same way.
     /// </summary>
     public class Commentary : MonoBehaviour
     {
@@ -35,6 +38,18 @@ namespace PoBox.Broadcast
         readonly FighterStats[] _roundStart = new FighterStats[2];
         readonly float[] _headStart = new float[2];
         bool _cornerSaid;
+        [Tooltip("Seconds before the bell the corner's numbers go to the cornerman proxy, so its line is back for the break.")]
+        public float askBefore = 6f;
+        UnityWebRequest _ask, _interview;
+        int _askCorner = -1;
+        bool _asked;
+        // Ringcraft (the rc brains' rope, cut-off and clinch rewards): how long each corner has been on the ropes, and the two chest to chest.
+        [Tooltip("Seconds on the ropes under pressure before it is called; pelvises closer than clinchRange this long is a clinch.")]
+        public float trappedAfter = 2f, clinchAfter = 1.5f, clinchRange = 0.55f;
+        readonly float[] _ropes = new float[2];
+        float _clinch;
+        readonly bool[] _ropesSaid = new bool[2];
+        bool _clinchSaid;
         BoutPhase _phase = (BoutPhase)(-1);
 
         void OnEnable()
@@ -47,6 +62,8 @@ namespace PoBox.Broadcast
 
         void OnDisable()
         {
+            CornerAI.Drop(ref _ask);
+            CornerAI.Drop(ref _interview);
             SimBus.Hit -= OnHit;
             SimBus.Knockdown -= OnKnockdown;
             SimBus.GotUp -= OnGotUp;
@@ -103,6 +120,7 @@ namespace PoBox.Broadcast
             if (a == null || b == null) return;
             Tiring(0, a);
             Tiring(1, b);
+            Ringcraft(a, b);
             if (Time.unscaledTime - _lastLine < idleSeconds) return;
 
             string line = null;
@@ -145,6 +163,36 @@ namespace PoBox.Broadcast
             if (line != null) SimBus.Say(line, 0);
         }
 
+        /// <summary>
+        /// Trapped: on the ropes under pressure (Fighter.OnTheRopes, the HUD's flag) for <see cref="trappedAfter"/> seconds,
+        /// said once until it gets off them. A clinch: the pelvises within <see cref="clinchRange"/> for <see cref="clinchAfter"/>,
+        /// said once until they part.
+        /// </summary>
+        void Ringcraft(Fighter a, Fighter b)
+        {
+            float dt = Time.deltaTime;
+            for (int k = 0; k < 2; k++)
+            {
+                Fighter f = k == 0 ? a : b;
+                _ropes[k] = f.OnTheRopes ? _ropes[k] + dt : 0f;
+                if (_ropes[k] <= 0f) _ropesSaid[k] = false;
+                if (_ropes[k] >= trappedAfter && !_ropesSaid[k])
+                {
+                    _ropesSaid[k] = true;
+                    SimBus.Say($"{(k == 0 ? b : a).displayName} has {f.displayName} trapped on the ropes", 1);
+                }
+            }
+            Vector3 gap = b.pelvis.transform.position - a.pelvis.transform.position;
+            gap.y = 0f;
+            _clinch = gap.magnitude < clinchRange && !a.IsDown && !b.IsDown ? _clinch + dt : 0f;
+            if (_clinch <= 0f) _clinchSaid = false;
+            if (_clinch >= clinchAfter && !_clinchSaid)
+            {
+                _clinchSaid = true;
+                SimBus.Say($"They're tied up! {a.displayName} and {b.displayName} in a clinch", 1);
+            }
+        }
+
         /// <summary>The reserve falling through a line is said once; climbing back over it (with some rest to spare) lets it be said again.</summary>
         void Tiring(int corner, Fighter f)
         {
@@ -159,7 +207,10 @@ namespace PoBox.Broadcast
             }
         }
 
-        /// <summary>The round starts: its numbers are counted from here. The break: the corner speaks once.</summary>
+        /// <summary>
+        /// The round starts: its numbers are counted from here. Near the bell: the numbers go to the cornerman proxy.
+        /// The break: the corner speaks once. The result: the winner's word, if the proxy gives one.
+        /// </summary>
         void Corner()
         {
             Fighter a = bout.red, b = bout.blue;
@@ -171,16 +222,81 @@ namespace PoBox.Broadcast
                 {
                     _roundStart[0] = a.stats; _roundStart[1] = b.stats;
                     _headStart[0] = a.taken[Fighter.ZoneHead]; _headStart[1] = b.taken[Fighter.ZoneHead];
+                    _asked = false;
+                    CornerAI.Drop(ref _ask);
+                    CornerAI.Drop(ref _interview);
                 }
+                if (_phase == BoutPhase.Results && bout.Winner != null)
+                    _interview = CornerAI.Ask(JsonUtility.ToJson(Interview(bout.Winner, bout.Other(bout.Winner))));
                 _cornerSaid = false;
             }
+            if (_phase == BoutPhase.Results)
+            {
+                string said = CornerAI.Answer(ref _interview);
+                if (said != null && bout.Winner != null) SimBus.Say($"{bout.Winner.displayName}: {said}", 2);
+                return;
+            }
+            if (_phase == BoutPhase.Fight && !_asked && bout.Round < bout.rounds && bout.RoundTimeLeft <= askBefore)
+            {
+                _asked = true;
+                _askCorner = Worse(a, b);
+                Fighter f = _askCorner == 0 ? a : b;
+                _ask = CornerAI.Ask(JsonUtility.ToJson(Facts(_askCorner, f, 1 - _askCorner, bout.Other(f))));
+            }
             if (_phase != BoutPhase.RoundBreak || _cornerSaid || bout.PhaseAge < cornerAfter) return;
+            // Claude's line, if it is on its way and there is break left to wait for it.
+            if (CornerAI.Pending(_ask) && bout.PhaseAge < bout.breakSeconds - 0.5f) return;
             _cornerSaid = true;
-            // The one who had the worse of it: landed fewer, or on a tie took more.
-            int worse = Landed(1, b) > Landed(0, a) || (Landed(1, b) == Landed(0, a) && Head(0, a) > Head(1, b)) ? 0 : 1;
-            Fighter f = worse == 0 ? a : b;
-            SimBus.Say($"{f.displayName}'s corner: {CornerTip(worse, f, 1 - worse, worse == 0 ? b : a)}", 2);
+            string line = CornerAI.Answer(ref _ask);
+            CornerAI.Drop(ref _ask);
+            int worse = line != null && _askCorner >= 0 ? _askCorner : Worse(a, b);
+            Fighter w = worse == 0 ? a : b;
+            SimBus.Say($"{w.displayName}'s corner: {line ?? CornerTip(worse, w, 1 - worse, worse == 0 ? b : a)}", 2);
         }
+
+        /// <summary>The one who had the worse of the round: landed fewer, or on a tie took more to the head.</summary>
+        int Worse(Fighter a, Fighter b) => Landed(1, b) > Landed(0, a) || (Landed(1, b) == Landed(0, a) && Head(0, a) > Head(1, b)) ? 0 : 1;
+
+        /// <summary>What the cornerman proxy is told between rounds: this round's numbers and the bout's so far, nothing else.</summary>
+        [System.Serializable]
+        class CornerFacts
+        {
+            public string kind = "corner", boxer, opponent, cards;
+            public int round, rounds, landed, thrown, blocked, opponentLanded, opponentThrown, landedInBout, opponentLandedInBout, knockdownsScored, timesDown;
+            public float headImpulseTaken, reserve, stamina, hardestPunch;
+            public bool onTheRopes;
+        }
+
+        CornerFacts Facts(int me, Fighter f, int them, Fighter o)
+        {
+            Mj.MjBoxer body = f.boxer;
+            bool tires = body != null && body.Bound && body.Cfg.fatigue_j > 0.0;
+            return new CornerFacts
+            {
+                boxer = f.displayName, opponent = o.displayName, cards = bout.CardsText(), round = bout.Round, rounds = bout.rounds,
+                landed = Landed(me, f), thrown = Thrown(me, f), blocked = f.stats.blocked - _roundStart[me].blocked,
+                opponentLanded = Landed(them, o), opponentThrown = Thrown(them, o),
+                landedInBout = f.stats.landed, opponentLandedInBout = o.stats.landed, knockdownsScored = f.stats.knockdowns, timesDown = f.stats.downs,
+                headImpulseTaken = Mathf.Round(Head(me, f)), reserve = tires ? Mathf.Round((float)body.Reserve * 100f) / 100f : 1f,
+                stamina = Mathf.Round(f.Stamina * 100f) / 100f, hardestPunch = Mathf.Round(f.stats.peakImpulse), onTheRopes = f.OnTheRopes,
+            };
+        }
+
+        /// <summary>What the proxy is told for the winner's word: the whole bout's numbers.</summary>
+        [System.Serializable]
+        class InterviewFacts
+        {
+            public string kind = "interview", boxer, opponent, method, cards;
+            public int rounds, landed, thrown, opponentLanded, knockdownsScored, timesDown, blocked;
+            public float hardestPunch;
+        }
+
+        InterviewFacts Interview(Fighter w, Fighter o) => new InterviewFacts
+        {
+            boxer = w.displayName, opponent = o.displayName, method = bout.Method, cards = bout.CardsText(), rounds = bout.Round,
+            landed = w.stats.landed, thrown = w.stats.thrown, opponentLanded = o.stats.landed, knockdownsScored = w.stats.knockdowns,
+            timesDown = w.stats.downs, blocked = w.stats.blocked, hardestPunch = Mathf.Round(w.stats.peakImpulse),
+        };
 
         int Landed(int corner, Fighter f) => f.stats.landed - _roundStart[corner].landed;
         int Thrown(int corner, Fighter f) => f.stats.thrown - _roundStart[corner].thrown;

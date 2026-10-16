@@ -7,6 +7,10 @@ namespace PoBox.League
     /// <summary>
     /// The ladder. Every finished bout moves two Elo ratings, the table is kept on the device, and the next
     /// pairing is whoever has fought least against whoever is rated closest to them.
+    ///
+    /// The ratings start from the CPU's: every pair of the game's brains boxed in C MuJoCo by the trainer
+    /// (training/tools/elo.py), written to Resources/cpu_elo.json. A new file (new brains) starts the ratings
+    /// again from it; the record of bouts watched on this device is kept.
     /// </summary>
     public class LeagueTable : MonoBehaviour
     {
@@ -20,12 +24,47 @@ namespace PoBox.League
             public string name;
             public float elo;
             public int wins, losses, draws, knockouts;
+            /// <summary>The CPU's rating, which this one started from (0 when the CPU has not rated this boxer).</summary>
+            public float cpuElo;
             public string lastOpponent;
             public int Bouts => wins + losses + draws;
         }
 
         [Serializable]
-        class Save { public List<Row> rows = new List<Row>(); }
+        class Save { public List<Row> rows = new List<Row>(); public string cpuWhen; }
+
+        [Serializable]
+        class CpuRow { public string name; public float elo; public int wins, losses, draws; }
+        [Serializable]
+        class Cpu { public string when; public int bouts; public List<CpuRow> rows = new List<CpuRow>(); }
+
+        static Cpu _cpu;
+        /// <summary>The CPU ratings shipped with the game (Resources/cpu_elo.json), read once; empty if there are none.</summary>
+        static Cpu CpuRatings
+        {
+            get
+            {
+                if (_cpu != null) return _cpu;
+                var text = Resources.Load<TextAsset>("cpu_elo");
+                try { _cpu = text != null ? JsonUtility.FromJson<Cpu>(text.text) : null; }
+                catch (Exception) { _cpu = null; }
+                return _cpu ??= new Cpu();
+            }
+        }
+
+        /// <summary>A boxer's record in the CPU's bouts, "W-L-D"; empty if the CPU has not rated it.</summary>
+        public static string CpuRecord(string name)
+        {
+            foreach (CpuRow r in CpuRatings.rows) if (r.name == name) return $"{r.wins}-{r.losses}-{r.draws}";
+            return "";
+        }
+
+        /// <summary>A boxer's CPU rating; 0 if the CPU has not rated it.</summary>
+        public static float CpuElo(string name)
+        {
+            foreach (CpuRow r in CpuRatings.rows) if (r.name == name) return r.elo;
+            return 0f;
+        }
 
         const string Key = "pobox.league.v1";
         Save _save = new Save();
@@ -44,7 +83,22 @@ namespace PoBox.League
             }
             foreach (PolicyProfile p in roster)
                 if (p != null && Find(p.displayName) == null)
-                    _save.rows.Add(new Row { name = p.displayName, elo = startRating });
+                {
+                    float c = CpuElo(p.displayName);
+                    _save.rows.Add(new Row { name = p.displayName, elo = c > 0f ? c : startRating, cpuElo = c });
+                }
+            // New CPU ratings (new brains): every rating starts again from them.
+            Cpu cpu = CpuRatings;
+            if ((cpu.when ?? "") != (_save.cpuWhen ?? ""))
+            {
+                foreach (Row r in _save.rows)
+                {
+                    float c = CpuElo(r.name);
+                    r.cpuElo = c;
+                    r.elo = c > 0f ? c : startRating;
+                }
+                _save.cpuWhen = cpu.when;
+            }
             // A profile that has left the roster leaves the ladder with it.
             _save.rows.RemoveAll(r => ProfileFor(r.name) == null);
         }
@@ -61,10 +115,11 @@ namespace PoBox.League
             try
             {
                 Save save = JsonUtility.FromJson<Save>(PlayerPrefs.GetString(Key, ""));
-                if (save != null) foreach (Row r in save.rows) if (r.name == name) return r.elo;
+                if (save != null && (save.cpuWhen ?? "") == (CpuRatings.when ?? "")) foreach (Row r in save.rows) if (r.name == name) return r.elo;
             }
             catch (Exception) { }
-            return fallback;
+            float cpu = CpuElo(name);
+            return cpu > 0f ? cpu : fallback;
         }
 
         public void ResetAll()

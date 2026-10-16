@@ -83,5 +83,10 @@
             <ui:Label class="field-key" text="TWITCH" picking-mode="Ignore" />
             <ui:TextField name="s-twitch" class="field" max-length="25" is-delayed="true" />
         </ui:VisualElement>
+        <!-- The cornerman proxy (server/corner_proxy.py): Claude's corner advice and the winner's word. Empty is off (the rule-based tips). -->
+        <ui:VisualElement class="field-row" picking-mode="Ignore">
+            <ui:Label class="field-key" text="CORNER" picking-mode="Ignore" />
+            <ui:TextField name="s-corner" class="field" max-length="120" is-delayed="true" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

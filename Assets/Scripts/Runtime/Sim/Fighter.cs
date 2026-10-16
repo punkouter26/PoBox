@@ -157,6 +157,22 @@ namespace PoBox.Sim
 
         // ------------------------------------------------------------ telemetry
         public Vector3 CenterOfMass { get; private set; }
+        /// <summary>A boxer within this of the ropes, metres, with the other nearer the middle and this close to it, is on the ropes.</summary>
+        const float RopesBand = 0.8f, PressureRange = 1.6f;
+        /// <summary>Near the ropes, with the other boxer nearer the middle of the ring and close enough to be pressing.</summary>
+        public bool OnTheRopes
+        {
+            get
+            {
+                Fighter o = opponent;
+                if (o == null || ring == null) return false;
+                float mine = Bout.FromCentre(this), theirs = Bout.FromCentre(o);
+                if (mine < 0f || theirs < 0f || IsDown || o.IsDown) return false;
+                Vector3 gap = o.pelvis.transform.position - pelvis.transform.position;
+                gap.y = 0f;
+                return mine > ring.ringHalf - RopesBand && theirs < mine - 0.3f && gap.sqrMagnitude < PressureRange * PressureRange;
+            }
+        }
         public Vector3 CenterOfMassVelocity { get; private set; }
         /// <summary>
         /// 1 planted, 0 going over. Where the body will come to rest if nothing is done about it (the centre of

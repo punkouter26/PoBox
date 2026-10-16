@@ -1056,3 +1056,26 @@ Day queue (09:08 on, ~9.4 h), each run then its exam; opponents are the newest b
   (sf1) under the rules, 512 rings x 30 s: m1 lands 0.80/s, m9 1.49/s; both 0% to the head and 0 blocks; reserve
   0.60 v 0.56; Zombie lands 0.18/s v 0.13/s; no falls. Busier, not more varied, and no pacing yet: the spam is
   rewarded (hit pay), and nothing pays for the head or for a mix. Not promoted, not examined.
+
+## 2026-10-16 14:26, rc1_matt: ringcraft and a clinch term on m9; the CPU Elo (owner: features 3 5 7 9 + "an ELO of each fighter from cpu fights")
+
+- **New term, `--clinch-w`** (envs/boxing.py, train_gauntlet.py; off by default, old runs unchanged): pays a hurt boxer (daze past half
+  of where its legs go, needs `--daze`) for both gloves resting on the opponent's trunk (within 5 cm, under 1 m/s) with the pelvises
+  within 0.55 m. Logged per fighter as `v_NAME/clinch` and `env/clinch`. Smoke-tested 2 iterations, 256 rings.
+- **14:26-14:57 `rc1_matt`**: from m9_matt, m9's exact flags and opponents plus `--rope-w 0.05 --cutoff-w 0.05 --clinch-w 0.1`,
+  `--max-hours 0.5`, 271 iterations. Unity was open in edit mode (no play) through the run; 8 CPU workers of the Elo round-robin ran
+  alongside from 14:43 and took the trainer from ~19k to ~13k samples a second.
+  Last 20 iterations, m9 then rc1: on the ropes 0.182 -> 0.115 (-37%), cutting off 0.031 -> 0.034, landed 1.11 -> 1.11/s, taken
+  0.435 -> 0.348/s, falls 0.018 -> 0.016. **Clinch 0.000 throughout**: Matt is never dazed that far (legs 0.00/min), so the term never paid.
+- Exams, 3.5.0, 60 trials, 12 rounds (`logs/exam_m9_matt.json`, `logs/exam_rc1_matt.json`; m9 had never been examined): both pass
+  footing, attack (m9 1.55/s at 4.5 m/s, rc1 1.42/s at 5.0), guard (m9 stops 0% / takes 0.04 head shots a second, rc1 14% / 0.08),
+  chin, getting up (58/60); both FAIL carrying on at 52/58 (mark 90%). **Neither promoted.** Carrying on is the get-up hand-over, not
+  ringcraft. Report: `SCREENSHOTS/2026-10-16-features/report.html`.
+- Next, if wanted: the clinch needs hurt starts (episodes beginning dazed); cut-off needs more episodes with the opponent on the ropes
+  (`--ropes-start`); carrying on needs `--handover-share` up from 0.3 (m2_matt's recipe).
+- **CPU Elo** (`tools/elo.py`, self-check `tools/test_elo.py`): every pair of the game's brains (`logs/book_shipped.json`), 6 bouts a
+  pair (half with the corners swapped, joints jittered 0.05 rad at the marks), 3 x 45 s under each boxer's game rules
+  (Assets/Boxers/NAME/config.json laid over the pair config: hit_push, fatigue 8000, no speed limit), exam punches and daze, one judge
+  a round. Bradley-Terry fit, Elo scale, mean 1000. 168 bouts in 803 s on 8 workers: MATT 1547 (40-0-2), SOKOL 1147, KIM 1072,
+  GRANDPA 939, TRUMP 912, ZOMBIE 912, NICK 787, GRANDMA 685. Written to `Assets/Resources/cpu_elo.json` (the game's ladder starts
+  there) and `logs/cpu_bouts.ndjson`. Re-run after every promotion.

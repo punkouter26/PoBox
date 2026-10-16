@@ -51,7 +51,7 @@ namespace PoBox.UI
 
         const int StripPages = 3;
         const int CycleModes = 5;
-        const int LeagueRows = 6;
+        const int LeagueRows = 8;
         const int ResultRows = 5;
 
         VisualElement _root, _safe;
@@ -84,8 +84,6 @@ namespace PoBox.UI
         // pods: the tank, the reserve, the action badge and the two flags
         readonly VisualElement[] _tank = new VisualElement[2], _reserve = new VisualElement[2], _reserveBar = new VisualElement[2], _ghost = new VisualElement[2];
         readonly Label[] _act = new Label[2], _ropes = new Label[2], _tired = new Label[2];
-        /// <summary>A boxer within this of the ropes, metres, with the other nearer the middle and this close to it, is on the ropes.</summary>
-        const float RopesBand = 0.8f, PressureRange = 1.6f;
         // what has just changed, swollen until the next tick (Theme.uss .pop)
         readonly List<VisualElement> _popped = new List<VisualElement>(16);
         readonly PunchType[] _punch = new PunchType[2];
@@ -446,7 +444,8 @@ namespace PoBox.UI
             }
         }
 
-        static int GroupOf(string joint)
+        /// <summary>A joint's brain cam group by its name: 0 legs, 1 torso, 2 left arm, 3 right arm (FightLog counts effort by these too).</summary>
+        internal static int GroupOf(string joint)
         {
             if (joint.StartsWith("abdomen")) return 1;
             if (joint.StartsWith("shoulder") || joint.StartsWith("elbow")) return joint.EndsWith("_l") ? 2 : 3;
@@ -860,7 +859,9 @@ namespace PoBox.UI
                 PolicyProfile p = league.ProfileFor(row.name);
                 _leagueCells[r][0].text = (r + 1).ToString();
                 _leagueCells[r][1].text = row.name;
-                _leagueCells[r][2].text = p != null ? p.Badge : "";
+                // What the rating started from: the boxer's record in the CPU's bouts (tools/elo.py).
+                string cpu = LeagueTable.CpuRecord(row.name);
+                _leagueCells[r][2].text = cpu.Length > 0 ? "CPU " + cpu : p != null ? p.Badge : "";
                 _leagueCells[r][3].text = row.elo.ToString("0");
                 _leagueCells[r][4].text = $"{row.wins}-{row.losses}-{row.draws}";
                 bool live = bout != null && ((bout.red != null && bout.red.displayName == row.name) || (bout.blue != null && bout.blue.displayName == row.name));
@@ -1129,7 +1130,7 @@ namespace PoBox.UI
                 _reserve[corner].EnableInClassList("tank-fill--weak", reserve < 0.5f);
             }
             Flag(_tired[corner], tires && reserve < 0.5f);
-            Flag(_ropes[corner], OnTheRopes(f));
+            Flag(_ropes[corner], f.OnTheRopes);
 
             if (_act[corner] == null) return;
             bool punching = Time.time - _punchAt[corner] < PunchShown;
@@ -1145,17 +1146,6 @@ namespace PoBox.UI
             if (flag == null || flag.ClassListContains("hidden") != on) return;
             flag.EnableInClassList("hidden", !on);
             if (on) Pop(flag);
-        }
-
-        /// <summary>Near the ropes, with the other boxer nearer the middle of the ring and close enough to be pressing.</summary>
-        static bool OnTheRopes(Fighter f)
-        {
-            Fighter o = f.opponent;
-            float mine = Bout.FromCentre(f), theirs = Bout.FromCentre(o);
-            if (mine < 0f || theirs < 0f || f.IsDown || o.IsDown) return false;
-            Vector3 gap = o.pelvis.transform.position - f.pelvis.transform.position;
-            gap.y = 0f;
-            return mine > f.ring.ringHalf - RopesBand && theirs < mine - 0.3f && gap.sqrMagnitude < PressureRange * PressureRange;
         }
 
         /// <summary>Between rounds: the cards as they stand, and landed of thrown, punches stopped and the share of the centre in the round just ended.</summary>
