@@ -384,7 +384,7 @@ namespace PoBox.UI
         static readonly string[] DebugKeys =
         {
             "FRAME", "WORST", "PHYSICS", "SETPASS", "TRIS", "GC", "MEMORY", "SCALE", "SHOT", "VOICES", "CLOSING", "STRESS",
-            "DAZE", "CRITIC", "SOUND", "USUAL", "BRAINS",
+            "DAZE", "CRITIC", "SOUND", "USUAL", "BRAINS", "GPU",
         };
 
         bool BrainOn => _brain != null && !_brain.ClassListContains("hidden");
@@ -1335,6 +1335,7 @@ namespace PoBox.UI
             _debugValues[14].text = audio != null ? $"{audio.PeakDb:0} dB" : "-";
             _debugValues[15].text = ex != null ? $"{ex.UsualImpulse:0.0} N·s" : "-";
             _debugValues[16].text = $"{perf.InferMs:0.00} ms";
+            _debugValues[17].text = perf.GpuMs > 0f ? $"{perf.GpuMs:0.0} ms" : "n/a";
         }
 
         // ------------------------------------------------------------ results

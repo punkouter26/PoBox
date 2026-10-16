@@ -67,6 +67,10 @@ namespace PoBox.Fx
         static readonly int MarksId = Shader.PropertyToID("_BruiseMarks");
         static readonly int MarkCountId = Shader.PropertyToID("_BruiseCount");
         static readonly int FlushId = Shader.PropertyToID("_Flush");
+        static readonly int RimIntensityId = Shader.PropertyToID("_RimIntensity");
+        [Tooltip("The rim's strength as authored, and how much more of it a boxer on the ropes under pressure gets.")]
+        public float rimIntensity = 0.55f, pressedRim = 1.4f;
+        float _pressed;
         static readonly int RippleId = Shader.PropertyToID("_Ripple");
         static readonly int RippleStrengthId = Shader.PropertyToID("_RippleStrength");
         static readonly int LoadId = Shader.PropertyToID("_Load");
@@ -230,6 +234,9 @@ namespace PoBox.Fx
             _block.SetVectorArray(MarksId, _marks);
             _block.SetFloat(MarkCountId, count);
             _block.SetVector(FlushId, flush);
+            // On the ropes under pressure: the rim up, eased in and out over a third of a second.
+            _pressed = Mathf.MoveTowards(_pressed, fighter.OnTheRopes ? 1f : 0f, Time.deltaTime * 3f);
+            _block.SetFloat(RimIntensityId, rimIntensity * (1f + pressedRim * _pressed));
             // The ripple of the last clean punch, and how hard each joint is working (its link's origin is the joint).
             _block.SetVector(RippleId, new Vector4(_ripplePoint.x, _ripplePoint.y, _ripplePoint.z, Time.time - _rippleAt));
             _block.SetFloat(RippleStrengthId, _rippleStrength);

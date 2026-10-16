@@ -50,6 +50,10 @@ namespace PoBox.Diag
         public float PhysicsMs { get; private set; }
         /// <summary>Every boxer's brains thinking, ms a frame, smoothed (<see cref="Mj.MjBoxer.TakeInferSeconds"/>).</summary>
         public float InferMs { get; private set; }
+        /// <summary>The GPU's time on the last frame it reported, ms, smoothed (FrameTimingManager; needs Player
+        /// Settings' Frame Timing Stats, on in this project). 0 where the platform does not report it.</summary>
+        public float GpuMs { get; private set; }
+        readonly FrameTiming[] _timing = new FrameTiming[1];
         public long DrawCalls { get; private set; }
         public long Batches { get; private set; }
         public long SetPass { get; private set; }
@@ -140,6 +144,9 @@ namespace PoBox.Diag
             PhysicsMs = _ring != null ? (float)_ring.PhysicsMs : 0f;
             // The policies' time since the last frame: read once a frame, here and nowhere else.
             InferMs += ((float)(Mj.MjBoxer.TakeInferSeconds() * 1000.0) - InferMs) * 0.1f;
+            FrameTimingManager.CaptureFrameTimings();
+            if (FrameTimingManager.GetLatestTimings(1, _timing) > 0 && _timing[0].gpuFrameTime > 0.0)
+                GpuMs += ((float)_timing[0].gpuFrameTime - GpuMs) * 0.1f;
 
             ReadThermal();
             Govern(ms);

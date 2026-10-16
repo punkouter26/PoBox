@@ -77,6 +77,9 @@
     --t-body:         32px;
     --t-title:        40px;
     --t-display:      52px;
+    --t-hero:         76px;          /* a name on the walk-on card */
+    --t-banner:       96px;          /* ROUND 3, KO */
+    --t-count:       220px;          /* the referee's count */
 
     --gap-1:           4px;
     --gap-2:           8px;
@@ -438,12 +441,12 @@ Label { margin: 0; padding: 0; }
     top: var(--banner-top);
     left: var(--beside-pods); right: var(--beside-pods);
     -unity-text-align: middle-center;
-    font-size: 96px;
+    font-size: var(--t-banner);
     -unity-font-style: bold;
     letter-spacing: 6px;
     text-shadow: 0 4px 10px var(--shadow);
 }
-.banner--count { top: var(--count-top); font-size: 220px; letter-spacing: 0; color: var(--warn); }
+.banner--count { top: var(--count-top); font-size: var(--t-count); letter-spacing: 0; color: var(--warn); }
 
 /* Chat plays (Net/TwitchChat.cs): the corners' votes under the scoreboard, between the pods (the arena), or
    chat's favourite under the board (the free-for-all). Only there with a channel set. */
@@ -518,7 +521,7 @@ Label { margin: 0; padding: 0; }
 .walkon--blue .walkon-bar { background-color: var(--blue); }
 .walkon-text { flex: 1 1 0; padding: 10px 24px; justify-content: center; }
 .walkon-corner { font-size: var(--t-small); letter-spacing: 4px; color: var(--ink-dim); }
-.walkon-name { font-size: 76px; -unity-font-style: bold; letter-spacing: 2px; }
+.walkon-name { font-size: var(--t-hero); -unity-font-style: bold; letter-spacing: 2px; }
 .walkon-detail { font-size: var(--t-small); color: var(--ink-dim); }
 
 /* Before the first bell, under the walk-on: a corner each side at the ladder's odds, the stake and the coins between them. */

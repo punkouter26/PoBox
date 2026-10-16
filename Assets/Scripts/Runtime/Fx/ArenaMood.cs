@@ -34,6 +34,10 @@ namespace PoBox.Fx
         public Light[] ringLights = new Light[0];
         [Tooltip("Lamp housings whose emission follows the lights.")]
         public Renderer[] lampRenderers = new Renderer[0];
+        [Tooltip("The beam through the haze under each ring light (Shaders/LightBeam), in the same order; brightness follows its light.")]
+        public Renderer[] beams = new Renderer[0];
+        [Tooltip("How bright a beam is at its light's resting level.")]
+        public float beamIntensity = 0.25f;
         [Tooltip("The two follow-spots, red's then blue's. The walk-on Timeline, a clean punch landed and the winner's moment use them.")]
         public Light[] sweeps = new Light[0];
         [Tooltip("Intensity of a sweep when it is on the winner.")]
@@ -69,6 +73,9 @@ namespace PoBox.Fx
         static readonly int PhonesId = Shader.PropertyToID("_PoBoxCrowdPhones");
         static readonly int SideId = Shader.PropertyToID("_PoBoxCrowdSide");
         static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
+        static readonly int BeamId = Shader.PropertyToID("_BeamColor");
+        /// <summary>Who just scored, as the stands have it: -1 red, +1 blue, easing back to 0. The crowd's sound uses it too.</summary>
+        public static float Side { get; private set; }
 
         /// <summary>0..1, decays over a second or two. The sound uses it too.</summary>
         public static float Burst { get; private set; }
@@ -186,6 +193,7 @@ namespace PoBox.Fx
             Shader.SetGlobalFloat(FlashId, Flash);
             Shader.SetGlobalFloat(PhonesId, _phones);
             Shader.SetGlobalFloat(SideId, _side);
+            Side = _side;
 
             // The count: whoever is down, alone in a light of their own.
             Fighter downed = phase == BoutPhase.Count && bout != null ? bout.Downed : null;
@@ -211,6 +219,15 @@ namespace PoBox.Fx
             float gain = (1f + lift * Excitement.Value + _flash * 0.8f) * Mathf.Lerp(0.12f, 1f, houseLights) * Mathf.Lerp(1f, downHouse, _down);
             for (int i = 0; i < ringLights.Length; i++)
                 if (ringLights[i] != null) ringLights[i].intensity = _rest[i] * gain;
+
+            for (int i = 0; i < beams.Length && i < ringLights.Length; i++)
+            {
+                if (beams[i] == null || ringLights[i] == null) continue;
+                _block.Clear();
+                _block.SetColor(BeamId, ringLights[i].color * (beamIntensity * gain));
+                beams[i].SetPropertyBlock(_block);
+            }
+            _block.Clear();
 
             if (lampRenderers.Length > 0)
             {

@@ -23,7 +23,7 @@ MonoBehaviour:
       normalBlend: 0
 --- !u!114 &-4662438221127280796
 MonoBehaviour:
-  m_ObjectHideFlags: 0
+  m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}

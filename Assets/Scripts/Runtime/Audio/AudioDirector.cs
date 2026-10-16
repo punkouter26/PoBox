@@ -30,7 +30,10 @@ namespace PoBox.Audio
     /// from MuJoCo's rope load, every boxer's): louder and higher the further out the most bowed one is, from
     /// where it is. A boxer that arrives on them hard twangs them.
     ///
-    /// The crowd is a looping bed whose level rides the excitement reading, with a swell laid over it on a
+    /// The crowd is heard from round the hall: half of the bed as one diffuse layer, the other half from eight
+    /// sections on a circle round the ring (3D, the same loop at eight places in it), so it stays where it is
+    /// when the camera cuts. The sections behind the corner that just scored (ArenaMood.Side) come up, the other
+    /// half goes back a little. The crowd is a looping bed whose level rides the excitement reading, with a swell laid over it on a
     /// big moment and a groan on a knockdown. So that a heavy punch is heard through it, the crowd bus is
     /// ducked for the quarter second the punch lasts and comes back over the next half.
     ///
@@ -95,6 +98,10 @@ namespace PoBox.Audio
         public AudioClip crowdGasp;
         [Range(0f, 1f)] public float crowdQuiet = 0.22f;
         [Range(0f, 1f)] public float crowdLoud = 0.85f;
+        [Tooltip("The eight sections' circle round the ring: radius and height, metres.")]
+        public float sectionRadius = 9f, sectionHeight = 3f;
+        [Tooltip("How far the scorer's half comes up (and the other half goes back by half of it), as a share of its level.")]
+        [Range(0f, 1f)] public float sectionLean = 0.6f;
 
         [Header("Ropes")]
         [Tooltip("A rope bowed out further than the first, metres (RopeFlex.Strain), creaks; at the second it is as loud as it gets.")]
@@ -164,6 +171,8 @@ namespace PoBox.Audio
 
         AudioSource[] _pool;
         AudioSource _bed, _crowdSource, _ringSource, _heart, _breath;
+        readonly AudioSource[] _sections = new AudioSource[8];
+        readonly Vector2[] _sectionDir = new Vector2[8];
         readonly AudioSource[] _scrape = new AudioSource[2];
         readonly AudioSource[] _air = new AudioSource[4];      // red left, red right, blue left, blue right
         readonly float[] _squeakAt = new float[2];
@@ -252,6 +261,29 @@ namespace PoBox.Audio
             _bed.volume = 0f;
             _crowdSource = Source2D(crowd);
             _ringSource = Source2D(ring);
+
+            var ringNow = FindAnyObjectByType<MjRing>();
+            Vector2 c = ringNow != null ? ringNow.centre : Vector2.zero;
+            for (int k = 0; k < _sections.Length; k++)
+            {
+                float a = (k + 0.5f) * Mathf.PI * 2f / _sections.Length;
+                _sectionDir[k] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                var go = new GameObject("Crowd Section " + k);
+                go.transform.SetParent(transform, false);
+                go.transform.position = new Vector3(c.x + _sectionDir[k].x * sectionRadius, sectionHeight, c.y + _sectionDir[k].y * sectionRadius);
+                AudioSource s = go.AddComponent<AudioSource>();
+                s.playOnAwake = false;
+                s.outputAudioMixerGroup = crowd;
+                s.clip = crowdBed;
+                s.loop = true;
+                s.volume = 0f;
+                s.spatialBlend = 1f;
+                s.rolloffMode = AudioRolloffMode.Linear;
+                s.minDistance = 3f;
+                s.maxDistance = 30f;
+                s.dopplerLevel = 0f;
+                _sections[k] = s;
+            }
         }
 
         AudioMixerGroup Group(string name)
@@ -405,6 +437,12 @@ namespace PoBox.Audio
         void Start()
         {
             if (_bed.clip != null) _bed.Play();
+            for (int k = 0; k < _sections.Length; k++)
+            {
+                if (_sections[k] == null || _sections[k].clip == null) continue;
+                _sections[k].timeSamples = k * _sections[k].clip.samples / _sections.Length;   // eight places in the loop, not one crowd eight times
+                _sections[k].Play();
+            }
             // Whoever the scene switched on: the two of a bout, or everybody in a free-for-all.
             _all = FindObjectsByType<Fighter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         }
@@ -562,12 +600,14 @@ namespace PoBox.Audio
                 mixer.SetFloat("HitsVolume", Db(hitsGain) + hitsDb);
                 mixer.SetFloat("CrowdVolume", Db(crowdGain) - DuckNow + crowdDb);
                 mixer.SetFloat("RingVolume", Db(ringGain));
-                _bed.volume = _bedLevel;
+                _bed.volume = _bedLevel * 0.5f;
+                Sections(_bedLevel);
             }
             else
             {
                 // No mixer: the same thing with the sources' own volumes.
-                _bed.volume = _bedLevel * crowdGain * crowdLinear;
+                _bed.volume = _bedLevel * crowdGain * crowdLinear * 0.5f;
+                Sections(_bedLevel * crowdGain * crowdLinear);
                 _crowdSource.volume = crowdGain * crowdLinear;
                 _ringSource.volume = ringGain;
             }
@@ -625,6 +665,22 @@ namespace PoBox.Audio
                 }
             }
             Air(dt);
+        }
+
+        /// <summary>
+        /// The eight sections: together the other half of the bed (eight uncorrelated places in the loop add up to
+        /// about the square root of eight, and the distance takes about a third off), each leaning with the scorer.
+        /// </summary>
+        void Sections(float level)
+        {
+            float side = ArenaMood.Side;                 // -1 red, +1 blue; blue's half is towards +x +z
+            for (int k = 0; k < _sections.Length; k++)
+            {
+                if (_sections[k] == null) continue;
+                float behind = Vector2.Dot(_sectionDir[k], new Vector2(0.7071f, 0.7071f)) * side;   // +1 behind the scorer
+                float lean = behind > 0f ? 1f + sectionLean * behind : 1f + 0.5f * sectionLean * behind;
+                _sections[k].volume = level * 0.5f * 1.5f / Mathf.Sqrt(_sections.Length) * lean;
+            }
         }
 
         /// <summary>Each glove's air: level and pitch from the speed MuJoCo measures, placed at the glove.</summary>
