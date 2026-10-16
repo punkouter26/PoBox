@@ -43,6 +43,8 @@ namespace PoBox.Mj
         public float ringHalf = 3.05f;
 
         public const float HitCap = 9f;
+        /// <summary>The mass behind a glove, as envs/boxing.py's PUNCH_MASS (Sim's Fighter.PunchMass).</summary>
+        const double PunchMass = 2.2;
         public bool Ready => _bound;
         public double PhysicsMs { get; private set; }
         public double PolicyMs { get; private set; }
@@ -82,6 +84,8 @@ namespace PoBox.Mj
         double[,] _prevHead, _prevBody;
         double[,,] _prevFoot;
         double[,] _slide;
+        double[,] _push;                    // force and torque on each boxer's trunk for the next control step
+        bool[] _pushed;
         int[] _owner = new int[0];          // which boxer a shape belongs to, -1 for none; feet are -1 here
         double[] _load = new double[0], _clear = new double[0], _at = new double[0];
         bool[] _rope = new bool[0];
@@ -100,6 +104,7 @@ namespace PoBox.Mj
             _geoms = new int[n][];
             _armed = new bool[n, 2]; _blocking = new bool[n, 2]; _footDown = new bool[n, 2];
             _cool = new double[n, 2];
+            _push = new double[n, 6]; _pushed = new bool[n];
             _closing = new double[n, 2, 2]; _speed = new double[n, 2, 2]; _prevGlove = new double[n, 2, 3]; _gloveVel = new double[n, 2, 3];
             _prevHead = new double[n, 3]; _prevBody = new double[n, 3];
             _prevFoot = new double[n, 2, 3];
@@ -443,6 +448,7 @@ namespace PoBox.Mj
 
         void TrackPunches()
         {
+            Array.Clear(_push, 0, _push.Length);
             for (int k = 0; k < _b.Length; k++)
             {
                 // A new opponent: the speeds measured against the last one mean nothing for this one.
@@ -487,6 +493,18 @@ namespace PoBox.Mj
                         if (landed)
                         {
                             _cool[k, hand] = 0.25;
+                            if (them.Cfg.hit_push > 0.0)
+                            {
+                                // envs/boxing.py's hit_push: along the line from the glove to the zone, at its surface.
+                                double d = toHead ? dHead : dBody, inv = toHead ? ih : ib, reach = d - (toHead ? rHead : rBody);
+                                double nx = (toHead ? hx : bx) * inv, ny = (toHead ? hy : by) * inv, nz = (toHead ? hz : bz) * inv;
+                                double j = them.Cfg.hit_push * PunchMass * arriving / _dt;
+                                double* com = _d->xipos + 3 * them.TorsoBody;
+                                double rx = g[0] + nx * reach - com[0], ry = g[1] + ny * reach - com[1], rz = g[2] + nz * reach - com[2];
+                                double fx = nx * j, fy = ny * j, fz = nz * j;
+                                _push[t, 0] += fx; _push[t, 1] += fy; _push[t, 2] += fz;
+                                _push[t, 3] += ry * fz - rz * fy; _push[t, 4] += rz * fx - rx * fz; _push[t, 5] += rx * fy - ry * fx;
+                            }
                             PunchLanded?.Invoke(me, hand, toHead, (float)arriving, ToUnity(g[0], g[1], g[2]));
                         }
                     }
@@ -520,6 +538,11 @@ namespace PoBox.Mj
             {
                 TrackBlocks(k);
                 _has[k] = true;
+                // This step's punches on the trunk for the next four physics steps, as the trainer applies them; then off.
+                bool any = false;
+                for (int c = 0; c < 6; c++) any |= _push[k, c] != 0.0;
+                if (any || _pushed[k]) _b[k].PushTrunk(_push[k, 0], _push[k, 1], _push[k, 2], _push[k, 3], _push[k, 4], _push[k, 5]);
+                _pushed[k] = any;
             }
         }
 

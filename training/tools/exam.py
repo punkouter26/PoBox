@@ -57,6 +57,10 @@ MARKS = {
 }
 HANDOVER_S = 1.5        # seconds on its feet before the match policy takes the body back from the get-up policy
 DAZE = {"tau": 2.5, "lo": 14.0, "hi": 42.0, "weak": 0.45, "body": 0.3, "legs_out": 0.7}
+# envs/boxing.py's defaults for the punch rules a config turns on (stagger_v, hurt_full).
+STAGGER = {"s": 0.3, "drive": 0.55}
+HURT = {"hi": 0.4, "weak": 0.25, "tau": 600.0}
+PUNCH_MASS = 2.2
 
 
 def load_policy(path: str, A: int) -> PPO:
@@ -88,6 +92,27 @@ class ExamRing(Ring):
         self.own_geoms = [[g for g in range(m.ngeom) if (mujoco.mj_id2name(m, G, g) or "").startswith(p)] for p in ("a_", "b_")]
         self.scale = np.ones(2)
         self.reserve = np.ones(2)             # envs/boxing.py's fatigue, for a boxer whose config has "fatigue_j"
+        # envs/boxing.py's punch rules of 2026-10-16, each the taker's own, from its config.
+        rule = lambda key: np.array([float(c.get(key, 0.0)) for c in self.cfgs])
+        self.hit_push, self.stagger_v, self.hurt_full, self.body_drain = rule("hit_push"), rule("stagger_v"), rule("hurt_full"), rule("body_drain")
+        self.hurt, self.stagger, self.share = np.zeros(2), np.zeros(2), np.zeros(2)
+        self.push = np.zeros((2, 6))          # force and torque on each trunk for the next control step
+        self.b_torso = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, p + "torso") for p in ("a_", "b_")]
+
+    def state(self, k: int) -> np.ndarray:
+        """What a policy trained with obs_state reads in the command's place (envs/match.py)."""
+        return np.array([self.reserve[k], self.share[k], self.share[1 - k]])
+
+    def hurt01(self, k: int) -> float:
+        return float(np.clip(self.hurt[k] / self.hurt_full[k], 0.0, 1.0)) if self.hurt_full[k] > 0.0 else 0.0
+
+    def take_push(self, o: int, speed: float, n, at) -> None:
+        """envs/boxing.py's hit_push: a punch on fighter o, along n, landing at `at`."""
+        if self.hit_push[o] <= 0.0:
+            return
+        f = n * (self.hit_push[o] * PUNCH_MASS * speed / self.dt)
+        self.push[o, :3] += f
+        self.push[o, 3:] += np.cross(at - self.d.xipos[self.b_torso[o]], f)
 
     def place(self, spots, yaws, jitter: float = 0.0):
         m, d = self.m, self.d
@@ -151,7 +176,10 @@ class ExamRing(Ring):
                 w = q + scale * (w - q)
             want.append(w)
         d.ctrl[:] = np.concatenate(want)
+        for k in range(2):
+            d.xfrc_applied[self.b_torso[k]] = self.push[k]
         mujoco.mj_step(self.m, d, 4)
+        self.push[:] = 0.0
         for k in range(2):
             joules = float(self.cfgs[k].get("fatigue_j", 0.0)) * float(self.cfgs[k].get("strength", 1.0))
             if joules > 0.0:
@@ -215,6 +243,8 @@ class Punches:
                 if hit:
                     self.cool[k, i] = 0.25
                     landed[k].append((zone, float(speed[zone])))
+                    n = nh if zone == 0 else nb
+                    r.take_push(o, float(speed[zone]), n, g + n * ((dh - r.r_head[o]) if zone == 0 else (db - r.r_torso[o])))
                 # Is this glove, coming at the other one's head, met by a glove or a forearm of theirs?
                 near_head = (dh - r.r_head[o]) < 0.45
                 touching = False
@@ -238,7 +268,9 @@ def rounds(ring: ExamRing, pols, n_rounds: int, round_s: float, daze_on: bool) -
     """Box. Returns per fighter a dict of counts over all the rounds."""
     out = [dict(hits=0, head=0, speed=0.0, blocks=0, head_taken=0, falls_own=0, falls_hit=0, legs=0, seconds=0.0) for _ in range(2)]
     dt = ring.dt
-    for _ in range(n_rounds):
+    for rnd in range(n_rounds):
+        # A bout is three rounds: the lasting punishment starts again with each, and a minute on the stool takes some off.
+        ring.hurt = np.zeros(2) if rnd % 3 == 0 else ring.hurt * 0.85
         ring.at_marks()
         p = Punches(ring)
         daze, legs_out, low, since_taken = np.zeros(2), np.zeros(2), np.zeros(2), np.full(2, 99.0)
@@ -258,16 +290,28 @@ def rounds(ring: ExamRing, pols, n_rounds: int, round_s: float, daze_on: bool) -
                     out[o]["head_taken"] += int(zone == 0)
                     received[o] += speed * (1.0 if zone == 0 else DAZE["body"])
                     since_taken[o] = 0.0
+                    if daze_on and zone == 0 and ring.stagger_v[o] > 0.0 and speed >= ring.stagger_v[o]:
+                        ring.stagger[o] = STAGGER["s"]
+                    if daze_on and zone == 1 and float(ring.cfgs[o].get("fatigue_j", 0.0)) > 0.0:
+                        ring.reserve[o] = max(0.0, ring.reserve[o] - ring.body_drain[o] * speed)
             if daze_on:
                 daze = daze * math.exp(-dt / DAZE["tau"]) + received
+                ring.hurt = ring.hurt * math.exp(-dt / HURT["tau"]) + received * (ring.hurt_full > 0.0)
+                ring.stagger = np.maximum(0.0, ring.stagger - dt)
                 for k in range(2):
-                    if daze[k] >= DAZE["hi"] and legs_out[k] <= 0.0:
+                    h = ring.hurt01(k)
+                    legs_at = DAZE["hi"] * (1.0 - HURT["hi"] * h)
+                    if daze[k] >= legs_at and legs_out[k] <= 0.0:
                         legs_out[k], daze[k] = DAZE["legs_out"], 0.0
                         out[k]["legs"] += 1
                     else:
                         legs_out[k] = max(0.0, legs_out[k] - dt)
-                    weak = 1.0 - DAZE["weak"] * float(np.clip((daze[k] - DAZE["lo"]) / (DAZE["hi"] - DAZE["lo"]), 0.0, 1.0))
+                    weak = 1.0 - DAZE["weak"] * float(np.clip((daze[k] - DAZE["lo"]) / max(1.0, legs_at - DAZE["lo"]), 0.0, 1.0))
+                    weak *= 1.0 - HURT["weak"] * h
+                    if ring.stagger[k] > 0.0:
+                        weak = min(weak, STAGGER["drive"])
                     ring.scale[k] = 0.04 if legs_out[k] > 0.0 else weak
+                    ring.share[k] = daze[k] / max(1.0, legs_at)
             down = False
             for k in range(2):
                 h, up = ring.posture(k)
@@ -281,6 +325,7 @@ def rounds(ring: ExamRing, pols, n_rounds: int, round_s: float, daze_on: bool) -
                 p = Punches(ring)
                 daze[:], legs_out[:], low[:] = 0.0, 0.0, 0.0
                 since_taken[:] = 99.0
+                ring.stagger[:], ring.share[:], ring.push[:] = 0.0, 0.0, 0.0
     return out
 
 
@@ -426,6 +471,10 @@ def main() -> None:
         xml = stem + ("_ring.xml" if os.path.exists(stem + "_ring.xml") and not args.walls else "_spar.xml")
         ring = ExamRing(xml, json.load(open(stem + "_policy_config.json", encoding="utf-8")), seed=args.seed)
         pols = [load_policy(book[n]["match"], ring.A) for n in (x, y)]
+        for i, p in enumerate(pols):
+            # A policy trained with obs_state (train_gauntlet.py --obs-state) reads its state where the command is.
+            if getattr(p, "obs_state", False):
+                p.state = (lambda i=i: ring.state(i))
         plain = rounds(ring, pols, args.rounds, args.round_s, False) if "box" not in args.skip else None
         dazed = rounds(ring, pols, args.rounds, args.round_s, True) if "chin" not in args.skip else None
         for k, n in enumerate((x, y)):

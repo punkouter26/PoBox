@@ -16,7 +16,13 @@ namespace PoBox.Fx
     /// stamina, or its muscles' reserve where it has one, whichever is lower), a flush round the face as
     /// its health goes, and the corner colour as a rim. The sheen is the overlay's, not the body material's
     /// smoothness: a property block on the body itself would take it out of the SRP batcher.
+    ///
+    /// The head of the owner's mesh moves too, though MuJoCo's head is a ball fixed on the trunk: a punch to it
+    /// snaps it away from the glove on a spring and lets it come back, and a tired fighter's chin sinks. That is
+    /// drawn only, on the neck bone the skin binder leaves to follow the chest; no number of the fight changes.
+    /// It runs after the binder (order 200), so the chest it turns the neck from is this frame's.
     /// </summary>
+    [DefaultExecutionOrder(210)]
     public class FighterSkin : MonoBehaviour
     {
         [Serializable]
@@ -45,6 +51,15 @@ namespace PoBox.Fx
         public float trailSpeed = 4.5f;
         [Tooltip("How far a bruise spreads from where the punch landed, metres.")]
         public float bruiseRadius = 0.09f;
+        [Header("Head (drawn only)")]
+        [Tooltip("How fast a head shot turns the head, degrees a second per m/s of the punch. Body shots a third of it.")]
+        public float snapPerSpeed = 70f;
+        [Tooltip("The neck's spring: how often it swings back, a second, and how much each swing loses.")]
+        public float snapHz = 2.6f, snapDamping = 0.35f;
+        [Tooltip("The furthest the head turns, degrees.")]
+        public float snapMax = 38f;
+        [Tooltip("How far a spent or dazed fighter's chin sinks, degrees.")]
+        public float tiredDroop = 14f;
 
         static readonly int BruiseId = Shader.PropertyToID("_Bruise");
         static readonly int SweatId = Shader.PropertyToID("_Sweat");
@@ -58,7 +73,67 @@ namespace PoBox.Fx
         bool _visible = true;
         readonly Vector4[] _marks = new Vector4[Fighter.MaxBruises];
 
+        Transform _neck;
+        Quaternion _neckRest;
+        bool _neckSought;
+        Vector3 _snap, _snapRate;           // the head's turn and its rate, as world rotation vectors (degrees)
+
         public bool Visible => _visible;
+
+        void OnEnable() => SimBus.Hit += OnHit;
+        void OnDisable() => SimBus.Hit -= OnHit;
+
+        void OnHit(HitEvent e)
+        {
+            if (e.victim != fighter || fighter == null) return;
+            // Away from the glove; a punch from below (an uppercut) tips the head back, away from the puncher.
+            Vector3 away = Vector3.ProjectOnPlane(-e.normal, Vector3.up);
+            if (away.sqrMagnitude < 0.09f && e.attacker != null) away = Vector3.ProjectOnPlane(HeadPoint - e.attacker.HeadPosition, Vector3.up);
+            if (away.sqrMagnitude < 1e-6f) return;
+            float share = e.zone == PartKind.Head ? 1f : e.clean ? 0.33f : 0.1f;
+            _snapRate += Vector3.Cross(Vector3.up, away.normalized) * (snapPerSpeed * share * e.gloveSpeed);
+        }
+
+        /// <summary>The first bone of the mesh called neck (or, failing that, head): what the head is turned by.</summary>
+        void FindNeck()
+        {
+            _neckSought = true;
+            foreach (string word in new[] { "neck", "head" })
+                foreach (Renderer r in extraRenderers)
+                    if (r is SkinnedMeshRenderer smr && smr.rootBone != null)
+                        foreach (Transform t in smr.rootBone.GetComponentsInChildren<Transform>(true))
+                            if (t.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0 && t.parent != null)
+                            {
+                                _neck = t;
+                                _neckRest = t.localRotation;
+                                return;
+                            }
+        }
+
+        void TurnHead(float dt)
+        {
+            if (!_neckSought) FindNeck();
+            if (_neck == null) return;
+            // A damped spring back to straight, in steps short enough to stay steady at a low frame rate.
+            float w = 2f * Mathf.PI * snapHz;
+            for (float left = dt; left > 0f; left -= 0.01f)
+            {
+                float h = Mathf.Min(0.01f, left);
+                _snapRate += (-w * w * _snap - 2f * snapDamping * w * _snapRate) * h;
+                _snap += _snapRate * h;
+            }
+            _snap = Vector3.ClampMagnitude(_snap, snapMax);
+
+            float spent = 1f - fighter.Stamina;
+            Mj.MjBoxer boxer = fighter.boxer;
+            if (boxer != null && boxer.Bound && boxer.Cfg.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)boxer.Reserve);
+            float droop = tiredDroop * Mathf.Max(Mathf.InverseLerp(0.5f, 1f, spent), fighter.Daze01);
+            Vector3 forward = boxer != null && boxer.Bound ? boxer.Forward : transform.forward;
+            Vector3 turn = _snap + Vector3.Cross(Vector3.up, forward) * droop;
+
+            _neck.localRotation = _neckRest;
+            if (turn.sqrMagnitude > 1e-4f) _neck.rotation = Quaternion.AngleAxis(turn.magnitude, turn.normalized) * _neck.rotation;
+        }
         public Vector3 HeadPoint => parts.Length > Head && parts[Head].bone != null ? parts[Head].bone.TransformPoint(headOffset) : transform.position;
         public Vector3 ChestPoint => parts.Length > Torso && parts[Torso].bone != null ? parts[Torso].bone.TransformPoint(0f, 0.25f, 0f) : transform.position;
         public Vector3 PelvisPoint => parts.Length > Pelvis && parts[Pelvis].bone != null ? parts[Pelvis].bone.position : transform.position;
@@ -86,6 +161,7 @@ namespace PoBox.Fx
         {
             if (fighter == null || !_visible) return;
             if (_block == null) _block = new MaterialPropertyBlock();
+            if (Application.isPlaying) TurnHead(Time.deltaTime);
 
             // Matched by bone, not by position in the list: the skin may carry a part the fighter has
             // no link for (a trained body's head is on its torso link).

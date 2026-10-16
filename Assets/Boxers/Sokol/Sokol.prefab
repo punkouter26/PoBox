@@ -3347,7 +3347,7 @@ MonoBehaviour:
   prefix: a_
   config: {fileID: 4900000, guid: b1b2d8ed168564746b1ec1158b77f518, type: 3}
   policy: {fileID: 5022602860645237092, guid: 9c9eb491e1639094682af33b9e2c3184, type: 3}
-  matchPolicy: {fileID: 0}
+  matchPolicy: {fileID: 5022602860645237092, guid: 8284abd36223a8c4bbad62bcaae3a526, type: 3}
   getUpPolicy: {fileID: 5022602860645237092, guid: 7118dc5020e981c41a1132dc2b4c8ad5, type: 3}
   opponent: {fileID: 0}
   ringCentre: {x: 0, y: 0}

@@ -15,6 +15,9 @@ namespace PoBox.Mj
         /// <summary>The two rules of envs/boxing.py a policy may have been trained under; a config without them has neither.</summary>
         public bool speed_limit;
         public double fatigue_j, fatigue_rec_s = 20.0, fatigue_weak = 0.4;
+        /// <summary>Two more (2026-10-16): the share of a punch's impulse that pushes this boxer's trunk when it is hit (MjRing), and whether its policy reads its own state in the command's place.</summary>
+        public double hit_push;
+        public bool obs_state;
         public double stand_height, total_mass_kg, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
         public int control_decimation = 4, physics_hz = 200;
     }
@@ -51,6 +54,8 @@ namespace PoBox.Mj
         [NonSerialized] public double DriveScale = 1.0;
         /// <summary>What a tiring boxer has left, 0 to 1 (envs/boxing.py's reserve). Stays at 1 unless its config has fatigue_j.</summary>
         [NonSerialized] public double Reserve = 1.0;
+        /// <summary>Its daze and the opponent's, as shares of where the legs go: what a policy with obs_state reads (set by the game's brain).</summary>
+        [NonSerialized] public double DazeShare, OpponentDazeShare;
 
         public BoxerConfig Cfg { get; private set; }
         public bool Bound { get; private set; }
@@ -303,7 +308,9 @@ namespace PoBox.Mj
             double reach = Kind == Match ? 100.0 : 1.0;
             o[at++] = Clamp((cy * rx + sy * ry) / Cfg.ring_half, -reach, reach);
             o[at++] = Clamp((-sy * rx + cy * ry) / Cfg.ring_half, -reach, reach);
-            o[at++] = Cmd[0]; o[at++] = Cmd[1]; o[at++] = Cmd[2];
+            // In a bout the command is zeros; a policy trained with obs_state reads its own state there (envs/match.py).
+            bool state = Kind == Match && Cfg.obs_state;
+            o[at++] = state ? Reserve : Cmd[0]; o[at++] = state ? DazeShare : Cmd[1]; o[at++] = state ? OpponentDazeShare : Cmd[2];
             for (int i = 0; i < ObservationSize; i++) o[i] = Clamp(o[i], -100.0, 100.0);
         }
 
@@ -374,6 +381,15 @@ namespace PoBox.Mj
             double watts = 0.0;
             for (int i = 0; i < Joints; i++) watts += Math.Abs(_d->actuator_force[_act[i]] * _d->qvel[_jv[i]]);
             Reserve = Clamp(Reserve + dt * ((1.0 - Reserve) / Cfg.fatigue_rec_s - watts / (Cfg.fatigue_j * Cfg.strength)), 0.0, 1.0);
+        }
+
+        public int TorsoBody => _torsoBody;
+
+        /// <summary>A force and a torque about its centre of mass on the trunk, in MuJoCo's frame: a punch's push (MjRing). Zeros take it off.</summary>
+        public void PushTrunk(double fx, double fy, double fz, double tx, double ty, double tz)
+        {
+            double* f = _d->xfrc_applied + 6 * _torsoBody;
+            f[0] = fx; f[1] = fy; f[2] = fz; f[3] = tx; f[4] = ty; f[5] = tz;
         }
 
         /// <summary>A force on the trunk, in MuJoCo's frame; zero takes it off.</summary>

@@ -185,6 +185,9 @@ namespace PoBox.Sim
         {
             if (!ring.Ready || fighter == null) return;
             boxer.DriveScale = fighter.DriveScale;
+            boxer.DazeShare = fighter.dazeRule ? fighter.Daze / Mathf.Max(1f, fighter.LegsAt) : 0.0;
+            Fighter foe = fighter.opponent;
+            boxer.OpponentDazeShare = foe != null && foe.dazeRule ? foe.Daze / Mathf.Max(1f, foe.LegsAt) : 0.0;
             ring.SetDown(boxer, fighter.IsDown);
             ring.SetRising(boxer, fighter.IsDown && fighter.IsRising);
             if (!Bout.SimRunning) return;

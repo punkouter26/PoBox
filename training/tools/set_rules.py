@@ -3,6 +3,9 @@ every config under models/v2 they appear in. The exam reads them there, and the 
 boxer's own config that promoting it makes. A policy must have been trained under a rule before this turns it on.
 
     python tools/set_rules.py --only matt --speed-limit 1 --fatigue-j 30000
+    python tools/set_rules.py --only matt --hit-push 0.6 --stagger-v 5 --hurt-full 400 --body-drain 0.0025 --obs-state 1
+
+The last five are the punch's rules of 2026-10-16 (envs/boxing.py); 0 turns one off.
 """
 import argparse
 import glob
@@ -14,6 +17,11 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--only", nargs="*", default=[], help="boxers; none = all")
 ap.add_argument("--speed-limit", type=int, choices=[0, 1])
 ap.add_argument("--fatigue-j", type=float, help="0 = no fatigue")
+ap.add_argument("--hit-push", type=float)
+ap.add_argument("--stagger-v", type=float)
+ap.add_argument("--hurt-full", type=float)
+ap.add_argument("--body-drain", type=float)
+ap.add_argument("--obs-state", type=int, choices=[0, 1])
 args = ap.parse_args()
 for path in glob.glob(os.path.join(HERE, "models", "v2", "*_policy_config.json")):
     with open(path, "r", encoding="utf-8") as f:
@@ -24,6 +32,11 @@ for path in glob.glob(os.path.join(HERE, "models", "v2", "*_policy_config.json")
             e["speed_limit"] = bool(args.speed_limit)
         if args.fatigue_j is not None:
             e["fatigue_j"] = args.fatigue_j
+        for key in ("hit_push", "stagger_v", "hurt_full", "body_drain"):
+            if getattr(args, key) is not None:
+                e[key] = getattr(args, key)
+        if args.obs_state is not None:
+            e["obs_state"] = bool(args.obs_state)
     if mine:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2)

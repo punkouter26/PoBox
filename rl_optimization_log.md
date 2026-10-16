@@ -1025,3 +1025,28 @@ Day queue (09:08 on, ~9.4 h), each run then its exam; opponents are the newest b
 - 09:10 `exam_trump_d8`: FAIL attack (0.29/s) and guard (17%); Nick takes his legs 7.8/min. Added after `m2_zombie`:
   `bank_trump` (from his shipped get-up, 60/60), `m1_trump` (attack recipe as the grandparents', Nick weighted 2,
   600 iterations, 0.75 h), exam. The day queue now ends near 19:30.
+
+## 2026-10-16 10:30, punch rules and the state input (owner: "boxing more realistic"; tasks G12/G13)
+
+- `exam_m2_sokol` had no `PYTHONPATH=.mj350` in the queue (MuJoCo 3.11); re-run on 3.5.0
+  (`logs/exam_m2_sokol_mj350.json`): pass, every line. Promoted.
+- New rules, each the taker's, from its config or a `train_gauntlet.py` flag, off by default, so old runs reproduce:
+  `hit_push` (0.6: a landed punch pushes the trunk at the contact with that share of 2.2 kg x speed over the next
+  control step; peak 594 N), `stagger_v` (5 m/s head shot: drives under 0.55 for 0.3 s), `hurt_full` (400: lasting
+  damage, drains over 600 s; legs go at up to 40% less daze, drives up to 25% weaker; episodes start anywhere up to
+  80% of it), `body_drain` (0.0025 of the reserve per m/s of a body shot). `--obs-state`: the learner's three
+  command numbers become reserve, own daze / legs line, opponent's; on a warm start those inputs get a scale and
+  zero first-layer weights, so iteration 0 acts exactly as the brain it came from.
+- Smoke test, 256 rings, Grandma (shipped) v Sokol (m2), 12 s, falls Grandma/Sokol: rules off 2/0; push only 6/0;
+  fatigue 8000 only 8/5; all rules 63-76/16-34. The falls come from lasting damage and body drain (34-35 each alone),
+  not from the push or the stagger: these brains fall when their drives weaken, because they never trained weak.
+- In Unity (all rules on, all eight, game-only today): a full bout Matt v Zombie, no knockdowns; Matt 22% reserve at
+  the end of round 1; Zombie's lasting damage 145. The exam's C MuJoCo ring has the same rules (`tools/exam.py`),
+  checked with an in-memory config: 127 pushes a minute, both reserves empty by 30 s.
+- Staged, not run (`training/queue_punch_staged.json`, ~8 x (0.75 h + 13 min) + a baseline exam, ~8.5 h): the world
+  rules into every v2 config (fatigue 8000 included), then for each boxer `m9_NAME` from its newest brain (Matt,
+  Nick, Grandma, Grandpa from their D8 m1, Zombie sf1, Trump shipped, Kim m7, Sokol m2), against the same opponents
+  as the D8 day queue, `--obs-state --taken-w 1.0 --block-w 0.5 --hit-w 1.5 --fall-penalty 12`, 600 iterations,
+  each examined on 3.5.0 with `logs/book_punch.json`; last, `exam_punch_baseline` (the shipped brains,
+  `logs/book_shipped.json`). It trains under the speed limit, as every v2 config now says: the game turns that on for
+  the five without it only when their retrained footwork and boxing are promoted together (D8).

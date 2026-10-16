@@ -69,6 +69,38 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## Sokol in the menu; punches that land, boxers that tire (2026-10-16, morning)
+
+- **Sokol is the eighth card** on the first screen and boxes one-on-one: `m2_sokol` (passes every line of the boxing
+  exam on MuJoCo 3.5.0, re-run because the night's exam had run on 3.11) and his own get-up `u1_sokol_matt`
+  (exported at 103 inputs, as Kim's), `PromoteBoxing`. His red and blue corners are in `Arena.unity` and
+  `MatchSetup`, placed as Kim's; portrait taken in a fight against Matt (Matt's put back). Gate tests 24/24.
+- **The owner's report**: a boxer spams one punch, never tires, and takes 50 head shots with no visible effect.
+  Causes found: five of the eight had no fatigue in the game at all (their `config.json` had no `fatigue_j`); where
+  it was on, 30 kJ refilled faster than a busy boxer spent it (Matt never went under 90%); the head is a ball on
+  the trunk (no neck), MuJoCo passes on only the glove's 0.8 kg, the daze drains in a couple of seconds, and a
+  punch cost 0.1 health (94 HP left after 194 punches). The spam is body shots, which only fed 30% of the daze.
+- **In the game now, for every boxer** (no retraining needed):
+  - fatigue for all eight at `fatigue_j` 8000 (Matt gets to 22% by the end of a busy round, back up on the stool);
+  - a body shot takes the taker's wind (`Fighter.bodyDrain`, 0.25% of the reserve per m/s);
+  - a head shot at 5 m/s or more rocks the boxer: drives held under 55% for 0.3 s (`Fighter.stagger*`);
+  - damage that lasts the fight (`Fighter.Hurt`, the daze's input draining over 10 minutes, 15% off on the stool):
+    at its full 400 the legs go at 60% of the usual daze and the drives have lost 25%;
+  - a landed punch pushes the taker's trunk at the point it landed with 0.6 of its impulse over the next control
+    step (`MjRing`, config `hit_push`);
+  - the drawn head snaps away from the glove on a spring and comes back, and a spent or dazed boxer's chin sinks
+    (`FighterSkin`, the neck bone only: no number of the fight changes);
+  - punch damage 2.5x (`damagePerNs` 0.045 on the 16 corner prefabs).
+  A full bout Matt v Zombie under all of it: no knockdowns, reserves down to a fifth, Zombie's lasting damage a third
+  of the way. Tests: MjGate 24/24, MjParity 3/3, StateFlow 1/1, FreeForAll 1/1, OneScreen 47/47.
+- **Not fixed by any of that**: the brains themselves. Matt still lands about three body shots a second and Zombie
+  barely punches back. The rules are now in the trainer and the exam too (`envs/boxing.py`, `tools/exam.py`: config
+  keys `hit_push`, `stagger_v`, `hurt_full`, `body_drain`, `obs_state`; `set_rules.py` sets them), and a match policy
+  can read its reserve, its daze and the opponent's in the command's three numbers (`--obs-state`; the game fills
+  them only for a config with `obs_state`). Retraining all eight under them is staged, not run:
+  `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
+  same rules as the baseline). See `rl_optimization_log.md`.
+
 ## Do-all pass and the overnight queue (2026-10-16)
 
 Owner: run /init, /simplify, /code-review and /security-review, then "do all" of 50 options (features, graphics and

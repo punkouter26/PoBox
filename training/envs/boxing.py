@@ -36,6 +36,9 @@ import numpy as np
 import torch
 import warp as wp
 
+# The mass behind a glove: a punch's impulse is this times its closing speed (the game's Fighter.PunchMass).
+PUNCH_MASS = 2.2
+
 
 def quat_rotate_inverse(q: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
     """q: (..., 4) wxyz, v: (..., 3) world -> body."""
@@ -83,7 +86,10 @@ class BoxingEnv:
                  handover: dict = None, handover_share: float = 0.15,
                  speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4,
                  start_spread: float = 1.0, sep_hi: float = 2.2, rope_w: float = 0.0, cutoff_w: float = 0.0,
-                 action_rate_w: float = 0.0, obs_delay_max: int = 0, seek_w: float = 0.0, ropes_start: float = 0.0):
+                 action_rate_w: float = 0.0, obs_delay_max: int = 0, seek_w: float = 0.0, ropes_start: float = 0.0,
+                 hit_push: float = 0.0, stagger_v: float = 0.0, stagger_s: float = 0.3, stagger_drive: float = 0.55,
+                 hurt_full: float = 0.0, hurt_hi: float = 0.4, hurt_weak: float = 0.25, hurt_tau: float = 600.0,
+                 obs_state: tuple = (), body_drain: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -321,7 +327,29 @@ class BoxingEnv:
         self.tires = self.fatigue_j > 0.0                                        # (K,) which fighters tire
         self.fatigue_j = torch.where(self.tires, self.fatigue_j, torch.full_like(self.fatigue_j, float("inf")))
         self.fatigue_rec_s, self.fatigue_weak = fatigue_rec_s, fatigue_weak
-        leg = [i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
+        # Four rules of a punch (2026-10-16, the owner's "50 head shots and no visible effect"), each the taker's
+        # own, from its config or the argument, off unless asked for; the game's Fighter and MjRing do the same.
+        # hit_push: a landed punch also pushes the taker's trunk, at the point it landed, with this share of the
+        # punch's impulse (PUNCH_MASS x closing speed) over the next control step: MuJoCo's contact only passes on
+        # the glove's own 0.8 kg, and the head is a ball on the trunk, so a head shot rocks the trunk back.
+        # stagger_v: a head shot at least this fast holds the drives under stagger_drive for stagger_s.
+        # hurt_full: punishment that lasts (the daze's input, draining over hurt_tau); at hurt_full the legs go at
+        # (1 - hurt_hi) of daze_hi and the drives have lost hurt_weak. An episode begins anywhere up to 80% of it.
+        # body_drain: a body shot takes the wind, this much of a tiring taker's reserve per m/s of the punch.
+        # obs_state: the boxers (by name) whose last three numbers are their reserve, their own daze and the
+        # opponent's as shares of where the legs go, in place of the command's zeros (the match stage only).
+        rule = lambda arg, key: F([arg or float(c.get(key, 0.0)) for c in self.cfgs])
+        self.hit_push, self.stagger_v, self.hurt_full = rule(hit_push, "hit_push"), rule(stagger_v, "stagger_v"), rule(hurt_full, "hurt_full")
+        self.body_drain = rule(body_drain, "body_drain")
+        self.stagger_s, self.stagger_drive = stagger_s, stagger_drive
+        self.hurt_hi, self.hurt_weak, self.hurt_tau = hurt_hi, hurt_weak, hurt_tau
+        self.obs_state = torch.tensor([n in obs_state or bool(c.get("obs_state", False)) for n, c in zip(self.names, self.cfgs)], device=device)
+        self.push_on = bool((self.hit_push > 0.0).any())
+        if self.push_on:
+            self.xfrc = wp.to_torch(self.dw.xfrc_applied)
+            self.xipos = wp.to_torch(self.dw.xipos)
+            self.b_torso = L(ids(B, "torso"))
+        leg =[i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
         self.leg_idx = L(leg)
 
         N, K, A = self.N, self.K, self.A
@@ -344,6 +372,10 @@ class BoxingEnv:
         self.legs_out = z(N, K)                                                  # seconds the legs stay gone
         self.drive_scale = torch.ones(N, K, device=device)                       # share of joint drive strength left
         self.reserve = torch.ones(N, K, device=device)                           # what a tiring body has left, 0 to 1
+        self.hurt = z(N, K)                                                      # punishment that lasts, m/s of punches
+        self.stagger = z(N, K)                                                   # seconds a head shot holds the drives down
+        self.legs_at = torch.full((N, K), float(daze_hi), device=device)         # the daze the legs go at, after the hurt
+        self.push = z(N, K, 6)                                                   # force and torque on the trunk next step
         self.prev_block = torch.zeros(N, K, 2, dtype=torch.bool, device=device)
         self.since_block = torch.full((N, K), 99.0, device=device)               # seconds since this fighter stopped a punch
         self.gravity_world = torch.tensor([0.0, 0.0, -1.0], device=device)
@@ -513,6 +545,11 @@ class BoxingEnv:
         if self.fatigue_on:
             # An episode is twelve seconds and a round is forty-five: it begins anywhere in a round's tiredness.
             self.reserve = torch.where(m1 & self.tires, self._u(self.N, self.K, lo=0.3, hi=1.0), self.reserve)
+        # And anywhere in a fight's punishment.
+        self.hurt = torch.where(m1, self._u(self.N, self.K, lo=0.0, hi=0.8) * self.hurt_full, self.hurt)
+        self.stagger = torch.where(m1, torch.zeros_like(self.stagger), self.stagger)
+        self.push = torch.where(m1[..., None], torch.zeros_like(self.push), self.push)
+        self.legs_at = torch.where(m1, self.daze_hi * (1.0 - self.hurt_hi * self._hurt01()), self.legs_at)
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of
@@ -648,12 +685,20 @@ class BoxingEnv:
         """Share of drive strength a tiring body has: all of it down to half its reserve, then less."""
         return 1.0 - self.fatigue_weak * (1.0 - self.reserve / 0.5).clamp(0.0, 1.0)
 
+    def _hurt01(self) -> torch.Tensor:
+        """How much of hurt_full a fighter has taken, 0 to 1 (0 where the rule is off)."""
+        return torch.where(self.hurt_full > 0.0, self.hurt / self.hurt_full.clamp_min(1e-6), torch.zeros_like(self.hurt)).clamp(0.0, 1.0)
+
     def step(self, action: torch.Tensor):
         N, K, A = self.N, self.K, self.A
         action = action.clamp(-self.action_clip, self.action_clip).reshape(N, K, A)
         self.prev_action = self.last_action
         self.last_action = action
         self._drive(action)
+        if self.push_on:
+            # Last step's punches, on the trunks of those who took them, for this whole control step.
+            for k in range(K):
+                self.xfrc[:, int(self.b_torso[k])] = self.push[:, k]
         if self.push_vel > 0.0:
             # An occasional shove, about once every four seconds per fighter.
             for rv in self.root_v:
@@ -730,14 +775,34 @@ class BoxingEnv:
         blocked = torch.zeros(N, K, 2, dtype=torch.bool, device=self.device)
         stopped = torch.zeros(N, K, device=self.device)
         if self.spar:
+            if self.push_on:
+                # What each glove's punch pushes with, along the line from the glove to the zone, at the zone's surface.
+                n = torch.where((zone == 0)[..., None], n_head, n_body)                                    # (N,K,2,3)
+                reach = torch.where(zone == 0, d_head - g["t_r_head"], d_body - g["t_r_body"])
+                at = glove + n * reach[..., None]
+                j = landed.float() * arriving * PUNCH_MASS * self.hit_push.flip(0).view(1, K, 1)            # the taker's rule
+                f = n * (j / self.dt)[..., None]
+                arm = at - self.xipos[:, self.b_torso.flip(0)][:, :, None]                                 # from the taker's trunk
+                self.push = torch.cat([f.sum(2), torch.cross(arm, f, dim=-1).sum(2)], -1).flip(1)
             if self.daze_on:
                 received = (landed.float() * arriving * torch.where(zone == 0, 1.0, self.daze_body)).sum(-1).flip(1)
                 self.daze = self.daze * math.exp(-self.dt / self.daze_tau) + received
-                legs_went = (self.daze >= self.daze_hi) & (self.legs_out <= 0.0)
+                self.hurt = self.hurt * math.exp(-self.dt / self.hurt_tau) + received * (self.hurt_full > 0.0)
+                h = self._hurt01()
+                self.legs_at = self.daze_hi * (1.0 - self.hurt_hi * h)
+                legs_went = (self.daze >= self.legs_at) & (self.legs_out <= 0.0)
                 self.legs_out = torch.where(legs_went, torch.full_like(self.legs_out, self.legs_out_s),
                                             (self.legs_out - self.dt).clamp_min(0.0))
                 self.daze = torch.where(legs_went, torch.zeros_like(self.daze), self.daze)
-                weak = 1.0 - self.daze_weak * ((self.daze - self.daze_lo) / (self.daze_hi - self.daze_lo)).clamp(0.0, 1.0)
+                weak = 1.0 - self.daze_weak * ((self.daze - self.daze_lo) / (self.legs_at - self.daze_lo).clamp_min(1.0)).clamp(0.0, 1.0)
+                weak = weak * (1.0 - self.hurt_weak * h)
+                if self.fatigue_on:
+                    body_in = ((landed & (zone == 1)).float() * arriving).sum(-1).flip(1)
+                    self.reserve = torch.where(self.tires, (self.reserve - self.body_drain * body_in).clamp_min(0.0), self.reserve)
+                head_shot = (landed & (zone == 0)).float().mul(arriving).amax(-1).flip(1)                  # the fastest that hit my head
+                rocked = (self.stagger_v > 0.0) & (head_shot >= self.stagger_v)
+                self.stagger = torch.where(rocked, torch.full_like(self.stagger, self.stagger_s), (self.stagger - self.dt).clamp_min(0.0))
+                weak = torch.where(self.stagger > 0.0, torch.minimum(weak, torch.full_like(weak, self.stagger_drive)), weak)
                 self.drive_scale = torch.where(self.legs_out > 0.0, torch.full_like(weak, 0.04), weak)
             # A block: the other fighter's glove, coming at this one's head at punching speed, is met by a
             # glove or a forearm before it gets there.

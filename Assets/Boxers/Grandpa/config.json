@@ -240,5 +240,7 @@
     "bag": "grandpa_bag.xml",
     "spar": "grandpa_spar.xml"
   },
-  "cubes": 8
+  "cubes": 8,
+  "fatigue_j": 8000.0,
+  "hit_push": 0.6
 }

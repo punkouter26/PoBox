@@ -210,6 +210,14 @@ Done and tested the same night; details in `DOCS/README.md` (2026-10-16) and `SC
 - [x] G6 Training flags and tools staged, off by default.
 - [ ] G7 Blender arena props (Blender was not running).
 - [ ] G8 Read the overnight exams; promote what passes (`MjRetrofit.Promote`), with the editor open; then the gate tests.
+      2026-10-16 10:00: only `m2_sokol` passed (re-run on 3.5.0: pass); promoted with `u1_sokol_matt`, Sokol in the
+      menu and the arena, gate 24/24. The other five failed (see rl_optimization_log.md); the day queue is stopped.
+- [x] G12 Punches that land and boxers that tire, in the game for all eight (DOCS/README.md, 2026-10-16 morning).
+- [ ] G13 Retrain all eight under the punch rules with the state input (`queue_punch_staged.json`); promote what
+      passes, then `set_rules.py --only NAME --obs-state 1` and copy the rules into the game's config. Owner to choose
+      its order against the D8 day queue (both retrain the same match brains).
+- [ ] G14 The spam itself: a charge for the same punch over and over (owner left this out on 2026-10-16).
+- [ ] G15 A real neck (head body on a soft joint) in the v2 bodies (owner left this out on 2026-10-16).
 - [ ] G9 Point `envs/cgetup.boxer_names()` at `models/v2`, then `git rm` the v1 models and rigs.
 - [ ] G10 A device run of SHARE and Twitch chat (the Android paths are not compiled in the editor).
 - [ ] G11 Free-for-all slips in the first 20 s: Phase F crowd training.

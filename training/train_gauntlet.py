@@ -118,6 +118,11 @@ def main() -> None:
     ap.add_argument("--stage", default="spar", choices=["spar", "match"],
                     help="match: the retrofit's bodies and its 103-number observation (envs/match.py); give --models models/v2")
     ap.add_argument("--randomise", type=float, default=0.15, help="match: each world's body is within this of the file's")
+    ap.add_argument("--hit-push", type=float, default=0.0, help="a landed punch pushes the taker's trunk with this share of its impulse (envs/boxing.py); try 0.6")
+    ap.add_argument("--stagger-v", type=float, default=0.0, help="a head shot this fast (m/s) holds the taker's drives down for a moment; try 5")
+    ap.add_argument("--hurt-full", type=float, default=0.0, help="punishment that lasts: m/s of punches taken for the full effect; try 400")
+    ap.add_argument("--body-drain", type=float, default=0.0, help="a body shot takes this much of the taker's reserve per m/s (envs/boxing.py); try 0.0025")
+    ap.add_argument("--obs-state", action="store_true", help="match: the learner reads its reserve, its daze and the opponent's in the command's three numbers")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -139,7 +144,8 @@ def main() -> None:
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
                         handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
                         rope_w=args.rope_w, cutoff_w=args.cutoff_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
-                        seek_w=args.seek_w, ropes_start=args.ropes_start, **extra_env)
+                        seek_w=args.seek_w, ropes_start=args.ropes_start, hit_push=args.hit_push, stagger_v=args.stagger_v,
+                        hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (), **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -155,6 +161,16 @@ def main() -> None:
     ppo = PPO(D, A, total_n, dev, cfg)
     extra = ppo.load(args.resume if os.path.isabs(args.resume) else os.path.join(HERE, args.resume))
     cfg.lr = min(args.lr, args.lr_max)
+    if args.obs_state and float(ppo.obs_rms.var[-3:].max()) < 1e-3:
+        # First time with the state in the command's place: those three numbers were always zero, so their scale is
+        # nothing and the first layer's weights on them were never trained. Give them a sensible scale and start
+        # their weights at zero, so the policy begins exactly where it was and learns what the numbers mean.
+        with torch.no_grad():
+            ppo.obs_rms.mean[-3:] = torch.tensor([0.7, 0.3, 0.3], device=ppo.obs_rms.mean.device)
+            ppo.obs_rms.var[-3:] = 0.05
+            ppo.model.actor[0].weight[:, -3:] = 0.0
+            ppo.model.critic[0].weight[:, -3:] = 0.0
+        print("[obs-state] the last three inputs start at zero weight", flush=True)
     if args.reset_std > 0.0:
         with torch.no_grad():
             ppo.model.log_std.fill_(float(np.log(args.reset_std)))
@@ -263,7 +279,9 @@ def main() -> None:
                           "action_scale": envs[0].action_scale, "run_name": run, "career": career, "against": [o for o, _ in opponents],
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models)),
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
-                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j}})
+                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
+                                  "hit_push": args.hit_push, "stagger_v": args.stagger_v, "hurt_full": args.hurt_full, "body_drain": args.body_drain,
+                                  "obs_state": args.obs_state}})
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))
             if not args.no_onnx:
                 try:

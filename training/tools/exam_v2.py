@@ -32,7 +32,8 @@ OBS = 103
 
 def load_policy(path: str, A: int) -> PPO:
     ppo = PPO(OBS, A, 1, "cpu", PPOConfig())
-    ppo.load(path)
+    extra = ppo.load(path)
+    ppo.obs_state = bool((extra or {}).get("env", {}).get("obs_state", False))
     return ppo
 
 
@@ -41,7 +42,9 @@ _act = E.act
 
 def act(ppo: PPO, obs: np.ndarray) -> np.ndarray:
     # The ring observes the match's 100 numbers; the command (vx, vy, wz) is zero in a bout.
-    return _act(ppo, np.concatenate([obs, np.zeros(OBS - len(obs), obs.dtype)]))
+    # A policy trained with obs_state reads its reserve, its daze and the opponent's there instead (exam.py sets ppo.state).
+    tail = ppo.state() if getattr(ppo, "state", None) else np.zeros(OBS - len(obs), obs.dtype)
+    return _act(ppo, np.concatenate([obs, tail]))
 
 
 def policies() -> dict:

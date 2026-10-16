@@ -324,7 +324,7 @@ namespace PoBox.EditorTools
                 fighter.dazeTau = 2.5f; fighter.dazeLo = 14f; fighter.dazeHi = 42f; fighter.dazeWeak = 0.45f; fighter.dazeBody = 0.3f;
                 fighter.graceSeconds = 2f;
                 fighter.impulseFloor = Fighter.PunchMass;
-                fighter.damagePerNs = 0.018f;
+                fighter.damagePerNs = 0.045f;      // 2026-10-16: 0.018 left a boxer at 94% after 194 punches
 
                 brain.fighter = fighter;
                 brain.boxer = mj;

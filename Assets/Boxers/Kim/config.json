@@ -245,5 +245,6 @@
   },
   "cubes": 8,
   "speed_limit": true,
-  "fatigue_j": 30000.0
+  "fatigue_j": 8000.0,
+  "hit_push": 0.6
 }

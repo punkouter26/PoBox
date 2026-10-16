@@ -93,6 +93,25 @@ namespace PoBox.Sim
         [Tooltip("Seconds a fighter that has got up by itself stands before the match policy takes the body back.")]
         public float handOverSeconds = 1.5f;
 
+        // The punch's rules of 2026-10-16, as envs/boxing.py has them (stagger_v, hurt_full): on in the game for
+        // every trained fighter, whatever its policy was trained under.
+        [Header("Rocked and worn down (trained fighters)")]
+        [Tooltip("A head shot at least this fast, m/s, rocks the fighter: its drives are held down for a moment. 0 = off.")]
+        public float staggerSpeed = 5f;
+        public float staggerSeconds = 0.3f;
+        [Tooltip("The most of its drive strength a rocked fighter has.")]
+        public float staggerDrive = 0.55f;
+        [Tooltip("Punishment that lasts, in m/s of punches taken (the daze's input), for the full effect. 0 = off.")]
+        public float hurtFull = 400f;
+        [Tooltip("At the full effect: share of the daze line lost (the legs go sooner), and of drive strength lost.")]
+        public float hurtHi = 0.4f, hurtWeak = 0.25f;
+        [Tooltip("Seconds for the lasting punishment to drain to a third.")]
+        public float hurtTau = 600f;
+        [Tooltip("Share of it a minute on the stool takes away.")]
+        public float hurtRest = 0.15f;
+        [Tooltip("A body shot takes the wind: this much of a tiring fighter's reserve per m/s of the punch (envs/boxing.py's body_drain). 0 = off.")]
+        public float bodyDrain = 0.0025f;
+
         // ------------------------------------------------------------ state
         public float Health { get; private set; } = 100f;
         public float Stamina { get; private set; } = 1f;
@@ -102,8 +121,16 @@ namespace PoBox.Sim
         public float DriveScale { get; private set; } = 1f;
         /// <summary>Accumulated punishment, in m/s of punches taken; drains by itself. See the class comment.</summary>
         public float Daze { get; private set; }
+        /// <summary>Punishment that lasts the fight, in the same units; drains over minutes.</summary>
+        public float Hurt { get; private set; }
+        /// <summary>0 fresh, 1 worn down as far as it goes.</summary>
+        public float Hurt01 => hurtFull > 0f ? Mathf.Clamp01(Hurt / hurtFull) : 0f;
+        /// <summary>The daze at which the legs go: lower the more the fighter has taken.</summary>
+        public float LegsAt => dazeHi * (1f - hurtHi * Hurt01);
+        /// <summary>Seconds a head shot still holds the drives down.</summary>
+        public float Rocked => _rocked;
         /// <summary>0 clear-headed, 1 about to go.</summary>
-        public float Daze01 => dazeRule ? Mathf.Clamp01(Daze / Mathf.Max(1f, dazeHi)) : Mathf.Clamp01(_stagger);
+        public float Daze01 => dazeRule ? Mathf.Clamp01(Daze / Mathf.Max(1f, LegsAt)) : Mathf.Clamp01(_stagger);
         public bool IsDown { get; private set; }
         /// <summary>Down, and trying to get up.</summary>
         public bool IsRising { get; private set; }
@@ -164,7 +191,7 @@ namespace PoBox.Sim
         readonly bool[] _punchSpent = new bool[2];
         /// <summary>How long after it leaves a punch can still land. After that a touch is a push.</summary>
         const float PunchLife = 0.5f;
-        float _stagger, _downTimer, _lowTime, _lastHitAt = -99f, _floorY, _stoodFor;
+        float _stagger, _rocked, _downTimer, _lowTime, _lastHitAt = -99f, _floorY, _stoodFor;
         Vector3 _prevCom, _prevHead;
         bool _hasPrevCom, _canGetUp;
         readonly Vector3[] _sole = new Vector3[4];
@@ -188,15 +215,16 @@ namespace PoBox.Sim
 
             _floorY = position.y;
             _upSince = Time.time;
-            _stagger = 0f; _downTimer = 0f; _lowTime = 0f; _stoodFor = 0f;
+            _stagger = 0f; _rocked = 0f; _downTimer = 0f; _lowTime = 0f; _stoodFor = 0f;
             _hasPrevCom = false;
             Daze = 0f;
             IsDown = false; IsRising = false; Authority = 1f; DriveScale = 1f;
             foreach (BodyPart p in parts) p.stress = 0f;
+            Hurt *= 1f - hurtRest;
 
             if (newBout)
             {
-                Health = 100f; Stamina = 1f;
+                Health = 100f; Stamina = 1f; Hurt = 0f;
                 stats = default;
                 Array.Clear(taken, 0, taken.Length);
                 bruises.Clear();
@@ -316,9 +344,13 @@ namespace PoBox.Sim
                 float speed = Mathf.Min(HitCap, e.impulse / PunchMass);
                 float share = e.zone == PartKind.Head ? 1f : e.zone == PartKind.Torso || e.zone == PartKind.Pelvis ? dazeBody : 0f;
                 Daze += speed * share;
+                if (hurtFull > 0f) Hurt += speed * share;
+                if (staggerSpeed > 0f && e.zone == PartKind.Head && speed >= staggerSpeed) _rocked = staggerSeconds;
+                if (bodyDrain > 0f && share > 0f && e.zone != PartKind.Head && boxer != null && boxer.Cfg.fatigue_j > 0.0)
+                    boxer.Reserve = Mathf.Max(0f, (float)boxer.Reserve - bodyDrain * speed);
                 // Just up from a count, the legs cannot go again straight away: the daze is held under the line.
-                if (fresh) Daze = Mathf.Min(Daze, dazeHi * 0.9f);
-                if (Health <= 0f || Daze >= dazeHi)
+                if (fresh) Daze = Mathf.Min(Daze, LegsAt * 0.9f);
+                if (Health <= 0f || Daze >= LegsAt)
                 {
                     GoDown();
                     _wentDownThisStep = true;
@@ -531,6 +563,8 @@ namespace PoBox.Sim
         void UpdateControl(float dt)
         {
             if (dazeRule) Daze *= Mathf.Exp(-dt / Mathf.Max(0.1f, dazeTau));
+            Hurt *= Mathf.Exp(-dt / Mathf.Max(1f, hurtTau));
+            _rocked = Mathf.Max(0f, _rocked - dt);
 
             if (IsDown)
             {
@@ -568,9 +602,12 @@ namespace PoBox.Sim
             float target = 1f;
             if (_stagger > 0f) { _stagger -= dt; target = 0.5f; }
             Authority = Mathf.MoveTowards(Authority, target, dt * 3f);
-            DriveScale = dazeRule
-                ? 1f - dazeWeak * Mathf.Clamp01((Daze - dazeLo) / Mathf.Max(1e-3f, dazeHi - dazeLo))
-                : Authority < 0.25f ? 0.04f : Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(0.25f, 1f, Authority));
+            if (dazeRule)
+            {
+                DriveScale = (1f - dazeWeak * Mathf.Clamp01((Daze - dazeLo) / Mathf.Max(1f, LegsAt - dazeLo))) * (1f - hurtWeak * Hurt01);
+                if (_rocked > 0f) DriveScale = Mathf.Min(DriveScale, staggerDrive);
+            }
+            else DriveScale = Authority < 0.25f ? 0.04f : Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(0.25f, 1f, Authority));
 
             // On the canvas without having been put there by a rule: a trip, a shove into the ropes, legs
             // that were too weak to hold. If a punch landed just before, the punch gets the credit.
@@ -621,7 +658,7 @@ namespace PoBox.Sim
             IsDown = false;
             IsRising = false;
             _upSince = Time.time;
-            _stagger = 0f; _lowTime = 0f; _stoodFor = 0f;
+            _stagger = 0f; _rocked = 0f; _lowTime = 0f; _stoodFor = 0f;
             Daze = 0f;
             Authority = 1f; DriveScale = 1f;
             SendMessage("EndGetUp", SendMessageOptions.DontRequireReceiver);
@@ -671,7 +708,7 @@ namespace PoBox.Sim
             Vector3 facing = opponent != null ? opponent.pelvis.transform.position - at : transform.forward;
             ring.Place(boxer, at, facing);
             _upSince = Time.time;
-            _stagger = 0f; _lowTime = 0f;
+            _stagger = 0f; _rocked = 0f; _lowTime = 0f;
             Daze = 0f;
             _hasPrevCom = false;
             IsDown = false; IsRising = false; Authority = 1f; DriveScale = 1f;

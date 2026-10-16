@@ -657,7 +657,7 @@ MonoBehaviour:
   boxer: {fileID: 6522565491890201598}
   ring: {fileID: 0}
   headAnchor: {fileID: 1248218191273240810}
-  damagePerNs: 0.018
+  damagePerNs: 0.045
   impulseFloor: 2.2
   knockdownShock: 30
   staggerShock: 15
