@@ -55,6 +55,18 @@ namespace PoBox.League
             PlayerPrefs.Save();
         }
 
+        /// <summary>A boxer's rating as the ladder last saved it, read without the arena's table (the first screen has none); the start rating if it has none.</summary>
+        public static float SavedElo(string name, float fallback = 1000f)
+        {
+            try
+            {
+                Save save = JsonUtility.FromJson<Save>(PlayerPrefs.GetString(Key, ""));
+                if (save != null) foreach (Row r in save.rows) if (r.name == name) return r.elo;
+            }
+            catch (Exception) { }
+            return fallback;
+        }
+
         public void ResetAll()
         {
             _save = new Save();

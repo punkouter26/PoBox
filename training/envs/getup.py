@@ -213,7 +213,8 @@ class GetUpEnv(BoxingEnv):
         r["face"] = 0.4 * st * face
         r["feet"] = -0.1 * st * ((foot_v ** 2).sum(-1).clamp_max(25.0) * contact.float()).sum(-1)
         r["act"] = -0.0005 * (action ** 2).sum(-1)
-        r["rate"] = -0.005 * ((action - self.prev_action) ** 2).sum(-1)
+        jerk = ((action - self.prev_action) ** 2).sum(-1)
+        r["rate"] = -0.005 * jerk - self.action_rate_w * jerk
         r["energy"] = -1.0e-4 * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)

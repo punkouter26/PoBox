@@ -21,6 +21,12 @@ namespace PoBox.Fx
     /// A knockdown: for the count the house lights go down, <see cref="downSpot"/> comes up straight over the
     /// boxer on the canvas and the picture loses some of its colour; when the boxer is up (or the bout is
     /// over, or starts again) it all comes back. It follows the count, which a knockdown starts.
+    ///
+    /// Between knockdowns the same spot is the exchange's: it drifts to where the clean punches are landing,
+    /// lit by how hard and how lately, and goes dark when the boxers stop landing.
+    ///
+    /// <see cref="BulletTime"/> and <see cref="TimeScaleK"/> are the settings switch and the clock's share for
+    /// the slow motion after a big knockdown, which <see cref="ImpactVfx"/> runs (it is in both scenes).
     /// </summary>
     public class ArenaMood : MonoBehaviour
     {
@@ -52,6 +58,8 @@ namespace PoBox.Fx
         [Range(0f, 1f)] public float downHouse = 0.3f;
         [Tooltip("Colour taken out of the picture during a count, as the colour adjustments' saturation.")]
         public float downSaturation = -35f;
+        [Tooltip("How bright the spot is over the exchange after a clean punch, as a fraction of its knockdown level.")]
+        [Range(0f, 1f)] public float hotSpot = 0.35f;
         [Tooltip("The corners' stools and buckets: in the ring only for the break between rounds.")]
         public GameObject[] breakProps = new GameObject[0];
 
@@ -66,9 +74,17 @@ namespace PoBox.Fx
         public static float Burst { get; private set; }
         /// <summary>0..1: how many cameras are flashing in the stands.</summary>
         public static float Flash { get; private set; }
+        /// <summary>Settings: a big clean knockdown slows the picture for a moment. On unless switched off.</summary>
+        public static bool BulletTime = true;
+        /// <summary>
+        /// The slow motion's share of the clock: 1, or down to about 0.25 for a second. <see cref="Bout"/> owns the
+        /// time scale and multiplies its own by this; without a bout <see cref="ImpactVfx"/> sets the clock itself.
+        /// </summary>
+        public static float TimeScaleK { get; internal set; } = 1f;
 
         float[] _rest;
-        float _flash, _phones, _side, _nextPop, _down;
+        float _flash, _phones, _side, _nextPop, _down, _heat;
+        Vector3 _hotAt;
         Volume _grey;
         readonly float[] _landed = new float[2];
         MaterialPropertyBlock _block;
@@ -117,6 +133,9 @@ namespace PoBox.Fx
                 // Against what these two usually land, as the flashes are: a usual punch brings it most of the way up.
                 Excitement usually = Excitement.Instance;
                 _landed[who] = Mathf.Max(_landed[who], Mathf.Clamp01(e.impulse / ((usually != null ? usually.UsualImpulse : burstImpulse) * 1.4f)));
+                // The exchange's spot: half way to the new punch, or straight there if the last has gone cold.
+                _hotAt = _heat < 0.05f ? e.point : Vector3.Lerp(_hotAt, e.point, 0.5f);
+                _heat = Mathf.Max(_heat, _landed[who]);
             }
             if (e.impulse >= burstImpulse) Burst = Mathf.Max(Burst, Mathf.Clamp01(e.impulse / 22f));
             // The cameras come out for what is out of the ordinary for these two.
@@ -145,6 +164,7 @@ namespace PoBox.Fx
             Flash = Mathf.MoveTowards(Flash, 0f, dt * 0.9f);
             _flash = Mathf.MoveTowards(_flash, 0f, dt * 2.5f);
             _side = Mathf.MoveTowards(_side, 0f, dt * 0.5f);
+            _heat = Mathf.MoveTowards(_heat, 0f, dt * 0.5f);
 
             BoutPhase phase = bout != null ? bout.Phase : BoutPhase.Fight;
             bool show = phase == BoutPhase.WalkOn || phase == BoutPhase.Count || phase == BoutPhase.Results;
@@ -173,10 +193,19 @@ namespace PoBox.Fx
             if (_grey != null) _grey.weight = _down;
             if (downSpot != null)
             {
+                float hot = phase == BoutPhase.Fight ? _heat * hotSpot * (1f - _down) : 0f;
+                Quaternion down = Quaternion.LookRotation(Vector3.down, Vector3.forward);
                 if (downed != null && downed.pelvis != null)
-                    downSpot.transform.SetPositionAndRotation(downed.pelvis.transform.position + Vector3.up * downSpotHeight, Quaternion.LookRotation(Vector3.down, Vector3.forward));
-                downSpot.intensity = downSpotIntensity * _down;
-                downSpot.enabled = _down > 0.001f;
+                    downSpot.transform.SetPositionAndRotation(downed.pelvis.transform.position + Vector3.up * downSpotHeight, down);
+                else if (hot > 0.001f)
+                {
+                    // Drifting, not jumping: a follow-spot operator, not a cut.
+                    var over = new Vector3(_hotAt.x, _hotAt.y - 0.3f + downSpotHeight, _hotAt.z);      // about a pelvis under the punch
+                    downSpot.transform.SetPositionAndRotation(Vector3.Lerp(downSpot.transform.position, over, Mathf.Clamp01(dt * 3f)), down);
+                }
+                float level = Mathf.Max(_down, hot);
+                downSpot.intensity = downSpotIntensity * level;
+                downSpot.enabled = level > 0.001f;
             }
 
             float gain = (1f + lift * Excitement.Value + _flash * 0.8f) * Mathf.Lerp(0.12f, 1f, houseLights) * Mathf.Lerp(1f, downHouse, _down);

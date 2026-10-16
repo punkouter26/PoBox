@@ -3,7 +3,7 @@ using UnityEngine.UIElements;
 
 namespace PoBox.UI
 {
-    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze, Menu, Close, Speaker, Trash, Voice, Buzz, Ring }
+    public enum GlyphKind { Glove, Burst, Bolt, Heat, Balance, Power, Shield, Daze, Menu, Close, Speaker, Trash, Voice, Buzz, Ring, Share }
 
     /// <summary>
     /// The small icons that stand in for words on the tale of the tape: a glove for punches landed, a burst
@@ -170,6 +170,14 @@ namespace PoBox.UI
                     p.MoveTo(P(-0.8f, -0.8f)); p.LineTo(P(0.8f, -0.8f)); p.LineTo(P(0.8f, 0.8f)); p.LineTo(P(-0.8f, 0.8f));
                     p.ClosePath(); p.Stroke();
                     p.BeginPath(); p.Arc(P(0f, 0f), u * 0.3f, 0f, 360f); p.Fill();
+                    break;
+
+                case GlyphKind.Share:
+                    // Three dots joined, one passing to two: sending the result on.
+                    p.BeginPath(); p.MoveTo(P(0.55f, -0.6f)); p.LineTo(P(-0.55f, 0f)); p.LineTo(P(0.55f, 0.6f)); p.Stroke();
+                    p.BeginPath(); p.Arc(P(-0.55f, 0f), u * 0.27f, 0f, 360f); p.Fill();
+                    p.BeginPath(); p.Arc(P(0.55f, -0.6f), u * 0.27f, 0f, 360f); p.Fill();
+                    p.BeginPath(); p.Arc(P(0.55f, 0.6f), u * 0.27f, 0f, 360f); p.Fill();
                     break;
 
                 default: // Power: a gauge

@@ -7,6 +7,8 @@ using PoBox.Broadcast;
 using PoBox.Diag;
 using PoBox.Fx;
 using PoBox.League;
+using PoBox.Mj;
+using PoBox.Net;
 using PoBox.Sim;
 
 namespace PoBox.UI
@@ -32,12 +34,13 @@ namespace PoBox.UI
     /// sideways drag on the picture takes the orbit camera and turns it.
     ///
     /// Everything else opens over that rather than replacing it, docked at the bottom where a thumb is and
-    /// one at a time: the menu is a sheet with three tabs, the debug readings are a panel that grows out of
-    /// the DEBUG chip (the frame-rate chip opens and closes it too), and a tap anywhere outside either puts it
-    /// away; the end of a bout is a single sheet
-    /// carrying the result, the three judges' cards, both fighters' numbers with a hit map each, and the
-    /// win-probability graph of the whole bout. BOXERS, in the menu and on that sheet, goes back to the
-    /// first screen to choose another pair, loading it in the background with the button dimmed meanwhile.
+    /// one at a time: the menu is a sheet with three tabs (the last of them the settings, which have three of their
+    /// own), the debug readings are a panel that grows out of the DEBUG chip (the frame-rate chip opens and closes it
+    /// too; the hidden switch, three fingers or a long press on the frame rate, opens it with the X-ray), and a tap
+    /// anywhere outside either puts it away; the end of a bout is a single sheet carrying the result, what the pick
+    /// paid, the three judges' cards, both fighters' numbers with a hit map each, the win-probability graph of the
+    /// whole bout, and one row of four chips: REPLAY, SHARE, NEXT (or AGAIN) and MENU. MENU, and CHANGE BOXERS in
+    /// the menu, go back to the first screen, loading it in the background with the button dimmed meanwhile.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class HudView : MonoBehaviour
@@ -55,12 +58,12 @@ namespace PoBox.UI
         readonly SafeArea _safeArea = new SafeArea();
 
         // frame
-        Button _fps, _menu, _debug, _xray;
+        Button _fps, _menu, _debug;
         Label _version, _debugText;
         VisualElement _debugDot, _debugPanel;
         Glyph _menuGlyph;
         bool _leaving;
-        readonly List<Label> _debugValues = new List<Label>();
+        Label[] _debugValues = new Label[0];
 
         // board
         Label _redName, _blueName, _redBadge, _blueBadge, _round, _clock, _redHpText, _blueHpText, _momRed, _momBlue;
@@ -119,6 +122,7 @@ namespace PoBox.UI
         Label _resWinner, _resMethod, _resElo;
         Sparkline _resGraph;
         Button _resNext;
+        Label _resNextWord;
         readonly Label[] _resRed = new Label[ResultRows], _resBlue = new Label[ResultRows];
         readonly VisualElement[] _judgeCards = new VisualElement[Judges.Count];
         readonly Label[] _judgeScores = new Label[Judges.Count];
@@ -131,10 +135,23 @@ namespace PoBox.UI
         SettingsPage _settings;
         readonly Label[][] _leagueCells = new Label[LeagueRows][];
         readonly VisualElement[] _leagueRows = new VisualElement[LeagueRows];
-        // BOXERS in the menu and on the result card, and their words, which trail dots while the first screen loads
+        // CHANGE BOXERS in the menu and MENU on the result card, and their words, which trail dots while the first screen loads
         readonly Button[] _boxers = new Button[2];
         readonly Label[] _boxersWords = new Label[2];
-        static readonly string[] BusyWords = { "BOXERS ·", "BOXERS ··", "BOXERS ···" };
+        readonly string[] _boxersBase = new string[2];
+        static readonly string[] BusyDots = { " ·", " ··", " ···" };
+
+        // the features: the instant replay, SHARE, the pick before the bell, chat plays, the brain cam
+        Button _resReplay, _resShare, _predictRed, _predictBlue;
+        Label _resExtra, _chat, _predictCoins, _brainTitle;
+        VisualElement _predict, _brain;
+        VisualElement[] _brainBars = new VisualElement[0];
+        int[] _brainGroup = new int[0];
+        int _brainCorner;
+        bool _replaying;
+        TwitchChat _twitch;
+        /// <summary>The brain cam's groups of the 21 joints, in the order drawn.</summary>
+        static readonly string[] BrainGroups = { "LEGS", "TORSO", "L ARM", "R ARM" };
 
         float _nextFast, _nextSlow;
         int _lastBout = -1;
@@ -143,6 +160,7 @@ namespace PoBox.UI
         public bool MenuOpen => _menuSheet != null && !_menuSheet.ClassListContains("hidden");
         public bool DebugOpen => _debugPanel != null && !_debugPanel.ClassListContains("hidden");
         public bool ResultsOpen => _results != null && !_results.ClassListContains("hidden");
+        public SettingsPage Settings => _settings;
         public VisualElement Root => _root;
 
         /// <summary>A pretend notch for the editor and the tests, in screen pixels, for every document (<see cref="SafeArea"/>). Null is the real safe area.</summary>
@@ -160,6 +178,8 @@ namespace PoBox.UI
             SimBus.Line += OnLine;
             SimBus.PunchThrown += OnPunch;
             SimBus.Hit += OnHit;
+            SimBus.Knockdown += OnKnockdown;
+            _twitch ??= TwitchChat.FromPrefs();
         }
 
         void Build(VisualElement root)
@@ -233,6 +253,15 @@ namespace PoBox.UI
             _resElo = _root.Q<Label>("res-elo");
             _resGraph = _root.Q<Sparkline>("res-graph");
             _resNext = _root.Q<Button>("res-next");
+            _resNextWord = _root.Q<Label>("res-next-word");
+            _resReplay = _root.Q<Button>("res-replay");
+            _resShare = _root.Q<Button>("res-share");
+            _resExtra = _root.Q<Label>("res-extra");
+            _chat = _root.Q<Label>("chat");
+            _predict = _root.Q<VisualElement>("predict");
+            _predictRed = _root.Q<Button>("predict-red");
+            _predictBlue = _root.Q<Button>("predict-blue");
+            _predictCoins = _root.Q<Label>("predict-coins");
 
             _menuSheet = _root.Q<VisualElement>("menu-sheet");
             string[] tabNames = { "match", "league", "settings" };
@@ -248,7 +277,8 @@ namespace PoBox.UI
 
             Hook(_menu, ToggleMenu);
             Hook(_debug, ToggleDebug);
-            Hook(_fps, () => { SetStripPage(2); ToggleDebug(); });
+            // The frame rate: a tap is the frame-time graph and the panel; a long press (or three fingers) the panel and the X-ray.
+            DebugPanel.Hook(_root, _fps, () => { SetStripPage(2); ToggleDebug(); }, () => { ToggleDebug(); PhysicsXray.On = DebugOpen; });
             // The third chip is shorter than a thumb, so the whole scoreboard is its button.
             if (_board != null) _board.RegisterCallback<ClickEvent>(_ =>
             {
@@ -261,12 +291,14 @@ namespace PoBox.UI
             BuildResultsTape();
             BuildJudges("res-judges", _judgeCards, _judgeScores);
             BuildJudges("break-judges", _breakCards, _breakScores);
-            BuildDebugPanel();
+            _debugValues = DebugPanel.Build(_debugPanel, DebugKeys);
             BuildLeagueRows();
             HookMenu();
             HookStrip();
             HookResults();
             HookPicture();
+            HookPredict();
+            BuildBrain();
 
             RefreshCycleKey();
             SetStripPage(0);
@@ -281,6 +313,9 @@ namespace PoBox.UI
             SimBus.Line -= OnLine;
             SimBus.PunchThrown -= OnPunch;
             SimBus.Hit -= OnHit;
+            SimBus.Knockdown -= OnKnockdown;
+            _twitch?.Dispose();
+            _twitch = null;
         }
 
         static void Hook(Button b, System.Action action)
@@ -351,40 +386,94 @@ namespace PoBox.UI
         static readonly string[] DebugKeys =
         {
             "FRAME", "WORST", "PHYSICS", "SETPASS", "TRIS", "GC", "MEMORY", "SCALE", "SHOT", "VOICES", "CLOSING", "STRESS",
-            "DAZE", "CRITIC", "SOUND", "USUAL",
+            "DAZE", "CRITIC", "SOUND", "USUAL", "BRAINS",
         };
 
-        void BuildDebugPanel()
+        bool BrainOn => _brain != null && !_brain.ClassListContains("hidden");
+
+        /// <summary>
+        /// The brain cam, off until the settings' BRAIN (DEBUG tab) switches it on: a title (whose brain, and the punch it has just
+        /// thrown or the arm it is loading) over a bar a joint, grouped legs, torso, left arm, right arm. A bar's
+        /// height is the size of that joint's action (-1 to 1), pale when it is negative. A tap swaps boxers.
+        /// </summary>
+        void BuildBrain()
         {
-            if (_debugPanel == null) return;
-            _debugPanel.Clear();
-            _debugValues.Clear();
-            foreach (string key in DebugKeys)
-            {
-                var cell = new VisualElement { pickingMode = PickingMode.Ignore };
-                cell.AddToClassList("dbg-cell");
-                var k = new Label(key) { pickingMode = PickingMode.Ignore };
-                k.AddToClassList("dbg-key");
-                var v = new Label("-") { pickingMode = PickingMode.Ignore };
-                v.AddToClassList("dbg-val");
-                cell.Add(k);
-                cell.Add(v);
-                _debugPanel.Add(cell);
-                _debugValues.Add(v);
-            }
-            // The boxers' collision shapes drawn over the picture (Fx/PhysicsXray.cs).
-            _xray = new Button(() => { PhysicsXray.On = !PhysicsXray.On; RefreshXray(); }) { name = "x-ray" };
-            _xray.AddToClassList("btn");
-            _xray.AddToClassList("dbg-chip");
-            _debugPanel.Add(_xray);
-            RefreshXray();
+            if (_safe == null) return;
+            _brain = new VisualElement { name = "brain" };
+            _brain.AddToClassList("brain");
+            _brain.AddToClassList("hidden");
+            _brainTitle = new Label("BRAIN") { pickingMode = PickingMode.Ignore };
+            _brainTitle.AddToClassList("brain-title");
+            _brain.Add(_brainTitle);
+            var bars = new VisualElement { name = "brain-bars", pickingMode = PickingMode.Ignore };
+            bars.AddToClassList("brain-bars");
+            _brain.Add(bars);
+            _brain.RegisterCallback<ClickEvent>(_ => { _brainCorner = 1 - _brainCorner; _brainBars = new VisualElement[0]; });
+            _safe.Add(_brain);
         }
 
-        void RefreshXray()
+        /// <summary>One bar a joint of this boxer's, in its group by the joint's name (the config's joint_order).</summary>
+        void BuildBrainBars(MjBoxer body)
         {
-            if (_xray == null) return;
-            _xray.text = PhysicsXray.On ? "X-RAY ON" : "X-RAY OFF";
-            _xray.EnableInClassList("btn--on", PhysicsXray.On);
+            VisualElement host = _brain.Q<VisualElement>("brain-bars");
+            host.Clear();
+            string[] joints = body.Cfg.joint_order;
+            _brainBars = new VisualElement[body.Action.Length];
+            _brainGroup = new int[body.Action.Length];
+            for (int g = 0; g < BrainGroups.Length; g++)
+            {
+                var group = new VisualElement { pickingMode = PickingMode.Ignore };
+                group.AddToClassList("brain-group");
+                for (int j = 0; j < _brainBars.Length; j++)
+                {
+                    if (GroupOf(j < joints.Length ? joints[j] : "") != g) continue;
+                    var slot = new VisualElement { pickingMode = PickingMode.Ignore };
+                    slot.AddToClassList("brain-slot");
+                    var bar = new VisualElement { pickingMode = PickingMode.Ignore };
+                    bar.AddToClassList("brain-bar");
+                    slot.Add(bar);
+                    group.Add(slot);
+                    _brainBars[j] = bar;
+                    _brainGroup[j] = g;
+                }
+                var key = new Label(BrainGroups[g]) { pickingMode = PickingMode.Ignore };
+                key.AddToClassList("brain-key");
+                var column = new VisualElement { pickingMode = PickingMode.Ignore };
+                column.AddToClassList("brain-column");
+                column.Add(group);
+                column.Add(key);
+                host.Add(column);
+            }
+        }
+
+        static int GroupOf(string joint)
+        {
+            if (joint.StartsWith("abdomen")) return 1;
+            if (joint.StartsWith("shoulder") || joint.StartsWith("elbow")) return joint.EndsWith("_l") ? 2 : 3;
+            return 0;
+        }
+
+        /// <summary>The bars every frame; the title only with the rest of the text.</summary>
+        void RefreshBrain(bool text)
+        {
+            Fighter f = _brainCorner == 0 ? bout.red : bout.blue;
+            MjBoxer body = f != null ? f.boxer : null;
+            if (body == null || !body.Bound || body.Action == null) return;
+            if (_brainBars.Length != body.Action.Length) BuildBrainBars(body);
+            float left = 0f, right = 0f;
+            for (int j = 0; j < _brainBars.Length; j++)
+            {
+                float v = Mathf.Clamp((float)body.Action[j], -1f, 1f);
+                _brainBars[j].style.height = Length.Percent(Mathf.Abs(v) * 100f);
+                _brainBars[j].EnableInClassList("brain-bar--neg", v < 0f);
+                if (_brainGroup[j] == 2) left = Mathf.Max(left, Mathf.Abs(v));
+                if (_brainGroup[j] == 3) right = Mathf.Max(right, Mathf.Abs(v));
+            }
+            if (!text) return;
+            bool punching = Time.time - _punchAt[_brainCorner] < PunchShown;
+            string what = punching ? PunchNames[(int)_punch[_brainCorner]] : Mathf.Max(left, right) > 0.6f ? (left > right ? "LOADING LEFT" : "LOADING RIGHT") : "GUARD";
+            Set(_brainTitle, $"BRAIN · {f.displayName} · {what}");
+            _brainTitle.EnableInClassList("brain-title--blue", _brainCorner == 1);
         }
 
         void BuildLeagueRows()
@@ -413,8 +502,8 @@ namespace PoBox.UI
 
         void HookMenu()
         {
-            Hook(_root.Q<Button>("m-restart"), () => { if (bout != null) bout.Restart(); CloseMenu(); });
-            Hook(_root.Q<Button>("m-next"), () => { if (bout != null) bout.NewBout(); CloseMenu(); });
+            Hook(_root.Q<Button>("m-restart"), () => { StopReplay(); if (bout != null) bout.Restart(); CloseMenu(); });
+            Hook(_root.Q<Button>("m-next"), () => { StopReplay(); if (bout != null) bout.NewBout(); CloseMenu(); });
             HookBoxers(0, _root.Q<Button>("m-boxers"), _root.Q<Label>("m-boxers-word"));
 
             string[] cams = { "cam-auto", "cam-wide", "cam-orbit", "cam-top" };
@@ -442,8 +531,8 @@ namespace PoBox.UI
                 Hook(_speedButtons[i], () => { if (bout != null) bout.userTimeScale = scales[index]; RefreshMenu(); });
             }
 
-            // Sound, quality, voice, buzz, frame rate, the ladder: the page the first screen has too.
-            _settings = new SettingsPage(_root, league);
+            // The settings the first screen has too, with the ladder to reset and the brain cam.
+            _settings = new SettingsPage(_root, league, ToggleDebug, brain: true);
         }
 
         void HookStrip()
@@ -514,7 +603,132 @@ namespace PoBox.UI
         void HookResults()
         {
             HookBoxers(1, _root.Q<Button>("res-boxers"), _root.Q<Label>("res-boxers-word"));
-            Hook(_resNext, () => { if (bout != null) bout.NewBout(); });
+            Hook(_resNext, () => { StopReplay(); if (bout != null) bout.NewBout(); });
+            Hook(_resReplay, PlayReplay);
+            Hook(_resShare, () => StartCoroutine(Share.Shot(ShareLine())));
+        }
+
+        /// <summary>
+        /// The instant replay (Mj/MjReplay.cs): the last knockdown, or the last seconds of the bout, at half speed,
+        /// the card put away while it plays and back when it is over; the cameras take the wide shot.
+        /// </summary>
+        void PlayReplay()
+        {
+            MjReplay replay = MjReplay.Instance;
+            if (replay == null || !replay.Play()) return;
+            _replaying = true;
+            ShowResults();
+            SimBus.Say("REPLAY · " + (bout != null ? bout.Method : ""), 3);
+        }
+
+        static void StopReplay()
+        {
+            if (MjReplay.Playing) MjReplay.Instance.Stop();
+        }
+
+        string ShareLine()
+        {
+            if (bout == null || bout.red == null || bout.blue == null) return "PoBox";
+            Fighter w = bout.Winner;
+            string what = w == null ? $"{bout.red.displayName} and {bout.blue.displayName} drew" : $"{w.displayName} beat {bout.Other(w).displayName}";
+            return $"{what}: {bout.Method} · PoBox";
+        }
+
+        /// <summary>The pick before the first bell: either corner, at the ladder's odds (League/Prediction.cs).</summary>
+        void HookPredict()
+        {
+            Hook(_predictRed, () => Pick(0));
+            Hook(_predictBlue, () => Pick(1));
+        }
+
+        void Pick(int corner)
+        {
+            if (bout == null || !PickOpen) return;
+            Prediction.Pick(corner, Prediction.Odds(Chance(corner)));
+            RefreshPredict();
+        }
+
+        bool PickOpen => bout.Round == 1 && (bout.Phase == BoutPhase.WalkOn || bout.Phase == BoutPhase.Intro) && bout.red != null && bout.blue != null;
+
+        /// <summary>The ladder's chance of this corner winning (an even chance off the ladder).</summary>
+        float Chance(int corner)
+        {
+            if (league == null || bout.red == null || bout.blue == null) return 0.5f;
+            float red = league.Expected(bout.red.displayName, bout.blue.displayName);
+            return corner == 0 ? red : 1f - red;
+        }
+
+        void RefreshPredict()
+        {
+            if (_predict == null) return;
+            bool open = PickOpen;
+            _predict.EnableInClassList("hidden", !open);
+            if (!open) return;
+            bool picked = Prediction.Picked >= 0;
+            _predictRed?.EnableInClassList("hidden", picked);
+            _predictBlue?.EnableInClassList("hidden", picked);
+            if (picked)
+                Set(_predictCoins, $"YOUR PICK {(Prediction.Picked == 0 ? bout.red : bout.blue).displayName} · {Prediction.Coins} COINS");
+            else
+            {
+                Set2(_predictRed, $"{bout.red.displayName} x{Prediction.Odds(Chance(0)):0.0}");
+                Set2(_predictBlue, $"{bout.blue.displayName} x{Prediction.Odds(Chance(1)):0.0}");
+                Set(_predictCoins, $"PICK · {Prediction.Stake} OF {Prediction.Coins}");
+            }
+        }
+
+        /// <summary>Chat plays (Net/TwitchChat.cs): the corners' votes on a line under the scoreboard, and a cube thrown when chat asks.</summary>
+        void RefreshChat()
+        {
+            if (_chat == null) return;
+            _twitch.Poll();
+            _chat.RemoveFromClassList("hidden");
+            Fighter red = bout.red, blue = bout.blue;
+            if (red == null || blue == null) return;
+            int r = _twitch.Votes("red") + _twitch.Votes(red.displayName.ToLowerInvariant());
+            int b = _twitch.Votes("blue") + _twitch.Votes(blue.displayName.ToLowerInvariant());
+            Set(_chat, _twitch.Connected ? $"CHAT · {red.displayName} {r} · {blue.displayName} {b}" : $"CHAT · #{_twitch.Channel} ···");
+            if (Bout.Fighting && _twitch.TakeCube())
+            {
+                Fighter at = Random.value < 0.5f ? red : blue;
+                if (TwitchChat.ThrowCube(at)) SimBus.Say($"Chat throws a cube at {at.displayName}!", 1);
+            }
+        }
+
+        /// <summary>A knockdown: the replay keeps the seconds around it.</summary>
+        void OnKnockdown(Fighter f, HitEvent cause)
+        {
+            if (cause.attacker != null && MjReplay.Instance != null) MjReplay.Instance.Mark();
+        }
+
+        /// <summary>A new bout: no replay of the last one, its pick given back if it was never settled, chat's votes cleared.</summary>
+        void OnNewBout()
+        {
+            if (MjReplay.Instance != null) MjReplay.Instance.Clear();
+            Prediction.Reset();
+            _twitch?.ClearVotes();
+        }
+
+        /// <summary>At the result, once: the pick paid out, and a cup bout (League/Career.cs) counted, in a line on the card.</summary>
+        void SettleExtras()
+        {
+            Fighter red = bout.red, blue = bout.blue;
+            if (red == null || blue == null) return;
+            int winner = bout.Winner == null ? -1 : bout.Winner == red ? 0 : 1;
+            string pick = Prediction.Picked >= 0 ? Prediction.Settle(winner, (Prediction.Picked == 0 ? red : blue).displayName) : null;
+            string cup = null;
+            if (Career.Live && MatchSelection.Chosen)
+            {
+                Career.Live = false;
+                Career c = Career.Load();
+                if (c != null && c.Report(MatchSelection.Red, MatchSelection.Blue, winner))
+                    cup = c.Champion != null ? $"CUP WON BY {c.Shown(c.Champion)}" : "CUP · THROUGH TO THE NEXT ROUND";
+                else if (c != null && winner < 0) cup = "CUP · A DRAW: FIGHT IT AGAIN";
+            }
+            string line = pick != null && cup != null ? pick + "  ·  " + cup : pick ?? cup ?? "";
+            if (_resExtra == null) return;
+            Set(_resExtra, line);
+            _resExtra.EnableInClassList("hidden", line.Length == 0);
         }
 
         /// <summary>Back to the first screen to choose another pair. Not offered when the build has no such screen.</summary>
@@ -522,6 +736,7 @@ namespace PoBox.UI
         {
             _boxers[slot] = b;
             _boxersWords[slot] = word;
+            _boxersBase[slot] = word != null ? word.text : "";
             if (b == null) return;
             b.EnableInClassList("hidden", !MatchSelection.HasMenu);
             b.clicked += ToBoxers;
@@ -568,7 +783,14 @@ namespace PoBox.UI
         /// <summary>The results card is up when the bout is over and neither the menu nor the debug panel is in its place.</summary>
         void ShowResults()
         {
-            if (_results != null) _results.EnableInClassList("hidden", bout == null || bout.Phase != BoutPhase.Results || MenuOpen || DebugOpen);
+            if (_results != null) _results.EnableInClassList("hidden", bout == null || bout.Phase != BoutPhase.Results || MenuOpen || DebugOpen || MjReplay.Playing);
+        }
+
+        /// <summary>The menu's SETTINGS tab, open on one of the settings' own tabs (0 SOUND, 1 DISPLAY, 2 DEBUG).</summary>
+        public void OpenSettings(int tab)
+        {
+            OpenMenu(2);
+            _settings?.ShowTab(tab);
         }
 
         public void CloseMenu()
@@ -681,13 +903,16 @@ namespace PoBox.UI
             float now = Time.unscaledTime;
             if (_leaving)
             {
-                string word = BusyWords[(int)(now * 3f) % BusyWords.Length];
-                foreach (Label l in _boxersWords) Set(l, word);
+                string dots = BusyDots[(int)(now * 3f) % BusyDots.Length];
+                for (int i = 0; i < _boxersWords.Length; i++) Set(_boxersWords[i], _boxersBase[i] + dots);
             }
             if (bout == null) return;
+            // The brain cam is the settings' (DEBUG, BRAIN); it gives way to the pick before the bell and to the result.
+            _brain?.EnableInClassList("hidden", !SettingsPage.BrainCam || bout.Phase == BoutPhase.Results || (_predict != null && !_predict.ClassListContains("hidden")));
 
             if (bout.BoutNumber != _lastBout || bout.Phase != _lastPhase)
             {
+                if (bout.BoutNumber != _lastBout) OnNewBout();
                 _lastBout = bout.BoutNumber;
                 OnPhaseChanged(bout.Phase);
                 _lastPhase = bout.Phase;
@@ -695,6 +920,12 @@ namespace PoBox.UI
 
             RefreshBars();
             RefreshOverlays(now);
+            // The replay over: the card back. One still playing as the result runs out is stopped first, so the
+            // next bout is placed on the live state and not under the replay's.
+            if (_replaying && !MjReplay.Playing) { _replaying = false; ShowResults(); }
+            if (MjReplay.Playing && (bout.Phase != BoutPhase.Results || (bout.autoAdvance && bout.ResultsTimeLeft < 0.5f))) StopReplay();
+            bool brain = BrainOn;
+            if (brain) RefreshBrain(false);
 
             if (now >= _nextFast)
             {
@@ -705,6 +936,9 @@ namespace PoBox.UI
                 RefreshPods();
                 if (_stripPage == 2) RefreshStrip();
                 if (ResultsOpen) RefreshNext();
+                RefreshPredict();
+                if (brain) RefreshBrain(true);
+                if (_twitch != null) RefreshChat();
             }
 
             if (now >= _nextSlow)
@@ -779,7 +1013,8 @@ namespace PoBox.UI
                 _pip.EnableInClassList("pip--blue", bout.Downed == red);
             }
 
-            if (results) FillResults();
+            if (results) { FillResults(); SettleExtras(); }
+            if (_resReplay != null) _resReplay.EnableInClassList("hidden", MjReplay.Instance == null);
             if (MenuOpen && _pages[1] != null && !_pages[1].ClassListContains("hidden")) RefreshLeague();
         }
 
@@ -1086,7 +1321,7 @@ namespace PoBox.UI
         void RefreshDebug()
         {
             PerfTelemetry perf = PerfTelemetry.Instance;
-            if (perf == null || _debugValues.Count < DebugKeys.Length) return;
+            if (perf == null || _debugValues.Length < DebugKeys.Length) return;
             Fighter red = bout != null ? bout.red : null, blue = bout != null ? bout.blue : null;
             if (_audio == null) _audio = FindAnyObjectByType<AudioDirector>();
             AudioDirector audio = _audio;
@@ -1109,6 +1344,7 @@ namespace PoBox.UI
             _debugValues[13].text = ex != null && ex.HasCritic ? $"{ex.CriticEdge:+0.00;-0.00}" : "none";
             _debugValues[14].text = audio != null ? $"{audio.PeakDb:0} dB" : "-";
             _debugValues[15].text = ex != null ? $"{ex.UsualImpulse:0.0} N·s" : "-";
+            _debugValues[16].text = $"{perf.InferMs:0.00} ms";
         }
 
         // ------------------------------------------------------------ results
@@ -1133,12 +1369,13 @@ namespace PoBox.UI
                 _resElo.text = (delta >= 0f ? "+" : "") + delta.ToString("0") + " ELO";
             }
 
-            Set(_resRed[0], $"{red.stats.landed}/{red.stats.thrown}");
-            Set(_resBlue[0], $"{blue.stats.landed}/{blue.stats.thrown}");
+            // The punch count: landed of thrown and the share; the hardest punch and the fastest glove that landed.
+            Set(_resRed[0], PunchStats.Landed(red));
+            Set(_resBlue[0], PunchStats.Landed(blue));
             Set(_resRed[1], red.stats.blocked.ToString());
             Set(_resBlue[1], blue.stats.blocked.ToString());
-            Set(_resRed[2], $"{red.stats.peakImpulse:0} N·s");
-            Set(_resBlue[2], $"{blue.stats.peakImpulse:0} N·s");
+            Set(_resRed[2], PunchStats.Power(red));
+            Set(_resBlue[2], PunchStats.Power(blue));
             Set(_resRed[3], $"{red.stats.energyJ / 1000f:0.0} kJ");
             Set(_resBlue[3], $"{blue.stats.energyJ / 1000f:0.0} kJ");
             Set(_resRed[4], $"{red.stats.damageDealt:0}");
@@ -1173,8 +1410,8 @@ namespace PoBox.UI
         {
             if (_resNext == null) return;
             // The same two again when the boxers were chosen; the ladder's next pair when they were not.
-            string word = bout.fixedEntrants ? "REMATCH" : "NEXT BOUT";
-            Set2(_resNext, bout.autoAdvance ? $"{word} {Mathf.CeilToInt(bout.ResultsTimeLeft)}" : word);
+            string word = bout.fixedEntrants ? "AGAIN" : "NEXT";
+            Set(_resNextWord, bout.autoAdvance ? $"{word} {Mathf.CeilToInt(bout.ResultsTimeLeft)}" : word);
         }
 
         static void Set2(Button b, string text)

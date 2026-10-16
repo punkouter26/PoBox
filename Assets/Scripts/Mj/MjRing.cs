@@ -67,6 +67,8 @@ namespace PoBox.Mj
         Transform[] _pelvis;
         bool _bound;
         int _sub, _decimation = 4;
+        MjCubePool _cubes;
+        long _policyTicks;
         double _dt;
         // Per boxer (the first index), and per hand or foot.
         bool[] _held, _ghost, _down, _has, _rising;
@@ -138,10 +140,16 @@ namespace PoBox.Mj
             if (_m == null || (!many && (red == null || blue == null))) return;
             _b = many ? boxers : new[] { red, blue };
             int n = _b.Length;
-            Allocate(n);
+            // A recompile of the same cast keeps who is held and where, who is down and who is rising: only the
+            // collision layers start again, because the new model's geoms have theirs from the file.
+            if (_held == null || _held.Length != n) Allocate(n);
+            else for (int k = 0; k < n; k++) { _ghost[k] = false; _body[k] = -1; _has[k] = false; }
             _pelvis = new Transform[n];
             foreach (MjBoxer b in _b) b.ringCentre = centre;
             foreach (MjBoxer b in _b) b.Bind(_m, _d);
+            // The ring's 8 cubes (the trainer's pool), parked where the trainer parks them until something throws one.
+            _cubes = FindAnyObjectByType<MjCubePool>();
+            if (_cubes != null) { _cubes.Bind(_m, _d); _cubes.ParkAll(); }
             if (!many)
             {
                 red.opponent = blue;
@@ -323,7 +331,9 @@ namespace PoBox.Mj
                 // A pair's ring lets the one standing pass through the one down; a free-for-all's keeps every body solid.
                 if (solidBodies)
                 {
-                    int state = !_down[k] ? 0 : _rising[k] ? 2 : 1;
+                    // Held in its guard over a count it is put back on its spot every step, so it goes on the getting-up
+                    // layer: put back inside a body lying across its feet, the contact would throw that body about.
+                    int state = !_down[k] ? (_held[k] ? 2 : 0) : _rising[k] ? 2 : 1;
                     // Just up through a pile, it passes through those still lying until it is clear of them (or three
                     // seconds have gone): given its body back inside another's, the contact throws them apart.
                     if (state == 0 && _body[k] == 2 && _ghostFor[k] < 3.0)
@@ -363,7 +373,28 @@ namespace PoBox.Mj
                 // A held boxer is put back in its guard on its spot before every step: it stands and waits.
                 if (_held[k]) _b[k].ResetToGuard(_holdX[k], _holdY[k], _holdYaw[k]);
             }
-            if (_sub == 0)
+            if (_sub == 0 && _cubes != null) _cubes.Tick(_dt);
+            if (solidBodies)
+            {
+                // A free-for-all spreads its brains over the control step: boxer k decides on substep k mod 4. Each
+                // still observes, acts and holds its targets for 4 steps exactly as in training; only the phase
+                // differs, so eight inferences are not all paid on one physics step.
+                long t0 = _clock.ElapsedTicks;
+                for (int k = 0; k < _b.Length; k++)
+                {
+                    if (k % _decimation != _sub) { _b[k].HoldTargets(); continue; }
+                    _b[k].Observe();
+                    _b[k].Infer();
+                    _b[k].Drive();
+                }
+                _policyTicks += _clock.ElapsedTicks - t0;
+                if (_sub == _decimation - 1)
+                {
+                    PolicyMs += 0.05 * (_policyTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency - PolicyMs);
+                    _policyTicks = 0;
+                }
+            }
+            else if (_sub == 0)
             {
                 long t0 = _clock.ElapsedTicks;
                 foreach (MjBoxer b in _b)
@@ -384,6 +415,17 @@ namespace PoBox.Mj
             if (!Ready) return;
             PhysicsMs += 0.05 * ((_clock.ElapsedTicks - _began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency - PhysicsMs);
             _sub = (_sub + 1) % _decimation;
+            if (solidBodies)
+            {
+                // Staggered: the boxers whose turn comes next have finished their control step now.
+                for (int k = _sub; k < _b.Length; k += _decimation) { _b[k].AfterStep(_dt); _b[k].Tire(_dt); }
+                if (_sub < _b.Length) MujocoLib.mj_kinematics(_m, _d);
+                if (_sub != 0) return;
+                TrackPunches();
+                TrackCanvas();
+                ControlStep?.Invoke();
+                return;
+            }
             if (_sub != 0) return;
             // As the trainer: the stand-in's (here the opponent's) velocity from where the bodies were left, then
             // the bodies brought up to date before anybody observes.
@@ -405,7 +447,8 @@ namespace PoBox.Mj
             {
                 // A new opponent: the speeds measured against the last one mean nothing for this one.
                 int t = Target(k);
-                if (t != _target[k]) { _target[k] = t; _has[k] = false; }
+                bool retargeted = t != _target[k];
+                if (retargeted) { _target[k] = t; _has[k] = false; }
                 MjBoxer me = _b[k], them = _b[t];
                 double* head = Geom(them.HeadGeom), body = Geom(them.TorsoGeom), tm = _d->geom_xmat + 9 * them.TorsoGeom;
                 double ax = tm[2], ay = tm[5], az = tm[8];                      // the body capsule's axis
@@ -447,7 +490,14 @@ namespace PoBox.Mj
                             PunchLanded?.Invoke(me, hand, toHead, (float)arriving, ToUnity(g[0], g[1], g[2]));
                         }
                     }
-                    else _armed[k, hand] = true;
+                    else
+                    {
+                        // A fresh start is armed, as an episode starts. A new target starts the glove's cool-down too:
+                        // in a scrum the glove may already be resting on the new one's head, and touching is not a
+                        // punch. (Waiting for it to come 30 cm clear instead silenced most of a free-for-all's punches.)
+                        _armed[k, hand] = true;
+                        if (retargeted) _cool[k, hand] = 0.25;
+                    }
                     for (int c = 0; c < 3; c++) _prevGlove[k, hand, c] = g[c];
 
                     // A foot coming down.

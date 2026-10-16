@@ -48,6 +48,8 @@ namespace PoBox.Diag
         public float FrameMs { get; private set; }
         public float WorstMs { get; private set; }
         public float PhysicsMs { get; private set; }
+        /// <summary>Every boxer's brains thinking, ms a frame, smoothed (<see cref="Mj.MjBoxer.TakeInferSeconds"/>).</summary>
+        public float InferMs { get; private set; }
         public long DrawCalls { get; private set; }
         public long Batches { get; private set; }
         public long SetPass { get; private set; }
@@ -136,6 +138,8 @@ namespace PoBox.Diag
             // MuJoCo's own time this frame, timed by the ring round its steps.
             if (_ring == null) _ring = FindAnyObjectByType<Mj.MjRing>();
             PhysicsMs = _ring != null ? (float)_ring.PhysicsMs : 0f;
+            // The policies' time since the last frame: read once a frame, here and nowhere else.
+            InferMs += ((float)(Mj.MjBoxer.TakeInferSeconds() * 1000.0) - InferMs) * 0.1f;
 
             ReadThermal();
             Govern(ms);

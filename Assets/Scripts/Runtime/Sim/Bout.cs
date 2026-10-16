@@ -20,11 +20,9 @@ namespace PoBox.Sim
         /// <summary>Physics is stepping. False between rounds and while the result is up.</summary>
         public static bool SimRunning { get; internal set; }
         /// <summary>The fighters are allowed to throw.</summary>
-        public static bool Fighting => Instance != null ? Instance.Phase == BoutPhase.Fight : FightingWithoutBout;
+        public static bool Fighting => Instance != null ? Instance.Phase == BoutPhase.Fight : FreeForAll.Instance != null && FreeForAll.Instance.Phase == FreeForAll.Stage.Fight;
         /// <summary>Seconds of fighting so far in this bout.</summary>
         public static float Clock { get; internal set; }
-        /// <summary>Set by a scene that runs its own rules with no Bout in it (<see cref="FreeForAll"/>).</summary>
-        internal static bool FightingWithoutBout;
 
         [Header("Cast")]
         public Fighter red;
@@ -262,7 +260,8 @@ namespace PoBox.Sim
 
         void ApplyTime()
         {
-            float scale = Mathf.Max(1f, userTimeScale);
+            // ArenaMood's share is the bullet time after a clean knockout (1 the rest of the time).
+            float scale = Mathf.Max(1f, userTimeScale) * Fx.ArenaMood.TimeScaleK;
             if (!Mathf.Approximately(Time.timeScale, scale)) Time.timeScale = scale;
             // The step never changes with the speed: a trained policy was taught at one step length and one
             // control rate, and a different step is a different body.

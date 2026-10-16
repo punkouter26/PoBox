@@ -82,7 +82,8 @@ class BoxingEnv:
                  legs_out_s: float = 0.7, block_w: float = 0.0, verbose: bool = False,
                  handover: dict = None, handover_share: float = 0.15,
                  speed_limit: bool = False, fatigue_j: float = 0.0, fatigue_rec_s: float = 20.0, fatigue_weak: float = 0.4,
-                 start_spread: float = 1.0, sep_hi: float = 2.2, rope_w: float = 0.0, cutoff_w: float = 0.0):
+                 start_spread: float = 1.0, sep_hi: float = 2.2, rope_w: float = 0.0, cutoff_w: float = 0.0,
+                 action_rate_w: float = 0.0, obs_delay_max: int = 0, seek_w: float = 0.0, ropes_start: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -126,6 +127,18 @@ class BoxingEnv:
         # Ringcraft, both off unless asked for: a charge for being walked onto the ropes by an opponent that holds
         # the middle of the ring, and a payment for doing that to the opponent (cutting the ring off). See step().
         self.rope_w, self.cutoff_w = rope_w, cutoff_w
+        # Four more, all off unless asked for (2026-10-16, staged). action_rate_w: a charge on the squared change in
+        # action between control steps on top of every stage's own small one, for smoother drives. obs_delay_max: the
+        # observation is 0 to this many control steps late, drawn per fighter per episode (the last action, which
+        # the boxer knows, is never late); the game's numbers are not delayed, so this only makes a brain robust
+        # to lag. seek_w: paid per m/s of closing on the opponent while outside punching range, whatever the boxer's
+        # style (Phase F2: the owner's "seek out the closest opponent and move forward to attack"; in a pair the
+        # nearest on its feet is the one opponent). ropes_start: the share of episodes that begin as the free-for-
+        # all's rounds do, both boxers at the ropes facing the middle (Phase F3).
+        self.action_rate_w, self.obs_delay_max = action_rate_w, int(obs_delay_max)
+        self.seek_w, self.ropes_start = seek_w, ropes_start
+        if seek_w and not self.MODE:          # the bout's step only; footwork and get-up have steps of their own
+            self.TERMS = self.TERMS + ["seek"]
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -352,6 +365,13 @@ class BoxingEnv:
                 z = np.load(path)
                 self.bank[k] = {key: torch.tensor(z[key], device=device, dtype=torch.float32) for key in ("joint", "jvel", "z", "tilt", "lin", "ang")}
         self._init_extra()
+        if self.obs_delay_max > 0:
+            # Every caller of _observe (reset, each stage's step) gets the late observation; a subclass's own
+            # _observe still reaches its base class's through super(), undelayed.
+            self._obs_hist = None
+            self._rows = torch.arange(N * K, device=device)
+            on_time = self._observe
+            self._observe = lambda g: self._delayed(on_time(g))
 
         self._step_graph = None
         self._fwd_graph = None
@@ -416,6 +436,20 @@ class BoxingEnv:
             u = torch.stack([torch.cos(bearing), torch.sin(bearing)], -1)
             spots = [centre - u * sep[:, None] * 0.5, centre + u * sep[:, None] * 0.5]
             facing = [bearing, bearing + math.pi]
+            if self.ropes_start > 0.0:
+                # As the free-for-all's rounds begin (FreeForAll.ToTheRopes): spots round the square of the ropes, half a
+                # metre inside, 16 of them; the other boxer two to eight spots round from this one; both facing the middle.
+                def rope_spot(i):
+                    a = i.float() * (2.0 * math.pi / 16.0)
+                    c, s = torch.cos(a), torch.sin(a)
+                    return torch.stack([c, s], -1) / torch.maximum(c.abs(), s.abs())[:, None] * (self.ring_half - 0.5)
+                i0 = torch.randint(0, 16, (N,), device=self.device, generator=self.rng)
+                i1 = (i0 + torch.randint(2, 9, (N,), device=self.device, generator=self.rng)) % 16
+                use = self._u(N) < self.ropes_start
+                for k, i in enumerate((i0, i1)):
+                    p = rope_spot(i)
+                    spots[k] = torch.where(use[:, None], p, spots[k])
+                    facing[k] = torch.where(use, torch.atan2(-p[:, 1], -p[:, 0]), facing[k])
         else:
             # Somewhere round the bag, within a step or two of punching range, roughly facing it.
             bearing = self._u(N, lo=-math.pi, hi=math.pi)
@@ -572,6 +606,23 @@ class BoxingEnv:
         if self.obs_noise > 0.0:
             obs = obs + torch.randn(obs.shape, generator=self.rng, device=self.device) * (self.noise_scale * self.obs_noise)
         return torch.nan_to_num(obs).clamp(-100.0, 100.0).reshape(N * K, self.obs_dim)
+
+    def _delayed(self, obs: torch.Tensor) -> torch.Tensor:
+        """The observation as it was 0 to obs_delay_max control steps ago, the lag drawn per row when its episode
+        begins (an episode's first steps see its first observation, never the last episode's)."""
+        H = self.obs_delay_max + 1
+        fresh = (self.episode_len == 0.0)[:, None].expand(self.N, self.K).reshape(-1)
+        if self._obs_hist is None:
+            self._obs_hist = obs[None].repeat(H, 1, 1)
+            self._obs_lag = torch.zeros(obs.shape[0], dtype=torch.long, device=self.device)
+        hist = torch.cat([obs[None], self._obs_hist[:-1]], 0)
+        self._obs_hist = torch.where(fresh[None, :, None], obs[None].expand_as(hist), hist)
+        lag = torch.randint(0, H, (obs.shape[0],), generator=self.rng, device=self.device)
+        self._obs_lag = torch.where(fresh, lag, self._obs_lag)
+        out = self._obs_hist[self._obs_lag, self._rows].clone()
+        a0 = 9 + 2 * self.A                                    # the last action: the boxer's own, known at once
+        out[:, a0:a0 + self.A] = obs[:, a0:a0 + self.A]
+        return out
 
     # ---- step ----------------------------------------------------------------------------------
     def _drive(self, action: torch.Tensor) -> None:
@@ -765,6 +816,10 @@ class BoxingEnv:
         toward = (lin_w[..., :2] * to_t[..., :2]).sum(-1) / dist.clamp_min(0.1)
         r["style"] = self.s_press * toward.clamp(-1.0, 1.0) * (dist > self.s_range).float() \
             - self.s_crowd * (self.s_range - 0.12 - dist).clamp_min(0.0)
+        if self.seek_w:
+            # The style's press, for every boxer and at its own weight (Phase F2). ponytail: in a pair the nearest
+            # opponent on its feet is the one opponent; a crowd mode re-picks it every step (tasks.md F1).
+            r["seek"] = self.seek_w * toward.clamp(-1.0, 1.0) * (dist > self.s_range).float()
         # At 0.05 each: about 0.035 a step on a rope, at most about 0.07 and 0.14 in a corner, all under the 0.4 that
         # alive and upright pay, so neither is worth ending an episode for, nor worth more than landing punches.
         none = torch.zeros(N, K, device=self.device)
@@ -773,7 +828,8 @@ class BoxingEnv:
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
-        r["rate"] = -0.01 * self.effort_scale * ((action - self.prev_action) ** 2).sum(-1)
+        jerk = ((action - self.prev_action) ** 2).sum(-1)
+        r["rate"] = -0.01 * self.effort_scale * jerk - self.action_rate_w * jerk
         r["energy"] = -2.5e-4 * self.effort_scale * self.s_energy * (tau * jv).abs().clamp_max(2000.0).sum(-1)
         # House rule: joints move no faster than a person's.
         r["qvel"] = -0.1 * (jv.abs() - self.qvel_limit).clamp(0.0, 10.0).pow(2).sum(-1)

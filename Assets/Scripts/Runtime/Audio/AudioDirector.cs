@@ -21,8 +21,9 @@ namespace PoBox.Audio
     /// level and pitch follow how fast MuJoCo has the planted foot sliding.
     ///
     /// A punch stopped on the gloves is a leather pop at the gloves, with a crack over it that comes up with
-    /// the speed it was coming at. A boxer pressed into the ropes creaks them, louder and higher the harder
-    /// MuJoCo has it against them, and one that arrives on them hard twangs them.
+    /// the speed it was coming at. The ropes creak as they are drawn (<see cref="RopeFlex"/>, which bows them
+    /// from MuJoCo's rope load, every boxer's): louder and higher the further out the most bowed one is, from
+    /// where it is. A boxer that arrives on them hard twangs them.
     ///
     /// The crowd is a looping bed whose level rides the excitement reading, with a swell laid over it on a
     /// big moment and a groan on a knockdown. So that a heavy punch is heard through it, the crowd bus is
@@ -31,7 +32,13 @@ namespace PoBox.Audio
     /// The mix follows the camera: a close shot brings the gloves and the breathing up and the crowd back, a
     /// wide one the reverse, crossfaded over a third of a second after the cut. When the boxer on camera is
     /// rocked the whole mix is muffled and a heartbeat comes in, both draining with the daze. The phone's
-    /// voice (<see cref="SpeechCommentary"/>) ducks the crowd while it talks.
+    /// voice (<see cref="SpeechCommentary"/>) ducks the crowd while it talks, and so does the bell as it rings.
+    ///
+    /// The one-shots are 3D with a linear fall-off from 3 m to 30 m (the camera is never further than that, so
+    /// nothing drops out, and a close shot is louder than a wide one) and no Doppler: a cut would jump the
+    /// pitch. The hall's reverb is an AudioReverbZone over the ring (PoBox/Do All/Graphics), Unity's own;
+    /// Steam Audio and the like are native plugins that each need their Android build checked, for little a
+    /// small ring would gain.
     ///
     /// The buses are groups of an AudioMixer when there is one (Assets/Audio/PoBox.mixer, where their levels
     /// can be set by hand), and otherwise plain gains here. <see cref="AudioMeter"/> on the listener
@@ -78,8 +85,8 @@ namespace PoBox.Audio
         [Range(0f, 1f)] public float crowdLoud = 0.85f;
 
         [Header("Ropes")]
-        [Tooltip("A boxer pressed into the ropes harder than the first, N, creaks them; at the second they are as loud as they get.")]
-        public Vector2 ropeLoad = new Vector2(80f, 900f);
+        [Tooltip("A rope bowed out further than the first, metres (RopeFlex.Strain), creaks; at the second it is as loud as it gets.")]
+        public Vector2 ropeBow = new Vector2(0.015f, 0.1f);
         [Tooltip("Arriving on the ropes harder than this, N, twangs them.")]
         public float ropeTwang = 600f;
         [Range(0f, 1f)] public float ropeVolume = 0.35f;
@@ -97,6 +104,8 @@ namespace PoBox.Audio
         public float closeHitsDb = 3f, closeCrowdDb = 6f;
         [Tooltip("How far the crowd is pulled down under the spoken commentary, dB.")]
         public float speechDuckDb = 6f;
+        [Tooltip("How far the crowd is pulled down while the bell rings, dB.")]
+        public float bellDuckDb = 8f;
 
         /// <summary>One register of the boxers' voices: takes of each sound (made by VoiceWavs, Assets/Audio/Synth/voice_*.wav).</summary>
         [System.Serializable]
@@ -143,8 +152,11 @@ namespace PoBox.Audio
 
         AudioSource[] _pool;
         AudioSource _bed, _crowdSource, _ringSource, _heart, _breath;
-        readonly AudioSource[] _scrape = new AudioSource[2], _creak = new AudioSource[2];
-        readonly float[] _lastRope = new float[2], _lastTwang = { -99f, -99f };
+        readonly AudioSource[] _scrape = new AudioSource[2];
+        AudioSource _creak;
+        float[] _lastRope = new float[0], _lastTwang = new float[0];
+        readonly MjBoxer[] _pair = new MjBoxer[2];
+        RopeFlex _ropes;
         AudioLowPassFilter _lowPass;
         AudioClip _twang;
         Fighter _victim;
@@ -153,7 +165,7 @@ namespace PoBox.Audio
         public float ScrapeNow(int corner) => _scrape[corner] != null ? _scrape[corner].volume : 0f;
         int _next, _lastCount;
         float _lastSwell = -99f, _duck, _gaspAt = -1f, _gaspVolume, _lastStep = -99f, _bedLevel;
-        float _close, _rock, _speech, _hitsK = 1f;
+        float _close, _rock, _speech, _bell, _hitsK = 1f;
         bool _mixed;
         // Every boxer in the ring, and when each is next heard.
         Fighter[] _all = new Fighter[0];
@@ -190,13 +202,9 @@ namespace PoBox.Audio
                 _scrape[i].loop = true;
                 _scrape[i].volume = 0f;
             }
-            AudioClip creak = CreakLoop();
-            for (int i = 0; i < 2; i++)
-            {
-                _creak[i] = Instantiate(_scrape[i], transform);
-                _creak[i].name = "Ropes " + i;
-                _creak[i].clip = creak;
-            }
+            _creak = Instantiate(_scrape[0], transform);
+            _creak.name = "Ropes";
+            _creak.clip = CreakLoop();
             _twang = Twang();
 
             _heart = Source2D(null);
@@ -484,7 +492,8 @@ namespace PoBox.Audio
             _close = Mathf.MoveTowards(_close, Closeness(shot), dt * 3f);
             float side = _close < 0f ? 0.5f : 1f;
             _speech = Mathf.MoveTowards(_speech, Speaking ? 1f : 0f, dt * 4f);
-            float hitsDb = _close * side * closeHitsDb, crowdDb = -_close * side * closeCrowdDb - _speech * speechDuckDb;
+            _bell = Mathf.MoveTowards(_bell, 0f, dt / 1.5f);
+            float hitsDb = _close * side * closeHitsDb, crowdDb = -_close * side * closeCrowdDb - _speech * speechDuckDb - _bell * bellDuckDb;
             float crowdLinear = Mathf.Pow(10f, (crowdDb - DuckNow) / 20f);
             _hitsK = _mixed ? 1f : hitsGain * Mathf.Pow(10f, hitsDb / 20f);
             if (_mixed)
@@ -548,18 +557,27 @@ namespace PoBox.Audio
 
         void Ropes(float dt)
         {
-            for (int i = 0; i < 2; i++)
+            // The creak: the ropes as drawn, from the most bowed one.
+            if (_ropes == null) _ropes = FindAnyObjectByType<RopeFlex>();
+            float k = _ropes != null && Bout.SimRunning ? Mathf.InverseLerp(ropeBow.x, ropeBow.y, _ropes.Strain) : 0f;
+            if (k > 0f) _creak.transform.position = _ropes.StrainAt;
+            _creak.pitch = Mathf.Lerp(0.8f, 1.25f, k);
+            Fade(_creak, k * ropeVolume * _hitsK, dt * 3f * ropeVolume);
+
+            // The twang: any boxer arriving hard, not leaning harder (the load has jumped past it from well under it).
+            if (_ring == null || !_ring.Ready || !Bout.SimRunning) return;
+            MjBoxer[] boxers = _ring.boxers;
+            if (boxers == null || boxers.Length == 0) { _pair[0] = _ring.red; _pair[1] = _ring.blue; boxers = _pair; }
+            if (_lastRope.Length != boxers.Length)
             {
-                MjBoxer b = _ring == null ? null : i == 0 ? _ring.red : _ring.blue;
-                float load = 0f;
-                Vector3 at = default;
-                if (b != null && Bout.SimRunning) load = _ring.RopeLoad(b, out at);
-                AudioSource s = _creak[i];
-                float k = Mathf.InverseLerp(ropeLoad.x, ropeLoad.y, load);
-                if (k > 0f) s.transform.position = at;
-                s.pitch = Mathf.Lerp(0.8f, 1.25f, k);
-                Fade(s, k * ropeVolume * _hitsK, dt * 3f * ropeVolume);
-                // Arriving hard, not leaning harder: the load has jumped past the twang from well under it.
+                _lastRope = new float[boxers.Length];
+                _lastTwang = new float[boxers.Length];
+                for (int i = 0; i < boxers.Length; i++) _lastTwang[i] = -99f;
+            }
+            for (int i = 0; i < boxers.Length; i++)
+            {
+                if (boxers[i] == null) continue;
+                float load = _ring.RopeLoad(boxers[i], out Vector3 at);
                 if (load >= ropeTwang && _lastRope[i] < ropeTwang * 0.5f && Time.unscaledTime - _lastTwang[i] > 0.4f)
                 {
                     _lastTwang[i] = Time.unscaledTime;
@@ -709,6 +727,7 @@ namespace PoBox.Audio
 
         void PlayRing(AudioClip clip, float volume)
         {
+            if (clip == bell && clip != null) _bell = 1f;
             if (clip != null && _ringSource != null) _ringSource.PlayOneShot(clip, volume);
         }
     }

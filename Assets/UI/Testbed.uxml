@@ -30,7 +30,7 @@
                 <ui:Label name="boxer" class="tb-line" text="" picking-mode="Ignore" />
             </ui:VisualElement>
 
-            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+            <ui:VisualElement name="menu-sheet" class="sheet over hidden">
                 <ui:VisualElement class="grid" picking-mode="Ignore">
                     <ui:Button name="behaviour" class="btn btn--primary grid-2" text="STAND" />
                     <ui:Button name="reset" class="btn grid-2" text="RESET" />

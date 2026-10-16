@@ -1,5 +1,11 @@
 # Hand-off, 2 October 2026, 11:35
 
+> **Retired 2026-10-16.** These were the pre-retrofit policies on the old bodies; the game and the trainer now
+> start from the shipped ONNX brains (`tools/onnx_to_pt.py` -> `checkpoints/onnx`). The weights (`*.pt`,
+> `*.onnx`, `*_policy_config.json`, `handover_*.npz`) were taken out of the working tree; the logs, exams and
+> curves stay. To get them back: `git checkout 7fceb21 -- training/handoff`. `restore_handoff.py` is in
+> `tools/archive/`.
+
 Everything was stopped here at the owner's request so the project could move to another computer.
 `training/checkpoints` and `training/logs` are not in git, so the files a new machine needs to carry on
 are copied into this folder.

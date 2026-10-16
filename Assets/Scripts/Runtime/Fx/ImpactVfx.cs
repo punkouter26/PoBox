@@ -26,7 +26,13 @@ namespace PoBox.Fx
     /// on the surface it hit and growing with the impulse. A punch stopped on a guard puffs chalk and a
     /// little sweat off the gloves. And while the boxer on camera is rocked, the picture drains of colour and
     /// closes in at the edges, as much as it is dazed: a second volume of its own (colour and vignette, which
-    /// the house look already pays for), weighted here.
+    /// the house look already pays for), weighted here. It beats: the edges close in on each lub and dub of
+    /// a heart at the sound's rate, quicker the more rocked (the free-for-all has no boxer on camera, so none).
+    ///
+    /// Bullet time: a clean punch that puts a boxer down, half again as hard as these two usually land, slows
+    /// the clock to a quarter for a little over a second of real time and fringes the picture while it does.
+    /// The clock is <see cref="Bout"/>'s: it multiplies its own scale by <see cref="ArenaMood.TimeScaleK"/>,
+    /// set here; with no bout (the free-for-all) the clock is set here, and put back as it was.
     /// </summary>
     public class ImpactVfx : MonoBehaviour
     {
@@ -61,9 +67,16 @@ namespace PoBox.Fx
         [Tooltip("Speed of a stopped punch that gives the biggest puff, m/s.")]
         public float fullBlock = 9f;
 
+        [Header("Bullet time (ArenaMood.BulletTime)")]
+        [Tooltip("A clean knockdown punch this many times what these two usually land, and at least Bullet Floor N s, slows the clock.")]
+        public float bulletOver = 1.5f, bulletFloor = 14f;
+        [Tooltip("The clock at its slowest, and the real seconds the whole thing lasts.")]
+        public float bulletScale = 0.25f, bulletSeconds = 1.2f;
+
         static readonly int ProgressId = Shader.PropertyToID("_Progress");
         static readonly int StrengthId = Shader.PropertyToID("_Strength");
-        Volume _rocked;
+        Volume _rocked, _fringe;
+        float _bulletT = -1f, _baseScale = 1f, _beat;
         float _rockedW, _ringT = 1f, _ringSize, _ringStrength;
         Vector3 _ringAt, _ringNormal;
         Material _ring;
@@ -80,6 +93,13 @@ namespace PoBox.Fx
             Vignette v = _rocked.profile.Add<Vignette>();
             v.intensity.Override(0.55f);
             v.smoothness.Override(0.65f);
+
+            // Bullet time's fringe: chromatic aberration, which the pulse already puts in the same post pass.
+            _fringe = gameObject.AddComponent<Volume>();
+            _fringe.isGlobal = true;
+            _fringe.priority = 13f;
+            _fringe.weight = 0f;
+            _fringe.profile.Add<ChromaticAberration>().intensity.Override(1f);
 
             // The shader sits in a Resources folder, so a build carries it with nothing in the scene pointing at it.
             Shader ring = Shader.Find("PoBox/Shockwave");
@@ -109,6 +129,27 @@ namespace PoBox.Fx
             SimBus.FootStep -= OnFootStep;
             SimBus.Block -= OnBlock;
             if (_rocked != null) _rocked.weight = _rockedW = 0f;
+            EndBulletTime();
+        }
+
+        void EndBulletTime()
+        {
+            if (_bulletT >= 0f && Bout.Instance == null) Time.timeScale = _baseScale;
+            _bulletT = -1f;
+            ArenaMood.TimeScaleK = 1f;
+            if (_fringe != null) _fringe.weight = 0f;
+        }
+
+        void BulletTime(float dt)
+        {
+            if (_bulletT < 0f) return;
+            _bulletT += dt / Mathf.Max(0.1f, bulletSeconds);
+            if (_bulletT >= 1f || !ArenaMood.BulletTime) { EndBulletTime(); return; }
+            // Down in a tenth, held, back over the last two fifths.
+            float s = Mathf.SmoothStep(0f, 1f, Mathf.Min(_bulletT / 0.1f, (1f - _bulletT) / 0.4f));
+            ArenaMood.TimeScaleK = Mathf.Lerp(1f, bulletScale, s);
+            if (Bout.Instance == null) Time.timeScale = _baseScale * ArenaMood.TimeScaleK;
+            _fringe.weight = s;
         }
 
         float _pulse;
@@ -132,7 +173,11 @@ namespace PoBox.Fx
                 if (on != 0 && bout.blue != null && bout.blue.Staggered) dazed = Mathf.Max(dazed, bout.blue.Daze01);
             }
             _rockedW = Mathf.MoveTowards(_rockedW, dazed, Time.unscaledDeltaTime / 0.4f);
-            _rocked.weight = _rockedW;
+            // The heart AudioDirector plays: 75 a minute, lub then dub a third of the way on, quicker when rocked.
+            _beat = (_beat + Time.unscaledDeltaTime * 1.25f * (1f + 0.3f * _rockedW)) % 1f;
+            float pound = Mathf.Exp(-_beat * 9f) + (_beat > 0.35f ? 0.6f * Mathf.Exp(-(_beat - 0.35f) * 9f) : 0f);
+            _rocked.weight = _rockedW * (0.75f + 0.25f * Mathf.Min(1f, pound));
+            BulletTime(Time.unscaledDeltaTime);
 
             if (_ringT < 1f && _ring != null)
             {
@@ -213,6 +258,13 @@ namespace PoBox.Fx
         void OnKnockdown(Fighter f, HitEvent cause)
         {
             _pulse = 1f;
+            Excitement ex = Excitement.Instance;
+            float usual = ex != null ? ex.UsualImpulse : 12f;
+            if (ArenaMood.BulletTime && _bulletT < 0f && cause.clean && cause.impulse >= Mathf.Max(bulletFloor, usual * bulletOver))
+            {
+                _bulletT = 0f;
+                _baseScale = Time.timeScale;
+            }
             if (stars == null || f == null) return;
             stars.transform.position = f.HeadPosition + Vector3.up * 0.25f;
             stars.Emit(14);

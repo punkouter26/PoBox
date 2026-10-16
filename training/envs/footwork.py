@@ -378,7 +378,8 @@ class FootworkEnv(BoxingEnv):
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
-        r["rate"] = -0.01 * self.effort_scale * ((action - self.prev_action) ** 2).sum(-1)
+        jerk = ((action - self.prev_action) ** 2).sum(-1)
+        r["rate"] = -0.01 * self.effort_scale * jerk - self.action_rate_w * jerk
         # A boxer's charges, for standing and for punching. A walker's legs do work every step: charged at full
         # rate it cost more than walking earned, and the first three walking runs learned to stand (2 October).
         easy = 1.0 - 0.7 * moving_now

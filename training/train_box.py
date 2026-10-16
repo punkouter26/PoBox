@@ -134,6 +134,18 @@ def main() -> None:
                     help="no charge for power or for action size and change for this many iterations of the run, then "
                          "brought back over as many again: for a stage in which a skill has first to be found")
     ap.add_argument("--shove-max", type=float, default=30.0, help="footwork: the hardest shove, N s")
+    ap.add_argument("--action-rate-w", type=float, default=0.0,
+                    help="charge per squared change in action between control steps, on top of the stage's own small one; "
+                         "0 = off. For smoother, less buzzy drives. Try 0.01 (doubles the stage's own)")
+    ap.add_argument("--obs-delay-max", type=int, default=0,
+                    help="each episode the observation is 0 to this many control steps (20 ms each) late, drawn per fighter; "
+                         "0 = off. The game's is not late: this only makes a brain robust to lag. Try 2")
+    ap.add_argument("--seek-w", type=float, default=0.0,
+                    help="pay per m/s of closing on the opponent while outside punching range, whatever the style "
+                         "(tasks.md F2); 0 = off. Try 0.3")
+    ap.add_argument("--ropes-start", type=float, default=0.0,
+                    help="share of episodes that begin as a free-for-all round does: both boxers at the ropes, facing the "
+                         "middle (tasks.md F3); 0 = none. Try 0.3")
     ap.add_argument("--more-iters", type=int, default=0,
                     help="stop after this many iterations of this run, wherever the count started. 0 = no such limit")
     ap.add_argument("--freeze", nargs="*", default=[],
@@ -154,14 +166,14 @@ def main() -> None:
         env = GetUpEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                        cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                        slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
-                       speed_limit=args.speed_limit)
+                       speed_limit=args.speed_limit, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max)
     elif args.stage == "footwork":
         env = FootworkEnv(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                           episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
                           fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
                           disturb=args.disturb, randomise=args.randomise, rsi=args.rsi,
                           shove_hi=args.shove_max, start_spread=args.start_spread,
-                          speed_limit=args.speed_limit)
+                          speed_limit=args.speed_limit, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max)
     else:
         env = (MatchEnv if args.stage == "v2" else BoxingEnv)(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
@@ -169,7 +181,9 @@ def main() -> None:
                         fall_penalty=args.fall_penalty, ko_bonus=args.ko_bonus, survivor_bootstrap=args.survivor_bootstrap,
                         daze=args.daze, daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi,
                         daze_weak=args.daze_weak, block_w=args.block_w,
-                        speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, start_spread=args.start_spread)
+                        speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, start_spread=args.start_spread,
+                        action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max, seek_w=args.seek_w,
+                        ropes_start=args.ropes_start)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     # One learner per distinct fighter. Two copies of the same fighter share one, and it learns from both.
     names = env.names if env.hetero else [env.names[0]]

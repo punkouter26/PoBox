@@ -8,6 +8,7 @@
 //   _Bruise        accumulated damage on the whole part, 0..1 (the stand-in, one renderer a link)
 //   _BruiseMarks   up to eight marks where punches landed: xyz in the world, w how bad, 0..1 (trained fighters)
 //   _Sweat         1 - stamina: a tight wet highlight from the key light, and a sheen that grows with it
+//   _Flush         the face going red as health goes: xyz the middle of the head in the world, w how much, 0..1
 //   _RimColor      the corner colour, as a fresnel edge so the two fighters separate from the crowd
 //
 // Blend One OneMinusSrcAlpha: rgb is added light, alpha is how much of the body underneath is taken away,
@@ -59,6 +60,7 @@ Shader "PoBox/FighterOverlay"
             // batcher, and a renderer with a property block is not batched anyway.
             float4 _BruiseMarks[8];
             float _BruiseCount;
+            float4 _Flush;
 
             struct Attributes
             {
@@ -127,8 +129,13 @@ Shader "PoBox/FighterOverlay"
                 }
                 bruise = saturate(bruise * _BruiseGain);
 
-                half3 colour = rim + wet + tint * _BruiseGain;
-                return half4(colour, bruise * 0.55);
+                // The flush: the face and neck reddening, strongest at the cheeks, gone a hand's width below the jaw.
+                half flushed = saturate(1.0 - distance(i.positionWS, _Flush.xyz) / 0.17) * saturate(_Flush.w);
+                flushed *= flushed;
+                half3 blood = half3(0.30, 0.04, 0.03) * flushed;
+
+                half3 colour = rim + wet + tint * _BruiseGain + blood;
+                return half4(colour, max(bruise * 0.55, flushed * 0.22));
             }
             ENDHLSL
         }

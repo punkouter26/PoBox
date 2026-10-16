@@ -10,7 +10,7 @@ namespace PoBox.EditorTools
     /// Builds the ring announcer (the owner's teeth, <see cref="TeethAnnouncer"/>) as a prefab; menu
     /// PoBox/Announcer/Add To Open Scene hangs it over the ring.
     ///
-    /// The model is Assets/Announcer/Teeth.glb, made from the two scans by training/tools/teeth_to_glb.py:
+    /// The model is Assets/Announcer/Teeth.glb, made from the two scans by training/tools/archive/teeth_to_glb.py:
     /// two meshes, TeethUpper and TeethLower, in metres at life size, both with their origin on the jaw's
     /// hinge. The voice is the recordings in Assets/Announcer/Voice, made by Assets/Announcer/make_voice.ps1.
     /// To move or resize it, edit the prefab (or the object in the scene); to pick up a new model or new
@@ -43,7 +43,7 @@ namespace PoBox.EditorTools
             GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
             if (model == null)
             {
-                Debug.LogError($"[PoBox] {ModelPath} is missing or did not import; no announcer. Make it with training/tools/teeth_to_glb.py.");
+                Debug.LogError($"[PoBox] {ModelPath} is missing or did not import; no announcer. Make it with training/tools/archive/teeth_to_glb.py.");
                 return null;
             }
 

@@ -28,12 +28,10 @@ Python is PoDecath's virtual environment, used in place (torch 2.5 + CUDA, mujoc
 
        & $py tools\render_pose.py --xml models\fighter_spar.xml --out logs\pose.png
 
-3. **Train.** One command for the whole night:
-
-       & $py run_night.py --hours 8
-
-   30% of the time on the bag (stand unaided, hold range, hit hard), then sparring against itself from that
-   policy. TensorBoard starts with it: http://localhost:6006. Progress in one line:
+3. **Train.** One stage at a time with `train_box.py --stage {footwork,getup,v2}` (or `train_gauntlet.py` for
+   boxing against frozen opponents), or a night's list of jobs with `tools/queue_runner.py`, which works through
+   `logs/queue.json`. (`run_night.py` and `run_match.py`, the old bag-then-spar pipeline for the v1 bodies, were
+   removed on 2026-10-16.) TensorBoard starts with a run: http://localhost:6006. Progress in one line:
 
        .\tools\status.ps1 bag          .\tools\status.ps1 spar -Terms
 
@@ -41,8 +39,7 @@ Python is PoDecath's virtual environment, used in place (torch 2.5 + CUDA, mujoc
 
        & $py view_box.py --run spar
 
-   A strip of stills instead: `& $py view_box.py --run spar --sheet logs\spar.png`. `run_night.py` writes one
-   every half hour to `logs/sheets/`.
+   A strip of stills instead: `& $py view_box.py --run spar --sheet logs\spar.png`.
 
 Each save leaves `checkpoints/<run>/latest.pt`, `latest.onnx` and `latest_policy_config.json`.
 

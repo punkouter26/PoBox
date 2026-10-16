@@ -97,7 +97,7 @@ namespace PoBox.Broadcast
             float halfV = 0.5f * _cam.fieldOfView * Mathf.Deg2Rad;
             float halfH = Mathf.Atan(Mathf.Tan(halfV) * _cam.aspect);
             float want = Mathf.Max(over ? winnerDistance : minDistance, reach / Mathf.Sin(Mathf.Min(halfV, halfH)));
-            Vector3 focus = new Vector3(centre.x, centre.y - rules.fighters[0].standingPelvisHeight + lookHeight, centre.z);
+            Vector3 focus = new Vector3(centre.x, centre.y - _framed[0].standingPelvisHeight + lookHeight, centre.z);
 
             float s = _placed ? 1f - Mathf.Exp(-Time.unscaledDeltaTime / Mathf.Max(0.05f, settle)) : 1f;
             _focus = Vector3.Lerp(_focus, focus, s);

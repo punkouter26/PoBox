@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using PoBox.Audio;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -97,43 +96,38 @@ namespace PoBox.EditorTools
             return data;
         }
 
-        /// <summary>16-bit mono PCM.</summary>
-        static void WriteWav(string path, float[] data)
-        {
-            using var w = new BinaryWriter(File.Create(path));
-            w.Write("RIFF".ToCharArray()); w.Write(36 + data.Length * 2); w.Write("WAVE".ToCharArray());
-            w.Write("fmt ".ToCharArray()); w.Write(16); w.Write((short)1); w.Write((short)1); w.Write(Rate); w.Write(Rate * 2); w.Write((short)2); w.Write((short)16);
-            w.Write("data".ToCharArray()); w.Write(data.Length * 2);
-            foreach (float x in data) w.Write((short)Mathf.RoundToInt(Mathf.Clamp(x, -1f, 1f) * 32767f));
-        }
-
         [MenuItem("PoBox/Audio/Write Voice WAVs")]
         static void Menu() => Debug.Log("[VoiceWavs] " + Write());
 
         public static string Write()
         {
+            // It opens the arena and the free-for-all to hand the voices over: never over unsaved work.
+            if (!FreeForAllAuthoring.Leave()) return "the open scene has unsaved changes: save or discard them first";
             Directory.CreateDirectory(Dir);
             var sets = new AudioDirector.VoiceSet[2];
             for (int reg = 0; reg < 2; reg++)
             {
                 var set = new AudioDirector.VoiceSet();
-                for (int k = 0; k < 5; k++)
+                foreach (Kind kind in System.Enum.GetValues(typeof(Kind)))
                 {
-                    var kind = (Kind)k;
+                    int k = (int)kind;
                     var rng = new System.Random(11 + k + 20 * reg);
                     var clips = new AudioClip[Takes];
                     for (int i = 0; i < Takes; i++)
                     {
                         string path = $"{Dir}/voice_{kind.ToString().ToLowerInvariant()}_{(reg == 0 ? "low" : "high")}_{i + 1}.wav";
-                        WriteWav(path, Samples(kind, reg == 1, rng));
+                        AssetBakery.WriteWav(Path.GetFullPath(path), Samples(kind, reg == 1, rng), Rate);
                         AudioDatabase(path);
                         clips[i] = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
                     }
-                    if (kind == Kind.Effort) set.effort = clips;
-                    else if (kind == Kind.Pain) set.pain = clips;
-                    else if (kind == Kind.Groan) set.groan = clips;
-                    else if (kind == Kind.Pant) set.pant = clips;
-                    else set.exhale = clips;
+                    switch (kind)
+                    {
+                        case Kind.Effort: set.effort = clips; break;
+                        case Kind.Pain: set.pain = clips; break;
+                        case Kind.Groan: set.groan = clips; break;
+                        case Kind.Pant: set.pant = clips; break;
+                        default: set.exhale = clips; break;
+                    }
                 }
                 sets[reg] = set;
             }
@@ -153,7 +147,7 @@ namespace PoBox.EditorTools
                 EditorSceneManager.SaveScene(s);
             }
             if (!string.IsNullOrEmpty(open)) EditorSceneManager.OpenScene(open);
-            return $"{2 * 5 * Takes} voice WAVs in {Dir}; given to the AudioDirector in{done}";
+            return $"{2 * System.Enum.GetValues(typeof(Kind)).Length * Takes} voice WAVs in {Dir}; given to the AudioDirector in{done}";
         }
 
         static void AudioDatabase(string path)

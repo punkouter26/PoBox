@@ -26,6 +26,7 @@ namespace PoBox.EditorTools
     ///     play | stop                 enter or leave play mode on the Arena scene
     ///     play-menu                   enter play mode on the Menu scene, where the app starts
     ///     play-testbed                enter play mode on the Testbed scene
+    ///     play-melee                  enter play mode on the Melee scene (the free-for-all)
     ///     portraits                   in play on the arena: writes Assets/UI/Portraits/NAME.png for the two boxers in the ring
     ///     step N                      advance a paused play mode N frames
     ///     timescale X                 game speed, for getting to the end of a bout quickly
@@ -84,6 +85,7 @@ namespace PoBox.EditorTools
                 case "play": return Play(PoBoxBuilder.ScenePath);
                 case "play-menu": return Play(PoBoxBuilder.MenuScenePath);
                 case "play-testbed": return Play("Assets/Scenes/Testbed.unity");
+                case "play-melee": return Play("Assets/Scenes/Melee.unity");
                 case "portraits": return Portraits();
                 case "stop": EditorApplication.isPlaying = false; return "stopping";
                 case "step": return "frame " + Step(int.Parse(a[1]));
@@ -384,9 +386,11 @@ namespace PoBox.EditorTools
             HudView hud = UnityEngine.Object.FindAnyObjectByType<HudView>();
             if (hud != null && hud.Root != null) return LayoutAudit.Check(hud.Root).Summary();
             MenuView menu = UnityEngine.Object.FindAnyObjectByType<MenuView>();
-            if (menu != null && menu.Root != null) return LayoutAudit.Check(menu.Root, LayoutAudit.MenuAnchors).Summary();
+            if (menu != null && menu.Root != null) return LayoutAudit.Check(menu.Root).Summary();
             MeleeHud melee = UnityEngine.Object.FindAnyObjectByType<MeleeHud>();
-            if (melee != null && melee.Root != null) return LayoutAudit.Check(melee.Root, LayoutAudit.MeleeAnchors).Summary();
+            if (melee != null && melee.Root != null) return LayoutAudit.Check(melee.Root).Summary();
+            PoBox.Mj.TestbedHud testbed = UnityEngine.Object.FindAnyObjectByType<PoBox.Mj.TestbedHud>();
+            if (testbed != null && testbed.Root != null) return LayoutAudit.Check(testbed.Root).Summary();
             return "no HUD";
         }
 

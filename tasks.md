@@ -186,14 +186,30 @@ closest opponent is and move forward to attack.**
       bodies solid, in the 6.1 m ring. The learner observes its nearest opponent on its feet (the game's rule, same
       103 numbers, so the network and the game do not change); the target is re-picked every control step with the
       game's switch margin (0.4 m).
-- [ ] F2 Reward, the owner's motivation: `--seek-w` paid for closing on the nearest opponent on its feet when it is
+- [ ] F2 *(flag in, 2026-10-16: `--seek-w`, measured against the one opponent; first run `sf1_zombie` overnight)* Reward, the owner's motivation: `--seek-w` paid for closing on the nearest opponent on its feet when it is
       outside punching range (the existing `press` term, measured against the nearest rather than the one opponent),
       plus the usual hit, guard and fall terms. Charge contact with a third body only through the falls it causes.
-- [ ] F3 Episodes start as the game's rounds do: every boxer at the ropes facing in, released at the bell; and
+- [ ] F3 *(first half in, 2026-10-16: `--ropes-start`)* Episodes start as the game's rounds do: every boxer at the ropes facing in, released at the bell; and
       a share from mid-melee states (a bank like the handover bank, from game runs).
 - [ ] F4 Get-up in a crowd: `envs/getup.py` with bodies lying beside and over the learner (dropped ragdolls of the
       other boxers), so a get-up policy learns to climb out of a pile.
 - [ ] F5 Exam: the game's free-for-all in C MuJoCo, 20 bouts of 3 rounds: slips per boxer per minute, get-ups beaten
       the count, punches landed per minute; pass marks to be set from the first run.
-- [ ] F6 Sokol: `u1_sokol_matt`, the handover bank, `m1_sokol` (queued in `logs/queue.json`, the queue stopped) before
+- [ ] F6 *(running overnight 2026-10-16)* Sokol: `u1_sokol_matt`, the handover bank, `m1_sokol` (queued in `logs/queue.json`, the queue stopped) before
       any crowd training: he boxes on his footwork policy and gets up on Matt's (87% in C MuJoCo) until then.
+
+## Phase G: the do-all pass (owner, 2026-10-16)
+
+Done and tested the same night; details in `DOCS/README.md` (2026-10-16) and `SCREENSHOTS/2026-10-16-do-all/ui.html`.
+
+- [x] G1 Review fixes (11), free-for-all brains staggered, opportunist targeting.
+- [x] G2 Features: replay, punch stats, brain cam, Twitch votes, cup, corner man, pick-the-winner, share.
+- [x] G3 Graphics and sound items, bullet time, Melee camera jolt, telemetry ms.
+- [x] G4 UI: anchors, one results card, tabbed settings, icon switches, 2x4 menu, gestures, phone shapes, state-flow test.
+- [x] G5 Cleanup into `../PoBox_quarantine_2026-10-16/` (owner empties it after a look).
+- [x] G6 Training flags and tools staged, off by default.
+- [ ] G7 Blender arena props (Blender was not running).
+- [ ] G8 Read the overnight exams; promote what passes (`MjRetrofit.Promote`), with the editor open; then the gate tests.
+- [ ] G9 Point `envs/cgetup.boxer_names()` at `models/v2`, then `git rm` the v1 models and rigs.
+- [ ] G10 A device run of SHARE and Twitch chat (the Android paths are not compiled in the editor).
+- [ ] G11 Free-for-all slips in the first 20 s: Phase F crowd training.

@@ -606,8 +606,11 @@ namespace PoBox.Sim
         public void Eliminate()
         {
             if (!IsDown) GoDown();
+            bool wasRising = IsRising;
             IsRising = false;
             _downTimer = float.PositiveInfinity;
+            // Ruled out half way up: the brain lets go of the get-up as well.
+            if (wasRising) SendMessage("EndGetUp", SendMessageOptions.DontRequireReceiver);
         }
 
         /// <summary>The brain's answer to BeginGetUp: it has a policy for this.</summary>

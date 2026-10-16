@@ -8,8 +8,10 @@ namespace PoBox.UI
     /// <summary>
     /// The one-screen rule, as something that can fail. Walks a live panel and reports anything that breaks
     /// it: an element drawn outside the screen, a scroll view of any kind, text under the legibility floor,
-    /// a label whose words do not fit its box, a button smaller than a thumb, two absolutely positioned
-    /// neighbours drawn over each other, and each of the five frame anchors not being in its corner.
+    /// a label whose words do not fit its box (one cut short with an ellipsis fits by design), a button smaller
+    /// than a thumb, two absolutely positioned neighbours drawn over each other, and any of the five frame
+    /// anchors every screen has (title, fps, menu, debug, version) missing or not in its corner, or the version
+    /// not saying which build this is.
     ///
     /// Overlap is judged between the screen's layers: the visible, absolutely positioned children of the safe
     /// area (inside a widget, a bar's fill lying over its track is the point of it). A layer that covers its
@@ -55,13 +57,7 @@ namespace PoBox.UI
             }
         }
 
-        /// <summary>The anchors the first screen has: all five, as the HUD and the testbed do.</summary>
-        public static readonly string[] MenuAnchors = { "title", "fps", "menu", "debug", "version" };
-        /// <summary>The free-for-all's: the frame rate and the settings (its round chip sits where the title does, and it has no debug or version).</summary>
-        public static readonly string[] MeleeAnchors = { "fps", "menu" };
-
-        /// <param name="anchors">Which of the five frame anchors this screen is expected to have. Null is all of them.</param>
-        public static Report Check(VisualElement root, string[] anchors = null)
+        public static Report Check(VisualElement root)
         {
             var report = new Report();
             if (root == null || root.panel == null) { report.anchors.Add("no panel"); return report; }
@@ -75,12 +71,13 @@ namespace PoBox.UI
             VisualElement safe = root.Q<VisualElement>("safe");
             Rect frame = safe != null && safe.worldBound.width > 1f ? safe.worldBound : screen;
             Overlaps(safe ?? root, report);
-            bool Has(string name) => anchors == null || System.Array.IndexOf(anchors, name) >= 0;
-            if (Has("title")) Anchor(root, "title", frame, report, left: true, top: true);
-            if (Has("fps")) Anchor(root, "fps", frame, report, centre: true, top: true);
-            if (Has("menu")) Anchor(root, "menu", frame, report, right: true, top: true);
-            if (Has("debug")) Anchor(root, "debug", frame, report, left: true, bottom: true);
-            if (Has("version")) Anchor(root, "version", frame, report, right: true, bottom: true);
+            Anchor(root, "title", frame, report, left: true, top: true);
+            Anchor(root, "fps", frame, report, centre: true, top: true);
+            Anchor(root, "menu", frame, report, right: true, top: true);
+            Anchor(root, "debug", frame, report, left: true, bottom: true);
+            Anchor(root, "version", frame, report, right: true, bottom: true);
+            if (root.Q<VisualElement>("version") is TextElement version && !version.text.Contains(Application.version))
+                report.anchors.Add($"version: says '{version.text}', not {Application.version}");
             return report;
         }
 
@@ -104,12 +101,14 @@ namespace PoBox.UI
                     float size = t.resolvedStyle.fontSize;
                     if (size < MinFontSize - 0.01f) report.smallText.Add($"{Path(e)} {size:0.#}px '{t.text}'");
 
-                    // A single-line label wider than its box is cut off; a wrapping one is judged on height.
+                    // A single-line label wider than its box is cut off; a wrapping one is judged on height. One that
+                    // ends in an ellipsis when it is too long (a name) is cut short on purpose and only its height counts.
                     Rect content = t.contentRect;
                     bool wraps = t.resolvedStyle.whiteSpace == WhiteSpace.Normal;
+                    bool clamped = !wraps && t.resolvedStyle.textOverflow == TextOverflow.Ellipsis;
                     Vector2 need = t.MeasureTextSize(t.text, wraps ? content.width : 0f, wraps ? VisualElement.MeasureMode.Exactly : VisualElement.MeasureMode.Undefined,
                                                      0f, VisualElement.MeasureMode.Undefined);
-                    if (need.x > content.width + 1.5f || need.y > content.height + 1.5f)
+                    if ((need.x > content.width + 1.5f && !clamped) || need.y > content.height + 1.5f)
                         report.clipped.Add($"{Path(e)} needs {need.x:0}x{need.y:0} has {content.width:0}x{content.height:0} '{t.text}'");
                 }
 

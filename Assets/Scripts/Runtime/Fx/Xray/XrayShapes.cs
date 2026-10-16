@@ -15,6 +15,10 @@ namespace PoBox.Fx
     /// over force_limit and speed over velocity_limit. Red-white: the force of whatever it is touching
     /// (mj_contactForce on mjData.contact, as MjRing reads the canvas), cooling over a quarter of a second.
     ///
+    /// Every contact a boxer is in is also an arrow along the contact normal, as long as its force (a planted
+    /// foot's a hand long), going from white to hot with it; a contact sunk deeper than
+    /// <see cref="penetrationWarn"/> is drawn magenta instead, the solver letting a body into another.
+    ///
     /// Three instanced draws (spheres and capsule ends, capsule and cylinder bodies, boxes), one material.
     /// It makes itself on the first load and sits idle with the X-ray off. In its own assembly because the
     /// game's is not allowed pointers.
@@ -29,6 +33,13 @@ namespace PoBox.Fx
         public Color tired = new Color(0.6f, 0.3f, 1f, 0.55f);
         public Color strain = new Color(1f, 0.7f, 0.15f, 0.8f);
         public Color hot = new Color(2.5f, 0.6f, 0.3f, 1f);
+        [Tooltip("Contact force whose arrow is a metre long, N.")]
+        public float arrowForce = 4000f;
+        [Tooltip("A contact sunk deeper than this, metres, is drawn as a warning.")]
+        public float penetrationWarn = 0.01f;
+        public Color arrow = new Color(1f, 1f, 1f, 0.7f);
+        public Color warn = new Color(2f, 0.2f, 1.6f, 1f);
+        const int MaxArrows = 96;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Boot()
@@ -54,6 +65,7 @@ namespace PoBox.Fx
         int[][] _geoms;
         int[][] _jointBody;
         float[] _heat = new float[0];
+        bool[] _mine = new bool[0];
 
         void Awake()
         {
@@ -95,6 +107,24 @@ namespace PoBox.Fx
             }
 
             _count[0] = _count[1] = _count[2] = 0;
+            // The arrows, before the shapes, so a full list drops shapes' ends and not the arrows.
+            for (int i = 0, arrows = 0; i < d->ncon && arrows < MaxArrows; i++)
+            {
+                MujocoLib.mjContact_* c = d->contact + i;
+                if (c->efc_address < 0 || !(_mine[c->geom1] || _mine[c->geom2])) continue;
+                MujocoLib.mj_contactForce(m, d, i, force);
+                float f = (float)Math.Abs(force[0]);
+                bool sunk = c->dist < -penetrationWarn;
+                if (f < 20f && !sunk) continue;
+                arrows++;
+                // The normal is the frame's first row, from geom1 to geom2; MuJoCo's z up is Unity's y.
+                var n = new Vector3((float)c->frame[0], (float)c->frame[2], (float)c->frame[1]);
+                var at = new Vector3((float)c->pos[0], (float)c->pos[2], (float)c->pos[1]);
+                float len = Mathf.Clamp(f / arrowForce, 0.04f, 1f);
+                Color col = sunk ? warn : Color.Lerp(arrow, hot, Mathf.Clamp01(f / fullForce));
+                // The built-in cylinder is 2 long and 1 across: half the length, centred half way along.
+                Add(1, Matrix4x4.TRS(at + n * (len * 0.5f), Quaternion.FromToRotation(Vector3.up, n), new Vector3(0.012f, len * 0.5f, 0.012f)), col);
+            }
             for (int k = 0; k < 2; k++)
             {
                 MjBoxer b = k == 0 ? _ring.red : _ring.blue;
@@ -134,13 +164,14 @@ namespace PoBox.Fx
         void Bind(MujocoLib.mjModel_* m)
         {
             _heat = new float[m->ngeom];
-            int capacity = 0;
+            _mine = new bool[m->ngeom];
+            int capacity = MaxArrows;
             for (int k = 0; k < 2; k++)
             {
                 MjBoxer b = k == 0 ? _ring.red : _ring.blue;
                 MjGeom[] shapes = b.GetComponentsInChildren<MjGeom>();
                 _geoms[k] = new int[shapes.Length];
-                for (int i = 0; i < shapes.Length; i++) _geoms[k][i] = shapes[i].MujocoId;
+                for (int i = 0; i < shapes.Length; i++) { _geoms[k][i] = shapes[i].MujocoId; _mine[shapes[i].MujocoId] = true; }
                 capacity += 2 * shapes.Length;
                 _jointBody[k] = new int[b.Joints];
                 for (int i = 0; i < b.Joints; i++)

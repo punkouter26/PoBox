@@ -33,7 +33,9 @@ No ML-Agents.
   `PoBox/Mj/Check Every Boxer Against Training` and the play-mode tests `MjParityTests` / `MjGateTests`.
 - **Scenes are authored from prefabs**, not generated at runtime: `Assets/Scenes/Menu.unity` (pick boxers),
   `Arena.unity` (every boxer as switched-off `NAME Red`/`NAME Blue` prefabs; `MatchSetup` enables the picked pair
-  before MuJoCo compiles), `Testbed.unity` (one boxer, shoves, a pool of 8 cubes).
+  before MuJoCo compiles), `Melee.unity` (free-for-all, menu ALL: `FreeForAll` replaces `Bout` + `MatchSetup`,
+  gives the eight boxers prefixes `a_`..`h_` before compile; `MjRing` handles more than two), `Testbed.unity`
+  (one boxer, shoves, a pool of 8 cubes). Eight boxers: Matt, Zombie, Nick, Trump, Grandma, Grandpa, Kim, Sokol.
 - **Plugin quirks**: `Packages/org.mujoco` and `Packages/bin.mujoco` are embedded with local changes marked
   `PoBox:`. The plugin copies each `MjActuator.Control` over `mjData.ctrl` after every step, so targets are
   rewritten before each step; `mj_step` leaves body positions one step behind `qpos`, so `mj_kinematics` runs
@@ -52,10 +54,13 @@ Unity editor (open) via the Unity CLI, from the repo root:
 ```
 unity command recompile                 then poll  unity command recompile_status
 unity command run_tests --mode PlayMode --async_tests true    then  unity command test_status
+unity command run_tests --mode PlayMode --filter PoBox.Tests.MjGateTests --async_tests true   # one fixture
 unity command menu --path "PoBox/Dev/Run Script"   # runs Temp/pobox-dev.txt, output in Temp/pobox-dev-out.txt
 ```
 
-- Run only this project's tests with the assembly filter `PoBox.Tests`; the plugin's own tests fail when run
+- Run only this project's tests with the filter `PoBox.Tests` (fixtures `MjParityTests`, `MjGateTests`,
+  `OneScreenTests` incl. the layout audit, `FreeForAllTests`, `StateFlowTests`). One fixture per `--filter`: a
+  semicolon list matches nothing; the plugin's own tests fail when run
   after ours (a leftover scene).
 - `unity command eval` has a 5 s main-thread limit; split long editor work. A test run can leave the editor in
   play mode, which silently blocks compiles: check `EditorApplication.isPlaying` and stop play first.
@@ -64,21 +69,28 @@ unity command menu --path "PoBox/Dev/Run Script"   # runs Temp/pobox-dev.txt, ou
 - Dev script commands (`play`, `stop`, `shot-begin 1080 1920` / `shot-end name`, `call MenuView Fight`, ...) are
   listed at the top of `Assets/Scripts/Editor/DevTools.cs`.
 - Android: menu `PoBox/Android/Prepare`, then `PoBox/Android/Build APK` (arm64).
+- Unity 6.6 writes two-line `.cs.meta` files (fileFormatVersion + guid); that is normal. A new script the compiler
+  silently leaves out of its assembly (missing from `Library/Bee/artifacts/*/PoBox.Runtime.rsp`) was fixed once
+  only by renaming the file.
+- An unfocused editor runs a few frames a second: `delayCall` may never fire, and play-mode intros take longer.
 
-Training (Python 3.11 venv borrowed from a sibling project, no pip). **As of 2026-10-14 the documented venv
-(`../PoDecath/training/.venv`, MuJoCo 3.14 + Warp), `training/.mj350` and `training/logs/` are not on disk**; the
-nearest venv is `../PoOlympic/training/.venv` (MuJoCo 3.11, torch 2.14). Restore the trainer environment before
-any training or exam. Commands as they were run:
+Training (Python 3.11 venv borrowed from a sibling project, no pip). `../PoDecath` is gone; since 2026-10-14
+runs use `../PoOlympic/training/.venv` (MuJoCo + Warp 3.11, torch 2.14). Retrofit-era checkpoints are not on
+disk: warm starts are rebuilt from shipped ONNX brains with `tools/onnx_to_pt.py` (into `checkpoints/onnx/`).
 
 ```
-$py = "..\..\PoDecath\training\.venv\Scripts\python.exe"     # from training/ (missing, see above)
+$py = "..\..\PoOlympic	raining\.venv\Scripts\python.exe"     # from training/
 & $py train_box.py --stage footwork --xml models/v2/matt_solo.xml --resume checkpoints/<run>/latest_matt.pt
 $env:PYTHONPATH=".mj350"; & $py tools/footwork_c.py --exam     # ladder exam R0-R2 in C MuJoCo 3.5.0
 $env:PYTHONPATH=".mj350"; & $py tools/exam_v2.py --only matt   # boxing exam R3-R7
 & $py tools/queue_runner.py                                     # works through logs/queue.json
 ```
 
-`PYTHONPATH=training/.mj350` selects MuJoCo 3.5.0 (the version Unity runs); without it the trainer's 3.14 is
+Moved-not-deleted files from cleanups live in `../PoBox_quarantine_<date>/` (MANIFEST.md inside). Staged, not-yet-run
+jobs are `training/queue_*_staged.json`; copy entries into `logs/queue.json` to run them. `logs/queue.hold` pauses the
+runner; it also waits while the GPU is over 25% busy (Unity in play mode).
+
+`PYTHONPATH=training/.mj350` selects MuJoCo 3.5.0 (the version Unity runs); without it the venv's 3.11 is
 used. Exams and references must use 3.5.0. One GPU job at a time: before training, check `nvidia-smi`, running
 `train_*.py` processes and `training/logs/queue.log`. Unity in play mode on the same GPU cuts Warp from ~60k to
 ~12k samples a second.

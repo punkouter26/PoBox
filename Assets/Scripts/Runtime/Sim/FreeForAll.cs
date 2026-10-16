@@ -54,8 +54,10 @@ namespace PoBox.Sim
         public float switchMargin = 0.4f;
         [Tooltip("Metres an opponent counts as nearer for having just hit this boxer.")]
         public float grudge = 1.0f;
-        [Tooltip("Metres an opponent counts as further for every other boxer already on it.")]
+        [Tooltip("Metres an opponent counts as further for every boxer on it beyond the first: one other is fair, two is a pile-on.")]
         public float crowding = 1.0f;
+        [Tooltip("Metres an opponent counts as nearer when it is dazed (scaled by how dazed): the opportunist's pick.")]
+        public float opportunism = 0.5f;
         [Tooltip("Walking out at the bell, m/s, on the footwork policy (taught 0.3 to 1.0).")]
         public float walkOutSpeed = 0.6f;
         [Tooltip("The walk ends and the boxing starts this near another boxer on its feet, metres (a step and a half: how a training episode starts), or this near the middle.")]
@@ -73,16 +75,14 @@ namespace PoBox.Sim
         public int Round { get; private set; } = 1;
         public float RoundTimeLeft { get; private set; }
         public Fighter Winner { get; private set; }
-        /// <summary>Seconds of fighting in the bout so far.</summary>
-        public float Clock { get; private set; }
         public string Method { get; private set; } = "";
         public float PhaseAge { get; private set; }
 
         readonly Dictionary<Fighter, float> _downFor = new Dictionary<Fighter, float>();
         readonly HashSet<Fighter> _out = new HashSet<Fighter>(), _counted = new HashSet<Fighter>();
         readonly Dictionary<Fighter, MjBrain> _brain = new Dictionary<Fighter, MjBrain>();
+        readonly Dictionary<Fighter, int> _on = new Dictionary<Fighter, int>();
         float _roundAge;
-        bool _settled;
 
         public bool IsOut(Fighter f) => _out.Contains(f);
         /// <summary>The count over a boxer knocked down (0 to 10); -1 when it is standing, slipped, or already out.</summary>
@@ -122,9 +122,9 @@ namespace PoBox.Sim
             ring.red = boxers[0];
             ring.blue = boxers[1];
             ring.solidBodies = true;
+            // Nothing steps until the bell's first phase: the corner prefabs are authored on top of one another.
+            ring.running = false;
             Bout.SimRunning = false;
-            Bout.FightingWithoutBout = false;
-            Bout.Clock = 0f;
         }
 
         void OnEnable() => SimBus.Knockdown += OnKnockdown;
@@ -135,7 +135,6 @@ namespace PoBox.Sim
             if (Instance != this) return;
             Instance = null;
             Bout.SimRunning = false;
-            Bout.FightingWithoutBout = false;
         }
 
         static void Paint(Fighter f, Color c)
@@ -162,16 +161,13 @@ namespace PoBox.Sim
         {
             if (!ring.Ready) return;
             _out.Clear();
-            _counted.Clear();
-            _downFor.Clear();
             Winner = null;
             Method = "";
-            Clock = 0f;
             Bout.Clock = 0f;
             Round = 1;
             SetPhase(Stage.Intro, BoutPhase.WalkOn);       // the walk-on's sting, and the canvas wiped
             ToTheRopes(true);
-            SimBus.Say($"{fighters.Length} in the ring. Last one standing.", 2);
+            SimBus.Say($"{ring.boxers.Length} in the ring. Last one standing.", 2);
         }
 
         /// <summary>
@@ -190,7 +186,6 @@ namespace PoBox.Sim
                 float a = Mathf.PI * 2f * i / 16f, c = Mathf.Cos(a), s = Mathf.Sin(a), m = Mathf.Max(Mathf.Abs(c), Mathf.Abs(s));
                 spots.Add(centre + new Vector3(c / m, 0f, s / m) * half);
             }
-            var placed = new List<(Fighter f, int spot)>();
             var used = new bool[spots.Count];
             var inRing = new List<Fighter>();
             foreach (Fighter f in fighters) if (f != null && !_out.Contains(f)) inRing.Add(f);
@@ -202,17 +197,15 @@ namespace PoBox.Sim
                     int s = (want + tries) % spots.Count;
                     if (used[s] || Blocked(spots[s])) continue;
                     used[s] = true;
-                    placed.Add((inRing[n], s));
+                    // Blocked only looks at boxers already out, so placing as we go changes nothing.
+                    Fighter f = inRing[n];
+                    Vector3 at = spots[s];
+                    f.Respawn(at, Quaternion.LookRotation(centre - at), newBout);
+                    if (_brain.TryGetValue(f, out MjBrain brain) && brain != null) brain.ResetBrain();
+                    // In its guard at the ropes until the bell.
+                    ring.Hold(f.boxer, centre - at);
                     break;
                 }
-            }
-            foreach (var (f, s) in placed)
-            {
-                Vector3 at = spots[s];
-                f.Respawn(at, Quaternion.LookRotation(centre - at), newBout);
-                f.SendMessage("ResetBrain", SendMessageOptions.DontRequireReceiver);
-                // In its guard at the ropes until the bell.
-                ring.Hold(f.boxer, centre - at);
             }
             _roundAge = 0f;
             _downFor.Clear();
@@ -240,10 +233,8 @@ namespace PoBox.Sim
             PhaseAge = 0f;
             bool run = next == Stage.Intro || next == Stage.Fight || next == Stage.Over;
             Bout.SimRunning = run;
-            Bout.FightingWithoutBout = next == Stage.Fight;
             ring.running = run;
             if (next == Stage.Intro) RoundTimeLeft = roundSeconds;
-            _settled = false;
             // The bell, the sting and the applause are the arena's sound's, which listens for a bout's phases.
             SimBus.RaisePhase(from, said);
             if (said == BoutPhase.WalkOn) SimBus.RaisePhase(BoutPhase.WalkOn, BoutPhase.Intro);
@@ -297,8 +288,7 @@ namespace PoBox.Sim
                     break;
 
                 case Stage.Fight:
-                    Clock += dt;
-                    Bout.Clock = Clock;
+                    Bout.Clock += dt;
                     _roundAge += dt;
                     RoundTimeLeft = Mathf.Max(0f, RoundTimeLeft - dt);
                     Count(dt);
@@ -318,9 +308,8 @@ namespace PoBox.Sim
 
                 case Stage.Over:
                     // The final bell: the last punch and the last fall finish, then everything stops, as in a bout.
-                    if (!_settled && PhaseAge >= settleSeconds)
+                    if (PhaseAge >= settleSeconds)
                     {
-                        _settled = true;
                         Bout.SimRunning = false;
                         ring.running = false;
                     }
@@ -401,18 +390,23 @@ namespace PoBox.Sim
         /// </summary>
         void Retarget(bool fresh)
         {
-            var on = new Dictionary<Fighter, int>();
+            // Runs every physics step (200 Hz): one reused dictionary, and the standing count taken once.
+            var on = _on;
+            on.Clear();
+            int standing = 0;
             foreach (Fighter f in fighters)
-                if (f != null && f.opponent != null && !_out.Contains(f)) { on.TryGetValue(f.opponent, out int n); on[f.opponent] = n + 1; }
+            {
+                if (f == null || _out.Contains(f)) continue;
+                if (!f.IsDown) standing++;
+                if (f.opponent != null) { on.TryGetValue(f.opponent, out int n); on[f.opponent] = n + 1; }
+            }
 
             foreach (Fighter f in fighters)
             {
                 if (f == null || f.pelvis == null || _out.Contains(f)) continue;
                 Vector3 me = f.pelvis.transform.position;
 
-                bool anyStanding = false;
-                foreach (Fighter g in fighters)
-                    if (g != null && g != f && !_out.Contains(g) && !g.IsDown) { anyStanding = true; break; }
+                bool anyStanding = standing - (f.IsDown ? 0 : 1) > 0;
                 Fighter best = null;
                 float bestCost = float.MaxValue, nowCost = float.MaxValue;
                 foreach (Fighter g in fighters)
@@ -422,6 +416,7 @@ namespace PoBox.Sim
                     if (f.opponent == g) already--;
                     float cost = Flat(g.pelvis.transform.position - me) + crowding * Mathf.Max(0, already - 1);
                     if (f.LastHitTaken.attacker == g && f.TimeSinceHit < 1.5f) cost -= grudge;
+                    cost -= opportunism * g.Daze01;
                     if (g == f.opponent) nowCost = cost;
                     if (cost < bestCost) { bestCost = cost; best = g; }
                 }

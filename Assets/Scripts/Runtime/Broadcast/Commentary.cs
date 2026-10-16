@@ -10,6 +10,10 @@ namespace PoBox.Broadcast
     /// line as its muscles' reserve (MjBoxer.Reserve) falls through half, where its drives start to weaken,
     /// and another through a fifth: once each time it goes down through one, not again until it has rested
     /// back above it. Every figure it quotes is one the telemetry holds; it makes nothing up.
+    ///
+    /// Between rounds, a moment after the bell, the corner of whoever had the worse of the round says one thing to
+    /// its boxer, chosen by rules from that round's numbers (<see cref="CornerTip"/>). Rules and not a language
+    /// model: a model behind an API needs a key, and a key shipped inside a phone's app is anyone's key.
     /// </summary>
     public class Commentary : MonoBehaviour
     {
@@ -25,6 +29,13 @@ namespace PoBox.Broadcast
         static readonly double[] TiredAt = { 0.5, 0.2 };
         const double Rested = 0.1;
         readonly bool[,] _tiredSaid = new bool[2, 2];
+        [Tooltip("Seconds into the break before the corner speaks (the bell's line first).")]
+        public float cornerAfter = 1.2f;
+        // What each had done when the round began, and the impulse taken on the head by then.
+        readonly FighterStats[] _roundStart = new FighterStats[2];
+        readonly float[] _headStart = new float[2];
+        bool _cornerSaid;
+        BoutPhase _phase = (BoutPhase)(-1);
 
         void OnEnable()
         {
@@ -85,7 +96,9 @@ namespace PoBox.Broadcast
 
         void Update()
         {
-            if (bout == null || bout.Phase != BoutPhase.Fight) return;
+            if (bout == null) return;
+            Corner();
+            if (bout.Phase != BoutPhase.Fight) return;
             Fighter a = bout.red, b = bout.blue;
             if (a == null || b == null) return;
             Tiring(0, a);
@@ -144,6 +157,52 @@ namespace PoBox.Broadcast
                 _tiredSaid[corner, t] = true;
                 SimBus.Say(t == 0 ? $"{f.displayName}'s arms are getting heavy" : $"{f.displayName} is running on empty", 1);
             }
+        }
+
+        /// <summary>The round starts: its numbers are counted from here. The break: the corner speaks once.</summary>
+        void Corner()
+        {
+            Fighter a = bout.red, b = bout.blue;
+            if (a == null || b == null) return;
+            if (bout.Phase != _phase)
+            {
+                _phase = bout.Phase;
+                if (_phase == BoutPhase.Intro)
+                {
+                    _roundStart[0] = a.stats; _roundStart[1] = b.stats;
+                    _headStart[0] = a.taken[Fighter.ZoneHead]; _headStart[1] = b.taken[Fighter.ZoneHead];
+                }
+                _cornerSaid = false;
+            }
+            if (_phase != BoutPhase.RoundBreak || _cornerSaid || bout.PhaseAge < cornerAfter) return;
+            _cornerSaid = true;
+            // The one who had the worse of it: landed fewer, or on a tie took more.
+            int worse = Landed(1, b) > Landed(0, a) || (Landed(1, b) == Landed(0, a) && Head(0, a) > Head(1, b)) ? 0 : 1;
+            Fighter f = worse == 0 ? a : b;
+            SimBus.Say($"{f.displayName}'s corner: {CornerTip(worse, f, 1 - worse, worse == 0 ? b : a)}", 2);
+        }
+
+        int Landed(int corner, Fighter f) => f.stats.landed - _roundStart[corner].landed;
+        int Thrown(int corner, Fighter f) => f.stats.thrown - _roundStart[corner].thrown;
+        float Head(int corner, Fighter f) => f.taken[Fighter.ZoneHead] - _headStart[corner];
+
+        /// <summary>
+        /// One thing to say, the first rule that holds: tired, eating head shots, out-landing him, missing, not
+        /// throwing, a guard that works; otherwise keep doing it.
+        /// </summary>
+        string CornerTip(int me, Fighter f, int them, Fighter o)
+        {
+            int landed = Landed(me, f), thrown = Thrown(me, f), theirs = Landed(them, o);
+            int blocked = f.stats.blocked - _roundStart[me].blocked;
+            Mj.MjBoxer body = f.boxer;
+            bool tires = body != null && body.Bound && body.Cfg.fatigue_j > 0.0;
+            if (f.Stamina < 0.35f || (tires && body.Reserve < 0.4)) return "breathe. Hands up, feet under you, pick one good shot.";
+            if (Head(me, f) > 25f && theirs > landed) return "guard up! He's finding your head.";
+            if (landed > theirs * 1.3f && landed >= 3) return "you're out-landing him. Press, keep the pressure on!";
+            if (thrown >= 10 && landed * 5 < thrown) return $"you're missing: {landed} of {thrown}. Get closer, pick your shots.";
+            if (thrown < 6) return "throw more! The judges can't score what you don't throw.";
+            if (blocked >= 3) return "the guard's working. Now counter off it.";
+            return "same again. Jab, move, don't stand in front of him.";
         }
 
         static string PunchName(PunchType t)

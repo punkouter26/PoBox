@@ -59,6 +59,7 @@ namespace PoBox.Sim
         enum Out { None, Walk, Square }
         Out _out;
         float _squareFor;
+        Fighter _aimedAt;
         ModelAsset _footwork;
         [Tooltip("Squaring up after the walk: the match policy takes the body once it faces its opponent this closely (radians) and moves this slowly (m/s), as a training episode starts.")]
         public float squareFacing = 0.26f, squareSpeed = 0.3f;
@@ -83,10 +84,19 @@ namespace PoBox.Sim
         public void EndWalk()
         {
             if (_out != Out.Walk) return;
+            // Down during the walk: nothing to square up to. The get-up hands the body back to the bout.
+            if (fighter.IsDown) { _out = Out.None; return; }
             _out = Out.Square;
             _squareFor = 0f;
-            boxer.SetEpisodeAt(MjBoxer.Turn, 0, 0, 0, boxer.Opp[0], boxer.Opp[1]);
+            AimAt();
+        }
+
+        /// <summary>The stand-in put on the opponent where it stands, its head speed started again: a new episode's first moment.</summary>
+        void AimAt()
+        {
+            _aimedAt = fighter.opponent;
             AimAtOpponent();
+            boxer.SetEpisodeAt(MjBoxer.Turn, 0, 0, 0, boxer.Opp[0], boxer.Opp[1]);
         }
 
         void AimAtOpponent()
@@ -99,8 +109,11 @@ namespace PoBox.Sim
 
         void Squaring()
         {
+            if (fighter.IsDown) { _out = Out.None; return; }
             _squareFor += Time.fixedDeltaTime;
-            AimAtOpponent();
+            // Turned on another opponent while squaring up: the stand-in moves there without a jump in its speed.
+            if (fighter.opponent != _aimedAt) AimAt();
+            else AimAtOpponent();
             double vx = boxer.Obs[0], vy = boxer.Obs[1];
             bool square = boxer.FacingError < squareFacing && System.Math.Sqrt(vx * vx + vy * vy) < squareSpeed && _squareFor > 0.5f;
             // Hit while squaring up, or taking too long about it: box.

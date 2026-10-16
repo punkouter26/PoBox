@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
+using PoBox.Mj;
 using PoBox.Sim;
 
 namespace PoBox.Fx
@@ -12,14 +12,16 @@ namespace PoBox.Fx
     /// The simulation's ropes are straight and do not move: in MuJoCo each is a fixed capsule with a soft
     /// contact, which lets a body leaning on it sink in by a few centimetres, and more when it arrives at
     /// speed. That sinking in is the rope giving, and this draws it. Each rope is a row of points between
-    /// its two posts. Wherever one of a fighter's shapes has pushed out past the rope's line, the points it
-    /// covers are carried out with it, so the rope wraps round whatever is pressing on it. The points are
+    /// its two posts. Wherever MuJoCo has a boxer pressed into the ropes (<see cref="MjRing.RopeLoad"/>, every
+    /// boxer in the ring), the ropes at that height are carried out round the place, further the harder it
+    /// presses, so they wrap round whatever is leaning on them. The points are
     /// joined to their neighbours by tension and to their rest places by a spring, so the bow spreads along
     /// the rope, and when the body comes away the rope swings back through its line and settles. A body
     /// landing on the canvas gives every rope a kick.
     ///
     /// All sixteen ropes are one mesh and one draw call. A rope nobody is near and that has stopped moving
-    /// costs nothing.
+    /// costs nothing. <see cref="Strain"/> and <see cref="StrainAt"/> are how far out the most bowed rope is
+    /// and where: the creak in <see cref="Audio.AudioDirector"/> follows them.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class RopeFlex : MonoBehaviour
@@ -39,19 +41,25 @@ namespace PoBox.Fx
         public float stiffness = 260f, tension = 900f;
         [Tooltip("How quickly the swing dies down (1/s).")]
         public float damping = 5f;
-        [Tooltip("The simulation's rope is this thick: a body is against the rope when it is within this of the line.")]
-        public float contactRadius = 0.03f;
-        public Bout bout;
+        [Tooltip("Rope load (MjRing.RopeLoad, N) that bows the ropes furthest, and how far that is, metres.")]
+        public float fullLoad = 1500f, maxBow = 0.12f;
+        [Tooltip("Load under which nothing shows, N.")]
+        public float minLoad = 25f;
+        [Tooltip("How far along a rope, and above or below it, a body pressing on the ropes reaches, metres.")]
+        public float reach = 0.3f, band = 0.32f;
 
         const int Sides = 6;
         Mesh _mesh;
         Vector3[] _vertices, _normals;
         float[] _x, _v, _push;         // per point: how far out it is, how fast, how far out a body holds it
         bool[] _awake;
-        readonly List<Collider> _bodies = new List<Collider>();
-        Vector3[] _centre = new Vector3[0], _extent = new Vector3[0];
-        Fighter _red, _blue;
         bool _dirty = true;
+        MjRing _ring;
+        readonly MjBoxer[] _pair = new MjBoxer[2];
+
+        /// <summary>How far out the most bowed rope is now, metres, and where that is.</summary>
+        public float Strain { get; private set; }
+        public Vector3 StrainAt { get; private set; }
 
         void Awake()
         {
@@ -136,26 +144,10 @@ namespace PoBox.Fx
             }
         }
 
-        void CollectBodies()
-        {
-            _bodies.Clear();
-            if (bout == null) bout = Bout.Instance;
-            _red = bout != null ? bout.red : null;
-            _blue = bout != null ? bout.blue : null;
-            foreach (Fighter f in new[] { _red, _blue })
-            {
-                if (f == null) continue;
-                foreach (Collider c in f.GetComponentsInChildren<Collider>())
-                    if (c.enabled && !c.isTrigger) _bodies.Add(c);
-            }
-            _centre = new Vector3[_bodies.Count];
-            _extent = new Vector3[_bodies.Count];
-        }
-
         void LateUpdate()
         {
             if (ropes.Length == 0) return;
-            if (bout == null || bout.red != _red || bout.blue != _blue) CollectBodies();
+            if (_ring == null) _ring = FindAnyObjectByType<MjRing>();
 
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
             bool moved = _dirty;
@@ -170,13 +162,14 @@ namespace PoBox.Fx
         bool Step(float dt)
         {
             bool any = false;
-            // Each shape's box, read once for all sixteen ropes.
-            for (int c = 0; c < _bodies.Count; c++)
+            for (int i = 0; i < _push.Length; i++) _push[i] = 0f;
+            float strain = 0f;
+            // Every boxer the ring knows: the pair of a bout, or the eight of a free-for-all.
+            MjBoxer[] boxers = null;
+            if (_ring != null && _ring.Ready)
             {
-                if (_bodies[c] == null) { _extent[c] = Vector3.zero; continue; }
-                Bounds b = _bodies[c].bounds;
-                _centre[c] = b.center;
-                _extent[c] = b.extents;
+                boxers = _ring.boxers;
+                if (boxers == null || boxers.Length == 0) { _pair[0] = _ring.red; _pair[1] = _ring.blue; boxers = _pair; }
             }
             for (int r = 0; r < ropes.Length; r++)
             {
@@ -186,32 +179,25 @@ namespace PoBox.Fx
                 Vector3 along = line / Mathf.Max(1e-4f, length);
                 int first = r * points;
                 bool touched = false;
-                for (int i = 0; i < points; i++) _push[first + i] = 0f;
 
-                // How far out past the rope's line each shape reaches, at each point it covers.
-                for (int c = 0; c < _bodies.Count; c++)
+                // How far out each boxer against the ropes carries this one, at each point it covers.
+                for (int k = 0; boxers != null && k < boxers.Length; k++)
                 {
-                    Vector3 e = _extent[c];
-                    if (e.x <= 0f) continue;
-                    // A capsule's box is long one way: its thickness is the smaller two of its half-sizes.
-                    float big = Mathf.Max(e.x, Mathf.Max(e.y, e.z));
-                    float size = (e.x + e.y + e.z - big) * 0.5f;
-                    Vector3 rel = _centre[c] - rope.a;
-                    float outBy = Vector3.Dot(rel, rope.outward) + size + contactRadius;
-                    if (outBy <= 0f) continue;                         // not as far out as the rope
-                    float dy = rel.y;
-                    if (Mathf.Abs(dy) >= size + contactRadius) continue;   // above or below it
-                    float at = Vector3.Dot(rel, along);
-                    float reach = Mathf.Max(e.x, e.z) + contactRadius;      // how much of the rope it covers
-                    if (at < -reach || at > length + reach) continue;
+                    if (boxers[k] == null) continue;
+                    float load = _ring.RopeLoad(boxers[k], out Vector3 at);
+                    if (load < minLoad) continue;
+                    Vector3 rel = at - rope.a;
+                    float dy = rel.y, alongAt = Vector3.Dot(rel, along);
+                    if (Mathf.Abs(dy) >= band || alongAt < -reach || alongAt > length + reach) continue;
+                    if (Mathf.Abs(Vector3.Dot(rel, rope.outward)) > band) continue;      // another side of the ring
                     touched = true;
+                    float depth = maxBow * Mathf.Sqrt(Mathf.Clamp01(load / fullLoad)) * (1f - (dy * dy) / (band * band));
                     for (int i = 1; i < points - 1; i++)
                     {
-                        float d = at - length * i / (points - 1);
+                        float d = alongAt - length * i / (points - 1);
                         if (Mathf.Abs(d) > reach) continue;
-                        // Round, not flat: furthest out at the shape's middle.
-                        float k = Mathf.Sqrt(Mathf.Max(0f, 1f - (d * d) / (reach * reach)) * Mathf.Max(0f, 1f - (dy * dy) / ((size + contactRadius) * (size + contactRadius))));
-                        float push = outBy * k;
+                        // Round, not flat: furthest out at the middle of what is pressing.
+                        float push = depth * Mathf.Sqrt(1f - (d * d) / (reach * reach));
                         if (push > _push[first + i]) _push[first + i] = push;
                     }
                 }
@@ -229,12 +215,18 @@ namespace PoBox.Fx
                         // Held out by whatever is against it.
                         if (_x[p] < _push[p]) { _x[p] = _push[p]; if (_v[p] < 0f) _v[p] = 0f; }
                         energy += Mathf.Abs(_x[p]) + Mathf.Abs(_v[p]) * 0.05f;
+                        if (sub == 1 && Mathf.Abs(_x[p]) > strain)
+                        {
+                            strain = Mathf.Abs(_x[p]);
+                            StrainAt = Vector3.Lerp(rope.a, rope.b, i / (float)(points - 1)) + rope.outward * _x[p];
+                        }
                     }
                 _awake[r] = touched || energy > 0.002f;
                 if (!_awake[r])
                     for (int i = 0; i < points; i++) { _x[first + i] = 0f; _v[first + i] = 0f; }
                 any = true;
             }
+            Strain = strain;
             return any;
         }
 

@@ -64,6 +64,9 @@ namespace PoBox.Mj
         public readonly double[] Obs = new double[ObservationSize];
         public double[] Action { get; private set; }
         public float Value { get; private set; }
+        /// <summary>Seconds every boxer's policy has spent thinking since the last <see cref="TakeInferSeconds"/>: for the telemetry.</summary>
+        static double _inferSeconds;
+        public static double TakeInferSeconds() { double s = _inferSeconds; _inferSeconds = 0; return s; }
 
         MujocoLib.mjModel_* _m;
         MujocoLib.mjData_* _d;
@@ -310,6 +313,7 @@ namespace PoBox.Mj
         public void Infer()
         {
             if (_worker == null) { Array.Clear(Action, 0, Joints); return; }
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
             for (int i = 0; i < ObservationSize; i++) _obsF[i] = (float)Obs[i];
             _input.Upload(_obsF);
             _worker.Schedule(_input);
@@ -324,6 +328,7 @@ namespace PoBox.Mj
                 ReadOnlySpan<float> span = output.AsReadOnlySpan();
                 for (int i = 0; i < Joints; i++) Action[i] = float.IsFinite(span[i]) ? span[i] : 0.0;
             }
+            _inferSeconds += (System.Diagnostics.Stopwatch.GetTimestamp() - start) / (double)System.Diagnostics.Stopwatch.Frequency;
         }
 
         /// <summary>The policy's answer to any 103 numbers, without touching the body: for checking it against the trainer's.</summary>

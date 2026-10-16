@@ -57,7 +57,7 @@ namespace PoBox.EditorTools
             GameObject Root(string name) => scene.GetRootGameObjects().FirstOrDefault(g => g.name == name);
 
             foreach (string name in new[] { "Bout", "Broadcast", "HUD", "Speech Commentary" })
-                if (Root(name) != null) { Object.DestroyImmediate(Root(name)); sb.Append($"-{name} "); }
+                if (Root(name) is GameObject go) { Object.DestroyImmediate(go); sb.Append($"-{name} "); }
             foreach (var mood in Object.FindObjectsByType<ArenaMood>(FindObjectsInactive.Include)) Object.DestroyImmediate(mood);
             // Eight boxers' punches, steps and voices at once.
             foreach (var audio in Object.FindObjectsByType<PoBox.Audio.AudioDirector>(FindObjectsInactive.Include)) audio.voices = 28;
@@ -76,19 +76,16 @@ namespace PoBox.EditorTools
             foreach (Transform c in fighters.Cast<Transform>().ToList()) Object.DestroyImmediate(c.gameObject);
             float floorY = GameObject.Find("Corners/Red Corner").transform.position.y;
             var list = new System.Collections.Generic.List<Fighter>();
-            foreach (string name in MjRetrofit.Boxers())
+            string[] names = MjRetrofit.Boxers().ToArray();
+            for (int i = 0; i < names.Length; i++)
             {
-                string title = char.ToUpperInvariant(name[0]) + name.Substring(1);
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Boxers/{title}/{title} Red.prefab");
-                if (prefab == null) { sb.Append($"(no {title} Red) "); continue; }
-                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, fighters);
-                go.transform.position = new Vector3(0f, floorY, 0f);
-                var f = go.GetComponent<Fighter>();
-                f.ring = ring;
-                f.ringCentre = Vector3.zero;
-                f.ringHalf = ring.ringHalf;
-                go.GetComponent<MjBrain>().ring = ring;
-                go.SetActive(false);
+                string name = names[i];
+                // Round the ring inside the ropes, not on top of one another: MuJoCo may step before the bell's
+                // first phase puts them at the ropes, and bodies inside bodies are thrown apart.
+                float a = Mathf.PI * 2f * i / names.Length, half = ring.ringHalf - 0.5f;
+                var at = new Vector3(ring.centre.x + Mathf.Cos(a) * half, floorY, ring.centre.y + Mathf.Sin(a) * half);
+                var f = MjRetrofit.PlaceCorner(name, "Red", fighters, ring, at);
+                if (f == null) { sb.Append($"(no {name} Red) "); continue; }
                 list.Add(f);
             }
 
@@ -121,7 +118,7 @@ namespace PoBox.EditorTools
         }
 
         /// <summary>The open scene may be closed: nothing in it unsaved.</summary>
-        static bool Leave()
+        internal static bool Leave()
         {
             for (int i = 0; i < EditorSceneManager.sceneCount; i++)
                 if (EditorSceneManager.GetSceneAt(i).isDirty) return false;

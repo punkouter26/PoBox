@@ -7,8 +7,9 @@ namespace PoBox.Mj
 {
     /// <summary>
     /// The testbed's five anchors (Assets/UI/Testbed.uxml), the HUD's: title top left, frame rate top centre,
-    /// the menu top right (the behaviour, reset, shoves and a cube), DEBUG bottom left (the readings), versions
-    /// bottom right, all inside the same safe area. Everything it does to the boxer goes through
+    /// the menu top right (the behaviour, reset, shoves and a cube), DEBUG bottom left (the readings; also the
+    /// hidden switch, three fingers or a long press on the frame rate, with the X-ray), versions bottom right, all
+    /// inside the same safe area. Everything it does to the boxer goes through
     /// <see cref="MjTestbed"/>, which writes MuJoCo's data. It lives with the interface rather than with the
     /// MuJoCo code because it shares the HUD's safe area and icons.
     /// </summary>
@@ -45,7 +46,9 @@ namespace PoBox.Mj
 
             root.Q<Button>("menu").clicked += () => Open(_sheet, !Showing(_sheet));
             root.Q<Button>("debug").clicked += () => Open(_debugPanel, !Showing(_debugPanel));
-            _fps.clicked += () => Open(_debugPanel, !Showing(_debugPanel));
+            // The frame rate: a tap is the readings; the hidden switch (a long press, or three fingers) the readings and the X-ray.
+            DebugPanel.Hook(root, _fps, () => Open(_debugPanel, !Showing(_debugPanel)),
+                            () => { Open(_debugPanel, !Showing(_debugPanel)); PoBox.Fx.PhysicsXray.On = Showing(_debugPanel); });
             // The one overlay rule: a tap on the picture puts away whatever is open over it.
             root.Q<VisualElement>("picture").RegisterCallback<PointerDownEvent>(_ => { Open(_sheet, false); Open(_debugPanel, false); });
 
@@ -61,6 +64,7 @@ namespace PoBox.Mj
         }
 
         static bool Showing(VisualElement e) => e != null && !e.ClassListContains("hidden");
+        public VisualElement Root => _root;
 
         /// <summary>One at a time: opening the menu puts the readings away, and the other way round.</summary>
         void Open(VisualElement which, bool open)

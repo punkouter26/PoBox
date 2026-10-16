@@ -69,6 +69,47 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## Do-all pass and the overnight queue (2026-10-16)
+
+Owner: run /init, /simplify, /code-review and /security-review, then "do all" of 50 options (features, graphics and
+sound, UI, AI, cleanup), then train every behaviour for 10 hours. Report: `SCREENSHOTS/2026-10-16-do-all/ui.html`.
+
+- **Fixes** (from /code-review): the eight Melee prefabs are authored round the ropes, not on one point, and the ring
+  waits for the first phase; a recompile keeps who is held and down; a boxer held over a count in a pile stands on the
+  getting-up collision layer; a boxer down during the walk-out or while squaring up is not handed to the match
+  policy; the stand-in is re-aimed without a speed jump; a new target starts the glove's cool-down (waiting for 30 cm
+  clearance instead cut the free-for-all's landed punches to 2 of 8 boxers); `Eliminate` while rising ends the
+  get-up; MeleeCamera null slot; voices tool refuses unsaved scenes. Not changed: crowding tooltip now says what
+  the formula does.
+- **Free-for-all brains are staggered**: boxer k decides on substep k mod 4 (still 50 Hz each, same observe-act
+  timing as training), so eight inferences are not paid on one physics step. Pairs are unchanged (parity 3/3).
+  Opponent choice also prefers a dazed boxer (`opportunism`).
+- **Features**: KO instant replay (`Mj/MjReplay.cs`, 8 s of qpos at 50 Hz, exact state restore), punch stats on the
+  result, brain cam (settings), Twitch chat votes and `!cube` (anonymous read-only, `pobox.twitch`), an 8-boxer cup,
+  a corner-man tip between rounds, a pick-the-winner game with coins, SHARE (MediaStore + share sheet on Android).
+  MjRing now binds the ring's cube pool (parked where the trainer parks them).
+- **Graphics/sound**: daze heartbeat on screen, crowd ducks under the bell, ropes bow from `MjRing.RopeLoad` (RopeFlex
+  looked for Colliders the arena no longer has), hot-exchange spotlight, face flush, X-ray contact arrows, bullet time
+  on clean knockouts (`ArenaMood.TimeScaleK`, settings "Slow-mo"), `CameraJolt` for Melee, a hall reverb zone, physics
+  and inference ms in `PerfTelemetry`. Blender MCP could not reach Blender: the arena props were not made.
+- **UI**: five anchors on every screen (title, FPS, menu, DEBUG, version), one results card with REPLAY / SHARE / NEXT
+  / MENU, settings as SOUND | DISPLAY | DEBUG tabs, icon switches, the menu as a 2x4 grid with CUP | FIGHT | ALL in
+  the thumb zone, three-finger tap for the debug panel, names clamped. Tests: OneScreen 47/47 (now 1080x2340 too),
+  new StateFlowTests 1/1, FreeForAll 1/1, MjParity 3/3.
+- **Cleanup**: about 543 MB moved (not deleted) to `../PoBox_quarantine_2026-10-16/` with a MANIFEST: superseded and
+  rejected checkpoints, their TensorBoard runs, the v1 handoff policies, a duplicate `Kim.glb`, a stray MuJoCo 3.15
+  `mujoco.dll` in `Packages/org.mujoco`, the report PNGs (now WebP). 12 unused built-in modules removed; one-off tools
+  in `training/tools/archive`; `run_night.py`, `run_match.py` and `MjRetrofit.RetrofitArena` removed. The v1 models
+  stay: `make_handover_v2.py` finds stand-ins through `models/*_bag.xml`.
+- **Training, staged**: off-by-default flags `--action-rate-w`, `--obs-delay-max`, `--seek-w`, `--ropes-start`;
+  `tools/obs_audit.py`, `tools/pd_sweep.py` (+ `pd_gains_proposal.json`), `tools/bench_match.py`;
+  `queue_doall_staged.json`. Flags off reproduce the old rewards exactly. See `rl_optimization_log.md`.
+- **Seen, not fixed**: in the free-for-all several boxers slip in the first 20 s (Grandma, Grandpa, Nick, Sokol in the
+  after shot), before and after these changes: their brains were never trained in a crowd (tasks.md Phase F).
+- **Overnight** (from 23:39): Sokol's get-up, bank, boxing and exam; Nick's boxing; a seek run for Zombie; D8 for
+  Grandma, Grandpa and Matt; Trump's D8 exam. The queue writes `logs/queue.stop` at the end. Nothing is promoted
+  into Unity until the exams are read.
+
 ## Free-for-all, Sokol, and the boxers' voices (2026-10-15)
 
 - **Free-for-all** (`Assets/Scenes/Melee.unity`, menu button ALL beside FIGHT): all eight in the one ring, boxed
@@ -479,7 +520,7 @@ platform `MujocoRing` reports that it could not load and the fighters fall back 
 
 How a fighter gets from training into the ring:
 
-1. `training/run_match.py --hours 8 --a matt --b zombie` trains each on a heavy bag (45 min), then both in
+1. `training/run_match.py --hours 8 --a matt --b zombie` (removed 2026-10-16 with the v1 pipeline) trains each on a heavy bag (45 min), then both in
    one ring, one policy each. See `training/README.md`.
 2. `training/tools/export_reference.py --name matt` (and `zombie`) writes each body's mass properties as
    MuJoCo has them, and a recording of the policy to check Unity against.

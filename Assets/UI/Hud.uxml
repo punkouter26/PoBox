@@ -126,6 +126,9 @@
                 <ui:Label name="tired-blue" class="pod-flag hidden" text="TIRED" picking-mode="Ignore" />
             </ui:VisualElement>
 
+            <!-- Chat plays (TwitchChat.cs): each corner's votes. Only there with a channel set in pobox.twitch. -->
+            <ui:Label name="chat" class="chat hidden" text="" picking-mode="Ignore" />
+
             <ui:Label name="banner" class="banner hidden" text="ROUND 1" picking-mode="Ignore" />
 
             <ui:VisualElement name="walkon" class="walkon hidden" picking-mode="Ignore">
@@ -135,6 +138,13 @@
                     <ui:Label name="walkon-name" class="walkon-name" text="RED" picking-mode="Ignore" />
                     <ui:Label name="walkon-detail" class="walkon-detail" text="" picking-mode="Ignore" />
                 </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Before the first bell: pick a corner at the ladder's odds, staking coins (League/Prediction.cs). -->
+            <ui:VisualElement name="predict" class="predict hidden" picking-mode="Ignore">
+                <ui:Button name="predict-red" class="btn predict-btn predict-btn--red" text="RED" />
+                <ui:Label name="predict-coins" class="predict-coins" text="" picking-mode="Ignore" />
+                <ui:Button name="predict-blue" class="btn predict-btn predict-btn--blue" text="BLUE" />
             </ui:VisualElement>
 
             <!-- Between rounds: the three cards as they stand, and what each boxer did in the round just ended. -->
@@ -183,7 +193,7 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="results" class="sheet results over hidden">
+            <ui:VisualElement name="results" class="sheet over hidden">
                 <ui:VisualElement class="res-head" picking-mode="Ignore">
                     <ui:VisualElement class="icon icon--trophy res-icon" picking-mode="Ignore" />
                     <ui:VisualElement class="res-title" picking-mode="Ignore">
@@ -192,6 +202,8 @@
                     </ui:VisualElement>
                     <ui:Label name="res-elo" class="badge badge--big" text="+0 ELO" picking-mode="Ignore" />
                 </ui:VisualElement>
+                <!-- The pick paid out and the cup's news, when there are any. -->
+                <ui:Label name="res-extra" class="res-extra hidden" text="" picking-mode="Ignore" />
                 <ui:VisualElement name="res-judges" class="judges" picking-mode="Ignore" />
                 <ui:VisualElement class="res-mid" picking-mode="Ignore">
                     <PoBox.UI.HitMap name="res-hit-red" class="res-hitmap" />
@@ -199,16 +211,27 @@
                     <PoBox.UI.HitMap name="res-hit-blue" class="res-hitmap" mirror="true" />
                 </ui:VisualElement>
                 <PoBox.UI.Sparkline name="res-graph" class="res-graph spark--share" />
-                <ui:VisualElement class="res-actions" picking-mode="Ignore">
-                    <ui:Button name="res-boxers" class="btn btn--tool">
-                        <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
-                        <ui:Label name="res-boxers-word" class="btn-word" text="BOXERS" picking-mode="Ignore" />
+                <ui:VisualElement class="grid res-actions" picking-mode="Ignore">
+                    <ui:Button name="res-replay" class="btn btn--tool grid-4" tooltip="Replay the last knockdown">
+                        <ui:VisualElement class="icon icon--movie" picking-mode="Ignore" />
+                        <ui:Label class="btn-word" text="REPLAY" picking-mode="Ignore" />
                     </ui:Button>
-                    <ui:Button name="res-next" class="btn btn--primary res-go" text="NEXT BOUT" />
+                    <ui:Button name="res-share" class="btn btn--tool grid-4" tooltip="Share a picture of the result">
+                        <PoBox.UI.Glyph kind="Share" class="glyph--btn" />
+                        <ui:Label class="btn-word" text="SHARE" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="res-next" class="btn btn--primary btn--tool grid-4" tooltip="The next bout">
+                        <ui:VisualElement class="icon icon--next" picking-mode="Ignore" />
+                        <ui:Label name="res-next-word" class="btn-word" text="NEXT" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="res-boxers" class="btn btn--tool grid-4" tooltip="Back to the menu">
+                        <ui:VisualElement class="icon icon--home" picking-mode="Ignore" />
+                        <ui:Label name="res-boxers-word" class="btn-word" text="MENU" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+            <ui:VisualElement name="menu-sheet" class="sheet over hidden">
                 <ui:VisualElement class="seg" picking-mode="Ignore">
                     <ui:Button name="tab-match" class="seg-btn seg-btn--on" text="MATCH" />
                     <ui:Button name="tab-league" class="seg-btn" text="LEAGUE" />

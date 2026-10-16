@@ -929,3 +929,99 @@ so every existing run and job is unchanged), on the match line (`envs/boxing.py`
   `BuildBoxer`/`BuildCorners` (0 differences from the trainer's model), `Promote("sokol", "f_sokol")`, testbed roster.
   No match or get-up brain yet: in the free-for-all he stands and turns to face, and the referee stands him up.
   Still to train: `u1_sokol_matt`, the handover bank, `m1_sokol` and its exam (queued; the queue is stopped).
+
+## 2026-10-16, staged (not run): the do-all pass on the trainer
+
+Nothing trained; every new behaviour is a flag that is off by default, and with all of them off a fixed-seed CPU smoke
+of the three stages (10 steps, 4 worlds) gives the same rewards and observations, number for number, as before the
+change. Observation (103) and action (21) sizes, models/v2 and the Unity side are unchanged.
+
+- **`--action-rate-w`** (train_box, train_gauntlet, train_getup; default 0): an extra charge per squared change in
+  action between control steps. Every stage already had one (0.01 a step; get-up 0.005); this adds to it, for smoother
+  drives. Try 0.01, which doubles it.
+- **`--obs-delay-max K`** (the same three; default 0): the observation is 0 to K control steps late, drawn per fighter
+  per episode; the last action is never late. Training only: the game's observation is not delayed, so a brain
+  trained with it plays in Unity as any other. Try 2 (up to 40 ms).
+- **`--seek-w`** (train_box, train_gauntlet; default 0): Phase F2, paid per m/s of closing on the opponent while
+  outside punching range, for every boxer whatever its style (the style's `press`, at a weight of its own). Logged as
+  `rt_seek` / `reward/seek` only when on. Why: the stand-off. Standing in range facing the opponent pays about 0.95 a
+  step (alive, upright, face, range); m1_zombie's gauntlet earned 0.79 a step with 0.54 hits a second.
+- **`--ropes-start`** (same; default 0): Phase F3, a share of episodes begin as the free-for-all's rounds do
+  (FreeForAll.ToTheRopes): 16 spots round the square of the ropes, half a metre in; the other boxer two to eight
+  spots round; both facing the middle.
+- **Not done:** F1 (crowd mode, K frozen opponents, `--crowd-schedule`): it needs 3-to-8-body MJCFs and boxing.py
+  taken from its two-fighter `flip(1)` to a gathered target; noted as a TODO in the staged queue. Action masking in
+  get-up: not needed, since get-up pays nothing for a punch, the arms are what it pushes up with, and `_drive` already
+  clamps every target to the joint's range in every stage. A fatigue/daze coupling: they already compose
+  (`drive_scale * _tired()`), as the game does.
+- **New tools:** `tools/obs_audit.py` (each stage on the CPU with the shipped ONNX brains: per-index statistics,
+  flags for big, wide, dead and clipped numbers, and the footwork reference recording's gap); `tools/pd_sweep.py`
+  (step response of each joint's drive, base fixed: rise, overshoot, damping ratio; `--write` a proposal, models
+  untouched; `pd_gains_proposal.json` is Matt's with the speed-limit damping); `tools/bench_match.py` (whole PPO
+  iterations of the match stage at 4096/8192/16384 rings x 24/32 steps).
+- **Findings.** Observations (Matt and Zombie, 10 s a stage): no index has |mean| > 5 or std > 10; the widest are joint
+  speeds (std up to 3.9); less than 1% of samples beyond the brains' own clip of 10 anywhere (get-up's worst 0.95%,
+  a shoulder speed); the command's three are dead in a bout and on the floor, as meant; the C MuJoCo reference sits
+  within 1.4 training std of training on every index. But the footwork brain holds its arm actions at the clip (+-3:
+  shoulder_x_l and elbow_r mean -2.99), with shoulder_x_l a radian short of its target: drives at their force limit,
+  probably the guard pressed against itself (AGENTS: a small self-contact force penalty if so). PD (Matt, fixed base):
+  without the speed-limit rule the abdomen (zeta 0.19 to 0.53) and hip_x/hip_y (0.36) are under-damped and the
+  ankles over-damped (1.3 to 2.6); with it, everything but the abdomen's bend and the hips' swing is over-damped. Fixed
+  base understates the legs' load in stance; a proposal only.
+- **Reward-hacking audit (envs/boxing.py):** rope-hugging: measured 0.02 to 0.06 a step unweighted, already charged by
+  `--rope-w`; no new guard. Survivor bootstrap: sound; the knockdown bonus needs only a landed punch inside 1.5 s, so
+  a pat then a fall counts in full; watch, not changed. Hit against taken: taken is 0.5 (Kim 0.3) of hit, so trading
+  always pays, by design; the daze is the only cost. Block farming: paid a step for at most two steps a punch, 0.03 a
+  m/s; against frozen opponents it cannot be farmed. The real exploit is passivity (above), which `--seek-w` is for.
+- **Removed:** `run_night.py` and `run_match.py`, the v1 bag-then-spar drivers (v1 models only; queue_runner and
+  train_gauntlet have replaced them). Kept: `train_getup.py` (v2 get-up, renormalising, the helping hand carried
+  over, `--done-when`), `train_getup_cpu.py` (C MuJoCo; `renormalise` lives there), `train_gauntlet.py` (frozen
+  opponents): none of that is in `train_box.py --stage`.
+- **Staged:** `training/queue_doall_staged.json`: bench_match, then sf1_kim (seek 0.3, ropes 0.3, from m7_kim),
+  sr1_kim (rate 0.01, delay 2), sf1_zombie and sf1_nick from the shipped brains, each followed by exam_v2.
+
+## 2026-10-16 00:00, overnight (owner: "train and improve all behaviours ... for next 10 hours")
+
+Decision: finish the live queue (`logs/queue.json`, stopped since 15 Oct 14:13) in priority order, with one run of
+the new seek reward added, and stop after it (a last job writes `logs/queue.stop`). Estimated 9.7 h.
+
+1. Sokol has no boxing brain (he boxes on his footwork policy): `exam_f_sokol`, `u1_sokol_matt` (get-up from
+   Matt's, 800 iterations), `bank_sokol`, `m1_sokol` (gauntlet from Matt's match brain against all seven, 1.5 h
+   cap), `exam_m1_sokol`.
+2. Nick: `m1_nick` (get-up and hand-over bank already done; the killed partial run was moved to quarantine so the
+   job can start), `exam_m1_nick`.
+3. Zombie: `sf1_zombie` + exam, from `queue_doall_staged.json`: `--seek-w 0.3 --ropes-start 0.3` (first GPU use of
+   both flags). Why: `m1_zombie` was rejected, and the reward audit found standing at range pays ~0.95 a step;
+   `--seek-w` pays for closing on an opponent outside punching range.
+4. D8 for Grandma, Grandpa and Matt as already queued (rules on, footwork 800 + exam, get-up 600, bank, gauntlet
+   600 at 0.75 h, exam), then `exam_trump_d8`.
+
+Left out for time: `bench_match`, `sf1_kim`/`sr1_kim` (Kim passes with m7), `sf1_nick` (m1_nick first). Nothing
+is promoted into Unity overnight: exams decide, promotion is done with the editor open. Unity was in use by a UI
+pass when the queue started; the runner waits at job boundaries while the GPU is busy with Play mode.
+
+- 01:53 `exam_m1_sokol`: FAIL on footing only (1.33 falls a minute, all against Nick); attack 1.84/s, guard 21%,
+  chin 0, get-up 60/60 in 1.6 s, carrying on 59/60. Added `m2_sokol` after `exam_m1_nick`: from m1, `--weights
+  nick=3 --fall-penalty 12 --max-std 0.3`, 400 iterations (0.6 h cap), then `exam_m2_sokol` (Kim's m-series passed
+  this way). Adds ~50 min; the night runs to about 10:15.
+
+## 2026-10-16 09:00, the night's results and a 10-hour day queue (owner: "do 10 hours of training")
+
+Night (23:39 to 09:08, 9.5 h): footwork exams pass for Sokol, Grandma, Grandpa and Matt under the rules. Boxing:
+**m2_sokol PASS** (all six lines; 2.07 landed/s, 60/60 get-ups, 0.11 falls/min). m1_nick fails footing only (2.89
+falls/min, all v Sokol, whom it never trained against). m1_matt fails carrying on only (49/58, mark 90%). m1_grandpa
+fails attack (0.02/s: it learned to block, 1.4/s, and not to punch). m1_grandma fails attack (0.35/s) and getting up
+0/60: her D8 get-up never stood unaided (help stalled at 0.23 of her weight under the speed limit and 30 kJ fatigue).
+`exam_sf1_zombie` examined the SHIPPED brain: exam_v2 only finds runs named m<N>_ (sf1 is not); re-examined with
+`--book`.
+
+Day queue (09:08 on, ~9.4 h), each run then its exam; opponents are the newest brain of each boxer (Sokol m2):
+- Wave 1: `exam_sf1_zombie_book`; `m2_nick` (+Sokol, weighted 3, fall penalty 12); `m2_matt` (hand-over share 0.5,
+  fall penalty 12); `u1_d8b_grandma_matt` (1500 more get-up iterations, stops at 80% unaided) + new bank;
+  `m2_grandma` and `m2_grandpa` (Kim's attack recipe: hit 2.0, taken 0.3, seek 0.3, std reset 0.35); `m2_zombie`
+  from sf1 (seek, ropes start, hit 1.5, fall penalty 12).
+- Wave 2: m3 of the same five from their m2, against the m2 brains, same terms, max std 0.25, 400 iterations.
+- If Grandma still never stands unaided, the cause is the rules on her body, not training time: owner's call.
+- 09:10 `exam_trump_d8`: FAIL attack (0.29/s) and guard (17%); Nick takes his legs 7.8/min. Added after `m2_zombie`:
+  `bank_trump` (from his shipped get-up, 60/60), `m1_trump` (attack recipe as the grandparents', Nick weighted 2,
+  600 iterations, 0.75 h), exam. The day queue now ends near 19:30.

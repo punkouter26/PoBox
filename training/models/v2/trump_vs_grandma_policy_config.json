@@ -494,8 +494,8 @@
         "spar": "grandma_spar.xml"
       },
       "cubes": 8,
-      "speed_limit": false,
-      "fatigue_j": 0.0
+      "speed_limit": true,
+      "fatigue_j": 30000.0
     }
   ],
   "ring_half": 3.05

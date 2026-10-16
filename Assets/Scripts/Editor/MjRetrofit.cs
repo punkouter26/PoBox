@@ -28,6 +28,23 @@ namespace PoBox.EditorTools
 
         static string Title(string name) => char.ToUpperInvariant(name[0]) + name.Substring(1);
 
+        /// <summary>One boxer's corner prefab put in a scene, wired to the ring, switched off. Null when there is no such prefab.</summary>
+        internal static Fighter PlaceCorner(string name, string corner, Transform parent, MjRing ring, Vector3 at)
+        {
+            string title = Title(name);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{BoxersDir}/{title}/{title} {corner}.prefab");
+            if (prefab == null) return null;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            go.transform.position = at;
+            var f = go.GetComponent<Fighter>();
+            f.ring = ring;
+            f.ringCentre = Vector3.zero;
+            f.ringHalf = ring.ringHalf;
+            go.GetComponent<MjBrain>().ring = ring;
+            go.SetActive(false);
+            return f;
+        }
+
         /// <summary>The boxers there are: a folder of Assets/Boxers with a prefab in it, by name.</summary>
         public static string[] Boxers()
         {
@@ -346,87 +363,6 @@ namespace PoBox.EditorTools
 
         public static string BuildAllCorners() => string.Join("\n", Boxers().Select(BuildCorners));
 
-        /// <summary>
-        /// Moves the open arena onto the MuJoCo plugin, once: out go the old fighters, their rings, every
-        /// collider and the components whose scripts are gone; in come the trainer's ring as MuJoCo objects
-        /// (the floor, the four rope walls and the cubes of the spar model), one MjRing, and every boxer
-        /// twice (its corner prefabs, switched off) for <see cref="MatchSetup"/> to choose from. What is left
-        /// is an ordinary scene, saved and then edited by hand.
-        /// </summary>
-        public static string RetrofitArena()
-        {
-            var sb = new StringBuilder();
-            var scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-            GameObject fighters = scene.GetRootGameObjects().First(g => g.name == "Fighters");
-            int old = fighters.transform.childCount;
-            foreach (Transform c in fighters.transform.Cast<Transform>().ToList()) Object.DestroyImmediate(c.gameObject);
-            int colliders = 0, missing = 0;
-            foreach (GameObject root in scene.GetRootGameObjects())
-                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-                {
-                    missing += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(t.gameObject);
-                    foreach (Collider c in t.GetComponents<Collider>()) { Object.DestroyImmediate(c); colliders++; }
-                }
-            sb.Append($"removed {old} old fighters and rings, {colliders} colliders, {missing} missing scripts\n");
-
-            // The world of the trainer's ring: what the spar model holds besides the two boxers.
-            var world = scene.GetRootGameObjects().FirstOrDefault(g => g.name == "Mj World");
-            if (world == null)
-            {
-                MjcfImporter.DefaultMujocoMaterial = AssetDatabase.LoadAssetAtPath<Material>(BoxersDir + "/MjShape.mat");
-                world = new MjcfImporter().ImportString(File.ReadAllText($"{Models}/matt_spar.xml"), "Mj World");
-                world.GetComponentInChildren<MjGlobalSettings>().UseRawGameObjectNames = true;
-                foreach (Transform c in world.transform.Cast<Transform>().ToList())
-                    if (c.name.StartsWith("a_") || c.name.StartsWith("b_") || c.name == "actuators" || c.name == "excludes" || c.name == "sensors")
-                        Object.DestroyImmediate(c.gameObject);
-                var pool = new GameObject("Cube Pool");
-                pool.transform.SetParent(world.transform, false);
-                foreach (Transform c in world.transform.Cast<Transform>().ToList())
-                    if (c.name.StartsWith("cube_")) c.SetParent(pool.transform, true);
-                pool.AddComponent<MjCubePool>();
-                // The arena draws its own canvas and ropes; the MuJoCo shapes are there to be collided with.
-                foreach (var r in world.GetComponentsInChildren<MeshRenderer>())
-                    if (!r.transform.IsChildOf(pool.transform)) r.enabled = false;
-            }
-            sb.Append($"world: {string.Join(", ", world.transform.Cast<Transform>().Select(t => t.name))}\n");
-
-            var ringGo = scene.GetRootGameObjects().FirstOrDefault(g => g.name == "Mj Ring") ?? new GameObject("Mj Ring");
-            var ring = ringGo.GetComponent<MjRing>() ?? ringGo.AddComponent<MjRing>();
-            ring.centre = Vector2.zero;
-            ring.ringHalf = 3.05f;
-
-            Transform redCorner = GameObject.Find("Corners/Red Corner").transform, blueCorner = GameObject.Find("Corners/Blue Corner").transform;
-            var entries = new List<MatchSetup.Boxer>();
-            foreach (string name in Boxers())
-            {
-                string title = Title(name);
-                var entry = new MatchSetup.Boxer { name = name };
-                for (int corner = 0; corner < 2; corner++)
-                {
-                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{BoxersDir}/{title}/{title} {(corner == 0 ? "Red" : "Blue")}.prefab");
-                    var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, fighters.transform);
-                    go.transform.position = (corner == 0 ? redCorner : blueCorner).position;
-                    var f = go.GetComponent<Fighter>();
-                    f.ring = ring;
-                    f.ringCentre = Vector3.zero;
-                    f.ringHalf = ring.ringHalf;
-                    go.GetComponent<MjBrain>().ring = ring;
-                    go.SetActive(false);
-                    if (corner == 0) entry.red = f; else entry.blue = f;
-                }
-                entries.Add(entry);
-            }
-            var setup = Object.FindAnyObjectByType<MatchSetup>();
-            setup.boxers = entries.ToArray();
-            setup.ring = ring;
-            sb.Append($"{entries.Count} boxers in both corners; default bout {setup.defaultRed} v {setup.defaultBlue}\n");
-
-            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
-            UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
-            sb.Append(PhysXCensus());
-            return sb.ToString();
-        }
-
         /// <summary>What the fight does to a boxer, drawn on its own mesh: a second skinned renderer over each of the mesh's, sharing its bones.</summary>
         static Renderer[] Overlays(Renderer[] renderers, Material overlay)
         {
@@ -572,7 +508,6 @@ namespace PoBox.EditorTools
             return $"Rigidbody {bodies}, ArticulationBody {articulations}, Collider {colliders}, Joint {joints}";
         }
 
-        [MenuItem("PoBox/Mj/Bring Matt Into This Scene")] static void BuildMatt() => Debug.Log(BuildBoxer("matt"));
         [MenuItem("PoBox/Mj/Dress Every Boxer For Both Corners")] static void Corners() => Debug.Log(BuildAllCorners());
         [MenuItem("PoBox/Mj/Check Every Boxer Against Training")] static void CheckEvery() => Debug.Log(CheckAll());
     }

@@ -12,8 +12,10 @@ namespace PoBox.Fx
     /// is one renderer a link, that is a dull bruise on a part that has been hit. On a trained fighter the
     /// overlay is drawn over the owner's own skinned mesh, and the bruises are marks at the very places the
     /// punches landed: each is remembered on the link it landed on, and its place in the world is handed to
-    /// the shader every frame, so it moves with the body. Both get a wet highlight as the fighter tires and
-    /// the corner colour as a rim.
+    /// the shader every frame, so it moves with the body. Both get a wet highlight as the fighter tires (its
+    /// stamina, or its muscles' reserve where it has one, whichever is lower), a flush round the face as
+    /// its health goes, and the corner colour as a rim. The sheen is the overlay's, not the body material's
+    /// smoothness: a property block on the body itself would take it out of the SRP batcher.
     /// </summary>
     public class FighterSkin : MonoBehaviour
     {
@@ -49,6 +51,7 @@ namespace PoBox.Fx
         static readonly int RimId = Shader.PropertyToID("_RimColor");
         static readonly int MarksId = Shader.PropertyToID("_BruiseMarks");
         static readonly int MarkCountId = Shader.PropertyToID("_BruiseCount");
+        static readonly int FlushId = Shader.PropertyToID("_Flush");
 
         MaterialPropertyBlock _block;
         BodyPart[] _source;
@@ -101,6 +104,11 @@ namespace PoBox.Fx
             }
 
             float sweat = 1f - fighter.Stamina;
+            Mj.MjBoxer boxer = fighter.boxer;
+            if (boxer != null && boxer.Cfg != null && boxer.Cfg.fatigue_j > 0.0) sweat = Mathf.Max(sweat, 1f - (float)boxer.Reserve);
+            // The face: where it is, and how flushed (the health lost, the first half of it showing most).
+            Vector3 head = HeadPoint;
+            var flush = new Vector4(head.x, head.y, head.z, Mathf.Sqrt(Mathf.Clamp01(1f - fighter.Health / 100f)));
             for (int i = 0; i < parts.Length; i++)
             {
                 Renderer[] rs = parts[i].renderers;
@@ -109,6 +117,7 @@ namespace PoBox.Fx
                 _block.SetFloat(BruiseId, _source[i] != null ? _source[i].bruise : 0f);
                 _block.SetFloat(SweatId, sweat);
                 _block.SetColor(RimId, rimColor);
+                _block.SetVector(FlushId, flush);
                 for (int r = 0; r < rs.Length; r++)
                     if (rs[r] != null) rs[r].SetPropertyBlock(_block);
             }
@@ -129,6 +138,7 @@ namespace PoBox.Fx
             _block.SetColor(RimId, rimColor);
             _block.SetVectorArray(MarksId, _marks);
             _block.SetFloat(MarkCountId, count);
+            _block.SetVector(FlushId, flush);
             for (int r = 0; r < overlayRenderers.Length; r++)
                 if (overlayRenderers[r] != null) overlayRenderers[r].SetPropertyBlock(_block);
         }

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox UI pass</title>
+<style>
+  :root { --bg: #0b0d12; --card: #141821; --ink: #eef2f7; --dim: #a8b2c0; --accent: #2ebf8c; --line: rgba(255,255,255,.1); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 12px; border-top: 1px solid var(--line); padding-top: 20px; }
+  p.lede { color: var(--dim); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .shot { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot .cap { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 6px; font-size: 12px; letter-spacing: 1px; }
+  .shot.after .cap { background: var(--accent); color: #06140f; font-weight: 700; }
+  .pin { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #ffc654; color: #1e0604;
+         font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px rgba(0,0,0,.6); }
+  ol.changes { padding-left: 0; list-style: none; counter-reset: c; }
+  ol.changes li { counter-increment: c; position: relative; padding: 10px 12px 10px 52px; background: var(--card); border-radius: 8px; margin-bottom: 8px; }
+  ol.changes li::before { content: counter(c); position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: #ffc654; color: #1e0604; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  ol.changes b { color: var(--ink); }
+  .status { color: var(--dim); font-size: 13px; }
+  .tag { display: inline-block; font-size: 12px; padding: 0 6px; border-radius: 4px; background: rgba(46,191,140,.2); color: var(--accent); margin-left: 6px; }
+  .tag.part { background: rgba(255,198,84,.18); color: #ffc654; }
+  @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>PoBox UI pass, 2026-10-16</h1>
+<p class="lede">Before (left, taken before any of tonight's changes) and after (right), all at 1080 x 1920. The yellow numbers on the pictures match the list of changes at the top.</p>
+
+<ol class="changes">
+  <li><b>Five anchors on every screen.</b> Title top-left, FPS top-centre, menu/settings top-right, DEBUG bottom-left, version bottom-right (Application.version, small and dim) on the menu, the arena, the free-for-all and the testbed. The free-for-all gained DEBUG, a debug panel and the version. The layout audit now checks all five on every screen, and checks that the version label shows the build's version. <span class="tag">done</span></li>
+  <li><b>One results card.</b> The arena and the free-for-all share one card: winner, method, the pick's payout or the cup's news, the punch numbers, and one row of four icon + short word chips (REPLAY, SHARE, NEXT/AGAIN, MENU) that fits a 360 dp phone. The free-for-all's own result styles are gone. <span class="tag">done</span></li>
+  <li><b>Settings in three tabs: SOUND, DISPLAY, DEBUG.</b> SOUND has only sound and quality. DISPLAY has voice, buzz, slow-mo (bullet time, saved as <code>pobox.bullettime</code>) and the FPS cap. DEBUG has X-ray, brain cam (arena only), READINGS (opens the debug panel), RESET LADDER (arena only) and a TWITCH channel field (<code>pobox.twitch</code>; empty means off). Everything is saved through SettingsPage.Load/Save. Nothing scrolls. <span class="tag">done</span></li>
+  <li><b>Switches show a dot instead of ON/OFF.</b> SOUND, VOICE, BUZZ, SLOW-MO, X-RAY and BRAIN show an icon (where Glyph has one), a short word and a dot that lights up when the switch is on. The tooltip says "Sound on" or "Sound off" in words. SHARE got a new Share glyph. <span class="tag">done</span></li>
+  <li><b>Menu: a 2 x 4 grid of boxers, tapped in order.</b> The first tap picks red, the next blue, and so on. A RED or BLUE tag on the card shows which corner each boxer is in. CUP, FIGHT and ALL sit in the bottom thumb row, so the top-right holds only the settings. Seven boxers are shown; Sokol stays off the 1-on-1 menu because he has no match brain yet (README, 2026-10-15). <span class="tag part">done, 7 of 8 boxers</span></li>
+  <li><b>Hidden debug switch.</b> Three fingers on the screen, or a long press (0.6 s) on the FPS chip in the editor, opens the debug panel and turns on X-ray. A plain tap on FPS still opens the panel. The arena and free-for-all panels now show physics and brains in ms (PerfTelemetry.PhysicsMs / InferMs). <span class="tag">done</span></li>
+  <li><b>Phone shapes.</b> OneScreenTests now runs 16:9 (720 x 1280 and 1080 x 1920), 19.5:9 (1080 x 2340, new), 20:9 and 21:9, each with and without a top cutout. It covers the menu (each settings tab, the cup, debug), the arena (each settings tab), the free-for-all (each settings tab, debug, the result) and the testbed (new). <span class="tag">done</span></li>
+  <li><b>State-flow test.</b> <code>StateFlowTests</code> presses the real buttons through the panel: Menu, FIGHT, the result, MENU, ALL, the result, AGAIN, the result, MENU. A hidden, disabled or missing button fails it as a dead end. So does any console error, and so does taking longer than 90 s. <span class="tag">done</span></li>
+  <li><b>One stylesheet.</b> The appended "features" block is folded into the sections it belongs to. The free-for-all's duplicate result, winner, method and actions rules are deleted. Free-for-all offsets are now tokens (<code>--ffa-under-board</code>, <code>--ffa-call-top</code>), so chat and the referee's call no longer overlap. A scan finds no unused selectors. <span class="tag">done</span></li>
+  <li><b>Long names are cut short.</b> Plate names, board rows, cards, the walk-on, the winner, league rows, cup lines, pick buttons, the pairing on FIGHT, chat and the brain title end in an ellipsis instead of pushing their neighbours aside. The audit treats an ellipsis as intended. The free-for-all board rows went from 72 to 80 px, because two lines of text overflowed them. <span class="tag">done</span></li>
+</ol>
+
+<h2>The first screen</h2>
+<div class="pair">
+  <div class="shot"><img src="before_menu.png" alt="Menu before"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_menu.png" alt="Menu after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:40%">5</span>
+    <span class="pin" style="left:4%;top:64%">10</span>
+    <span class="pin" style="left:12%;top:88%">5</span>
+    <span class="pin" style="left:93%;top:97%">1</span>
+  </div>
+</div>
+
+<h2>Settings</h2>
+<div class="pair">
+  <div class="shot"><img src="before_menu_settings.png" alt="Settings before"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_menu_settings.png" alt="Settings after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:75%">3</span>
+    <span class="pin" style="left:36%;top:81%">4</span>
+  </div>
+</div>
+
+<h2>The arena</h2>
+<div class="pair">
+  <div class="shot"><img src="before_arena.png" alt="Arena before"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_arena.png" alt="Arena after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:12%;top:11%">10</span>
+    <span class="pin" style="left:93%;top:97%">1</span>
+  </div>
+</div>
+<p class="status">The fight HUD itself is unchanged; the arena's changes are the result card, the settings and the debug panel.</p>
+
+<h2>The arena's result card (new picture)</h2>
+<div class="pair">
+  <div class="shot after"><img src="after_results.png" alt="Arena result after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:30%;top:62%">2</span>
+    <span class="pin" style="left:50%;top:91%">2</span>
+  </div>
+  <div class="shot after"><img src="after_arena_debug.png" alt="Arena debug panel after"><span class="cap">AFTER · DEBUG</span>
+    <span class="pin" style="left:20%;top:92%">6</span>
+  </div>
+</div>
+
+<h2>The free-for-all</h2>
+<div class="pair">
+  <div class="shot"><img src="before_melee.png" alt="Free-for-all before"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_melee.png" alt="Free-for-all after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:12%">10</span>
+    <span class="pin" style="left:10%;top:97%">1</span>
+    <span class="pin" style="left:93%;top:97%">1</span>
+  </div>
+</div>
+
+<h2>The free-for-all's result and the cup (new pictures)</h2>
+<div class="pair">
+  <div class="shot after"><img src="after_melee_results.png" alt="Free-for-all result after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:30%;top:81%">2</span>
+    <span class="pin" style="left:50%;top:91%">2</span>
+  </div>
+  <div class="shot after"><img src="after_cup.png" alt="Cup sheet after"><span class="cap">AFTER · CUP</span>
+    <span class="pin" style="left:12%;top:88%">5</span>
+  </div>
+</div>
+
+<p class="status">Files: Assets/UI/Theme.uss, Hud.uxml, Melee.uxml, Menu.uxml, Settings.uxml, Testbed.uxml; Runtime/UI/SettingsPage.cs, DebugPanel.cs (new), MenuView.cs, HudView.cs, MeleeHud.cs, TestbedHud.cs, LayoutAudit.cs, Glyph.cs; Editor/DevTools.cs (layout command); Tests/OneScreenTests.cs, StateFlowTests.cs (new).</p>
+</main>
+</body>
+</html>

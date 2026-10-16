@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    PoBox: the free-for-all's HUD (Melee scene, MeleeHud.cs), on the same anchors as the HUD and the first screen:
-    the round and its time top-left, the frame rate top-centre, the settings and the way back top-right. Under the
-    frame, every boxer in the ring in two rows of four (MeleeHud builds them): its colour, its name, and nothing
-    while it fights, the count over it, SLIP, OUT or WINNER. The referee's calls across the middle; the result at
-    the bottom with AGAIN and MENU; the settings sheet docked at the bottom like the first screen's. Nothing scrolls.
+    PoBox: the free-for-all's HUD (Melee scene, MeleeHud.cs), on the same five anchors as the HUD and the first
+    screen: the round and its time top-left, the frame rate top-centre (tap: the debug panel), the way back and the
+    settings top-right, DEBUG bottom-left and the version bottom-right. Under the frame, every boxer in the ring in
+    two rows of four (MeleeHud builds them): its colour, its name, and nothing while it fights, the count over it,
+    SLIP, OUT or WINNER. The referee's calls across the middle; the result, the same card as the arena's, docked at
+    the bottom with REPLAY, SHARE, AGAIN and MENU; the settings and the debug panel docked there too, one at a time.
+    Nothing scrolls.
 
     The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
 -->
@@ -15,38 +17,73 @@
     <ui:VisualElement name="root" class="root" picking-mode="Ignore">
         <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
 
-            <!-- Under everything else: a tap on what is left of the screen closes the settings. -->
+            <!-- Under everything else: a tap on what is left of the screen closes the settings or the panel. -->
             <ui:VisualElement name="picture" class="picture" />
 
             <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
-                <ui:Label name="round" class="chip frame-title" text="R1 0:45" picking-mode="Ignore" />
+                <ui:Label name="title" class="chip frame-title" text="R1 0:45" picking-mode="Ignore" />
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Button name="back" class="btn btn--ghost btn--icon ffa-back">
-                    <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
+                <ui:Button name="back" class="btn btn--ghost btn--icon ffa-back" tooltip="Menu">
+                    <ui:VisualElement class="icon icon--home" picking-mode="Ignore" />
                 </ui:Button>
-                <ui:Button name="menu" class="btn btn--ghost btn--icon">
+                <ui:Button name="menu" class="btn btn--ghost btn--icon" tooltip="Settings">
                     <ui:VisualElement class="icon icon--gear" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="frame-centre" picking-mode="Ignore">
-                    <ui:Label name="fps" class="chip frame-fps" text="-- FPS" picking-mode="Ignore" />
+                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="board" class="ffa-board" picking-mode="Ignore" />
 
+            <!-- Chat plays (TwitchChat.cs): chat's favourite. Only there with a channel set in pobox.twitch. -->
+            <ui:Label name="chat" class="chat chat--melee hidden" text="" picking-mode="Ignore" />
+
             <ui:Label name="call" class="ffa-call hidden" text="" picking-mode="Ignore" />
 
-            <ui:VisualElement name="result" class="ffa-result hidden">
-                <ui:Label name="winner" class="ffa-winner" text="" picking-mode="Ignore" />
-                <ui:Label name="method" class="ffa-method" text="" picking-mode="Ignore" />
-                <ui:VisualElement class="ffa-actions" picking-mode="Ignore">
-                    <ui:Button name="again" class="btn btn--primary" text="AGAIN" />
-                    <ui:Button name="leave" class="btn" text="MENU" />
+            <ui:VisualElement name="result" class="sheet over hidden">
+                <ui:VisualElement class="res-head" picking-mode="Ignore">
+                    <ui:VisualElement class="icon icon--trophy res-icon" picking-mode="Ignore" />
+                    <ui:VisualElement class="res-title" picking-mode="Ignore">
+                        <ui:Label name="winner" class="res-winner" text="" picking-mode="Ignore" />
+                        <ui:Label name="method" class="res-method" text="" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <!-- The punch count's leaders: most landed, the fastest glove, the hardest punch. -->
+                <ui:Label name="stats" class="res-note" text="" picking-mode="Ignore" />
+                <ui:VisualElement class="grid res-actions" picking-mode="Ignore">
+                    <ui:Button name="replay" class="btn btn--tool grid-4 hidden" tooltip="Replay the last knockdown">
+                        <ui:VisualElement class="icon icon--movie" picking-mode="Ignore" />
+                        <ui:Label class="btn-word" text="REPLAY" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="share" class="btn btn--tool grid-4" tooltip="Share a picture of the result">
+                        <PoBox.UI.Glyph kind="Share" class="glyph--btn" />
+                        <ui:Label class="btn-word" text="SHARE" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="again" class="btn btn--primary btn--tool grid-4" tooltip="The same free-for-all again">
+                        <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
+                        <ui:Label class="btn-word" text="AGAIN" picking-mode="Ignore" />
+                    </ui:Button>
+                    <ui:Button name="leave" class="btn btn--tool grid-4" tooltip="Back to the menu">
+                        <ui:VisualElement class="icon icon--home" picking-mode="Ignore" />
+                        <ui:Label class="btn-word" text="MENU" picking-mode="Ignore" />
+                    </ui:Button>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+            <ui:VisualElement name="menu-sheet" class="sheet over hidden">
                 <ui:Instance template="Settings" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
+
+            <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
+                <ui:Button name="debug" class="chip frame-debug">
+                    <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
+                    <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

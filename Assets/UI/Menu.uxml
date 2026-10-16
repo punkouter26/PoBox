@@ -4,10 +4,10 @@
     anchors: the game's name top-left, the frame rate top-centre (tap: the debug panel), the settings
     top-right, DEBUG bottom-left and the version bottom-right.
 
-    Between them: the two corners side by side, each told by its colour along the top and a glove in it (a
-    card for every boxer in each, built by MenuView.cs), and FIGHT with the pairing as it stands written
-    under the word. The settings sheet is the HUD's settings page (Settings.uxml), docked at the bottom like
-    the HUD's menu; it and the debug panel open one at a time and carry the class "over". Nothing scrolls.
+    Between them: every boxer, two to a row (a card each, built by MenuView.cs). The first tap picks the red
+    corner, the next the blue, and so on; a card in a corner says which. Under them the thumb row: CUP, FIGHT
+    with the pairing as it stands written under the word, and ALL (the free-for-all). The settings, the cup and
+    the debug panel open docked at the bottom, one at a time, and carry the class "over". Nothing scrolls.
 
     The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
 -->
@@ -32,29 +32,37 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="picker" class="picker" picking-mode="Ignore">
-                <ui:VisualElement class="pick-col pick-col--red" picking-mode="Ignore">
-                    <PoBox.UI.Glyph kind="Glove" class="pick-glove glyph--red" />
-                    <ui:VisualElement name="red-cards" class="pick-cards" picking-mode="Ignore" />
-                </ui:VisualElement>
-                <ui:VisualElement class="pick-col pick-col--blue" picking-mode="Ignore">
-                    <PoBox.UI.Glyph kind="Glove" class="pick-glove glyph--blue" />
-                    <ui:VisualElement name="blue-cards" class="pick-cards" picking-mode="Ignore" />
-                </ui:VisualElement>
+            <ui:VisualElement name="picker" class="picker" picking-mode="Ignore" />
+
+            <ui:VisualElement name="thumb" class="thumb" picking-mode="Ignore">
+                <!-- The cup (League/Career.cs): eight boxers, single elimination, carried on from bout to bout. -->
+                <ui:Button name="career" class="btn thumb-side">
+                    <ui:Label class="thumb-word" text="CUP" picking-mode="Ignore" />
+                    <ui:Label class="thumb-sub" text="KNOCKOUT" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:Button name="fight" class="btn btn--primary fight">
+                    <ui:Label name="fight-word" class="fight-word" text="FIGHT" picking-mode="Ignore" />
+                    <ui:Label name="versus" class="fight-pair" text="" picking-mode="Ignore" />
+                </ui:Button>
+                <!-- Every boxer in the ring at once, last one standing: the Melee scene. -->
+                <ui:Button name="melee" class="btn thumb-side melee">
+                    <ui:Label class="thumb-word" text="ALL" picking-mode="Ignore" />
+                    <ui:Label class="thumb-sub" text="FREE-FOR-ALL" picking-mode="Ignore" />
+                </ui:Button>
             </ui:VisualElement>
 
-            <ui:Button name="fight" class="btn btn--primary fight fight--split">
-                <ui:Label name="fight-word" class="fight-word" text="FIGHT" picking-mode="Ignore" />
-                <ui:Label name="versus" class="fight-pair" text="" picking-mode="Ignore" />
-            </ui:Button>
-            <!-- Every boxer in the ring at once, last one standing: the Melee scene. -->
-            <ui:Button name="melee" class="btn melee">
-                <ui:Label class="melee-word" text="ALL" picking-mode="Ignore" />
-                <ui:Label class="melee-sub" text="FREE-FOR-ALL" picking-mode="Ignore" />
-            </ui:Button>
-
-            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+            <ui:VisualElement name="menu-sheet" class="sheet over hidden">
                 <ui:Instance template="Settings" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <!-- The cup's bracket, one line a match, filled in by MenuView; FIGHT starts the next bout of it. -->
+            <ui:VisualElement name="cup-sheet" class="sheet over hidden">
+                <ui:Label name="cup-title" class="cup-title" text="THE CUP" picking-mode="Ignore" />
+                <ui:VisualElement name="cup-bracket" class="cup-bracket" picking-mode="Ignore" />
+                <ui:VisualElement class="grid" picking-mode="Ignore">
+                    <ui:Button name="cup-new" class="btn grid-2" text="NEW CUP" />
+                    <ui:Button name="cup-fight" class="btn btn--primary grid-2" text="FIGHT" />
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />

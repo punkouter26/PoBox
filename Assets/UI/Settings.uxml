@@ -1,37 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    PoBox: the settings page, one template used by the HUD's menu (Hud.uxml) and the first screen's
-    (Menu.uxml). SettingsPage.cs fills it in. Each button is an icon and a word; the quality button carries
-    the level as a badge; RESET LADDER turns red and asks SURE? before it throws anything away.
+    PoBox: the settings, one template used by the HUD's menu (Hud.uxml), the first screen (Menu.uxml) and the
+    free-for-all (Melee.uxml). SettingsPage.cs fills it in. Three tabs on one sheet, nothing scrolls:
+
+        SOUND     the sound and the picture's quality: all most people ever change
+        DISPLAY   the commentator's voice, the buzz of a hit, bullet time, the frame rate
+        DEBUG     the collision shapes, the brain cam (arena only), the readings, the Twitch channel for chat
+                  plays, and throwing the ladder away (arena only)
+
+    A switch is an icon and a short word with a dot that is lit while it is on; its tooltip says ON or OFF.
+    RESET LADDER turns red and asks SURE? before it throws anything away.
 
     The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
-    <ui:VisualElement class="grid" picking-mode="Ignore">
-        <ui:Button name="s-sound" class="btn btn--tool grid-2">
-            <PoBox.UI.Glyph kind="Speaker" class="glyph--btn" />
-            <ui:Label name="s-sound-word" class="btn-word" text="SOUND ON" picking-mode="Ignore" />
-        </ui:Button>
-        <ui:Button name="s-quality" class="btn btn--tool grid-2">
-            <ui:Label class="btn-word btn-word--lead" text="QUALITY" picking-mode="Ignore" />
-            <ui:Label name="s-quality-badge" class="badge badge--btn" text="PC" picking-mode="Ignore" />
-        </ui:Button>
+    <ui:VisualElement class="seg" picking-mode="Ignore">
+        <ui:Button name="s-tab-sound" class="seg-btn seg-btn--on" text="SOUND" />
+        <ui:Button name="s-tab-display" class="seg-btn" text="DISPLAY" />
+        <ui:Button name="s-tab-debug" class="seg-btn" text="DEBUG" />
     </ui:VisualElement>
-    <ui:VisualElement class="grid" picking-mode="Ignore">
-        <ui:Button name="s-voice" class="btn btn--tool grid-2">
-            <PoBox.UI.Glyph kind="Voice" class="glyph--btn" />
-            <ui:Label name="s-voice-word" class="btn-word" text="VOICE ON" picking-mode="Ignore" />
-        </ui:Button>
-        <ui:Button name="s-buzz" class="btn btn--tool grid-2">
-            <PoBox.UI.Glyph kind="Buzz" class="glyph--btn" />
-            <ui:Label name="s-buzz-word" class="btn-word" text="BUZZ ON" picking-mode="Ignore" />
-        </ui:Button>
+
+    <ui:VisualElement name="s-page-sound" class="s-page" picking-mode="Ignore">
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-sound" class="btn btn--tool grid-2" tooltip="Sound">
+                <PoBox.UI.Glyph kind="Speaker" class="glyph--btn" />
+                <ui:Label class="btn-word" text="SOUND" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-quality" class="btn btn--tool grid-2" tooltip="Picture quality">
+                <ui:Label class="btn-word btn-word--lead" text="QUALITY" picking-mode="Ignore" />
+                <ui:Label name="s-quality-badge" class="badge badge--btn" text="PC" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
     </ui:VisualElement>
-    <ui:VisualElement class="grid" picking-mode="Ignore">
-        <ui:Button name="s-fps" class="btn grid-2" text="60 FPS" />
-        <ui:Button name="s-reset" class="btn btn--tool grid-2">
-            <PoBox.UI.Glyph name="s-reset-glyph" kind="Trash" class="glyph--btn" />
-            <ui:Label name="s-reset-word" class="btn-word" text="RESET LADDER" picking-mode="Ignore" />
-        </ui:Button>
+
+    <ui:VisualElement name="s-page-display" class="s-page hidden" picking-mode="Ignore">
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-voice" class="btn btn--tool grid-2" tooltip="Commentator's voice">
+                <PoBox.UI.Glyph kind="Voice" class="glyph--btn" />
+                <ui:Label class="btn-word" text="VOICE" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-buzz" class="btn btn--tool grid-2" tooltip="Buzz on a hit">
+                <PoBox.UI.Glyph kind="Buzz" class="glyph--btn" />
+                <ui:Label class="btn-word" text="BUZZ" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-bullet" class="btn btn--tool grid-2" tooltip="Bullet time on a big punch">
+                <PoBox.UI.Glyph kind="Burst" class="glyph--btn" />
+                <ui:Label class="btn-word" text="SLOW-MO" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-fps" class="btn grid-2" text="60 FPS" tooltip="Frame rate cap" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="s-page-debug" class="s-page hidden" picking-mode="Ignore">
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-xray" class="btn btn--tool grid-2" tooltip="Collision shapes over the boxers">
+                <ui:Label class="btn-word btn-word--lead" text="X-RAY" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-brain" class="btn btn--tool grid-2" tooltip="Brain cam: a boxer's joint targets">
+                <ui:Label class="btn-word btn-word--lead" text="BRAIN" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-telemetry" class="btn btn--tool grid-2" tooltip="The debug readings">
+                <PoBox.UI.Glyph kind="Power" class="glyph--btn" />
+                <ui:Label class="btn-word" text="READINGS" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-reset" class="btn btn--tool grid-2" tooltip="Throw the ladder away">
+                <PoBox.UI.Glyph name="s-reset-glyph" kind="Trash" class="glyph--btn" />
+                <ui:Label name="s-reset-word" class="btn-word" text="RESET LADDER" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+        <!-- Chat plays: the channel whose chat votes and throws cubes. Empty is off; it takes effect at the next fight. -->
+        <ui:VisualElement class="field-row" picking-mode="Ignore">
+            <ui:Label class="field-key" text="TWITCH" picking-mode="Ignore" />
+            <ui:TextField name="s-twitch" class="field" max-length="25" is-delayed="true" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

@@ -310,7 +310,8 @@ namespace PoBox.Broadcast
             // The walk-on: the Timeline's camera track has the picture. Underneath it, and on their own if
             // there is no Timeline, the two corner shots, a half each.
             else if (bout.Phase == BoutPhase.WalkOn) want = bout.PhaseAge < bout.walkOnSeconds * 0.5f ? Shot.WalkRed : Shot.WalkBlue;
-            else if (bout.Phase == BoutPhase.Results) want = bout.Winner != null ? Shot.Winner : Shot.Orbit;
+            // The instant replay (Mj/MjReplay.cs) is watched wide: the whole ring, both boxers.
+            else if (bout.Phase == BoutPhase.Results) want = Mj.MjReplay.Playing ? Shot.Wide : bout.Winner != null ? Shot.Winner : Shot.Orbit;
             else if (now < _forcedUntil) want = _forced;
             else if (bout.Phase == BoutPhase.Count && bout.Downed != null) { want = Shot.Overhead; _impactVictim = bout.Downed; }
             else if (bout.Phase != BoutPhase.Fight) want = Shot.Orbit;

@@ -14,12 +14,14 @@ namespace PoBox.Tests
     /// The one-screen rule as a test. Loads the arena, points the HUD at a texture the shape of a phone, and
     /// fails if anything is drawn off the screen, anything scrolls, any text is under the legibility floor,
     /// any label is cut off, any button is smaller than a thumb, two overlays (or two pieces of furniture)
-    /// lie over each other, one of the five frame anchors has left its corner, or the UI writes a warning
-    /// to the log. Run for a small 9:16 phone, the 1080 x 1920 reference, a tall 9:20 phone and a taller
-    /// 9:21 one, each with and without a notch (130 px off the top, 80 off the bottom), through every state
-    /// the HUD has: the walk-on, the round's banner, the fight with the menu, the debug panel and each graph,
-    /// a count with its inset, the round break and the result. The first screen, where the boxers are
-    /// chosen, gets the same treatment, and the arena is checked to field the pair that was picked.
+    /// lie over each other, one of the five frame anchors (title, fps, menu, debug, version) is missing or has
+    /// left its corner, or the UI writes a warning to the log. Run for a small 16:9 phone, the 1080 x 1920
+    /// reference (16:9), 19.5:9, 20:9 and 21:9, each with and without a notch (a cutout 130 px off the top, a
+    /// home bar 80 off the bottom), through every state the HUD has: the walk-on, the round's banner, the fight
+    /// with the menu and each settings tab, the debug panel and each graph, a count with its inset, the round
+    /// break and the result. The first screen (the boxers, the settings' tabs, the cup, the debug panel), the
+    /// free-for-all (the settings' tabs, the debug panel, the result) and the testbed get the same treatment,
+    /// and the arena is checked to field the pair that was picked.
     /// </summary>
     public class OneScreenTests
     {
@@ -27,6 +29,7 @@ namespace PoBox.Tests
         {
             new Vector2Int(720, 1280),
             new Vector2Int(1080, 1920),
+            new Vector2Int(1080, 2340),
             new Vector2Int(1080, 2400),
             new Vector2Int(1080, 2520),
         };
@@ -63,6 +66,7 @@ namespace PoBox.Tests
                     yield return Settle();
                     Check(hud.Root, phone, at + "menu tab " + tab);
                 }
+                yield return CheckSettingsTabs(hud.Settings, hud.Root, phone, at + "menu, settings");
                 // The one overlay rule: a tap on what is left of the picture puts the menu or the panel away.
                 VisualElement picture = hud.Root.Q<VisualElement>("picture");
                 yield return Tap(picture);
@@ -139,17 +143,38 @@ namespace PoBox.Tests
             {
                 if (notch) HudView.SafeAreaOverride = Notch(phone);
                 yield return Settle();
-                Check(hud.Root, phone, "free-for-all", LayoutAudit.MeleeAnchors);
+                Check(hud.Root, phone, "free-for-all");
                 hud.ToggleSettings();
                 yield return Settle();
                 Assert.IsTrue(hud.SettingsOpen, "the settings icon did not open the settings");
-                Check(hud.Root, phone, "free-for-all, settings", LayoutAudit.MeleeAnchors);
+                yield return CheckSettingsTabs(hud.Settings, hud.Root, phone, "free-for-all, settings");
                 yield return Tap(hud.Root.Q<VisualElement>("picture"));
                 Assert.IsFalse(hud.SettingsOpen, "a tap on the picture did not close the settings");
+                hud.ToggleDebug();
+                yield return Settle();
+                Check(hud.Root, phone, "free-for-all, debug panel");
+                yield return Tap(hud.Root.Q<VisualElement>("picture"));
+                Assert.IsFalse(hud.DebugOpen, "a tap on the picture did not close the debug panel");
+
+                // The result card, quickly: one half-second round at four times the speed.
+                FreeForAll rules = FreeForAll.Instance;
+                yield return Until(() => rules.Phase != FreeForAll.Stage.Waiting);
+                rules.rounds = 1;
+                rules.roundSeconds = 0.5f;
+                rules.Restart();
+                Time.timeScale = 4f;
+                yield return Until(() => hud.ResultOpen);
+                yield return Settle();
+                Assert.IsTrue(hud.ResultOpen, "the free-for-all never reached its result");
+                Check(hud.Root, phone, "free-for-all, result");
+                hud.ToggleSettings();
+                yield return Settle();
+                Assert.IsFalse(hud.ResultOpen, "the settings and the result card are both up");
                 warnings.AssertNone("free-for-all");
             }
             finally
             {
+                Time.timeScale = 1f;
                 warnings.Dispose();
                 HudView.SafeAreaOverride = null;
                 panel.targetTexture = previous;
@@ -178,16 +203,20 @@ namespace PoBox.Tests
             {
                 if (notch) HudView.SafeAreaOverride = Notch(phone);
                 yield return Settle();
-                Check(menu.Root, phone, "boxer menu", LayoutAudit.MenuAnchors);
+                Check(menu.Root, phone, "boxer menu");
 
                 menu.ToggleSettings();
                 yield return Settle();
                 Assert.IsTrue(menu.SettingsOpen, "the settings icon did not open the settings");
-                Check(menu.Root, phone, "boxer menu, settings", LayoutAudit.MenuAnchors);
+                yield return CheckSettingsTabs(menu.Settings, menu.Root, phone, "boxer menu, settings");
+                menu.ToggleCup();
+                yield return Settle();
+                Assert.IsFalse(menu.SettingsOpen, "the settings and the cup are both open");
+                Check(menu.Root, phone, "boxer menu, cup");
                 menu.ToggleDebug();
                 yield return Settle();
-                Assert.IsFalse(menu.SettingsOpen, "the settings and the debug panel are both open");
-                Check(menu.Root, phone, "boxer menu, debug panel", LayoutAudit.MenuAnchors);
+                Assert.IsFalse(menu.CupOpen, "the cup and the debug panel are both open");
+                Check(menu.Root, phone, "boxer menu, debug panel");
                 yield return Tap(menu.Root.Q<VisualElement>("picture"));
                 Assert.IsFalse(menu.DebugOpen, "a tap outside did not close the debug panel");
 
@@ -199,9 +228,59 @@ namespace PoBox.Tests
                     Assert.AreEqual(blue, menu.Red, "red did not take the boxer that was tapped");
                     Assert.AreEqual(red, menu.Blue, "tapping the other corner's boxer did not swap the two");
                     yield return Settle();
-                    Check(menu.Root, phone, "boxer menu, corners swapped", LayoutAudit.MenuAnchors);
+                    Check(menu.Root, phone, "boxer menu, corners swapped");
+                }
+                if (menu.boxers.Length > 2)
+                {
+                    // Tap order: whichever corner's turn it is takes the first card, the other corner the second.
+                    int first = menu.Turn;
+                    int a = (menu.Red + 1) % menu.boxers.Length;
+                    while (a == menu.Blue) a = (a + 1) % menu.boxers.Length;
+                    menu.Tap(a);
+                    Assert.AreEqual(a, first == 0 ? menu.Red : menu.Blue, "the first tap did not fill the corner whose turn it was");
+                    int b = (a + 1) % menu.boxers.Length;
+                    while (b == menu.Red || b == menu.Blue) b = (b + 1) % menu.boxers.Length;
+                    menu.Tap(b);
+                    Assert.AreEqual(b, first == 0 ? menu.Blue : menu.Red, "the second tap did not fill the other corner");
+                    Assert.AreNotEqual(menu.Red, menu.Blue);
                 }
                 warnings.AssertNone("boxer menu");
+            }
+            finally
+            {
+                warnings.Dispose();
+                HudView.SafeAreaOverride = null;
+                panel.targetTexture = previous;
+                target.Release();
+                Object.Destroy(target);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TestbedHudFitsOneScreen([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        {
+#if UNITY_EDITOR
+            // The testbed is an editor tool, not in the build, so it is loaded by its path.
+            yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode("Assets/Scenes/Testbed.unity", new LoadSceneParameters(LoadSceneMode.Single));
+#else
+            Assert.Ignore("the testbed is not in the build");
+#endif
+            yield return null;
+            var hud = Object.FindAnyObjectByType<PoBox.Mj.TestbedHud>();
+            Assert.IsNotNull(hud, "the Testbed scene has no TestbedHud");
+            PanelSettings panel = hud.GetComponent<UIDocument>().panelSettings;
+            RenderTexture previous = panel.targetTexture;
+            var target = new RenderTexture(phone.x, phone.y, 24);
+            panel.targetTexture = target;
+            var warnings = new UiWarnings();
+            try
+            {
+                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                yield return Settle();
+                Check(hud.Root, phone, "testbed, readings");
+                yield return Tap(hud.Root.Q<VisualElement>("picture"));
+                Check(hud.Root, phone, "testbed");
+                warnings.AssertNone("testbed");
             }
             finally
             {
@@ -481,9 +560,22 @@ namespace PoBox.Tests
                 Assert.AreEqual("19-19", judges.Card(j), Judges.Names[j] + " let the centre outweigh the punches");
         }
 
-        static void Check(VisualElement root, Vector2Int phone, string what, string[] anchors = null)
+        /// <summary>Each of the settings' three tabs, audited, ending back on the first.</summary>
+        static IEnumerator CheckSettingsTabs(SettingsPage settings, VisualElement root, Vector2Int phone, string what)
         {
-            LayoutAudit.Report report = LayoutAudit.Check(root, anchors);
+            Assert.IsNotNull(settings, what + ": no settings page");
+            for (int tab = 0; tab < 3; tab++)
+            {
+                settings.ShowTab(tab);
+                yield return Settle();
+                Check(root, phone, $"{what} tab {tab}");
+            }
+            settings.ShowTab(0);
+        }
+
+        static void Check(VisualElement root, Vector2Int phone, string what)
+        {
+            LayoutAudit.Report report = LayoutAudit.Check(root);
             Assert.IsTrue(report.Passed, $"{what} at {phone.x}x{phone.y}:\n{report.Summary()}");
         }
     }

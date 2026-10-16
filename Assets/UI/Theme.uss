@@ -8,20 +8,27 @@
  *    is 26 px: anything less is under 10 sp and stops being readable.
  *
  *  - Spacing is on a 4 px grid. Furniture laid over the picture (chips, the scoreboard, the dock) gets 8 px
- *    gaps and at most 16 px of padding; only the two sheets, which are cards, get 20.
+ *    gaps and at most 16 px of padding; only the sheets, which are cards, get 20.
  *
  *  - Anything a thumb presses is at least 88 px tall (a 44 pt target at 2x), however tight the rest is.
  *
  *  - Nothing scrolls. A panel that does not fit is a panel with too much in it.
  *
- *  - Colours, corner radii and text sizes come from the tokens below, and the three documents (Hud, Menu,
- *    Testbed) carry no styles of their own. Corners are 6, 8, 12 or 16 (a circle is half its own size);
- *    text is 26, 28, 32, 40 or 52. The exceptions are the three things meant to be read across a room:
+ *  - Colours, corner radii and text sizes come from the tokens below, and the documents (Hud, Menu, Melee,
+ *    Testbed, Settings) carry no styles of their own. Corners are 6, 8, 12 or 16 (a circle is half its own
+ *    size); text is 26, 28, 32, 40 or 52. The exceptions are the three things meant to be read across a room:
  *    the walk-on name (76), the round banner (96) and the referee's count (220).
  *
- *  - What opens over the fight (menu, results, debug) is docked at the bottom, where a thumb is, one at a
- *    time; the picture keeps the top of the screen. Each of them carries the class "over", which is how the
- *    one-screen audit (LayoutAudit.cs) knows it may lie over the furniture and must never lie over another.
+ *  - Every screen has the same five anchors: its name top-left, the frame rate top-centre, the settings
+ *    top-right, DEBUG bottom-left and the version bottom-right (LayoutAudit checks all five on each).
+ *
+ *  - What opens over the picture (settings, results, the cup, debug) is docked at the bottom, where a thumb
+ *    is, one at a time; the picture keeps the top of the screen. Each of them carries the class "over", which
+ *    is how the one-screen audit (LayoutAudit.cs) knows it may lie over the furniture and must never lie over
+ *    another.
+ *
+ *  - A name is never allowed to push its neighbours about: every label that shows one is cut short with an
+ *    ellipsis (the clamp rule under "base"), and the audit takes such a label as fitting by design.
  *
  *  - Where something sits is a token, never a number written into its rule: the screen is cut into bands
  *    (the frame rows, the scoreboard, the overlays over the picture, the dock) and every offset below is
@@ -99,11 +106,13 @@
     --over-caption:  380px;          /* over-dock + caption 56 + gap-4: the inset sits on the caption */
     --walkon-bottom: 520px;          /* over-caption + 140 */
 
+    /* The free-for-all, from the top. */
+    --ffa-under-board: 280px;        /* frame-clear + two rows of (80 + 6) + gap-1 */
+    --ffa-call-top:    328px;        /* ffa-under-board + chat 40 + gap-2 */
+
     /* The first screen. */
     --fight-h:       144px;
     --picker-bottom: 264px;          /* frame-clear + fight-h + gap-4 */
-    --melee-w:       236px;          /* the free-for-all button beside FIGHT */
-    --beside-melee:  260px;          /* gap-4 + melee-w + gap-2 */
 
     --radius-lg:      16px;
     --radius:         12px;
@@ -132,6 +141,13 @@ Label { margin: 0; padding: 0; }
 
 .label-micro { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
 
+/* The clamp: a name, a pairing or a line of chat is cut short with an ellipsis rather than widening its box. */
+.plate-name, .ffa-name, .pick-name, .walkon-name, .res-winner, .lg-name, .cup-line, .predict-btn, .fight-pair, .chat, .brain-title, .ticker {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 /* ------------------------------------------------------------------ buttons */
 
 .btn {
@@ -155,6 +171,7 @@ Label { margin: 0; padding: 0; }
 
 .btn--primary { background-color: var(--accent); color: var(--on-accent); }
 .btn--primary:hover { background-color: var(--accent-hover); }
+.btn--primary .icon { -unity-background-image-tint-color: var(--on-accent); }
 .btn--ghost { background-color: var(--overlay); }
 .btn--on { background-color: var(--accent-tint-2); border-width: 2px; border-color: var(--accent); }
 .btn--danger { background-color: var(--danger); color: var(--on-danger); }
@@ -169,9 +186,16 @@ Label { margin: 0; padding: 0; }
 .btn-word--lead { margin-left: 0; }
 .badge--btn { font-size: var(--t-small); margin: 0 0 0 12px; padding: 4px 10px; color: var(--ink); background-color: var(--shade); -unity-font-style: bold; }
 
+/* A switch (the settings): its icon, a short caption, and a dot that is lit while it is on. The word ON or
+   OFF is not written; the button's tooltip says it for whoever cannot see the dot. */
+.sw-dot { width: 18px; height: 18px; border-radius: 9px; margin-left: 14px; background-color: var(--ink-faint); flex-shrink: 0; }
+.btn--on .sw-dot { background-color: var(--ink); }
+.btn--on .btn-word { color: var(--ink); }
+
 .icon {
     width: 44px;
     height: 44px;
+    flex-shrink: 0;
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--ink);
 }
@@ -179,6 +203,8 @@ Label { margin: 0; padding: 0; }
 .icon--return { background-image: url("project://database/Assets/UI/Icons/return.png"); }
 .icon--next   { background-image: url("project://database/Assets/UI/Icons/next.png"); }
 .icon--gear   { background-image: url("project://database/Assets/UI/Icons/gear.png"); }
+.icon--home   { background-image: url("project://database/Assets/UI/Icons/home.png"); }
+.icon--movie  { background-image: url("project://database/Assets/UI/Icons/movie.png"); }
 
 /* ------------------------------------------------------------------ frame: the five anchors */
 
@@ -220,13 +246,14 @@ Label { margin: 0; padding: 0; }
 .frame-fps--bad { color: var(--danger); }
 
 /* An icon drawn in a button: three bars for the menu, a glove in a corner's colour for that boxer. */
-.glyph--btn { width: 44px; height: 44px; margin: 0; color: var(--ink); }
+.glyph--btn { width: 44px; height: 44px; margin: 0; color: var(--ink); flex-shrink: 0; }
 .glyph--red { color: var(--red); }
 .glyph--blue { color: var(--blue); }
 
 .frame-debug { flex-direction: row; align-items: center; }
 .frame-debug-text { font-size: var(--t-body); margin-left: 12px; }
-.frame-version { color: var(--ink-dim); font-size: var(--t-small); }
+/* The version: small and quiet, it is only there to be quoted in a bug report. */
+.frame-version { color: var(--ink-dim); font-size: var(--t-micro); padding: 0 16px; }
 
 .dot { width: 20px; height: 20px; border-radius: 10px; background-color: var(--accent); }
 .dot--warn { background-color: var(--warn); }
@@ -279,7 +306,8 @@ Label { margin: 0; padding: 0; }
 }
 .plate-ghost--red { left: 0; }
 .plate-ghost--blue { right: 0; }
-.plate-name { font-size: var(--t-title); -unity-font-style: bold; flex-shrink: 0; text-shadow: 0 2px 4px var(--shadow); }
+/* The name gives way first: the rank and the health keep their width and the name ends in an ellipsis. */
+.plate-name { font-size: var(--t-title); -unity-font-style: bold; flex-shrink: 1; text-shadow: 0 2px 4px var(--shadow); }
 .plate-rank {
     font-size: var(--t-micro);
     background-color: var(--shade);
@@ -417,6 +445,24 @@ Label { margin: 0; padding: 0; }
 }
 .banner--count { top: var(--count-top); font-size: 220px; letter-spacing: 0; color: var(--warn); }
 
+/* Chat plays (Net/TwitchChat.cs): the corners' votes under the scoreboard, between the pods (the arena), or
+   chat's favourite under the board (the free-for-all). Only there with a channel set. */
+.chat {
+    position: absolute;
+    top: var(--under-board);
+    left: var(--beside-pods);
+    right: var(--beside-pods);
+    height: 40px;
+    padding: 0 12px;
+    font-size: var(--t-micro);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ink);
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+}
+.chat--melee { top: var(--ffa-under-board); left: var(--gap-4); right: var(--gap-4); }
+
 /* Between rounds: the cards and the round's numbers, over the middle of the picture. */
 .break {
     position: absolute;
@@ -475,6 +521,52 @@ Label { margin: 0; padding: 0; }
 .walkon-name { font-size: 76px; -unity-font-style: bold; letter-spacing: 2px; }
 .walkon-detail { font-size: var(--t-small); color: var(--ink-dim); }
 
+/* Before the first bell, under the walk-on: a corner each side at the ladder's odds, the stake and the coins between them. */
+.predict {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    bottom: var(--over-caption);
+    height: var(--touch);
+    flex-direction: row;
+    align-items: center;
+}
+.predict-btn { flex: 1 1 0; margin: 0; font-size: var(--t-small); -unity-font-style: bold; }
+.predict-btn--red { border-left-width: 6px; border-left-color: var(--red); }
+.predict-btn--blue { border-right-width: 6px; border-right-color: var(--blue); }
+.predict-coins {
+    flex: 1 1 0;
+    margin: 0 var(--gap-2);
+    font-size: var(--t-micro);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: var(--warn);
+    text-shadow: 0 2px 6px var(--shadow);
+}
+
+/* The brain cam (settings, DEBUG, BRAIN): a bar a joint, grouped legs, torso, left arm, right arm. */
+.brain {
+    position: absolute;
+    left: var(--gap-4);
+    bottom: var(--over-caption);
+    width: 560px;
+    padding: var(--gap-2) var(--gap-3);
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+    border-left-width: 6px;
+    border-left-color: var(--red);
+}
+.brain-title { font-size: var(--t-micro); -unity-font-style: bold; letter-spacing: 1px; color: var(--ink); }
+.brain-title--blue { color: var(--reserve); }
+.brain-bars { flex-direction: row; height: 150px; margin-top: var(--gap-1); }
+.brain-column { flex-grow: 1; margin: 0 4px; }
+.brain-group { flex-grow: 1; flex-direction: row; align-items: flex-end; }
+.brain-slot { flex: 1 1 0; height: 100%; margin: 0 1px; justify-content: flex-end; background-color: var(--row); }
+.brain-bar { width: 100%; background-color: var(--accent); }
+.brain-bar--neg { background-color: var(--reserve); }
+.brain-key { font-size: var(--t-micro); color: var(--ink-dim); -unity-text-align: middle-center; }
+
 /* The commentary: a caption over the bottom of the picture. It fades out when it has nothing new to say,
    so most of the time it is not there and the picture has that space. */
 .ticker {
@@ -490,9 +582,6 @@ Label { margin: 0; padding: 0; }
     border-left-color: var(--accent);
     border-radius: var(--radius-sm);
     padding: 0 18px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------------ dock */
@@ -522,6 +611,7 @@ Label { margin: 0; padding: 0; }
     position: absolute;
     left: var(--gap-4);
     right: var(--gap-4);
+    bottom: var(--frame-clear);
     background-color: var(--surface);
     border-radius: var(--radius-lg);
     border-width: 1px;
@@ -529,8 +619,9 @@ Label { margin: 0; padding: 0; }
     padding: var(--gap-5);
 }
 
-/* Results: who won, how, and both fighters' numbers on one card. */
-.results { bottom: var(--frame-clear); }
+/* The result, the same card on the arena and the free-for-all: who won and how, what the pick paid, the punch
+   count, and one row of four chips (REPLAY, SHARE, AGAIN or NEXT, MENU), an icon and a short word each, which
+   fits a 360 dp phone. */
 .res-head { flex-direction: row; align-items: center; height: 104px; }
 .res-icon { width: 72px; height: 72px; margin-right: 16px; -unity-background-image-tint-color: var(--warn); }
 .res-title { flex: 1 1 0; }
@@ -538,7 +629,12 @@ Label { margin: 0; padding: 0; }
 .res-winner--red { color: var(--red); }
 .res-winner--blue { color: var(--blue); }
 .res-method { font-size: var(--t-body); color: var(--ink-dim); }
+/* The pick paid out and the cup's news. */
+.res-extra { font-size: var(--t-small); -unity-font-style: bold; color: var(--warn); margin-top: var(--gap-2); }
+/* The free-for-all's punch count: its leaders, a line each. */
+.res-note { font-size: var(--t-small); color: var(--ink-dim); white-space: normal; margin-top: var(--gap-2); }
 .res-graph { height: 96px; margin-top: var(--gap-3); background-color: var(--row); border-radius: var(--radius-sm); }
+.res-actions { margin-top: var(--gap-4); }
 
 /* The three judges' cards, each marked with the colour of the corner it went to. */
 .judges { flex-direction: row; margin-top: var(--gap-3); margin-left: -4px; margin-right: -4px; }
@@ -562,13 +658,9 @@ Label { margin: 0; padding: 0; }
 .res-mid { flex-direction: row; align-items: center; margin-top: var(--gap-3); }
 .res-mid .tape { flex: 1 1 0; margin-top: 0; }
 .res-hitmap { width: 116px; height: 176px; flex-shrink: 0; }
-.res-actions { flex-direction: row; align-items: center; margin-top: var(--gap-4); }
-.res-actions .btn { margin-right: var(--gap-2); }
-.res-go { flex: 1 1 0; margin-right: 0; }
 
-/* Menu: one sheet, three tabs, docked at the bottom where the results card sits. Every page is the same
-   height so the sheet does not jump between them. */
-.menu-sheet { bottom: var(--frame-clear); }
+/* Tabs: a row of segments over pages that are all the same height, so the sheet does not jump between them.
+   The HUD's menu has MATCH, LEAGUE and SETTINGS; the settings have SOUND, DISPLAY and DEBUG. */
 .seg { flex-direction: row; height: var(--touch); background-color: var(--row); border-radius: var(--radius); padding: 0; }
 .seg-btn {
     flex: 1 1 0;
@@ -584,11 +676,27 @@ Label { margin: 0; padding: 0; }
 .seg-btn--on { background-color: var(--accent); color: var(--on-accent); }
 
 .page { height: 520px; margin-top: var(--gap-4); }
+/* The settings' own pages: three rows of switches at most. */
+.s-page { height: 296px; margin-top: var(--gap-2); }
 .page-label { margin-top: var(--gap-5); margin-bottom: var(--gap-1); }
 .grid { flex-direction: row; margin-top: var(--gap-2); margin-left: -4px; margin-right: -4px; }
 .grid-2 { flex: 1 1 0; margin: 0 4px; }
 .grid-4 { flex: 1 1 0; margin: 0 4px; padding: 0; }
 .grid--last { margin-top: var(--gap-5); }
+
+/* A line to type in (the Twitch channel), its key in front of it. */
+.field-row { flex-direction: row; align-items: center; height: var(--touch); margin-top: var(--gap-2); }
+.field-key { width: 150px; font-size: var(--t-small); -unity-font-style: bold; color: var(--ink-dim); }
+.field { flex: 1 1 0; height: var(--touch); margin: 0; font-size: var(--t-body); }
+.field .unity-base-text-field__input {
+    background-color: var(--surface-2);
+    border-width: 0;
+    border-radius: var(--radius-sm);
+    padding: 0 16px;
+    color: var(--ink);
+    font-size: var(--t-body);
+    -unity-text-align: middle-left;
+}
 
 .lg-row {
     flex-direction: row;
@@ -607,7 +715,8 @@ Label { margin: 0; padding: 0; }
 .lg-elo { width: 120px; -unity-text-align: middle-right; -unity-font-style: bold; }
 .lg-record { width: 150px; -unity-text-align: middle-right; color: var(--ink-dim); }
 
-/* Debug: grows out of the DEBUG chip and lies over the dock rather than moving it. */
+/* Debug: grows out of the DEBUG chip and lies over the dock rather than moving it. A tap on the frame rate,
+   DEBUG, or (hidden) three fingers at once or a long press on the frame rate opens it. */
 .debug-panel {
     position: absolute;
     left: var(--gap-4);
@@ -626,8 +735,6 @@ Label { margin: 0; padding: 0; }
 /* The value takes the rest of its cell: sized to its text, a count that goes from 99 to 104 is clipped
    for the frame it takes the layout to catch up, and the one-screen audit says so. */
 .dbg-val { font-size: var(--t-small); -unity-font-style: bold; flex-grow: 1; }
-/* A switch at the foot of the panel: X-RAY draws the boxers' collision shapes over the picture. */
-.dbg-chip { width: 50%; margin-top: var(--gap-2); }
 
 /* ------------------------------------------------------------------ the testbed (Testbed.uxml) */
 
@@ -640,8 +747,8 @@ Label { margin: 0; padding: 0; }
 
 .menu-root { background-color: var(--scrim); }
 
-/* Two corners side by side, between the frame and FIGHT. Each is told by its colour along the top and a
-   glove in that colour: no heading, no labels, the height goes to the portraits. */
+/* Every boxer, two to a row, between the frame and the thumb row. The first tap picks red, the next blue,
+   and so on; the card says which corner it is in. */
 .picker {
     position: absolute;
     top: var(--frame-clear);
@@ -649,31 +756,30 @@ Label { margin: 0; padding: 0; }
     left: var(--gap-4);
     right: var(--gap-4);
     flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-content: space-between;
 }
-.pick-col { flex: 1 1 0; border-top-width: 8px; border-radius: var(--radius-sm); padding-top: var(--gap-2); }
-.pick-col--red { margin-right: 6px; border-top-color: var(--red); }
-.pick-col--blue { margin-left: 6px; border-top-color: var(--blue); }
-.pick-glove { width: 40px; height: 40px; align-self: center; margin-bottom: var(--gap-2); }
-.pick-cards { flex-grow: 1; }
 
-/* One boxer. The cards share the column, so they are as tall as the number of boxers allows. */
+/* One boxer: a quarter of the column's height and half its width, whatever the phone's shape. */
 .pick {
-    flex: 1 1 0;
-    margin: 0 0 var(--gap-2) 0;
+    width: 49.2%;
+    height: 24.2%;
+    margin: 0;
     padding: 0;
     border-width: 6px;
     border-color: var(--surface-line);
     border-radius: var(--radius);
     background-color: var(--surface);
     overflow: hidden;
-    opacity: 0.45;
+    opacity: 0.6;
     transition-property: opacity, border-color;
     transition-duration: 0.12s;
 }
-.pick:active { opacity: 0.8; }
-.pick--on { opacity: 1; }
-.pick-col--red .pick--on { border-color: var(--red); }
-.pick-col--blue .pick--on { border-color: var(--blue); }
+.pick:active { opacity: 0.85; }
+.pick--red, .pick--blue { opacity: 1; }
+.pick--red { border-color: var(--red); }
+.pick--blue { border-color: var(--blue); }
 /* A portrait is taken standing, the face in its top third (DevTools 'portraits'); the card shows a wide strip of it,
    so the strip is anchored on the face rather than the middle of the picture. */
 .pick-portrait {
@@ -683,41 +789,57 @@ Label { margin: 0; padding: 0; }
     background-position-x: center;
     background-position-y: 16%;
 }
-.pick-foot { height: 112px; padding: 0 16px; justify-content: center; background-color: var(--surface); }
+.pick-foot { height: 104px; padding: 0 16px; justify-content: center; background-color: var(--surface); }
 .pick-name { font-size: var(--t-title); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; }
 .pick-detail { font-size: var(--t-micro); letter-spacing: 1px; color: var(--ink-dim); -unity-text-align: middle-left; }
+/* RED or BLUE, on the portrait of a boxer that is in a corner. */
+.pick-tag {
+    position: absolute;
+    top: var(--gap-2);
+    left: var(--gap-2);
+    padding: 2px 10px;
+    font-size: var(--t-micro);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    color: var(--ink);
+    border-radius: var(--radius-xs);
+    display: none;
+}
+.pick--red .pick-tag { display: flex; background-color: var(--red); }
+.pick--blue .pick-tag { display: flex; background-color: var(--blue); }
 
-/* FIGHT, with the pairing as it stands written under the word. */
-.fight {
+/* The thumb row, at the bottom where a thumb is: CUP, FIGHT (the pairing written under the word) and ALL. */
+.thumb {
     position: absolute;
     bottom: var(--frame-clear);
     left: var(--gap-4);
     right: var(--gap-4);
     height: var(--fight-h);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    flex-direction: row;
 }
+.thumb > .btn { height: var(--fight-h); flex-direction: column; align-items: center; justify-content: center; padding: 0 8px; }
+.thumb-side { width: 236px; flex-shrink: 0; }
+.fight { flex: 1 1 0; margin: 0 var(--gap-2); }
 .fight-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 8px; color: var(--on-accent); }
-.fight-pair { font-size: var(--t-body); -unity-font-style: bold; letter-spacing: 1px; color: var(--on-accent); }
+.fight-pair { font-size: var(--t-body); -unity-font-style: bold; letter-spacing: 1px; color: var(--on-accent); align-self: stretch; -unity-text-align: middle-center; }
+.thumb-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 4px; }
+.thumb-sub { font-size: var(--t-micro); -unity-font-style: bold; letter-spacing: 1px; color: var(--ink-dim); }
+.melee { border-width: 4px; border-color: var(--accent); }
+.melee .thumb-word { color: var(--accent); }
 
-/* FIGHT shares its row with the free-for-all: gap-4 + the button + gap-2 on the right. */
-.fight--split { right: var(--beside-melee); }
-.melee {
-    position: absolute;
-    bottom: var(--frame-clear);
-    right: var(--gap-4);
-    width: var(--melee-w);
-    height: var(--fight-h);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0 8px;
-    border-width: 4px;
-    border-color: var(--accent);
+/* The cup: its bracket a line a match, the next one marked, NEW CUP and FIGHT under it. */
+.cup-title { font-size: var(--t-title); -unity-font-style: bold; white-space: normal; }
+.cup-bracket { margin-top: var(--gap-3); margin-bottom: var(--gap-2); }
+.cup-line {
+    height: 60px;
+    margin-bottom: var(--gap-1);
+    padding: 0 16px;
+    font-size: var(--t-small);
+    -unity-text-align: middle-left;
+    background-color: var(--row);
+    border-radius: var(--radius-sm);
 }
-.melee-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 4px; color: var(--accent); }
-.melee-sub { font-size: var(--t-micro); -unity-font-style: bold; letter-spacing: 1px; color: var(--ink-dim); }
+.cup-line--next { background-color: var(--row-lead); border-left-width: 6px; border-left-color: var(--accent); -unity-font-style: bold; }
 
 /* ------------------------------------------------------------------ the free-for-all (Melee.uxml) */
 
@@ -733,7 +855,7 @@ Label { margin: 0; padding: 0; }
 }
 .ffa-row {
     width: 24.4%;
-    height: 72px;
+    height: 80px;
     margin-bottom: 6px;
     justify-content: center;
     background-color: var(--overlay);
@@ -741,13 +863,20 @@ Label { margin: 0; padding: 0; }
     border-top-width: 6px;
     padding: 0 10px;
 }
-.ffa-name { font-size: var(--t-micro); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; overflow: hidden; }
+.ffa-name { font-size: var(--t-micro); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; }
 .ffa-state { font-size: var(--t-micro); -unity-font-style: bold; color: var(--ink-dim); -unity-text-align: middle-left; }
+.ffa-state--count { color: var(--warn); }
+.ffa-row--out { opacity: 0.4; }
+.ffa-row--out .ffa-name { color: var(--ink-faint); }
+.ffa-row--win { background-color: var(--accent-tint); }
+.ffa-row--win .ffa-state { color: var(--accent); }
+/* The boxer whose own critic expects the most, while they fight (AI FAV). */
+.ffa-row--fav .ffa-state { color: var(--accent); }
 .ffa-back { margin-right: var(--gap-2); }
-/* The referee's call ("ROUND 2", "KIM is counted out"), across the picture under the board. */
+/* The referee's call ("ROUND 2", "KIM is counted out"), across the picture under the board and chat's line. */
 .ffa-call {
     position: absolute;
-    top: 300px;
+    top: var(--ffa-call-top);
     left: var(--gap-4);
     right: var(--gap-4);
     -unity-text-align: middle-center;
@@ -757,23 +886,3 @@ Label { margin: 0; padding: 0; }
     text-shadow: 0 2px 6px var(--shadow);
     white-space: normal;
 }
-.ffa-state--count { color: var(--warn); }
-.ffa-row--out { opacity: 0.4; }
-.ffa-row--out .ffa-name { color: var(--ink-faint); }
-.ffa-row--win { background-color: var(--accent-tint); }
-.ffa-row--win .ffa-state { color: var(--accent); }
-/* The result, across the middle of the picture, with AGAIN and MENU under it. */
-.ffa-result {
-    position: absolute;
-    left: var(--gap-4);
-    right: var(--gap-4);
-    bottom: var(--frame-clear);
-    padding: var(--gap-4);
-    background-color: var(--overlay);
-    border-radius: var(--radius);
-    align-items: center;
-}
-.ffa-winner { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 4px; color: var(--ink); -unity-text-align: middle-center; }
-.ffa-method { font-size: var(--t-small); letter-spacing: 1px; color: var(--ink-dim); margin: 8px 0 var(--gap-4) 0; -unity-text-align: middle-center; }
-.ffa-actions { flex-direction: row; align-self: stretch; }
-.ffa-actions > .btn { flex: 1 1 0; margin: 0 6px; }

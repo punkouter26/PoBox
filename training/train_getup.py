@@ -70,6 +70,12 @@ def main() -> None:
                     help="boxers that start at --assist whatever their checkpoint says: for a get-up policy borrowed from "
                          "another body, which has learned the movement and not yet this body's weight")
     ap.add_argument("--speed-limit", action="store_true", help="as train_box.py --speed-limit")
+    ap.add_argument("--action-rate-w", type=float, default=0.0,
+                    help="charge per squared change in action between control steps, on top of the stage's own small one; "
+                         "0 = off. For smoother, less buzzy drives. Try 0.01 (doubles the stage's own)")
+    ap.add_argument("--obs-delay-max", type=int, default=0,
+                    help="each episode the observation is 0 to this many control steps (20 ms each) late, drawn per fighter; "
+                         "0 = off. The game's is not late: this only makes a brain robust to lag. Try 2")
     ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--done-when", type=float, default=0.0,
@@ -90,7 +96,8 @@ def main() -> None:
     xml, x, y = pair_xml(args.a, args.b, os.path.join("models", "v2") if args.stage == "v2" else "models")
     resume = dict(zip((args.a, args.b), args.resume))
     env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
-                                                              speed_limit=args.speed_limit)
+                                                              speed_limit=args.speed_limit, action_rate_w=args.action_rate_w,
+                                                              obs_delay_max=args.obs_delay_max)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     names = env.names
     assert names == [x, y], f"{xml} holds {names}"
