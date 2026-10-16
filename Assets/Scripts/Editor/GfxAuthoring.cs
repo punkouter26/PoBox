@@ -21,7 +21,10 @@ namespace PoBox.EditorTools
     ///   * a beam through the haze under each of ArenaMood's ring lights (a cone, Assets/Settings/LightBeam.asset,
     ///     on Shaders/LightBeam), handed to ArenaMood;
     ///   * the looks of the night (<see cref="PhaseLook"/>): walk-on, replay and result volumes with their profiles
-    ///     (Assets/Settings/Look_*.asset).
+    ///     (Assets/Settings/Look_*.asset);
+    ///   * the venue round the ring (Environment/Venue): steps at the red and blue corners, a press row, two TV
+    ///     cameras, a ring of barriers and a screen hung over the ring. Modelled in Blender (BLENDER/2026-10-16_arena-props,
+    ///     GLBs in Assets/Models/Props, prefabs in Assets/Prefabs/Props). Seen, never touched: no MuJoCo body.
     /// Applied to the arena and the free-for-all. Rebuilding the free-for-all (it is copied from the arena)
     /// keeps the reverb and loses the shake: run this again after it.
     /// </summary>
@@ -117,6 +120,9 @@ namespace PoBox.EditorTools
                 if (ringForLook != null) look.ringCentre = new Vector3(ringForLook.centre.x, 1f, ringForLook.centre.y);
                 EditorUtility.SetDirty(look);
 
+                var env = GameObject.Find("Environment");
+                if (env != null && env.transform.Find("Venue") == null) sb.Append(" +venue ").Append(Venue(env.transform));
+
                 var ripple = Object.FindAnyObjectByType<ScreenRipple>(FindObjectsInactive.Include);
                 if (ripple == null)
                 {
@@ -133,6 +139,67 @@ namespace PoBox.EditorTools
 
             if (!string.IsNullOrEmpty(back) && System.IO.File.Exists(back)) EditorSceneManager.OpenScene(back);
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// The venue props, placed for the arena's ring (canvas at y 0, platform out to 3.7 m, hall floor at -1.3 m). Each
+        /// prop's front, the way it faces, is +z as imported. Returns how many were placed.
+        /// </summary>
+        static int Venue(Transform env)
+        {
+            var venue = new GameObject("Venue").transform;
+            venue.SetParent(env, false);
+            const float floor = -1.3f;
+            int n = 0;
+            void Put(string prop, Vector3 at, float yaw)
+            {
+                var prefab = PropPrefab(prop);
+                if (prefab == null) return;
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, venue);
+                go.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, yaw, 0f));
+                n++;
+            }
+            // Facing the ring's middle from where it stands.
+            float Facing(Vector3 at) => Mathf.Atan2(-at.x, -at.z) * Mathf.Rad2Deg;
+
+            // Steps climb towards -z as imported: the red corner's turned round to climb north onto the south side.
+            Put("RingSteps", new Vector3(-2.4f, floor, -4.6f), 180f);
+            Put("RingSteps", new Vector3(2.4f, floor, 4.6f), 0f);
+            Put("PressTable", new Vector3(5.4f, floor, 0f), -90f);
+            var camA = new Vector3(-5.6f, floor, 2.4f);
+            var camB = new Vector3(1.8f, floor, -5.8f);
+            Put("TVCamera", camA, Facing(camA));
+            Put("TVCamera", camB, Facing(camB));
+            // Barriers at 7 m round the ring, seven 2 m sections a side.
+            for (int i = -3; i <= 3; i++)
+            {
+                Put("Barrier", new Vector3(i * 2f, floor, -7f), 0f);
+                Put("Barrier", new Vector3(i * 2f, floor, 7f), 180f);
+                Put("Barrier", new Vector3(-7f, floor, i * 2f), 90f);
+                Put("Barrier", new Vector3(7f, floor, i * 2f), -90f);
+            }
+            Put("CenterScreen", new Vector3(0f, 7.3f, 0f), 45f);
+            return n;
+        }
+
+        /// <summary>Assets/Prefabs/Props/NAME.prefab from Assets/Models/Props/NAME.glb, made if missing.</summary>
+        static GameObject PropPrefab(string name)
+        {
+            string path = $"Assets/Prefabs/Props/{name}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null) return prefab;
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.glb");
+            if (model == null) return null;
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            inst.name = name;
+            foreach (var r in inst.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                r.shadowCastingMode = name == "CenterScreen" ? UnityEngine.Rendering.ShadowCastingMode.Off : UnityEngine.Rendering.ShadowCastingMode.On;
+            }
+            prefab = PrefabUtility.SaveAsPrefabAsset(inst, path);
+            Object.DestroyImmediate(inst);
+            return prefab;
         }
 
         /// <summary>A beam under each ring light: a cone from the lamp to the canvas, as wide as the spot. Made if missing; returns the count.</summary>

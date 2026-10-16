@@ -11,4 +11,10 @@ RingBell.glb          Modelled for PoBox in Blender (own work, CC0). Brass bell 
 TurnbucklePad_*.glb   Modelled for PoBox in Blender (own work, CC0). Rounded pad 0.22 x 0.22 x 1.05 m,
                       236 triangles, red / blue / white; origin at its centre, as the scene's Pad_ cubes.
 
+RingSteps.glb         Modelled for PoBox in Blender (own work, CC0; BLENDER/2026-10-16_arena-props). Three steps
+                      from the hall floor to the apron (1.3 m), handrails; climbs towards Unity -Z.
+PressTable.glb        Own work, CC0. 3.6 m press table with skirt, three monitors (emissive), laptops, chairs.
+TVCamera.glb          Own work, CC0. Broadcast camera on a tripod, red tally light; lens towards Unity +Z.
+Barrier.glb           Own work, CC0. 2 m padded ringside barrier section, 1 m high.
+CenterScreen.glb      Own work, CC0. Four-sided screen 2.4 x 1.35 m with cables, hung over the ring.
 Poly Haven: all assets CC0, no attribution required (credited anyway).

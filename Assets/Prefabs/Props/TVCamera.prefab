@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &8208608719803521435
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8373111925861616702, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7441135687470282997, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6500433483751827365, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_Name
+      value: TVCamera
+      objectReference: {fileID: 0}
+    - target: {fileID: -2028463391954324569, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 682499106805463840, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1022346366552180951, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1177933404896622965, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3146905398919580679, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4609913224765442594, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5090897024715122347, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5767781088459313673, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6967898453093111068, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6974919406024618139, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7098829642612613437, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7728485562141432105, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: 47c08c0ee8533014a989bd44984ccc92, type: 3}

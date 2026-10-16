@@ -1,0 +1,119 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2295424567560440869
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -7483501338414488201, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6954371080046338050, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6571484959206852685, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -5665234691285872183, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -5450637645185390810, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4795580373097045185, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3395304334071406807, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -2832069547008533403, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -979361470816783784, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -867380148390430256, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 892732503667298433, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3840618057383525956, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4212651221913462783, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5016281054074366885, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_Name
+      value: RingSteps
+      objectReference: {fileID: 0}
+    - target: {fileID: 5033242532093833952, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7662551893068067109, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7946969074117546377, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: 9412e1de85d046b43ae92629fd85be12, type: 3}
