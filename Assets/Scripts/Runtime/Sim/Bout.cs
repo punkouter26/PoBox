@@ -18,11 +18,13 @@ namespace PoBox.Sim
     {
         public static Bout Instance { get; private set; }
         /// <summary>Physics is stepping. False between rounds and while the result is up.</summary>
-        public static bool SimRunning { get; private set; }
+        public static bool SimRunning { get; internal set; }
         /// <summary>The fighters are allowed to throw.</summary>
-        public static bool Fighting => Instance != null && Instance.Phase == BoutPhase.Fight;
+        public static bool Fighting => Instance != null ? Instance.Phase == BoutPhase.Fight : FightingWithoutBout;
         /// <summary>Seconds of fighting so far in this bout.</summary>
-        public static float Clock { get; private set; }
+        public static float Clock { get; internal set; }
+        /// <summary>Set by a scene that runs its own rules with no Bout in it (<see cref="FreeForAll"/>).</summary>
+        internal static bool FightingWithoutBout;
 
         [Header("Cast")]
         public Fighter red;

@@ -11,5 +11,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Arena.unity
     guid: b28d1b341e1655e4da794f3ad55e67eb
+  - enabled: 1
+    path: Assets/Scenes/Melee.unity
+    guid: ab166c63a027f6046b559306152e4a24
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

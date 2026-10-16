@@ -102,6 +102,8 @@
     /* The first screen. */
     --fight-h:       144px;
     --picker-bottom: 264px;          /* frame-clear + fight-h + gap-4 */
+    --melee-w:       236px;          /* the free-for-all button beside FIGHT */
+    --beside-melee:  260px;          /* gap-4 + melee-w + gap-2 */
 
     --radius-lg:      16px;
     --radius:         12px;
@@ -698,3 +700,80 @@ Label { margin: 0; padding: 0; }
 }
 .fight-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 8px; color: var(--on-accent); }
 .fight-pair { font-size: var(--t-body); -unity-font-style: bold; letter-spacing: 1px; color: var(--on-accent); }
+
+/* FIGHT shares its row with the free-for-all: gap-4 + the button + gap-2 on the right. */
+.fight--split { right: var(--beside-melee); }
+.melee {
+    position: absolute;
+    bottom: var(--frame-clear);
+    right: var(--gap-4);
+    width: var(--melee-w);
+    height: var(--fight-h);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    border-width: 4px;
+    border-color: var(--accent);
+}
+.melee-word { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 4px; color: var(--accent); }
+.melee-sub { font-size: var(--t-micro); -unity-font-style: bold; letter-spacing: 1px; color: var(--ink-dim); }
+
+/* ------------------------------------------------------------------ the free-for-all (Melee.uxml) */
+
+/* Everybody in the ring, two rows of four under the frame: a colour bar, the name, and where they stand. */
+.ffa-board {
+    position: absolute;
+    top: var(--frame-clear);
+    left: var(--gap-4);
+    right: var(--gap-4);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.ffa-row {
+    width: 24.4%;
+    height: 72px;
+    margin-bottom: 6px;
+    justify-content: center;
+    background-color: var(--overlay);
+    border-radius: var(--radius-sm);
+    border-top-width: 6px;
+    padding: 0 10px;
+}
+.ffa-name { font-size: var(--t-micro); -unity-font-style: bold; color: var(--ink); -unity-text-align: middle-left; overflow: hidden; }
+.ffa-state { font-size: var(--t-micro); -unity-font-style: bold; color: var(--ink-dim); -unity-text-align: middle-left; }
+.ffa-back { margin-right: var(--gap-2); }
+/* The referee's call ("ROUND 2", "KIM is counted out"), across the picture under the board. */
+.ffa-call {
+    position: absolute;
+    top: 300px;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    -unity-text-align: middle-center;
+    font-size: var(--t-title);
+    -unity-font-style: bold;
+    color: var(--ink);
+    text-shadow: 0 2px 6px var(--shadow);
+    white-space: normal;
+}
+.ffa-state--count { color: var(--warn); }
+.ffa-row--out { opacity: 0.4; }
+.ffa-row--out .ffa-name { color: var(--ink-faint); }
+.ffa-row--win { background-color: var(--accent-tint); }
+.ffa-row--win .ffa-state { color: var(--accent); }
+/* The result, across the middle of the picture, with AGAIN and MENU under it. */
+.ffa-result {
+    position: absolute;
+    left: var(--gap-4);
+    right: var(--gap-4);
+    bottom: var(--frame-clear);
+    padding: var(--gap-4);
+    background-color: var(--overlay);
+    border-radius: var(--radius);
+    align-items: center;
+}
+.ffa-winner { font-size: var(--t-display); -unity-font-style: bold; letter-spacing: 4px; color: var(--ink); -unity-text-align: middle-center; }
+.ffa-method { font-size: var(--t-small); letter-spacing: 1px; color: var(--ink-dim); margin: 8px 0 var(--gap-4) 0; -unity-text-align: middle-center; }
+.ffa-actions { flex-direction: row; align-self: stretch; }
+.ffa-actions > .btn { flex: 1 1 0; margin: 0 6px; }

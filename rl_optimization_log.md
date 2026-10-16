@@ -924,3 +924,8 @@ so every existing run and job is unchanged), on the match line (`envs/boxing.py`
   `logs/queue.stop`, run killed right after its 1050 save). Footwork exam in C MuJoCo 3.5.0, 30 episodes each:
   **stand 97% (mark 95%), walk off by 0.01 m/s with 0 falls a minute, turn 100%, joints at 0.38 of the speed limit:
   every line passes** (`logs/exam_f_sokol.json`). Not yet done: get-up, handover bank, boxing gauntlet, Unity.
+- **16:40, Sokol in Unity on his footwork brain.** Fingerprint and C MuJoCo 3.5.0 recordings written
+  (`export_fingerprint.py`, `footwork_c.py --reference`, `--falls 25`: on the floor at the end of 0 of 25). Unity:
+  `BuildBoxer`/`BuildCorners` (0 differences from the trainer's model), `Promote("sokol", "f_sokol")`, testbed roster.
+  No match or get-up brain yet: in the free-for-all he stands and turns to face, and the referee stands him up.
+  Still to train: `u1_sokol_matt`, the handover bank, `m1_sokol` and its exam (queued; the queue is stopped).

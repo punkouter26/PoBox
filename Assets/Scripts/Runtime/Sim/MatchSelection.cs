@@ -11,6 +11,8 @@ namespace PoBox.Sim
     {
         public const string MenuScene = "Menu";
         public const string ArenaScene = "Arena";
+        /// <summary>Every boxer at once, last one standing (<see cref="FreeForAll"/>).</summary>
+        public const string MeleeScene = "Melee";
         const string RedKey = "pobox.pick.red", BlueKey = "pobox.pick.blue";
 
         public static string Red { get; private set; }

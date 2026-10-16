@@ -69,6 +69,40 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## Free-for-all, Sokol, and the boxers' voices (2026-10-15)
+
+- **Free-for-all** (`Assets/Scenes/Melee.unity`, menu button ALL beside FIGHT): all eight in the one ring, boxed
+  like the 1-on-1. Owner's rules: 3 rounds of 45 s with the bell; everybody starts at the ropes and meets in the
+  middle; a punch knockdown gets its own count of ten while the rest fight on; counted out, a boxer stays where it
+  lies; bodies are solid and pile; each boxer faces the nearest boxer on its feet; must run on the phone.
+  - `FreeForAll` (Runtime/Sim) replaces `Bout` + `MatchSetup` there: it renames each red-corner prefab to a prefix
+    of its own (a_ to h_: the plugin names MuJoCo's objects after the GameObjects) before MuJoCo compiles, colours it,
+    retargets every FixedUpdate before the brains run (nearest on its feet; nearer if it just landed on this one;
+    further for each boxer already on it), counts, rounds, judges (damage done and knockdowns, `Bout.Score`).
+    A fall with no punch behind it is a slip: no count; down 15 s from one and the boxer cannot go on.
+  - The opening, found by experiment: handed an opponent 5 m off, or handed over mid-stride, the match policies fell
+    within seconds (7 of 8). So at the bell each walks out on its footwork policy (0.6 m/s), stops near another
+    boxer, turns square to its opponent on the footwork policy, and only then does the match policy take over
+    (`MjBrain.WalkOut/EndWalk`), as a training episode starts.
+  - `MjRing` takes `boxers` (more than two) and `solidBodies`: punches and blocks are measured against each boxer's
+    own opponent; bodies down are solid (standing 1/1, lying 2/3, getting up 4/5: a boxer rising passes through
+    those lying, and stays so until clear). With two it does exactly what it did (all parity and gate tests pass).
+    `MjBoxer.Face` swaps an opponent without a jump in the stand-in's head speed. `Fighter.Eliminate`.
+  - `MeleeCamera`: close, on the hottest boxer and its opponent (heat from punches thrown, landed, taken, knockdowns),
+    everybody still in when it is quiet, the winner from over the ropes at the end. `MeleeHud` + `Assets/UI/Melee.uxml`:
+    round and time, FPS, settings, two rows of four, the referee's calls, AGAIN and MENU; in the layout audit and
+    `OneScreenTests`. Bells, sting and applause through `SimBus.RaisePhase`; the ring stops at the final bell.
+  - Built by `PoBox/Free-for-all/Build Melee Scene` (FreeForAllAuthoring). Known limit: the brains were trained
+    one-on-one; in a crowd they slip often and get up from a pile badly. Training plan: `tasks.md`, Phase F.
+- **Sokol, the eighth boxer**, is in Unity on his footwork brain (`f_sokol`) and Matt's get-up brain (87% up within
+  8 s on his body in C MuJoCo, mark 80%): 0 differences from the trainer's model, gate tests on the testbed, in the
+  free-for-all; not in the 1-on-1 menu until his boxing is trained. `MjBrain` now boxes on the footwork policy when a
+  boxer has no match policy (after a get-up it had stayed on the get-up policy).
+- **Voices**: a sharp exhale on most punches, a grunt on hooks, uppercuts and body shots, an "oof" on clean hits, a groan going down, panting and groaning as a
+  boxer tires or is dazed. Made in code and written as WAVs (40) (`PoBox/Audio/Write Voice WAVs`, `VoiceWavs.cs`:
+  glottal pulses and breath through three vowel formants) to `Assets/Audio/Synth/voice_*.wav`, a man's and a woman's
+  register (`AudioDirector.highVoices`: Kim, Grandma). Whooshes and footsteps turned up. Both scenes.
+
 ## Broadcast, sound and portrait pass (2026-10-14)
 
 26 of 30 proposed options (all but features 1, 5, 8, 9). Pictures before and after:

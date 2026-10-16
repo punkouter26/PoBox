@@ -171,3 +171,29 @@ its files are `Assets/Boxers/NAME`; the scene is `Assets/Scenes/Testbed.unity`; 
       and fatigue; passes 8 of 9 and the Unity gate. Open: attack (0.37 a second, mark 0.5: he does not reach Matt,
       Grandma or Grandpa); fists or hidden hands under the gloves; the menu portrait's crop.
 - [ ] D7 Whole ladder re-checked in Unity for all seven; `DOCS/README.md` updated; commit.
+
+## Phase F: the free-for-all (owner, 2026-10-15)
+
+The free-for-all (`Assets/Scenes/Melee.unity`, `FreeForAll`) runs the 1-on-1 brains in a crowd: each sees one
+opponent (the nearest on its feet), every body is solid, and bodies pile. Measured in the editor, 2026-10-15: from a
+standing start square to an opponent they box well, but bumping into a third boxer (never seen in training) makes
+them fall, and a get-up policy taught with one opponent standing clear often cannot rise beside other bodies. The
+game works round it (walk out on the footwork policy, square up, then box; a boxer getting up passes through bodies
+lying down). Training is the real fix. The owner's ask for future training: **a motivation to seek out where the
+closest opponent is and move forward to attack.**
+
+- [ ] F1 `envs/boxing.py`: a crowd mode, K opponents per learner (frozen shipped match policies, 3 to 7 of them),
+      bodies solid, in the 6.1 m ring. The learner observes its nearest opponent on its feet (the game's rule, same
+      103 numbers, so the network and the game do not change); the target is re-picked every control step with the
+      game's switch margin (0.4 m).
+- [ ] F2 Reward, the owner's motivation: `--seek-w` paid for closing on the nearest opponent on its feet when it is
+      outside punching range (the existing `press` term, measured against the nearest rather than the one opponent),
+      plus the usual hit, guard and fall terms. Charge contact with a third body only through the falls it causes.
+- [ ] F3 Episodes start as the game's rounds do: every boxer at the ropes facing in, released at the bell; and
+      a share from mid-melee states (a bank like the handover bank, from game runs).
+- [ ] F4 Get-up in a crowd: `envs/getup.py` with bodies lying beside and over the learner (dropped ragdolls of the
+      other boxers), so a get-up policy learns to climb out of a pile.
+- [ ] F5 Exam: the game's free-for-all in C MuJoCo, 20 bouts of 3 rounds: slips per boxer per minute, get-ups beaten
+      the count, punches landed per minute; pass marks to be set from the first run.
+- [ ] F6 Sokol: `u1_sokol_matt`, the handover bank, `m1_sokol` (queued in `logs/queue.json`, the queue stopped) before
+      any crowd training: he boxes on his footwork policy and gets up on Matt's (87% in C MuJoCo) until then.

@@ -43,9 +43,14 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:Button name="fight" class="btn btn--primary fight">
+            <ui:Button name="fight" class="btn btn--primary fight fight--split">
                 <ui:Label name="fight-word" class="fight-word" text="FIGHT" picking-mode="Ignore" />
                 <ui:Label name="versus" class="fight-pair" text="" picking-mode="Ignore" />
+            </ui:Button>
+            <!-- Every boxer in the ring at once, last one standing: the Melee scene. -->
+            <ui:Button name="melee" class="btn melee">
+                <ui:Label class="melee-word" text="ALL" picking-mode="Ignore" />
+                <ui:Label class="melee-sub" text="FREE-FOR-ALL" picking-mode="Ignore" />
             </ui:Button>
 
             <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">

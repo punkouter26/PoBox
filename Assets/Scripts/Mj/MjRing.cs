@@ -18,11 +18,22 @@ namespace PoBox.Mj
     ///     other's head or body faster than 1 m/s along the surface's normal, having been 30 cm clear of it and a
     ///     quarter of a second since its last; and a punch coming at a head that meets a glove or a forearm on
     ///     the way is a punch stopped. Each is raised as an event, in Unity's frame.
+    ///
+    /// A free-for-all hands it more than two (<see cref="boxers"/>): each boxer's punches are measured against its
+    /// own opponent (MjBoxer.opponent, which the free-for-all keeps pointed at the nearest boxer standing), and a
+    /// boxer that is down is passed through by everyone standing.
     /// </summary>
     [DefaultExecutionOrder(-50)]
     public unsafe class MjRing : MonoBehaviour
     {
         public MjBoxer red, blue;
+        /// <summary>More than two boxers (a free-for-all), set before the model is compiled. None: red and blue, each the other's opponent.</summary>
+        [NonSerialized] public MjBoxer[] boxers;
+        /// <summary>
+        /// Every body solid, down or not: boxers on the canvas are tripped over, piled on and pushed about (the
+        /// free-for-all). Off, a boxer down is passed through by the one standing, as in a pair's bout.
+        /// </summary>
+        [NonSerialized] public bool solidBodies;
         [Tooltip("MuJoCo's step, seconds: the trainer's.")]
         public float physicsStep = 0.005f;
         [Tooltip("Physics runs only while this is set: the bout clears it between rounds and when the result is up.")]
@@ -32,7 +43,7 @@ namespace PoBox.Mj
         public float ringHalf = 3.05f;
 
         public const float HitCap = 9f;
-        public bool Ready => red != null && red.Bound && blue != null && blue.Bound;
+        public bool Ready => _bound;
         public double PhysicsMs { get; private set; }
         public double PolicyMs { get; private set; }
 
@@ -53,27 +64,50 @@ namespace PoBox.Mj
         MujocoLib.mjModel_* _m;
         MujocoLib.mjData_* _d;
         MjBoxer[] _b;
+        Transform[] _pelvis;
+        bool _bound;
         int _sub, _decimation = 4;
         double _dt;
-        readonly bool[] _held = new bool[2], _ghost = new bool[2], _down = new bool[2], _has = new bool[2];
-        readonly double[] _holdX = new double[2], _holdY = new double[2], _holdYaw = new double[2], _ghostFor = new double[2];
-        int[][] _geoms = new int[2][];
-        readonly bool[,] _armed = new bool[2, 2], _blocking = new bool[2, 2], _footDown = new bool[2, 2];
-        readonly double[,] _cool = new double[2, 2];
-        readonly double[,,] _closing = new double[2, 2, 2], _speed = new double[2, 2, 2], _prevGlove = new double[2, 2, 3], _gloveVel = new double[2, 2, 3];
-        readonly double[,] _prevHead = new double[2, 3], _prevBody = new double[2, 3];
-        readonly double[,,] _prevFoot = new double[2, 2, 3];
-        readonly double[,] _slide = new double[2, 2];
+        // Per boxer (the first index), and per hand or foot.
+        bool[] _held, _ghost, _down, _has, _rising;
+        int[] _body;                        // solid bodies: 0 standing, 1 lying, 2 getting up (-1 not yet set)
+        double[] _holdX, _holdY, _holdYaw, _ghostFor;
+        int[] _target;                      // which boxer each one's punches were last measured against
+        int[][] _geoms;
+        bool[,] _armed, _blocking, _footDown;   // _blocking is the attacker's hand
+        double[,] _cool;
+        double[,,] _closing, _speed, _prevGlove, _gloveVel;
+        double[,] _prevHead, _prevBody;
+        double[,,] _prevFoot;
+        double[,] _slide;
         int[] _owner = new int[0];          // which boxer a shape belongs to, -1 for none; feet are -1 here
         double[] _load = new double[0], _clear = new double[0], _at = new double[0];
         bool[] _rope = new bool[0];
-        readonly float[] _ropeLoad = new float[2];
-        readonly Vector3[] _ropeAt = new Vector3[2];
+        float[] _ropeLoad;
+        Vector3[] _ropeAt;
         readonly System.Diagnostics.Stopwatch _clock = new System.Diagnostics.Stopwatch();
         long _began;
 
+        void Allocate(int n)
+        {
+            _held = new bool[n]; _ghost = new bool[n]; _down = new bool[n]; _has = new bool[n]; _rising = new bool[n];
+            _body = new int[n];
+            for (int k = 0; k < n; k++) _body[k] = -1;
+            _holdX = new double[n]; _holdY = new double[n]; _holdYaw = new double[n]; _ghostFor = new double[n];
+            _target = new int[n];
+            _geoms = new int[n][];
+            _armed = new bool[n, 2]; _blocking = new bool[n, 2]; _footDown = new bool[n, 2];
+            _cool = new double[n, 2];
+            _closing = new double[n, 2, 2]; _speed = new double[n, 2, 2]; _prevGlove = new double[n, 2, 3]; _gloveVel = new double[n, 2, 3];
+            _prevHead = new double[n, 3]; _prevBody = new double[n, 3];
+            _prevFoot = new double[n, 2, 3];
+            _slide = new double[n, 2];
+            _ropeLoad = new float[n]; _ropeAt = new Vector3[n];
+        }
+
         void Awake()
         {
+            Allocate(2);
             Time.fixedDeltaTime = physicsStep;
             _clock.Start();
             var scene = MjScene.Instance;
@@ -99,40 +133,69 @@ namespace PoBox.Mj
         void OnModel(object sender, MjStepArgs a)
         {
             _m = a.model; _d = a.data;
-            if (_m == null || red == null || blue == null) return;
-            _b = new[] { red, blue };
+            _bound = false;
+            bool many = boxers != null && boxers.Length > 2;
+            if (_m == null || (!many && (red == null || blue == null))) return;
+            _b = many ? boxers : new[] { red, blue };
+            int n = _b.Length;
+            Allocate(n);
+            _pelvis = new Transform[n];
             foreach (MjBoxer b in _b) b.ringCentre = centre;
-            red.Bind(_m, _d);
-            blue.Bind(_m, _d);
-            red.opponent = blue;
-            blue.opponent = red;
-            _m->opt.timestep = 1.0 / red.Cfg.physics_hz;
-            _decimation = Math.Max(1, red.Cfg.control_decimation);
+            foreach (MjBoxer b in _b) b.Bind(_m, _d);
+            if (!many)
+            {
+                red.opponent = blue;
+                blue.opponent = red;
+            }
+            _m->opt.timestep = 1.0 / _b[0].Cfg.physics_hz;
+            _decimation = Math.Max(1, _b[0].Cfg.control_decimation);
             _dt = _m->opt.timestep * _decimation;
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < n; k++)
             {
                 var shapes = _b[k].GetComponentsInChildren<MjGeom>();
                 _geoms[k] = new int[shapes.Length];
                 for (int i = 0; i < shapes.Length; i++) _geoms[k][i] = shapes[i].MujocoId;
                 _b[k].SetEpisodeAt(MjBoxer.Match, 0, 0, 0, 0, 0);
+                _pelvis[k] = _b[k].transform.Find(_b[k].prefix + "pelvis") ?? _b[k].transform;
+                _target[k] = Target(k);
             }
             _owner = new int[_m->ngeom]; _load = new double[_m->ngeom]; _clear = new double[_m->ngeom]; _at = new double[3 * _m->ngeom];
             for (int g = 0; g < _m->ngeom; g++) { _owner[g] = -1; _clear[g] = 1.0; }
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < n; k++)
                 foreach (int g in _geoms[k])
                     if (g != _b[k].FootGeom(0) && g != _b[k].FootGeom(1)) _owner[g] = k;
             _rope = new bool[_m->ngeom];
             foreach (MjGeom s in FindObjectsByType<MjGeom>(FindObjectsInactive.Exclude))
                 if (s.name.StartsWith("rope") && s.MujocoId >= 0 && s.MujocoId < _rope.Length) _rope[s.MujocoId] = true;
             // Everything that is not a boxer (floor, ropes, cubes) goes on both layers, so that a boxer moved to
-            // layer 2 while it is down still lies on the canvas, and only the other boxer passes through it.
-            var mine = new System.Collections.Generic.HashSet<int>(_geoms[0]);
-            mine.UnionWith(_geoms[1]);
+            // layer 2 while it is down still lies on the canvas, and only the boxers standing pass through it.
+            var mine = new System.Collections.Generic.HashSet<int>();
+            for (int k = 0; k < n; k++) mine.UnionWith(_geoms[k]);
             for (int g = 0; g < _m->ngeom; g++)
                 if (!mine.Contains(g)) { _m->geom_contype[g] = 3; _m->geom_conaffinity[g] = 3; }
+            _bound = true;
         }
 
-        int Slot(MjBoxer b) => b == blue ? 1 : 0;
+        int Slot(MjBoxer b)
+        {
+            if (_b == null) return b == blue ? 1 : 0;
+            int k = Array.IndexOf(_b, b);
+            return k < 0 ? 0 : k;
+        }
+
+        /// <summary>Whose head and body boxer k's gloves are measured against: its opponent (in a pair, the other one).</summary>
+        int Target(int k)
+        {
+            int t = _b[k].opponent != null ? Array.IndexOf(_b, _b[k].opponent) : -1;
+            return t >= 0 && t != k ? t : (k == 0 ? 1 : 0);
+        }
+
+        /// <summary>A boxer's place has jumped: it, and whoever is measured against it, start their speeds again.</summary>
+        void Forget(int k)
+        {
+            _has[k] = false;
+            for (int j = 0; j < _b.Length; j++) if (_target[j] == k) _has[j] = false;
+        }
 
         static Vector3 ToUnity(double x, double y, double z) => new Vector3((float)x, (float)z, (float)y);
 
@@ -149,7 +212,7 @@ namespace PoBox.Mj
             b.Reserve = 1.0;
             _held[k] = false;
             SetGhost(k, false);
-            _has[0] = _has[1] = false;      // the other's target has just jumped too
+            Forget(k);                      // the other's target has just jumped too
             MjScene.Instance.SyncUnityToMjState();
         }
 
@@ -176,14 +239,18 @@ namespace PoBox.Mj
 
         public void Release(MjBoxer b)
         {
-            _held[Slot(b)] = false;
-            _has[0] = _has[1] = false;
+            int k = Slot(b);
+            _held[k] = false;
+            if (_b != null) Forget(k);
         }
 
         public bool Held(MjBoxer b) => _held[Slot(b)];
 
         /// <summary>The bout says whether a boxer is down: one that is down is passed through by the other.</summary>
         public void SetDown(MjBoxer b, bool down) => _down[Slot(b)] = down;
+
+        /// <summary>The bout says whether a boxer down is getting up (its get-up policy has the body).</summary>
+        public void SetRising(MjBoxer b, bool rising) => _rising[Slot(b)] = rising;
 
         /// <summary>A glove's velocity over the last control step, Unity's frame.</summary>
         public Vector3 GloveVelocity(MjBoxer b, int hand)
@@ -218,6 +285,24 @@ namespace PoBox.Mj
 
         // ---------------------------------------------------------------- stepping
 
+        /// <summary>
+        /// Solid bodies (a free-for-all): who meets whom, by MuJoCo's contype and conaffinity bits. Standing (1, 1)
+        /// meets standing and lying; lying (2, 3) meets standing and lying; getting up (4, 5) meets standing but
+        /// not lying, so a boxer can climb out from under a pile as a person would roll out from under a limb. The
+        /// ring and the floor are 3 and meet them all.
+        /// </summary>
+        void SetBody(int k, int state)
+        {
+            if (_body[k] == state || _geoms[k] == null) return;
+            _body[k] = state;
+            int type = state == 0 ? 1 : state == 1 ? 2 : 4, affinity = state == 0 ? 1 : state == 1 ? 3 : 5;
+            foreach (int g in _geoms[k])
+            {
+                _m->geom_contype[g] = type;
+                _m->geom_conaffinity[g] = affinity;
+            }
+        }
+
         void SetGhost(int k, bool ghost)
         {
             if (_ghost[k] == ghost || _geoms[k] == null) return;
@@ -233,19 +318,45 @@ namespace PoBox.Mj
         void BeforePhysics(object sender, MjStepArgs a)
         {
             if (!Ready) return;
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < _b.Length; k++)
             {
+                // A pair's ring lets the one standing pass through the one down; a free-for-all's keeps every body solid.
+                if (solidBodies)
+                {
+                    int state = !_down[k] ? 0 : _rising[k] ? 2 : 1;
+                    // Just up through a pile, it passes through those still lying until it is clear of them (or three
+                    // seconds have gone): given its body back inside another's, the contact throws them apart.
+                    if (state == 0 && _body[k] == 2 && _ghostFor[k] < 3.0)
+                    {
+                        _ghostFor[k] += _m->opt.timestep;
+                        for (int j = 0; j < _b.Length && state == 0; j++)
+                        {
+                            if (j == k || !_down[j]) continue;
+                            Vector3 apart = _pelvis[k].position - _pelvis[j].position;
+                            apart.y = 0f;
+                            if (apart.magnitude < 0.7f) state = 2;
+                        }
+                    }
+                    if (state != 2) _ghostFor[k] = 0.0;
+                    SetBody(k, state);
+                    if (_held[k]) _b[k].ResetToGuard(_holdX[k], _holdY[k], _holdYaw[k]);
+                    continue;
+                }
                 bool ghost = _down[k];
-                // Just up, it stays a ghost until the two are a step apart (or three seconds have gone): given its
-                // body back while the other stands inside it, the contact throws them both across the ring.
+                // Just up, it stays a ghost until it is a step from everybody (or three seconds have gone): given its
+                // body back while another stands inside it, the contact throws them both across the ring.
                 if (!ghost && _ghost[k])
                 {
                     _ghostFor[k] += _m->opt.timestep;
-                    Vector3 apart = red.transform.position - blue.transform.position;
-                    var pa = red.transform.Find(red.prefix + "pelvis"); var pb = blue.transform.Find(blue.prefix + "pelvis");
-                    if (pa != null && pb != null) apart = pa.position - pb.position;
-                    apart.y = 0f;
-                    if (apart.magnitude < 0.6f && _ghostFor[k] < 3.0) ghost = true;
+                    float nearest = float.MaxValue;
+                    for (int j = 0; j < _b.Length; j++)
+                    {
+                        if (j == k) continue;
+                        Vector3 apart = _pelvis[k].position - _pelvis[j].position;
+                        apart.y = 0f;
+                        nearest = Mathf.Min(nearest, apart.magnitude);
+                    }
+                    if (nearest < 0.6f && _ghostFor[k] < 3.0) ghost = true;
                 }
                 if (!ghost) _ghostFor[k] = 0.0;
                 SetGhost(k, ghost);
@@ -264,10 +375,7 @@ namespace PoBox.Mj
                 PolicyMs += 0.05 * ((_clock.ElapsedTicks - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency - PolicyMs);
             }
             else
-            {
-                red.HoldTargets();
-                blue.HoldTargets();
-            }
+                foreach (MjBoxer b in _b) b.HoldTargets();
             _began = _clock.ElapsedTicks;
         }
 
@@ -279,10 +387,8 @@ namespace PoBox.Mj
             if (_sub != 0) return;
             // As the trainer: the stand-in's (here the opponent's) velocity from where the bodies were left, then
             // the bodies brought up to date before anybody observes.
-            red.AfterStep(_dt);
-            blue.AfterStep(_dt);
-            red.Tire(_dt);
-            blue.Tire(_dt);
+            foreach (MjBoxer b in _b) b.AfterStep(_dt);
+            foreach (MjBoxer b in _b) b.Tire(_dt);
             MujocoLib.mj_kinematics(_m, _d);
             TrackPunches();
             TrackCanvas();
@@ -295,9 +401,12 @@ namespace PoBox.Mj
 
         void TrackPunches()
         {
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < _b.Length; k++)
             {
-                MjBoxer me = _b[k], them = _b[1 - k];
+                // A new opponent: the speeds measured against the last one mean nothing for this one.
+                int t = Target(k);
+                if (t != _target[k]) { _target[k] = t; _has[k] = false; }
+                MjBoxer me = _b[k], them = _b[t];
                 double* head = Geom(them.HeadGeom), body = Geom(them.TorsoGeom), tm = _d->geom_xmat + 9 * them.TorsoGeom;
                 double ax = tm[2], ay = tm[5], az = tm[8];                      // the body capsule's axis
                 double half = _m->geom_size[3 * them.TorsoGeom + 1];
@@ -357,7 +466,7 @@ namespace PoBox.Mj
                 }
                 for (int c = 0; c < 3; c++) { _prevHead[k, c] = head[c]; _prevBody[k, c] = body[c]; }
             }
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < _b.Length; k++)
             {
                 TrackBlocks(k);
                 _has[k] = true;
@@ -372,9 +481,8 @@ namespace PoBox.Mj
         void TrackCanvas()
         {
             double* force = stackalloc double[6];
-            float* most = stackalloc float[2];
-            _ropeLoad[0] = _ropeLoad[1] = 0f;
-            most[0] = most[1] = 0f;
+            float* most = stackalloc float[_b.Length];
+            for (int k = 0; k < _b.Length; k++) { _ropeLoad[k] = 0f; most[k] = 0f; }
             for (int i = 0; i < _d->ncon; i++)
             {
                 MujocoLib.mjContact_* c = _d->contact + i;
@@ -411,20 +519,25 @@ namespace PoBox.Mj
         }
 
         /// <summary>
-        /// A punch stopped (envs/boxing.py, the block): the other boxer's glove, coming at this one's head faster
-        /// than 2 m/s and within 45 cm of it, touching this one's glove or forearm. Raised once when it begins.
+        /// A punch stopped (envs/boxing.py, the block): a glove of a boxer whose opponent this one is, coming at this
+        /// one's head faster than 2 m/s and within 45 cm of it, touching this one's glove or forearm. Raised once when it begins.
         /// </summary>
         void TrackBlocks(int k)
         {
-            MjBoxer me = _b[k], them = _b[1 - k];
-            if (!_has[1 - k]) return;
+            MjBoxer me = _b[k];
+            for (int j = 0; j < _b.Length; j++)
+                if (j != k && _target[j] == k && _has[j]) TrackBlocks(k, j, me, _b[j]);
+        }
+
+        void TrackBlocks(int k, int j, MjBoxer me, MjBoxer them)
+        {
             double* head = Geom(me.HeadGeom);
             double rHead = _m->geom_size[3 * me.HeadGeom];
             for (int hand = 0; hand < 2; hand++)
             {
                 double* tg = Geom(them.GloveGeom(hand));
                 double rTheirs = _m->geom_size[3 * them.GloveGeom(hand)];
-                double coming = _speed[1 - k, hand, 0];
+                double coming = _speed[j, hand, 0];
                 double hx = head[0] - tg[0], hy = head[1] - tg[1], hz = head[2] - tg[2];
                 bool near = Math.Sqrt(hx * hx + hy * hy + hz * hz) - rHead < 0.45;
                 bool touching = false;
@@ -442,8 +555,8 @@ namespace PoBox.Mj
                     if (Math.Sqrt(px * px + py * py + pz * pz) < rTheirs + fr + 0.03) touching = true;
                 }
                 bool blocked = touching && coming > 2.0 && near;
-                if (blocked && !_blocking[k, hand]) PunchStopped?.Invoke(me, (float)coming, ToUnity(tg[0], tg[1], tg[2]));
-                _blocking[k, hand] = blocked;
+                if (blocked && !_blocking[j, hand]) PunchStopped?.Invoke(me, (float)coming, ToUnity(tg[0], tg[1], tg[2]));
+                _blocking[j, hand] = blocked;
             }
         }
     }

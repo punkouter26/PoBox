@@ -385,6 +385,8 @@ namespace PoBox.EditorTools
             if (hud != null && hud.Root != null) return LayoutAudit.Check(hud.Root).Summary();
             MenuView menu = UnityEngine.Object.FindAnyObjectByType<MenuView>();
             if (menu != null && menu.Root != null) return LayoutAudit.Check(menu.Root, LayoutAudit.MenuAnchors).Summary();
+            MeleeHud melee = UnityEngine.Object.FindAnyObjectByType<MeleeHud>();
+            if (melee != null && melee.Root != null) return LayoutAudit.Check(melee.Root, LayoutAudit.MeleeAnchors).Summary();
             return "no HUD";
         }
 

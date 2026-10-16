@@ -98,6 +98,28 @@ namespace PoBox.Audio
         [Tooltip("How far the crowd is pulled down under the spoken commentary, dB.")]
         public float speechDuckDb = 6f;
 
+        /// <summary>One register of the boxers' voices: takes of each sound (made by VoiceWavs, Assets/Audio/Synth/voice_*.wav).</summary>
+        [System.Serializable]
+        public class VoiceSet
+        {
+            public AudioClip[] exhale = new AudioClip[0], effort = new AudioClip[0], pain = new AudioClip[0], groan = new AudioClip[0], pant = new AudioClip[0];
+        }
+
+        [Header("Voices (PoBox/Audio/Write Voice WAVs)")]
+        [Tooltip("A man's voice and a woman's.")]
+        public VoiceSet lowVoice = new VoiceSet(), highVoice = new VoiceSet();
+        [Tooltip("The share of punches thrown with a sharp breath out, as boxers breathe on their punches.")]
+        [Range(0f, 1f)] public float exhaleChance = 0.85f;
+        [Tooltip("The share of hooks, uppercuts and body shots (the punches thrown from the legs) with a grunt as well.")]
+        [Range(0f, 1f)] public float effortChance = 0.35f;
+        [Range(0f, 1f)] public float exhaleVolume = 0.3f, effortVolume = 0.45f, painVolume = 0.85f, groanVolume = 0.7f, pantVolume = 0.5f;
+        [Tooltip("Boxers with a woman's voice, by the name on the scoreboard.")]
+        public string[] highVoices = { "KIM", "GRANDMA" };
+        [Tooltip("How tired (0 to 1: spent, out of breath or dazed) a boxer has to be before it is heard breathing.")]
+        [Range(0f, 1f)] public float tiredFrom = 0.3f;
+        [Tooltip("Seconds a boxer down is heard groaning before it goes quiet.")]
+        public float groanSeconds = 10f;
+
         [Header("Mix")]
         [Tooltip("Groups Hits, Crowd and Ring, each with its volume exposed (HitsVolume, CrowdVolume, RingVolume). Empty: the gains below are used.")]
         public AudioMixer mixer;
@@ -133,6 +155,10 @@ namespace PoBox.Audio
         float _lastSwell = -99f, _duck, _gaspAt = -1f, _gaspVolume, _lastStep = -99f, _bedLevel;
         float _close, _rock, _speech, _hitsK = 1f;
         bool _mixed;
+        // Every boxer in the ring, and when each is next heard.
+        Fighter[] _all = new Fighter[0];
+        readonly System.Collections.Generic.Dictionary<Fighter, float> _voiceFree = new System.Collections.Generic.Dictionary<Fighter, float>(),
+            _nextBreath = new System.Collections.Generic.Dictionary<Fighter, float>(), _downAt = new System.Collections.Generic.Dictionary<Fighter, float>();
 
         void Awake()
         {
@@ -308,6 +334,8 @@ namespace PoBox.Audio
         void Start()
         {
             if (_bed.clip != null) _bed.Play();
+            // Whoever the scene switched on: the two of a bout, or everybody in a free-for-all.
+            _all = FindObjectsByType<Fighter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         }
 
         void OnEnable()
@@ -337,7 +365,10 @@ namespace PoBox.Audio
         void OnPunch(Fighter f, PunchType type, int hand)
         {
             BodyPart arm = hand < 0 ? f.forearmL : f.forearmR;
-            if (arm != null) PlayAt(whoosh, arm.transform.position, 0.16f, Random.Range(1.05f, 1.35f));
+            if (arm != null) PlayAt(whoosh, arm.transform.position, 0.3f, Random.Range(1.05f, 1.35f));
+            bool heavy = type == PunchType.Hook || type == PunchType.Uppercut || type == PunchType.Body;
+            if (heavy && Random.value < effortChance) Voice(f, Of(f).effort, effortVolume * Random.Range(0.8f, 1f), 0.3f);
+            else if (Random.value < exhaleChance) Voice(f, Of(f).exhale, exhaleVolume * Random.Range(0.8f, 1f), 0.15f);
         }
 
         void OnBlock(Fighter defender, Vector3 at, float speed)
@@ -368,6 +399,8 @@ namespace PoBox.Audio
 
             bool heavy = e.impulse >= heavyImpulse;
             PlayAt(Pick(heavy ? punchHeavy : punchLight), e.point, Mathf.Lerp(0.35f, 0.95f, k), snap * where);
+            // The air knocked out of whoever took it, a beat after the glove.
+            if (e.victim != null) Voice(e.victim, Of(e.victim).pain, Mathf.Lerp(0.35f, painVolume, k), 0.25f, true);
             if (e.impulse >= thudImpulse)
             {
                 // The thud grows faster than the slap, and sinks as it grows.
@@ -400,6 +433,7 @@ namespace PoBox.Audio
             _victim = f;
             PlayCrowd(crowdSwell, 0.95f);
             PlayCrowd(crowdGroan, 0.5f);
+            if (f != null) Voice(f, Of(f).groan, groanVolume, 0.5f, true);
         }
 
         void OnFloor(Vector3 point, float impulse)
@@ -414,7 +448,7 @@ namespace PoBox.Audio
             // Boots on canvas: quiet, and only a step that was really taken, not a shuffle.
             if (speed < 0.5f || Time.unscaledTime - _lastStep < 0.08f) return;
             _lastStep = Time.unscaledTime;
-            PlayAt(Pick(footsteps), point, Mathf.Lerp(0.08f, 0.3f, Mathf.Clamp01(speed / 3f)), Random.Range(0.85f, 1.1f));
+            PlayAt(Pick(footsteps), point, Mathf.Lerp(0.15f, 0.45f, Mathf.Clamp01(speed / 3f)), Random.Range(0.85f, 1.1f));
         }
 
         void OnPhase(BoutPhase from, BoutPhase to)
@@ -470,6 +504,7 @@ namespace PoBox.Audio
 
             Scrape(dt);
             Ropes(dt);
+            Breathing();
             Rocked(shot, dt);
             Fade(_breath, Mathf.Max(0f, _close) * breathVolume * _hitsK, dt);
 
@@ -588,7 +623,72 @@ namespace PoBox.Audio
 
         // ------------------------------------------------------------ helpers
 
-        static AudioClip Pick(AudioClip[] set) => set != null && set.Length > 0 ? set[Random.Range(0, set.Length)] : null;
+        // ------------------------------------------------------------ voices
+
+        VoiceSet Of(Fighter f) => System.Array.IndexOf(highVoices, f.displayName) >= 0 ? highVoice : lowVoice;
+
+        /// <summary>
+        /// A boxer's voice, from its head. One sound at a time a boxer (a new one waits out <paramref name="hold"/>
+        /// seconds of the last, unless it must be heard). Heavier boxers sound a little lower, and no two alike.
+        /// </summary>
+        void Voice(Fighter f, AudioClip[] takes, float volume, float hold, bool must = false)
+        {
+            if (f == null || takes == null || takes.Length == 0) return;
+            float now = Time.time;
+            if (!must && _voiceFree.TryGetValue(f, out float free) && now < free) return;
+            _voiceFree[f] = now + hold;
+            float pitch = Mathf.Clamp(Mathf.Sqrt(80f / Mathf.Max(40f, f.totalMass)), 0.85f, 1.15f)
+                          * (1f + 0.04f * ((f.displayName.GetHashCode() & 0xff) / 127.5f - 1f)) * Random.Range(0.96f, 1.04f);
+            PlayAt(Pick(takes), f.HeadPosition, volume, pitch);
+        }
+
+        /// <summary>How spent a boxer sounds, 0 to 1: out of energy (its reserve, if it tires, or its stamina), or dazed.</summary>
+        static float Tiredness(Fighter f)
+        {
+            float spent = 1f - f.Stamina;
+            if (f.boxer != null && f.boxer.Cfg != null && f.boxer.Cfg.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)f.boxer.Reserve);
+            return Mathf.Max(spent, 0.8f * f.Daze01);
+        }
+
+        /// <summary>
+        /// Heard between the punches: a boxer down groans for a while; one on its feet but tired pants, oftener and
+        /// louder the more spent it is, and groans now and then when it is nearly done.
+        /// </summary>
+        void Breathing()
+        {
+            if (!Bout.SimRunning) return;
+            float now = Time.time;
+            foreach (Fighter f in _all)
+            {
+                if (f == null || !f.isActiveAndEnabled) continue;
+                AudioClip[] takes;
+                float interval, volume;
+                if (f.IsDown)
+                {
+                    if (!_downAt.TryGetValue(f, out float since)) _downAt[f] = since = now;
+                    if (now - since > groanSeconds) continue;
+                    takes = Of(f).groan;
+                    interval = Random.Range(2.2f, 3.8f);
+                    volume = groanVolume * 0.75f;
+                }
+                else
+                {
+                    _downAt.Remove(f);
+                    float tired = Tiredness(f);
+                    if (tired < tiredFrom) { _nextBreath.Remove(f); continue; }
+                    float k = Mathf.InverseLerp(tiredFrom, 1f, tired);
+                    takes = k > 0.5f && Random.value < 0.25f ? Of(f).groan : Of(f).pant;
+                    interval = Mathf.Lerp(2.4f, 0.8f, k) * Random.Range(0.8f, 1.2f);
+                    volume = Mathf.Lerp(0.15f, pantVolume, k);
+                }
+                if (!_nextBreath.TryGetValue(f, out float next)) { _nextBreath[f] = now + interval * Random.value; continue; }
+                if (now < next) continue;
+                _nextBreath[f] = now + interval;
+                Voice(f, takes, volume, 0.4f);
+            }
+        }
+
+        static AudioClip Pick(AudioClip[] set) =>set != null && set.Length > 0 ? set[Random.Range(0, set.Length)] : null;
 
         void PlayAt(AudioClip clip, Vector3 position, float volume, float pitch)
         {

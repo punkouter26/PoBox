@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    PoBox: the free-for-all's HUD (Melee scene, MeleeHud.cs), on the same anchors as the HUD and the first screen:
+    the round and its time top-left, the frame rate top-centre, the settings and the way back top-right. Under the
+    frame, every boxer in the ring in two rows of four (MeleeHud builds them): its colour, its name, and nothing
+    while it fights, the count over it, SLIP, OUT or WINNER. The referee's calls across the middle; the result at
+    the bottom with AGAIN and MENU; the settings sheet docked at the bottom like the first screen's. Nothing scrolls.
+
+    The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Theme.uss" />
+    <ui:Template name="Settings" src="project://database/Assets/UI/Settings.uxml" />
+
+    <ui:VisualElement name="root" class="root" picking-mode="Ignore">
+        <ui:VisualElement name="safe" class="safe" picking-mode="Ignore">
+
+            <!-- Under everything else: a tap on what is left of the screen closes the settings. -->
+            <ui:VisualElement name="picture" class="picture" />
+
+            <ui:VisualElement name="frame-top" class="frame-row frame-row--top" picking-mode="Ignore">
+                <ui:Label name="round" class="chip frame-title" text="R1 0:45" picking-mode="Ignore" />
+                <ui:VisualElement class="spacer" picking-mode="Ignore" />
+                <ui:Button name="back" class="btn btn--ghost btn--icon ffa-back">
+                    <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:Button name="menu" class="btn btn--ghost btn--icon">
+                    <ui:VisualElement class="icon icon--gear" picking-mode="Ignore" />
+                </ui:Button>
+                <ui:VisualElement class="frame-centre" picking-mode="Ignore">
+                    <ui:Label name="fps" class="chip frame-fps" text="-- FPS" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="board" class="ffa-board" picking-mode="Ignore" />
+
+            <ui:Label name="call" class="ffa-call hidden" text="" picking-mode="Ignore" />
+
+            <ui:VisualElement name="result" class="ffa-result hidden">
+                <ui:Label name="winner" class="ffa-winner" text="" picking-mode="Ignore" />
+                <ui:Label name="method" class="ffa-method" text="" picking-mode="Ignore" />
+                <ui:VisualElement class="ffa-actions" picking-mode="Ignore">
+                    <ui:Button name="again" class="btn btn--primary" text="AGAIN" />
+                    <ui:Button name="leave" class="btn" text="MENU" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="menu-sheet" class="sheet menu-sheet over hidden">
+                <ui:Instance template="Settings" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

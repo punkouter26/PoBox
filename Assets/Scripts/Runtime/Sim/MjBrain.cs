@@ -1,3 +1,4 @@
+using Unity.InferenceEngine;
 using PoBox.Mj;
 using UnityEngine;
 
@@ -53,8 +54,62 @@ namespace PoBox.Sim
             ring.BodyLanded -= OnBodyLanded;
         }
 
+        /// <summary>Coming out of the corner on the footwork policy (a free-for-all's opening): walking, or squaring up. Not yet boxing.</summary>
+        public bool Walking => _out != Out.None;
+        enum Out { None, Walk, Square }
+        Out _out;
+        float _squareFor;
+        ModelAsset _footwork;
+        [Tooltip("Squaring up after the walk: the match policy takes the body once it faces its opponent this closely (radians) and moves this slowly (m/s), as a training episode starts.")]
+        public float squareFacing = 0.26f, squareSpeed = 0.3f;
+
+        /// <summary>
+        /// Walks straight ahead at a speed (m/s, the footwork policy's 0.3 to 1.0) on the policy taught to walk on
+        /// command: how a boxer comes out of its corner.
+        /// </summary>
+        public void WalkOut(double speed)
+        {
+            if (_footwork == null || fighter.IsDown) return;
+            _out = Out.Walk;
+            boxer.SetPolicy(_footwork);
+            boxer.SetEpisodeAt(MjBoxer.Walk, speed, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// The walk is over: the boxer stops and turns to face its opponent, still on the footwork policy, and the
+        /// match policy has it once it stands square and still. Handed over mid-stride, the match policy (taught from
+        /// a standing start a step and a half from its opponent) fell over within seconds, nearly every time.
+        /// </summary>
+        public void EndWalk()
+        {
+            if (_out != Out.Walk) return;
+            _out = Out.Square;
+            _squareFor = 0f;
+            boxer.SetEpisodeAt(MjBoxer.Turn, 0, 0, 0, boxer.Opp[0], boxer.Opp[1]);
+            AimAtOpponent();
+        }
+
+        void AimAtOpponent()
+        {
+            if (fighter.opponent == null || fighter.opponent.pelvis == null) return;
+            Vector3 at = fighter.opponent.pelvis.transform.position;
+            boxer.Opp[0] = at.x;        // MuJoCo's x and y are Unity's x and z
+            boxer.Opp[1] = at.z;
+        }
+
+        void Squaring()
+        {
+            _squareFor += Time.fixedDeltaTime;
+            AimAtOpponent();
+            double vx = boxer.Obs[0], vy = boxer.Obs[1];
+            bool square = boxer.FacingError < squareFacing && System.Math.Sqrt(vx * vx + vy * vy) < squareSpeed && _squareFor > 0.5f;
+            // Hit while squaring up, or taking too long about it: box.
+            if (square || _squareFor > 3f || fighter.TimeSinceHit < 0.3f) BackToTheBout();
+        }
+
         void Start()
         {
+            _footwork = boxer.policy;
             if (boxer.matchPolicy != null) boxer.SetPolicy(boxer.matchPolicy);
             _gloves = new[] { boxer.transform.FindDeep(boxer.prefix + "glove_l"), boxer.transform.FindDeep(boxer.prefix + "glove_r") };
         }
@@ -90,6 +145,7 @@ namespace PoBox.Sim
             if (boxer.getUpPolicy == null) return;
             fighter.AcceptGetUp();
             GettingUp = true;
+            _out = Out.None;
             boxer.SetPolicy(boxer.getUpPolicy);
             // The get-up stage shows a stand-in of the opponent in its guard where the opponent stands.
             Vector3 them = fighter.opponent != null ? fighter.opponent.pelvis.transform.position : boxer.transform.position + boxer.Forward;
@@ -105,7 +161,10 @@ namespace PoBox.Sim
         void BackToTheBout()
         {
             GettingUp = false;
-            if (boxer.matchPolicy != null) boxer.SetPolicy(boxer.matchPolicy);
+            _out = Out.None;
+            // A boxer with no match policy boxes on its footwork policy (Sokol, until his boxing is trained).
+            ModelAsset bout = boxer.matchPolicy != null ? boxer.matchPolicy : _footwork;
+            if (bout != null) boxer.SetPolicy(bout);
             boxer.SetEpisodeAt(MjBoxer.Match, 0, 0, 0, 0, 0);
         }
 
@@ -114,7 +173,9 @@ namespace PoBox.Sim
             if (!ring.Ready || fighter == null) return;
             boxer.DriveScale = fighter.DriveScale;
             ring.SetDown(boxer, fighter.IsDown);
+            ring.SetRising(boxer, fighter.IsDown && fighter.IsRising);
             if (!Bout.SimRunning) return;
+            if (_out == Out.Square) Squaring();
 
             // While the referee counts over the other fighter this one stands in its guard, turned towards them,
             // and waits. When they are up it is let go from that stance, with a clear head.

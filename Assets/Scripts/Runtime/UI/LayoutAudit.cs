@@ -57,6 +57,8 @@ namespace PoBox.UI
 
         /// <summary>The anchors the first screen has: all five, as the HUD and the testbed do.</summary>
         public static readonly string[] MenuAnchors = { "title", "fps", "menu", "debug", "version" };
+        /// <summary>The free-for-all's: the frame rate and the settings (its round chip sits where the title does, and it has no debug or version).</summary>
+        public static readonly string[] MeleeAnchors = { "fps", "menu" };
 
         /// <param name="anchors">Which of the five frame anchors this screen is expected to have. Null is all of them.</param>
         public static Report Check(VisualElement root, string[] anchors = null)

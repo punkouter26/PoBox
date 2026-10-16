@@ -55,7 +55,7 @@ namespace PoBox.UI
         UIDocument _doc;
         VisualElement _root, _safe, _redHost, _sheet, _debugPanel;
         Label _versus, _fightWord;
-        Button _fight, _fps;
+        Button _fight, _fps, _melee;
         Button[][] _cards = new Button[2][];
         readonly Label[] _debugValues = new Label[4];
         readonly SafeArea _safeArea = new SafeArea();
@@ -99,6 +99,12 @@ namespace PoBox.UI
             {
                 _fight.clicked += Fight;
                 _fight.SetEnabled(boxers.Length > 0);
+            }
+            _melee = _root.Q<Button>("melee");
+            if (_melee != null)
+            {
+                _melee.clicked += FreeForAll;
+                _melee.SetEnabled(Application.CanStreamedLevelBeLoaded(MatchSelection.MeleeScene));
             }
             Button settings = _root.Q<Button>("menu");
             if (settings != null) settings.clicked += ToggleSettings;
@@ -268,6 +274,17 @@ namespace PoBox.UI
                     foreach (Button card in _cards[corner]) if (card != null) card.SetEnabled(false);
             MatchSelection.Choose(boxers[Red].name, boxers[Blue].name);
             SceneManager.LoadSceneAsync(MatchSelection.ArenaScene);
+        }
+
+        /// <summary>Every boxer in the ring at once (the Melee scene): the picks above do not come into it.</summary>
+        public void FreeForAll()
+        {
+            if (!Application.isPlaying || _leaving) return;
+            _leaving = true;
+            CloseAll();
+            if (_melee != null) _melee.AddToClassList("btn--busy");
+            if (_fight != null) _fight.SetEnabled(false);
+            SceneManager.LoadSceneAsync(MatchSelection.MeleeScene);
         }
 
         static void Set(Label l, string text)

@@ -602,6 +602,14 @@ namespace PoBox.Sim
             SimBus.RaiseKnockdown(this, default);
         }
 
+        /// <summary>Counted out in a free-for-all: down for the rest of the bout, where it lies, its drives gone.</summary>
+        public void Eliminate()
+        {
+            if (!IsDown) GoDown();
+            IsRising = false;
+            _downTimer = float.PositiveInfinity;
+        }
+
         /// <summary>The brain's answer to BeginGetUp: it has a policy for this.</summary>
         public void AcceptGetUp() => _canGetUp = true;
 

@@ -210,7 +210,18 @@ namespace PoBox.Mj
             for (int k = 0; k < 3; k++) _prevHead[k] = _standIn[0][k];
         }
 
-        static double Yaw(double* q) => Math.Atan2(2.0 * (q[0] * q[3] + q[1] * q[2]), 1.0 - 2.0 * (q[2] * q[2] + q[3] * q[3]));
+        /// <summary>
+        /// A free-for-all turns the boxer on another opponent. Its episode goes on; the stand-in's head speed starts
+        /// again from the new one, as at the start of an episode, rather than jumping across the ring.
+        /// </summary>
+        public void Face(MjBoxer other)
+        {
+            if (other == opponent) return;
+            opponent = other;
+            if (Bound) SetEpisodeAt(Kind, Cmd[0], Cmd[1], Cmd[2], Opp[0], Opp[1]);
+        }
+
+        static double Yaw(double* q) =>Math.Atan2(2.0 * (q[0] * q[3] + q[1] * q[2]), 1.0 - 2.0 * (q[2] * q[2] + q[3] * q[3]));
 
         /// <summary>The vector from `from` to `p`, in the frame that has turned yaw about the vertical.</summary>
         static void Heading(double* p, double* from, double yaw, double[] o, int at = 0)

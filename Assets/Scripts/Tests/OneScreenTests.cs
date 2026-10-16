@@ -122,6 +122,43 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
+        public IEnumerator FreeForAllHudFitsOneScreen([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        {
+            if (!Application.CanStreamedLevelBeLoaded(MatchSelection.MeleeScene)) Assert.Ignore("the build has no Melee scene");
+            yield return SceneManager.LoadSceneAsync(MatchSelection.MeleeScene, LoadSceneMode.Single);
+            yield return null;
+
+            MeleeHud hud = Object.FindAnyObjectByType<MeleeHud>();
+            Assert.IsNotNull(hud, "the Melee scene has no MeleeHud");
+            PanelSettings panel = hud.GetComponent<UIDocument>().panelSettings;
+            RenderTexture previous = panel.targetTexture;
+            var target = new RenderTexture(phone.x, phone.y, 24);
+            panel.targetTexture = target;
+            var warnings = new UiWarnings();
+            try
+            {
+                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                yield return Settle();
+                Check(hud.Root, phone, "free-for-all", LayoutAudit.MeleeAnchors);
+                hud.ToggleSettings();
+                yield return Settle();
+                Assert.IsTrue(hud.SettingsOpen, "the settings icon did not open the settings");
+                Check(hud.Root, phone, "free-for-all, settings", LayoutAudit.MeleeAnchors);
+                yield return Tap(hud.Root.Q<VisualElement>("picture"));
+                Assert.IsFalse(hud.SettingsOpen, "a tap on the picture did not close the settings");
+                warnings.AssertNone("free-for-all");
+            }
+            finally
+            {
+                warnings.Dispose();
+                HudView.SafeAreaOverride = null;
+                panel.targetTexture = previous;
+                target.Release();
+                Object.Destroy(target);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator BoxerMenuFitsOneScreenAndKeepsTheCornersDifferent([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
         {
             if (!MatchSelection.HasMenu) Assert.Ignore("no trained boxers, so the build has no menu scene");
