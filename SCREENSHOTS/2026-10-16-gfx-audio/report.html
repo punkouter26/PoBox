@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox graphics and audio</title>
+<style>
+  :root { --bg: #0b0d12; --card: #141821; --ink: #eef2f7; --dim: #a8b2c0; --accent: #2ebf8c; --warn: #ffc654; --line: rgba(255,255,255,.1); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 12px; border-top: 1px solid var(--line); padding-top: 20px; }
+  p.lede, .note { color: var(--dim); }
+  a { color: var(--accent); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+  .shot { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot .cap { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 6px; font-size: 12px; letter-spacing: 1px; }
+  .shot.after .cap { background: var(--accent); color: #06140f; font-weight: 700; }
+  .pin { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--warn); color: #1e0604;
+         font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px rgba(0,0,0,.6); }
+  ol.changes { padding-left: 0; list-style: none; counter-reset: c; }
+  ol.changes li { counter-increment: c; position: relative; padding: 10px 12px 10px 52px; background: var(--card); border-radius: 8px; margin-bottom: 8px; }
+  ol.changes li::before { content: counter(c); position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: var(--warn); color: #1e0604; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-size: 13px; }
+  @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>PoBox graphics and audio, 2026-10-16 evening</h1>
+<p class="lede">The owner's ten graphics and audio options, all done, in three commits. Several overlapped what the game already had
+(the table says what); for those only the missing part was built. Shots at 1080x1920 from the dev script; the before pictures are the
+do-all pass's, from this morning.</p>
+
+<div class="wrap"><table>
+  <tr><th>#</th><th>Option</th><th>Already there</th><th>Built now</th></tr>
+  <tr><td>1</td><td>Shockwave and flesh ripple</td><td>a ring of light on the struck surface (ImpactVfx)</td><td>the picture bent in a ring from the punch (a full-screen URP pass, on only while it runs); a ring of light over the skin</td></tr>
+  <tr><td>2</td><td>Muscle load and fatigue</td><td>load and reserve on the collision shapes, in the X-ray</td><td>working joints glow amber through the skin itself (fighter overlay)</td></tr>
+  <tr><td>3</td><td>Collision fit check</td><td>the self-contact check (tasks A5)</td><td>tools/fit_check.py: every trained radius against the mesh's thickness, with the self-contact run; <a href="../../DOCS/reports/2026-10-16-collision-fit.html">report</a></td></tr>
+  <tr><td>4</td><td>Venue in Blender</td><td>truss, lamps, apron, turnbuckles, corner props</td><td>ring steps, press row, two TV cameras, 28 barriers, a hung screen (Blender over MCP)</td></tr>
+  <tr><td>5</td><td>Lighting</td><td>cookies, reactive spots, follow-spots, knockdown spot</td><td>beams through the haze under the ring lights; the pressured boxer's rim brightened</td></tr>
+  <tr><td>6</td><td>Looks of the night</td><td>the count's grey, bullet time</td><td>walk-on, replay (depth of field, motion blur) and result looks</td></tr>
+  <tr><td>7</td><td>Friction sounds</td><td>foot scrape loop, leather pop on blocks</td><td>a squeak when a planted foot pivots (MjRing.FootSpin)</td></tr>
+  <tr><td>8</td><td>Glove whoosh</td><td>a fixed whoosh on every punch thrown</td><td>each glove's air following its measured speed, misses included</td></tr>
+  <tr><td>9</td><td>Crowd round the hall</td><td>one diffuse crowd bed</td><td>eight 3D sections; the scorer's half comes up</td></tr>
+  <tr><td>10</td><td>HUD and telemetry</td><td>frame, physics and brains ms; one type scale</td><td>GPU frame time in the readings; the last three hard-coded sizes are theme tokens</td></tr>
+</table></div>
+
+<h2>1. The arena: the pressured rim, the ripple, the looks</h2>
+<div class="pair">
+  <div class="shot"><img src="before_arena.webp" alt="Arena this morning"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_rim.webp" alt="Zombie on the ropes with a bright blue rim"><span class="cap">AFTER</span>
+    <span class="pin" style="left:40%;top:52%">1</span>
+    <span class="pin" style="left:92%;top:38%">2</span>
+  </div>
+</div>
+<ol class="changes">
+  <li><b>The rim</b>: Zombie is on the ropes under pressure, and its corner's blue edge has come up to 2.4 times its usual strength (FighterSkin, eased over a third of a second).</li>
+  <li><b>ON THE ROPES</b>, the HUD's flag for the same moment; the commentary calls it after two seconds.</li>
+</ol>
+<div class="pair">
+  <div class="shot after"><img src="after_ripple.webp" alt="A screen ripple after a heavy punch"><span class="cap">AFTER</span>
+    <span class="pin" style="left:22%;top:46%">3</span>
+  </div>
+  <div class="shot after"><img src="after_result_look.webp" alt="The result look"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:30%">4</span>
+  </div>
+</div>
+<ol class="changes" start="3">
+  <li><b>Screen ripple</b> (held mid-ring for the shot): the ropes left of the punch are bent by the ring running out from where it landed. It lasts 0.45 s: plain in motion, faint in a still.</li>
+  <li><b>The result look</b>: warmer, brighter, the bloom up, so the stands' camera flashes flare.</li>
+</ol>
+<div class="pair">
+  <div class="shot after"><img src="after_walkon_look.webp" alt="The walk-on look"><span class="cap">AFTER</span>
+    <span class="pin" style="left:8%;top:30%">5</span>
+  </div>
+  <div class="shot"><img src="before_melee.webp" alt="Free-for-all this morning"><span class="cap">BEFORE (free-for-all)</span></div>
+</div>
+<ol class="changes" start="5">
+  <li><b>The walk-on look</b>: the edges darker (vignette) and a little more contrast while the boxers are announced.</li>
+</ol>
+
+<h2>2. The venue</h2>
+<div class="pair">
+  <div class="shot"><img src="before_melee.webp" alt="Free-for-all before"><span class="cap">BEFORE</span></div>
+  <div class="shot after"><img src="after_venue_melee.webp" alt="Free-for-all after, barriers behind the ropes"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:27%">6</span>
+  </div>
+</div>
+<ol class="changes" start="6">
+  <li><b>Barriers</b> at 7 m, padded, with the theme's green stripe, between the ring and the stands. The steps, press row, TV cameras and
+    the hung screen are in both scenes too, but the portrait broadcast shots are tight on the ring and seldom show them; they are in the
+    free-for-all's wide opening, the walk-on's corner shots and the overhead.</li>
+</ol>
+<p class="note">Not shot: the light beams (they hang from 6 m, above every broadcast frame but the overhead; at the first setting they
+filled the hall with haze, so they were narrowed to the lamps' cores at a quarter of the brightness), the replay look (the next bout began
+before the capture finished; its weight reached 1 during the replay), and the sounds. Measured instead: the crowd sections lean from 0.121
+behind the scorer to 0.059 opposite; pivots squeak; the glove air plays above 3.5 m/s; the GPU reads 1.5 ms a frame in the editor.</p>
+</main>
+</body>
+</html>

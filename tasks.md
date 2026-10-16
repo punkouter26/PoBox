@@ -235,3 +235,16 @@ Details in `DOCS/README.md` (features pass) and `SCREENSHOTS/2026-10-16-features
 - [ ] H7 Clinch training: episodes that start dazed, so `--clinch-w` is ever paid.
 - [ ] H8 Matt's carrying on (52/58): `--handover-share` up from 0.3, then rc2 with the ringcraft terms; re-run `tools/elo.py` after any promotion.
 
+## Phase I: graphics and audio, ten options (owner, 2026-10-16 evening)
+
+Details in `DOCS/README.md` and `SCREENSHOTS/2026-10-16-gfx-audio/report.html`.
+
+- [x] I1 Screen ripple and skin ripple; load glow through the skin; pressured rim.
+- [x] I2 Collision fit check (`tools/fit_check.py`) and report.
+- [x] I3 Venue props from Blender (steps, press row, TV cameras, barriers, hung screen).
+- [x] I4 Light beams; walk-on, replay and result looks.
+- [x] I5 Pivot squeak, glove air by speed, crowd in eight sections.
+- [x] I6 GPU time in the readings; display sizes as theme tokens.
+- [ ] I7 Head spheres 100-138% of the head's half-width: a smaller head radius (or an ellipsoid) in the v2 rigs, then retrain.
+- [ ] I8 A phone run of the new effects (the ripple's full-screen copy and the replay's depth of field cost most), and of the beams' look in the overhead shot.
+

@@ -101,6 +101,36 @@ Earlier in the day (Phase B):
   `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
   same rules as the baseline). See `rl_optimization_log.md`.
 
+## Graphics and audio: ten options (2026-10-16 evening)
+
+Owner: "do all 10" of the graphics and audio options. Several overlapped what was there (the report's table says
+what); only the missing parts were built. Report: `SCREENSHOTS/2026-10-16-gfx-audio/report.html`. Three commits.
+
+- **Screen ripple** (`Fx/ScreenRipple.cs`, `Shaders/ScreenRipple.shader`): a full-screen pass on both URP renderers
+  (`FullScreenPassRendererFeature` "Screen Ripple", off until a clean punch over 14 N s and 1.4 times the usual, then
+  0.45 s) bends the picture in a ring from the punch. **Skin**: the fighter overlay runs a ring of light over the skin
+  from a clean punch, and glows amber round joints working past half their limit (`FighterSkin`, `FighterOverlay.shader`).
+  A boxer on the ropes under pressure gets its corner's rim brighter.
+- **Collision fit** (`training/tools/fit_check.py`, `glb_to_rig.py --fit-report`): each trained radius against the
+  part's thickness the thin way, plus the self-contact check: body capsules 56-95%, **head spheres 100-138%** of the
+  head's half-width (heads collide a little outside the skull; not changed: it would need retraining).
+  `DOCS/reports/2026-10-16-collision-fit.html`. A first try measured the live Unity skin and was wrong (the skin is
+  bound and scaled at runtime by SkinBinder); removed.
+- **Venue** (Blender 5.2 over MCP, `BLENDER/2026-10-16_arena-props`: original scene, working file, GLBs): ring steps
+  at the red and blue corners, a press row, two TV cameras, 28 barrier sections at 7 m, a hung screen. Prefabs in
+  `Assets/Prefabs/Props`, placed by `PoBox/Do All/Graphics` under `Environment/Venue` in both scenes. Visual only.
+- **Light**: a beam through the haze under each ring light (`Shaders/LightBeam.shader`, cone in
+  `Assets/Settings/LightBeam.asset`; `ArenaMood.beams`). **Looks** (`Fx/PhaseLook.cs`, `Assets/Settings/Look_*.asset`):
+  walk-on (vignette, contrast), replay (Gaussian depth of field past the ring, low motion blur, cooler), result
+  (warm, bloom up).
+- **Sound**: a planted foot pivoting fast squeaks (`MjRing.FootSpin`); each glove's air follows its measured speed
+  (3.5-9 m/s), replacing the fixed whoosh on every throw; half the crowd bed comes from eight 3D sections round the
+  hall, the scorer's half up (`ArenaMood.Side`).
+- **HUD**: GPU frame time in the debug readings (`PerfTelemetry.GpuMs`, Frame Timing Stats on in Player Settings);
+  the three display sizes are theme tokens (`--t-hero`, `--t-banner`, `--t-count`).
+- Tests: OneScreen 47/47, StateFlow 1/1, MjParity 3/3, FreeForAll 1/1 (gates 24/24 before this pass; the physics was
+  not changed, only measured: `MjRing.FootSpin`, `MjBoxer.GlovePosition`).
+
 ## Features pass: punch card, AI cornerman, ringcraft, fight log, CPU Elo (2026-10-16 afternoon)
 
 Owner picked 3, 5, 7 and 9 of ten feature options and asked for an Elo for every boxer from CPU bouts. Report with before/after
