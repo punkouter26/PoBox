@@ -18,7 +18,12 @@ namespace PoBox.Audio
     /// these two usually land draws a gasp from the crowd, a fraction of a second after it.
     ///
     /// A boot dragged or turned on the canvas scrapes: a loop of noise at each boxer's feet, made here, whose
-    /// level and pitch follow how fast MuJoCo has the planted foot sliding.
+    /// level and pitch follow how fast MuJoCo has the planted foot sliding. A planted foot turned fast (a pivot,
+    /// MjRing.FootSpin) squeaks as well: a short rubbery chirp, made here, louder and higher the faster the turn.
+    ///
+    /// The air a glove moves is heard all the way through a punch, landed or missed: a loop of breathy noise at
+    /// each glove, silent under <see cref="whooshSpeed"/>.x and full at .y, rising in pitch with the speed
+    /// MuJoCo measures (MjRing.GloveVelocity). Pitch from the speed, not from Doppler, which a cut would jump.
     ///
     /// A punch stopped on the gloves is a leather pop at the gloves, with a crack over it that comes up with
     /// the speed it was coming at. The ropes creak as they are drawn (<see cref="RopeFlex"/>, which bows them
@@ -58,7 +63,14 @@ namespace PoBox.Audio
         public AudioClip[] punchBlocked = new AudioClip[0];
         [Tooltip("The thud of the body that took it, laid under the slap.")]
         public AudioClip[] bodyThud = new AudioClip[0];
+        [Tooltip("Not used since the gloves' own loops (whooshSpeed); kept for the scene's reference.")]
         public AudioClip whoosh;
+        [Tooltip("A glove faster than the first, m/s, is heard moving the air; at the second it is as loud as it gets.")]
+        public Vector2 whooshSpeed = new Vector2(3.5f, 9f);
+        [Range(0f, 1f)] public float whooshVolume = 0.35f;
+        [Tooltip("A planted foot turning faster than this, rad/s, squeaks (louder up to three times it).")]
+        public float squeakSpin = 4f;
+        [Range(0f, 1f)] public float squeakVolume = 0.35f;
         public AudioClip bodyFall;
         public AudioClip[] footsteps = new AudioClip[0];
         [Tooltip("A planted foot sliding faster than the first, m/s, is heard; at the second it is as loud as it gets.")]
@@ -153,6 +165,9 @@ namespace PoBox.Audio
         AudioSource[] _pool;
         AudioSource _bed, _crowdSource, _ringSource, _heart, _breath;
         readonly AudioSource[] _scrape = new AudioSource[2];
+        readonly AudioSource[] _air = new AudioSource[4];      // red left, red right, blue left, blue right
+        readonly float[] _squeakAt = new float[2];
+        AudioClip _squeak;
         AudioSource _creak;
         float[] _lastRope = new float[0], _lastTwang = new float[0];
         readonly MjBoxer[] _pair = new MjBoxer[2];
@@ -202,6 +217,15 @@ namespace PoBox.Audio
                 _scrape[i].loop = true;
                 _scrape[i].volume = 0f;
             }
+            AudioClip air = AirLoop();
+            for (int i = 0; i < _air.Length; i++)
+            {
+                _air[i] = Instantiate(_scrape[0], transform);
+                _air[i].name = "Air " + i;
+                _air[i].clip = air;
+                _air[i].timeSamples = i * air.samples / _air.Length;   // four gloves, four places in the loop
+            }
+            _squeak = SqueakClip();
             _creak = Instantiate(_scrape[0], transform);
             _creak.name = "Ropes";
             _creak.clip = CreakLoop();
@@ -252,6 +276,45 @@ namespace PoBox.Audio
                 raw[i] = (low - slow) * 1.6f;
             }
             return Loop("Scrape", raw, rate, fade);
+        }
+
+        /// <summary>A second of moving air: noise with its lows and its highs taken off (a breathy band round 1 kHz), slowly swelling.</summary>
+        static AudioClip AirLoop()
+        {
+            const int rate = 22050, fade = 2048;
+            var rng = new System.Random(13);
+            var raw = new float[rate + fade];
+            float a = 0f, b = 0f;
+            for (int i = 0; i < raw.Length; i++)
+            {
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                a += 0.28f * (white - a);               // off above about 1.5 kHz
+                b += 0.06f * (a - b);                   // what is under about 200 Hz
+                raw[i] = (a - b) * 2.2f * (0.8f + 0.2f * Mathf.Sin(i * 2f * Mathf.PI * 3f / rate));
+            }
+            return Loop("Air", raw, rate, fade);
+        }
+
+        /// <summary>A rubber sole squeaking on the canvas: a chirp from 1.7 to 2.6 kHz, stuttered by stick-slip, an eighth of a second.</summary>
+        static AudioClip SqueakClip()
+        {
+            const int rate = 22050;
+            int n = rate / 8;
+            var data = new float[n];
+            var rng = new System.Random(17);
+            double phase = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)n;
+                double hz = 1700.0 + 900.0 * t;
+                phase += 2.0 * System.Math.PI * hz / rate;
+                float stick = 0.6f + 0.4f * Mathf.Sign(Mathf.Sin(i * 2f * Mathf.PI * 70f / rate));
+                float env = Mathf.Sin(Mathf.PI * t) * (1f - 0.5f * t);
+                data[i] = (float)(System.Math.Sin(phase) + 0.35 * System.Math.Sin(2.0 * phase) + 0.15 * (rng.NextDouble() - 0.5)) * stick * env * 0.5f;
+            }
+            AudioClip clip = AudioClip.Create("Squeak", n, 1, rate, false);
+            clip.SetData(data, 0);
+            return clip;
         }
 
         /// <summary>A second of rope being stretched: stick-slip, a ragged train of little knocks each ringing at its own pitch, swelling and falling.</summary>
@@ -372,8 +435,6 @@ namespace PoBox.Audio
 
         void OnPunch(Fighter f, PunchType type, int hand)
         {
-            BodyPart arm = hand < 0 ? f.forearmL : f.forearmR;
-            if (arm != null) PlayAt(whoosh, arm.transform.position, 0.3f, Random.Range(1.05f, 1.35f));
             bool heavy = type == PunchType.Hook || type == PunchType.Uppercut || type == PunchType.Body;
             if (heavy && Random.value < effortChance) Voice(f, Of(f).effort, effortVolume * Random.Range(0.8f, 1f), 0.3f);
             else if (Random.value < exhaleChance) Voice(f, Of(f).exhale, exhaleVolume * Random.Range(0.8f, 1f), 0.15f);
@@ -550,6 +611,41 @@ namespace PoBox.Audio
                 float level = k * scrapeVolume * _hitsK;
                 s.volume = level > s.volume ? level : Mathf.MoveTowards(s.volume, level, dt * 5f * scrapeVolume);
                 s.pitch = Mathf.Lerp(0.75f, 1.35f, k);
+                if (s.volume > 0.001f && !s.isPlaying) s.Play();
+                else if (s.volume <= 0.001f && s.isPlaying) s.Pause();
+
+                // A pivot: one squeak per turn, not a stream of them.
+                if (b == null || !Bout.SimRunning) continue;
+                float spin = _ring.FootSpin(b, out Vector3 foot);
+                if (spin > squeakSpin && Time.time - _squeakAt[i] > 0.35f)
+                {
+                    _squeakAt[i] = Time.time;
+                    PlayAt(_squeak, foot, squeakVolume * Mathf.Lerp(0.4f, 1f, Mathf.InverseLerp(squeakSpin, 3f * squeakSpin, spin)) * _hitsK,
+                           Mathf.Lerp(0.9f, 1.2f, Mathf.InverseLerp(squeakSpin, 3f * squeakSpin, spin)));
+                }
+            }
+            Air(dt);
+        }
+
+        /// <summary>Each glove's air: level and pitch from the speed MuJoCo measures, placed at the glove.</summary>
+        void Air(float dt)
+        {
+            for (int i = 0; i < _air.Length; i++)
+            {
+                AudioSource s = _air[i];
+                if (s == null) continue;
+                MjBoxer b = _ring == null ? null : i < 2 ? _ring.red : _ring.blue;
+                float k = 0f;
+                if (b != null && Bout.SimRunning)
+                {
+                    Vector3 v = _ring.GloveVelocity(b, i % 2);
+                    k = Mathf.InverseLerp(whooshSpeed.x, whooshSpeed.y, v.magnitude);
+                    if (k > 0f) s.transform.position = b.GlovePosition(i % 2);
+                }
+                float level = k * k * whooshVolume * _hitsK;
+                // Up at once, away over a tenth of a second: the air stops when the glove does.
+                s.volume = level > s.volume ? level : Mathf.MoveTowards(s.volume, level, dt * 10f * whooshVolume);
+                s.pitch = Mathf.Lerp(0.8f, 1.5f, k);
                 if (s.volume > 0.001f && !s.isPlaying) s.Play();
                 else if (s.volume <= 0.001f && s.isPlaying) s.Pause();
             }

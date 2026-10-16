@@ -83,7 +83,7 @@ namespace PoBox.Mj
         double[,,] _closing, _speed, _prevGlove, _gloveVel;
         double[,] _prevHead, _prevBody;
         double[,,] _prevFoot;
-        double[,] _slide;
+        double[,] _slide, _spin, _prevFootYaw;
         double[,] _push;                    // force and torque on each boxer's trunk for the next control step
         bool[] _pushed;
         int[] _owner = new int[0];          // which boxer a shape belongs to, -1 for none; feet are -1 here
@@ -109,6 +109,7 @@ namespace PoBox.Mj
             _prevHead = new double[n, 3]; _prevBody = new double[n, 3];
             _prevFoot = new double[n, 2, 3];
             _slide = new double[n, 2];
+            _spin = new double[n, 2]; _prevFootYaw = new double[n, 2];
             _ropeLoad = new float[n]; _ropeAt = new Vector3[n];
         }
 
@@ -286,6 +287,17 @@ namespace PoBox.Mj
             double* f = Geom(b.FootGeom(foot));
             at = ToUnity(f[0], f[1], 0.0);
             return (float)_slide[k, foot];
+        }
+
+        /// <summary>How fast a boxer's planted foot is turning on the canvas, rad/s (the faster of the two; 0 with neither down), and where that foot is (Unity).</summary>
+        public float FootSpin(MjBoxer b, out Vector3 at)
+        {
+            int k = Slot(b), foot = _spin[k, 1] > _spin[k, 0] ? 1 : 0;
+            at = b.transform.position;
+            if (!Ready) return 0f;
+            double* f = Geom(b.FootGeom(foot));
+            at = ToUnity(f[0], f[1], 0.0);
+            return (float)_spin[k, foot];
         }
 
         /// <summary>How hard a boxer is pressed into the ropes, N (the solver's normal force at the last control step; 0 off them), and where (Unity).</summary>
@@ -529,6 +541,12 @@ namespace PoBox.Mj
                     // A foot that was down and still is, and has moved: it is being dragged or turned on.
                     double dx = f[0] - _prevFoot[k, hand, 0], dy = f[1] - _prevFoot[k, hand, 1];
                     _slide[k, hand] = down && _footDown[k, hand] && _has[k] && !_held[k] ? Math.Sqrt(dx * dx + dy * dy) / _dt : 0.0;
+                    // And turned on: the sole's heading (its own x axis on the floor) against the last step's.
+                    double* fm = _d->geom_xmat + 9 * me.FootGeom(hand);
+                    double yaw = Math.Atan2(fm[3], fm[0]), turn = yaw - _prevFootYaw[k, hand];
+                    turn = Math.Atan2(Math.Sin(turn), Math.Cos(turn));
+                    _spin[k, hand] = down && _footDown[k, hand] && _has[k] && !_held[k] ? Math.Abs(turn) / _dt : 0.0;
+                    _prevFootYaw[k, hand] = yaw;
                     _footDown[k, hand] = down;
                     for (int c = 0; c < 3; c++) _prevFoot[k, hand, c] = f[c];
                 }

@@ -10,6 +10,10 @@
 //   _Sweat         1 - stamina: a tight wet highlight from the key light, and a sheen that grows with it
 //   _Flush         the face going red as health goes: xyz the middle of the head in the world, w how much, 0..1
 //   _RimColor      the corner colour, as a fresnel edge so the two fighters separate from the crowd
+//   _Ripple        a punch just landed: xyz where, w seconds since; a ring of light runs out over the skin from it
+//   _RippleStrength how hard it was, 0..1.5
+//   _Load          up to twelve joints: xyz where, w how hard its motors work (0..1, Fighter's stress); the
+//                  working ones glow amber through the skin, the hardest-worked hottest
 //
 // Blend One OneMinusSrcAlpha: rgb is added light, alpha is how much of the body underneath is taken away,
 // which is what lets one pass both light an edge and darken a bruise.
@@ -25,6 +29,7 @@ Shader "PoBox/FighterOverlay"
         _SweatGain ("Sweat highlight gain", Range(0, 2)) = 1
         _BruiseGain ("Bruise gain", Range(0, 2)) = 1
         _BruiseRadius ("Bruise radius (m)", Range(0.02, 0.3)) = 0.09
+        _LoadGain ("Load glow gain", Range(0, 2)) = 1
     }
     SubShader
     {
@@ -54,6 +59,7 @@ Shader "PoBox/FighterOverlay"
                 half _SweatGain;
                 half _BruiseGain;
                 half _BruiseRadius;
+                half _LoadGain;
             CBUFFER_END
 
             // Per renderer, from FighterSkin. Outside the material's buffer: an array in it would stop the
@@ -61,6 +67,10 @@ Shader "PoBox/FighterOverlay"
             float4 _BruiseMarks[8];
             float _BruiseCount;
             float4 _Flush;
+            float4 _Ripple;
+            float _RippleStrength;
+            float4 _Load[12];
+            float _LoadCount;
 
             struct Attributes
             {
@@ -134,7 +144,26 @@ Shader "PoBox/FighterOverlay"
                 flushed *= flushed;
                 half3 blood = half3(0.30, 0.04, 0.03) * flushed;
 
-                half3 colour = rim + wet + tint * _BruiseGain + blood;
+                // The ripple: a thin ring of light running out from where the punch landed at 1.2 m/s, gone in 0.35 s.
+                half3 ripple = 0;
+                if (_Ripple.w < 0.35)
+                {
+                    float d = distance(i.positionWS, _Ripple.xyz);
+                    half ring = saturate(1.0 - abs(d - _Ripple.w * 1.2) / 0.03) * (1.0 - _Ripple.w / 0.35);
+                    ripple = half3(1.0, 0.86, 0.72) * ring * ring * saturate(_RippleStrength) * 0.8;
+                }
+
+                // Load: a joint whose motors are past half their limit glows amber round it, a hand's width out.
+                half load = 0;
+                int joints = (int)min(_LoadCount, 12);
+                for (int j = 0; j < joints; j++)
+                {
+                    half near = saturate(1.0 - distance(i.positionWS, _Load[j].xyz) / 0.15);
+                    load = max(load, near * near * saturate((_Load[j].w - 0.45) / 0.55));
+                }
+                half3 glow = half3(1.0, 0.42, 0.06) * load * (0.35 + 0.65 * fresnel) * 0.6 * _LoadGain;
+
+                half3 colour = rim + wet + tint * _BruiseGain + blood + ripple + glow;
                 return half4(colour, max(bruise * 0.55, flushed * 0.22));
             }
             ENDHLSL

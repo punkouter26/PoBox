@@ -15,7 +15,9 @@ namespace PoBox.EditorTools
     /// run again: each thing is looked for first and only made if it is missing.
     ///   * the hall's reverb: one AudioReverbZone over the ring, big enough that the camera is always in it;
     ///   * the free-for-all's camera shake (<see cref="CameraJolt"/>) on its one camera;
-    ///   * a check that both URP renderers carry the Decal feature the canvas marks are drawn with.
+    ///   * a check that both URP renderers carry the Decal feature the canvas marks are drawn with;
+    ///   * the screen ripple: a full-screen pass on both renderers (off; <see cref="ScreenRipple"/> switches it on
+    ///     for the length of a ripple) with its material, and one ScreenRipple in each scene pointing at both.
     /// Applied to the arena and the free-for-all. Rebuilding the free-for-all (it is copied from the arena)
     /// keeps the reverb and loses the shake: run this again after it.
     /// </summary>
@@ -34,12 +36,32 @@ namespace PoBox.EditorTools
             string back = EditorSceneManager.GetActiveScene().path;
             var sb = new StringBuilder();
 
+            var ripplePasses = new System.Collections.Generic.List<ScriptableRendererFeature>();
+            Material rippleMat = RippleMaterial();
             foreach (string path in Renderers)
             {
                 var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
                 bool has = data != null && data.rendererFeatures.Any(f => f is DecalRendererFeature);
                 sb.Append($"{System.IO.Path.GetFileNameWithoutExtension(path)} decals {(has ? "ok" : "MISSING: add the Decal feature by hand")}; ");
+                if (data == null) continue;
+                var pass = data.rendererFeatures.OfType<FullScreenPassRendererFeature>().FirstOrDefault(f => f.name == "Screen Ripple");
+                if (pass == null)
+                {
+                    pass = ScriptableObject.CreateInstance<FullScreenPassRendererFeature>();
+                    pass.name = "Screen Ripple";
+                    pass.injectionPoint = FullScreenPassRendererFeature.InjectionPoint.AfterRenderingPostProcessing;
+                    pass.fetchColorBuffer = true;
+                    pass.passMaterial = rippleMat;
+                    pass.SetActive(false);
+                    AssetDatabase.AddObjectToAsset(pass, data);
+                    data.rendererFeatures.Add(pass);
+                    data.SetDirty();
+                    EditorUtility.SetDirty(data);
+                    sb.Append("+ripple pass; ");
+                }
+                ripplePasses.Add(pass);
             }
+            AssetDatabase.SaveAssets();
 
             foreach (string path in Scenes)
             {
@@ -70,6 +92,15 @@ namespace PoBox.EditorTools
                     sb.Append(" +shake");
                 }
 
+                var ripple = Object.FindAnyObjectByType<ScreenRipple>(FindObjectsInactive.Include);
+                if (ripple == null)
+                {
+                    ripple = new GameObject("Screen Ripple").AddComponent<ScreenRipple>();
+                    sb.Append(" +ripple");
+                }
+                ripple.passes = ripplePasses.ToArray();
+                EditorUtility.SetDirty(ripple);
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 sb.Append(" saved; ");
@@ -77,6 +108,17 @@ namespace PoBox.EditorTools
 
             if (!string.IsNullOrEmpty(back) && System.IO.File.Exists(back)) EditorSceneManager.OpenScene(back);
             return sb.ToString();
+        }
+
+        /// <summary>Assets/Settings/ScreenRipple.mat on Shaders/ScreenRipple.shader, made if missing.</summary>
+        static Material RippleMaterial()
+        {
+            const string path = "Assets/Settings/ScreenRipple.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null) return mat;
+            mat = new Material(Shader.Find("PoBox/ScreenRipple"));
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
         }
     }
 }

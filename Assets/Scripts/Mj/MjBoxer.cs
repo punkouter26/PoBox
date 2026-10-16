@@ -451,6 +451,13 @@ namespace PoBox.Mj
             }
         }
         public bool Fallen => PelvisHeight < Cfg.stand_height * 0.6 || Upright < 0.4;
+        /// <summary>Where a glove is (0 left, 1 right), Unity's frame.</summary>
+        public Vector3 GlovePosition(int hand)
+        {
+            double* g = _d->geom_xpos + 3 * _glove[hand];
+            return new Vector3((float)g[0], (float)g[2], (float)g[1]);
+        }
+
         /// <summary>The whole body's centre of mass, Unity's frame.</summary>
         public Vector3 CentreOfMass
         {

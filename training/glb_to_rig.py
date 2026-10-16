@@ -406,6 +406,15 @@ def fit_radii(verts: np.ndarray, dom: np.ndarray, bones: List[dict], mapping: Di
     if crown > 0.0:
         fit["head"] = 0.5 * crown
 
+    # What each radius was fitted to: half the part's thickness the thin way, before the margin (0.92 a limb, 0.9 the
+    # trunk) and the clamps. tools/fit_check.py puts the final radii against it (--fit-report).
+    thick = {k: (r / (0.92 if k in ("thigh", "shin", "upper_arm", "forearm") else 0.9)) for k, r in fit.items() if r is not None and k != "head"}
+    hv = skin_of("head")
+    hv = hv[hv[:, 2] > head["head"][2]]
+    if len(hv) >= 40:
+        thick["head"] = min(half_extent(hv[:, 0]), half_extent(hv[:, 1]))
+    fit_radii.thickness = {k: round(float(v), 4) for k, v in thick.items()}
+
     radii = {}
     for key, r in fit.items():
         if r is not None:
@@ -480,6 +489,7 @@ def main() -> None:
                     help="force this height in metres. 0 keeps the file's own size if it is plausibly "
                          "a person in metres (1.2 to 2.3 m), and otherwise fixes the unit.")
     ap.add_argument("--plot", default="", help="write a picture of the mesh with the fitted shapes over it, front and side")
+    ap.add_argument("--fit-report", default="", help="write each part's half-thickness the thin way (what its radius was fitted to) as JSON")
     ap.add_argument("--skeleton-only", action="store_true",
                     help="read the node transforms and nothing else, as this did before 2026-10-01: no bind pose, "
                          "no sizes from the mesh, no symmetry. For regenerating a rig exactly as it was")
@@ -608,6 +618,9 @@ def main() -> None:
             verts[:, 0] *= -1.0
         verts[:, 0] -= cx
         radii, crown = fit_radii(verts, mesh[1], bones, mapping)
+        if args.fit_report:
+            with open(args.fit_report, "w", encoding="utf-8") as f:
+                json.dump({"half_thickness": fit_radii.thickness, "fitted": radii}, f, indent=1)
         if args.plot:
             plot_fit(args.plot, verts, by_name, mapping, radii, crown)
         litres = mesh_volume(verts, mesh[2]) * 1000.0

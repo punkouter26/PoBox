@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collision fit</title>
+<style>
+  body { margin: 0; background: #0b0d12; color: #eef2f7; font: 15px/1.5 system-ui, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  p, figcaption { color: #a8b2c0; }
+  .wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #141821; border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.08); font-variant-numeric: tabular-nums; }
+  td small { display: block; color: #a8b2c0; font-size: 12px; }
+  .in { color: #2ebf8c; font-weight: 700; } .edge { color: #ffc654; font-weight: 700; } .out { color: #ff6c5c; font-weight: 700; }
+  pre { background: #141821; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px; }
+  .pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: #141821; border-radius: 8px; overflow: hidden; } figure img { width: 100%; display: block; }
+  figcaption { padding: 4px 10px; }
+</style></head><body><main>
+<h1>Collision fit, 2026-10-16</h1>
+<p>Each boxer's capsule radius (what it trains with, rigs/v2) as a share of how thick that part of its mesh is the thin way
+(training/tools/fit_check.py, from glb_to_rig.py's own measure). Green: inside the skin with at least 5% to spare. Amber: within 5%
+of the surface. Red: thicker than the part, so the shape shows through the skin on its narrow sides. The fitter aims for 92% on a limb
+and 90% on the trunk; a radius clamped to the part's lower bound, or a head (a sphere on a head that is longer than it is wide), can
+come out over.</p>
+<div class="wrap"><table><tr><th></th><th>head</th><th>torso</th><th>pelvis</th><th>upper arm</th><th>forearm</th><th>thigh</th><th>shin</th></tr><tr><th>GRANDMA</th><td class="out">106%<small>12.5 / 11.8 cm</small></td><td class="in">90%<small>10.0 / 11.2 cm</small></td><td class="in">90%<small>12.2 / 13.5 cm</small></td><td class="in">87%<small>5.8 / 6.6 cm</small></td><td class="in">92%<small>4.0 / 4.4 cm</small></td><td class="in">86%<small>9.0 / 10.5 cm</small></td><td class="in">87%<small>6.2 / 7.1 cm</small></td></tr><tr><th>GRANDPA</th><td class="out">123%<small>11.3 / 9.1 cm</small></td><td class="in">80%<small>13.5 / 17.0 cm</small></td><td class="in">76%<small>13.5 / 17.7 cm</small></td><td class="in">70%<small>5.8 / 8.3 cm</small></td><td class="in">92%<small>3.7 / 4.1 cm</small></td><td class="in">88%<small>9.0 / 10.2 cm</small></td><td class="in">79%<small>6.2 / 7.8 cm</small></td></tr><tr><th>KIM</th><td class="out">138%<small>12.5 / 9.1 cm</small></td><td class="in">90%<small>12.7 / 14.1 cm</small></td><td class="in">85%<small>13.5 / 15.8 cm</small></td><td class="in">92%<small>5.0 / 5.4 cm</small></td><td class="in">92%<small>3.2 / 3.5 cm</small></td><td class="in">70%<small>6.4 / 9.2 cm</small></td><td class="in">92%<small>4.8 / 5.2 cm</small></td></tr><tr><th>MATT</th><td class="out">122%<small>10.5 / 8.6 cm</small></td><td class="in">70%<small>9.4 / 13.3 cm</small></td><td class="in">70%<small>9.8 / 13.9 cm</small></td><td class="in">92%<small>5.7 / 6.2 cm</small></td><td class="in">92%<small>4.1 / 4.4 cm</small></td><td class="in">87%<small>7.4 / 8.5 cm</small></td><td class="in">92%<small>6.1 / 6.6 cm</small></td></tr><tr><th>NICK</th><td class="out">124%<small>9.7 / 7.8 cm</small></td><td class="in">90%<small>9.9 / 11.0 cm</small></td><td class="in">90%<small>10.9 / 12.1 cm</small></td><td class="in">92%<small>4.2 / 4.6 cm</small></td><td class="in">95%<small>2.8 / 3.0 cm</small></td><td class="in">92%<small>6.4 / 6.9 cm</small></td><td class="in">92%<small>4.3 / 4.7 cm</small></td></tr><tr><th>SOKOL</th><td class="out">132%<small>12.3 / 9.4 cm</small></td><td class="in">90%<small>9.2 / 10.2 cm</small></td><td class="in">90%<small>9.5 / 10.5 cm</small></td><td class="in">92%<small>5.6 / 6.1 cm</small></td><td class="in">92%<small>4.5 / 4.9 cm</small></td><td class="in">92%<small>7.8 / 8.5 cm</small></td><td class="in">92%<small>5.6 / 6.1 cm</small></td></tr><tr><th>TRUMP</th><td class="out">100%<small>12.0 / 12.0 cm</small></td><td class="in">56%<small>10.5 / 18.7 cm</small></td><td class="in">70%<small>7.6 / 10.8 cm</small></td><td class="in">68%<small>5.8 / 8.5 cm</small></td><td class="in">72%<small>4.8 / 6.7 cm</small></td><td class="in">88%<small>9.0 / 10.3 cm</small></td><td class="in">73%<small>6.2 / 8.5 cm</small></td></tr><tr><th>ZOMBIE</th><td class="out">121%<small>12.5 / 10.3 cm</small></td><td class="in">80%<small>10.0 / 12.6 cm</small></td><td class="in">79%<small>9.4 / 11.8 cm</small></td><td class="in">92%<small>3.7 / 4.0 cm</small></td><td class="in">92%<small>3.0 / 3.2 cm</small></td><td class="in">92%<small>8.1 / 8.8 cm</small></td><td class="in">92%<small>5.3 / 5.8 cm</small></td></tr></table></div>
+<h2>Self-contact (pass, MuJoCo 3.5.0)</h2>
+<pre>grandma: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+grandpa: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+kim: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+matt: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+nick: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+sokol: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+trump: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching
+zombie: 17 shapes (box, capsule, sphere) on 12 body parts; 55 of 66 pairs of parts collide, 11 are excluded (joined by a joint)
+  no part touches another in 25 poses: T-pose, guard, 23 steps of walking and punching</pre>
+<h2>The meshes with their fitted shapes (the fitter's radii, before any slimming)</h2>
+<div class="pics"><figure><img src="img/2026-10-16_fit_grandma.png" alt="grandma mesh with its fitted shapes"><figcaption>GRANDMA</figcaption></figure><figure><img src="img/2026-10-16_fit_grandpa.png" alt="grandpa mesh with its fitted shapes"><figcaption>GRANDPA</figcaption></figure><figure><img src="img/2026-10-16_fit_kim.png" alt="kim mesh with its fitted shapes"><figcaption>KIM</figcaption></figure><figure><img src="img/2026-10-16_fit_matt.png" alt="matt mesh with its fitted shapes"><figcaption>MATT</figcaption></figure><figure><img src="img/2026-10-16_fit_nick.png" alt="nick mesh with its fitted shapes"><figcaption>NICK</figcaption></figure><figure><img src="img/2026-10-16_fit_sokol.png" alt="sokol mesh with its fitted shapes"><figcaption>SOKOL</figcaption></figure><figure><img src="img/2026-10-16_fit_trump.png" alt="trump mesh with its fitted shapes"><figcaption>TRUMP</figcaption></figure><figure><img src="img/2026-10-16_fit_zombie.png" alt="zombie mesh with its fitted shapes"><figcaption>ZOMBIE</figcaption></figure></div>
+</main></body></html>

@@ -67,6 +67,15 @@ namespace PoBox.Fx
         static readonly int MarksId = Shader.PropertyToID("_BruiseMarks");
         static readonly int MarkCountId = Shader.PropertyToID("_BruiseCount");
         static readonly int FlushId = Shader.PropertyToID("_Flush");
+        static readonly int RippleId = Shader.PropertyToID("_Ripple");
+        static readonly int RippleStrengthId = Shader.PropertyToID("_RippleStrength");
+        static readonly int LoadId = Shader.PropertyToID("_Load");
+        static readonly int LoadCountId = Shader.PropertyToID("_LoadCount");
+        [Tooltip("A clean punch of this impulse, N s, sends a full-strength ripple over the skin.")]
+        public float rippleImpulse = 12f;
+        readonly Vector4[] _load = new Vector4[12];
+        Vector3 _ripplePoint;
+        float _rippleAt = -10f, _rippleStrength;
 
         MaterialPropertyBlock _block;
         BodyPart[] _source;
@@ -86,6 +95,12 @@ namespace PoBox.Fx
         void OnHit(HitEvent e)
         {
             if (e.victim != fighter || fighter == null) return;
+            if (e.clean)
+            {
+                _ripplePoint = e.point;
+                _rippleAt = Time.time;
+                _rippleStrength = Mathf.Clamp(e.impulse / rippleImpulse, 0.3f, 1.5f);
+            }
             // Away from the glove; a punch from below (an uppercut) tips the head back, away from the puncher.
             Vector3 away = Vector3.ProjectOnPlane(-e.normal, Vector3.up);
             if (away.sqrMagnitude < 0.09f && e.attacker != null) away = Vector3.ProjectOnPlane(HeadPoint - e.attacker.HeadPosition, Vector3.up);
@@ -215,6 +230,19 @@ namespace PoBox.Fx
             _block.SetVectorArray(MarksId, _marks);
             _block.SetFloat(MarkCountId, count);
             _block.SetVector(FlushId, flush);
+            // The ripple of the last clean punch, and how hard each joint is working (its link's origin is the joint).
+            _block.SetVector(RippleId, new Vector4(_ripplePoint.x, _ripplePoint.y, _ripplePoint.z, Time.time - _rippleAt));
+            _block.SetFloat(RippleStrengthId, _rippleStrength);
+            int joints = 0;
+            foreach (BodyPart p in fighter.parts)
+            {
+                if (p == null || joints == _load.Length) continue;
+                Vector3 at = p.transform.position;
+                _load[joints++] = new Vector4(at.x, at.y, at.z, p.stress);
+            }
+            for (int i = joints; i < _load.Length; i++) _load[i] = Vector4.zero;
+            _block.SetVectorArray(LoadId, _load);
+            _block.SetFloat(LoadCountId, joints);
             for (int r = 0; r < overlayRenderers.Length; r++)
                 if (overlayRenderers[r] != null) overlayRenderers[r].SetPropertyBlock(_block);
         }
