@@ -1050,3 +1050,9 @@ Day queue (09:08 on, ~9.4 h), each run then its exam; opponents are the newest b
   each examined on 3.5.0 with `logs/book_punch.json`; last, `exam_punch_baseline` (the shipped brains,
   `logs/book_shipped.json`). It trains under the speed limit, as every v2 config now says: the game turns that on for
   the five without it only when their retrained footwork and boxing are promoted together (D8).
+- 13:20-13:38 `m9_matt` (owner: "30 minutes"): 196 iterations from m1_matt, all punch rules as flags (configs untouched),
+  `--obs-state --taken-w 1.0 --block-w 0.5 --hit-w 1.5`. The obs-state warm start did not fire: m1_matt's variance on
+  the three zeros was 0.77, not near zero; the check now reads the checkpoint's own `env.obs_state`. Against Zombie
+  (sf1) under the rules, 512 rings x 30 s: m1 lands 0.80/s, m9 1.49/s; both 0% to the head and 0 blocks; reserve
+  0.60 v 0.56; Zombie lands 0.18/s v 0.13/s; no falls. Busier, not more varied, and no pacing yet: the spam is
+  rewarded (hit pay), and nothing pays for the head or for a mix. Not promoted, not examined.

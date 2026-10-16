@@ -161,9 +161,10 @@ def main() -> None:
     ppo = PPO(D, A, total_n, dev, cfg)
     extra = ppo.load(args.resume if os.path.isabs(args.resume) else os.path.join(HERE, args.resume))
     cfg.lr = min(args.lr, args.lr_max)
-    if args.obs_state and float(ppo.obs_rms.var[-3:].max()) < 1e-3:
-        # First time with the state in the command's place: those three numbers were always zero, so their scale is
-        # nothing and the first layer's weights on them were never trained. Give them a sensible scale and start
+    if args.obs_state and not extra.get("env", {}).get("obs_state", False):
+        # First time with the state in the command's place: those three numbers were always zero, so their scale says
+        # nothing (m1_matt's was 0.77, not the near-zero one would expect) and the first layer's weights on them were
+        # never trained. Give them a sensible scale and start
         # their weights at zero, so the policy begins exactly where it was and learns what the numbers mean.
         with torch.no_grad():
             ppo.obs_rms.mean[-3:] = torch.tensor([0.7, 0.3, 0.3], device=ppo.obs_rms.mean.device)
