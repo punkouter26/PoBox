@@ -9,7 +9,7 @@
                   plays, and throwing the ladder away (arena only)
 
     A switch is an icon and a short word with a dot that is lit while it is on; its tooltip says ON or OFF.
-    RESET LADDER turns red and asks SURE? before it throws anything away.
+    RESET (the ladder) turns red and asks SURE? before it throws anything away.
 
     The same warning as in Hud.uxml: no two hyphens in a row inside a comment.
 -->
@@ -58,24 +58,23 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="s-page-debug" class="s-page hidden" picking-mode="Ignore">
+        <!-- One row of four: two rows of two and the two fields were taller than the page and lay over each other. -->
         <ui:VisualElement class="grid" picking-mode="Ignore">
-            <ui:Button name="s-xray" class="btn btn--tool grid-2" tooltip="Collision shapes over the boxers">
+            <ui:Button name="s-xray" class="btn btn--tool grid-4" tooltip="Collision shapes over the boxers">
                 <ui:Label class="btn-word btn-word--lead" text="X-RAY" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
-            <ui:Button name="s-brain" class="btn btn--tool grid-2" tooltip="Brain cam: a boxer's joint targets">
+            <ui:Button name="s-brain" class="btn btn--tool grid-4" tooltip="Brain cam: a boxer's joint targets">
                 <ui:Label class="btn-word btn-word--lead" text="BRAIN" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
-        </ui:VisualElement>
-        <ui:VisualElement class="grid" picking-mode="Ignore">
-            <ui:Button name="s-telemetry" class="btn btn--tool grid-2" tooltip="The debug readings">
+            <ui:Button name="s-telemetry" class="btn btn--tool grid-4" tooltip="The debug readings">
                 <PoBox.UI.Glyph kind="Power" class="glyph--btn" />
                 <ui:Label class="btn-word" text="READINGS" picking-mode="Ignore" />
             </ui:Button>
-            <ui:Button name="s-reset" class="btn btn--tool grid-2" tooltip="Throw the ladder away">
+            <ui:Button name="s-reset" class="btn btn--tool grid-4" tooltip="Throw the ladder away">
                 <PoBox.UI.Glyph name="s-reset-glyph" kind="Trash" class="glyph--btn" />
-                <ui:Label name="s-reset-word" class="btn-word" text="RESET LADDER" picking-mode="Ignore" />
+                <ui:Label name="s-reset-word" class="btn-word" text="RESET" picking-mode="Ignore" />
             </ui:Button>
         </ui:VisualElement>
         <!-- Chat plays: the channel whose chat votes and throws cubes. Empty is off; it takes effect at the next fight. -->

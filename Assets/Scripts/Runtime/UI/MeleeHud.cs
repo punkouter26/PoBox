@@ -20,7 +20,8 @@ namespace PoBox.UI
     ///
     /// While they fight, the boxer whose own critic (MjBoxer.Value) expects the most is marked AI FAV: each critic
     /// judges its own boxer's prospects, so this is "who feels best about it", not a calibrated chance. The result
-    /// carries the punch count's leaders, an instant REPLAY of the last knockdown (Mj/MjReplay.cs) and SHARE; with a
+    /// turns the board into its table (each boxer's punches landed of thrown) and carries the fastest glove and the
+    /// hardest punch, an instant REPLAY of the last knockdown (Mj/MjReplay.cs) and SHARE; with a
     /// Twitch channel set, chat's favourite is on a line under the board and chat can throw cubes.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -175,6 +176,7 @@ namespace PoBox.UI
             Build();
             if (_root == null) return;
             _safeArea.Fit(_root, _safe);
+            if (Input.GetKeyDown(KeyCode.Escape)) Back();
             _call.EnableInClassList("hidden", Time.unscaledTime >= _callUntil);
 
             if (Time.unscaledTime < _nextText) return;
@@ -207,7 +209,9 @@ namespace PoBox.UI
                 if (f == null) continue;
                 bool isOut = rules.IsOut(f), won = over && f == rules.Winner;
                 int count = rules.CountOf(f);
-                string text = won ? "WINNER" : isOut ? "OUT" : count >= 0 ? (count == 0 ? "DOWN" : $"COUNT {count}") : rules.Slipped(f) ? "SLIP" : f == fav ? "AI FAV" : "";
+                // At the end the board is the result's table: each row's punches landed of thrown, beside WIN or OUT.
+                string text = over ? $"{(won ? "WIN · " : isOut ? "OUT · " : "")}{f.stats.landed}/{f.stats.thrown}"
+                            : isOut ? "OUT" : count >= 0 ? (count == 0 ? "DOWN" : $"COUNT {count}") : rules.Slipped(f) ? "SLIP" : f == fav ? "AI FAV" : "";
                 Set(_states[i], text);
                 _rows[i].EnableInClassList("ffa-row--fav", f == fav);
                 _states[i].EnableInClassList("ffa-state--count", count >= 0 && !isOut && !won);
@@ -252,20 +256,18 @@ namespace PoBox.UI
             return best;
         }
 
-        /// <summary>The punch count's leaders: most landed (and the share), the fastest glove, the hardest punch.</summary>
+        /// <summary>The fastest glove and the hardest punch (punches landed are on each boxer's row of the board).</summary>
         string Leaders()
         {
-            Fighter landed = null, fast = null, hard = null;
+            Fighter fast = null, hard = null;
             foreach (Fighter f in rules.fighters)
             {
                 if (f == null) continue;
-                if (landed == null || f.stats.landed > landed.stats.landed) landed = f;
                 if (fast == null || PunchStats.FastestKmh(f) > PunchStats.FastestKmh(fast)) fast = f;
                 if (hard == null || f.stats.peakImpulse > hard.stats.peakImpulse) hard = f;
             }
-            if (landed == null) return "";
-            return $"MOST LANDED {landed.displayName} {PunchStats.Landed(landed)}\n" +
-                   $"FASTEST {fast.displayName} {PunchStats.FastestKmh(fast):0} km/h · HARDEST {hard.displayName} {hard.stats.peakImpulse:0} N·s";
+            if (fast == null) return "";
+            return $"FASTEST {fast.displayName} {PunchStats.FastestKmh(fast):0} km/h · HARDEST {hard.displayName} {hard.stats.peakImpulse:0} N·s";
         }
 
         void PlayReplay()
@@ -295,6 +297,14 @@ namespace PoBox.UI
             foreach (Fighter f in rules.fighters)
                 if (f != null && !f.IsDown && !rules.IsOut(f) && Random.Range(0, ++seen) == 0) at = f;
             if (TwitchChat.ThrowCube(at)) SimBus.Say($"Chat throws a cube at {at.displayName}!", 1);
+        }
+
+        /// <summary>The phone's back button (Escape): puts away what is open, then the replay, then goes back to the menu.</summary>
+        public void Back()
+        {
+            if (SettingsOpen || DebugOpen) { Open(_sheet, false); Open(_debugPanel, false); return; }
+            if (MjReplay.Playing) { StopReplay(); return; }
+            ToMenu();
         }
 
         void ToMenu()

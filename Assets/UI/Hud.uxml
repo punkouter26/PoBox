@@ -246,7 +246,7 @@
                         </ui:Button>
                         <ui:Button name="m-next" class="btn btn--tool grid-2">
                             <ui:VisualElement class="icon icon--next" picking-mode="Ignore" />
-                            <ui:Label class="btn-word" text="NEXT BOUT" picking-mode="Ignore" />
+                            <ui:Label class="btn-word" text="NEXT" picking-mode="Ignore" />
                         </ui:Button>
                     </ui:VisualElement>
                     <ui:Label class="label-micro page-label" text="CAMERA" picking-mode="Ignore" />
@@ -270,7 +270,7 @@
                     <ui:VisualElement class="grid grid--last" picking-mode="Ignore">
                         <ui:Button name="m-boxers" class="btn btn--tool grid-2">
                             <ui:VisualElement class="icon icon--return" picking-mode="Ignore" />
-                            <ui:Label name="m-boxers-word" class="btn-word" text="CHANGE BOXERS" picking-mode="Ignore" />
+                            <ui:Label name="m-boxers-word" class="btn-word" text="BOXERS" picking-mode="Ignore" />
                         </ui:Button>
                     </ui:VisualElement>
                 </ui:VisualElement>

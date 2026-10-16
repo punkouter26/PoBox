@@ -101,6 +101,41 @@ Earlier in the day (Phase B):
   `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
   same rules as the baseline). See `rl_optimization_log.md`.
 
+## Mobile UI: zero-scroll and integrity, ten options (2026-10-16 night)
+
+Owner: "do all" of ten UI options. The G4 pass had already done the anchors, the one results card, the tabbed settings,
+icon switches, gestures and the phone shapes, so these were the gaps left. Report: `SCREENSHOTS/2026-10-16-ui-integrity/report.html`.
+
+- **Back button** (Android's back is `KeyCode.Escape` under the old Input Manager): `MenuView.Back`, `HudView.Back`,
+  `MeleeHud.Back` put away the open sheet first, then a playing replay, then go back (arena and free-for-all to the
+  menu; the bare menu quits the app). There was no handler anywhere before.
+- **Clock reset**: `MenuView.OnEnable` sets `Time.timeScale = 1`. The free-for-all's bullet time (`ImpactVfx`, no Bout
+  to own the clock) set it directly and nothing put it back when the scene was left in the middle of one.
+- **LayoutAudit** has two more rules (both in `Passed`): **reach**, the way on (FIGHT, ALL, CUP, NEXT, MENU, REPLAY,
+  SHARE, AGAIN) centred in the bottom 40% of the safe area; **wordy**, a button's word (`btn-word`, `thumb-word`,
+  `thumb-sub`) one word of at most 8 letters, numbers and dots aside (`LayoutAudit.Wordy`). Four words shortened to
+  pass: NEXT BOUT to NEXT, CHANGE BOXERS to BOXERS, RESET LADDER to RESET (SURE? still asks), FREE-FOR-ALL under ALL
+  to MELEE. A third rule, **spill**: an in-flow element out of its parent's top or bottom. It found the settings'
+  DEBUG tab broken since the cornerman field was added: a 296 px page holding two rows of buttons and two fields
+  (384 px), so the rows were squeezed over each other and the TWITCH field was hidden. Now one row of four
+  (X-RAY, BRAIN, READINGS, RESET) and the two fields.
+- **Free-for-all result**: at the end each boxer's row on the board shows its punches landed/thrown beside WIN or OUT,
+  so the card's "MOST LANDED" line went (one line shorter); fastest glove and hardest punch stay.
+- **Tests**: `OneScreenTests` runs 16 screen shapes (was 10): adds a home bar alone, a punch-hole with curved edges, a
+  3:4 tablet (plain and with a bar) and a foldable's inner screen (plain and with side cutouts); `OneScreenTests.Phone`
+  replaces the notch flag. `StateFlowTests` fails on any warning (bar the Inference Engine's Burst cold start, which
+  has no stack and is matched by text) and has a second test: back on each screen, CUP > NEW CUP > FIGHT counted for
+  the cup, NEXT, a replay cut short by the menu's NEXT, back during a count, back out of the free-for-all in bullet
+  time (the owner's `career.json` is kept aside and put back). New `SceneIntegrityTests`: every scene (switched-off
+  objects included, so every corner prefab) for missing scripts, references to deleted objects (`SerializedProperty
+  .objectReferenceEntityIdValue` valid with no object; `GetInstanceID` is an error in 6000.6) and UIDocuments without
+  a layout or panel; a self-check plants a deleted mesh reference.
+- **Clean-up**: `Assets/_Recovery/0.unity` (an Arena autosave from the 09:30 crash, older than the venue commits) moved
+  to `../PoBox_quarantine_2026-10-16/`. The Android scripting define `APP_UI_EDITOR_ONLY` (now as on Standalone; the
+  editor-only App UI package is a dependency of the AI assistant) committed.
+- Not done: **a phone run** (no device attached; D6, G10, I8 stay open).
+- Tests: OneScreen 72/72, StateFlow 2/2, SceneIntegrity 5/5, FreeForAll 1/1, MjParity 3/3 (MjGate not run: no physics or brain changed).
+
 ## Graphics and audio: ten options (2026-10-16 evening)
 
 Owner: "do all 10" of the graphics and audio options. Several overlapped what was there (the report's table says

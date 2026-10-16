@@ -174,7 +174,7 @@ namespace PoBox.UI
             if (_reset != null)
             {
                 bool armed = Time.unscaledTime < _armedUntil;
-                if (_resetWord != null) _resetWord.text = armed ? "SURE?" : "RESET LADDER";
+                if (_resetWord != null) _resetWord.text = armed ? "SURE?" : "RESET";
                 _reset.EnableInClassList("btn--danger", armed);
                 // The glyph takes the text colour, which the armed state changes.
                 if (_resetGlyph != null) _resetGlyph.MarkDirtyRepaint();

@@ -248,3 +248,18 @@ Details in `DOCS/README.md` and `SCREENSHOTS/2026-10-16-gfx-audio/report.html`.
 - [ ] I7 Head spheres 100-138% of the head's half-width: a smaller head radius (or an ellipsoid) in the v2 rigs, then retrain.
 - [ ] I8 A phone run of the new effects (the ripple's full-screen copy and the replay's depth of field cost most), and of the beams' look in the overhead shot.
 
+
+## Phase J: mobile UI, zero-scroll and integrity, ten options (owner, 2026-10-16 night)
+
+Details in `DOCS/README.md` and `SCREENSHOTS/2026-10-16-ui-integrity/report.html`.
+
+- [x] J1 Android back button on the menu, the arena and the free-for-all.
+- [x] J2 State flow: the cup, NEXT, a replay cut short, leaving during a count and in bullet time (`StateFlowTests`, second test).
+- [x] J3 `SceneIntegrityTests`: missing scripts, deleted references, documents without a layout, in every scene.
+- [x] J4 Crash-recovery scene quarantined; the Android define committed.
+- [x] J5 Sixteen screen shapes in `OneScreenTests` (home bar, punch hole, 3:4 tablet, foldable).
+- [x] J6 `StateFlowTests` fails on warnings.
+- [x] J7 Thumb-reach rule in `LayoutAudit`.
+- [x] J8 One-short-word and spill rules in `LayoutAudit`; four button words shortened; the settings' DEBUG tab (rows drawn over each other) fixed.
+- [x] J9 The free-for-all's board is its result table (punches landed per boxer).
+- [ ] J10 A phone run of every state (back button, cutouts, frame pacing, heat): no device was attached. Goes with D6, G10, I8.

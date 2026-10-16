@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBox UI integrity</title>
+<style>
+  :root { --bg: #0b0d12; --card: #141821; --ink: #eef2f7; --dim: #a8b2c0; --accent: #2ebf8c; --line: rgba(255,255,255,.1); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 12px; border-top: 1px solid var(--line); padding-top: 20px; }
+  p.lede { color: var(--dim); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .shot { position: relative; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot .cap { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 6px; font-size: 12px; letter-spacing: 1px; }
+  .shot.after .cap { background: var(--accent); color: #06140f; font-weight: 700; }
+  .pin { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #ffc654; color: #1e0604;
+         font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px rgba(0,0,0,.6); }
+  ol.changes { padding-left: 0; list-style: none; counter-reset: c; }
+  ol.changes li { counter-increment: c; position: relative; padding: 10px 12px 10px 52px; background: var(--card); border-radius: 8px; margin-bottom: 8px; }
+  ol.changes li::before { content: counter(c); position: absolute; left: 12px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: #ffc654; color: #1e0604; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); border-radius: 8px; overflow: hidden; }
+  td, th { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; font-size: 13px; }
+  code { font-size: 13px; color: #cfe3ff; }
+  .ok { color: var(--accent); font-weight: 700; }
+  .open { color: #ffc654; font-weight: 700; }
+  .single { max-width: 540px; }
+  @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>PoBox UI integrity pass, 2026-10-16</h1>
+<p class="lede">The ten mobile-portrait options, all at 1080 x 2340 (19.5:9). Before (left) was taken before any change tonight,
+after (right) once the tests passed. The yellow pins match the numbered changes under each pair.</p>
+
+<h2>What was done</h2>
+<table>
+<tr><th>#</th><th>Option</th><th>Outcome</th></tr>
+<tr><td>1</td><td>Android back button</td><td class="ok">Done: <code>Back()</code> on the menu, the arena and the free-for-all</td></tr>
+<tr><td>2</td><td>More of the state flow under test</td><td class="ok">Done: second <code>StateFlowTests</code> test (cup, NEXT, replay cut short, leaving mid-count and in bullet time); found and fixed a clock left in slow-mo</td></tr>
+<tr><td>3</td><td>Scene integrity test</td><td class="ok">Done: <code>SceneIntegrityTests</code>, 4 scenes plus a self-check</td></tr>
+<tr><td>4</td><td>Working tree clean-up</td><td class="ok">Done: recovery scene quarantined, Android define committed</td></tr>
+<tr><td>5</td><td>More screen shapes</td><td class="ok">Done: 16 shapes (was 10), tablet and foldable included</td></tr>
+<tr><td>6</td><td>Console check on the whole flow</td><td class="ok">Done: <code>StateFlowTests</code> fails on warnings</td></tr>
+<tr><td>7</td><td>Thumb-reach rule</td><td class="ok">Done: <code>LayoutAudit</code> reach rule</td></tr>
+<tr><td>8</td><td>Text-to-icon pass</td><td class="ok">Done: one-short-word rule, four words shortened; plus a <b>spill</b> rule that found the broken DEBUG tab</td></tr>
+<tr><td>9</td><td>Free-for-all result as a table</td><td class="ok">Done: the board shows each boxer's punches landed/thrown</td></tr>
+<tr><td>10</td><td>A real phone run</td><td class="open">Not done: no phone was attached (<code>adb devices</code> empty)</td></tr>
+</table>
+
+<h2>Arena menu: shorter button words</h2>
+<div class="pair">
+  <div class="shot"><img src="before_arena_menu.webp" alt="Arena menu before"><span class="cap">BEFORE</span>
+    <span class="pin" style="left:76%;top:74.6%">1</span><span class="pin" style="left:52%;top:92%">2</span></div>
+  <div class="shot after"><img src="after_arena_menu.webp" alt="Arena menu after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:76%;top:74.6%">1</span><span class="pin" style="left:52%;top:92%">2</span></div>
+</div>
+<ol class="changes">
+  <li><b>NEXT BOUT is now NEXT</b>: the icon already says "next". The new <b>wordy</b> rule fails any word beside an icon that is more than one word, or longer than eight letters.</li>
+  <li><b>CHANGE BOXERS is now BOXERS</b>, with the same return icon.</li>
+</ol>
+
+<h2>Settings, DEBUG tab: rows that lay over each other</h2>
+<div class="pair">
+  <div class="shot"><img src="before_arena_settings.webp" alt="Debug tab before"><span class="cap">BEFORE</span>
+    <span class="pin" style="left:50%;top:80%">3</span><span class="pin" style="left:55%;top:84.6%">4</span></div>
+  <div class="shot after"><img src="after_arena_settings.webp" alt="Debug tab after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:78.7%">3</span><span class="pin" style="left:55%;top:82.8%">4</span></div>
+</div>
+<ol class="changes">
+  <li><b>X-RAY, BRAIN, READINGS and RESET are in one row of four.</b> The page has a fixed height of 296 px, but it held two button rows and two field rows (384 px). The rows were squeezed and drawn over each other: X-RAY over READINGS, BRAIN over RESET. RESET LADDER became RESET (it still asks SURE?).</li>
+  <li><b>The TWITCH field is visible again</b>; before, the squeezed row hid it. The new <b>spill</b> rule in <code>LayoutAudit</code> reported all six squeezed elements on the old layout, and none on the new one.</li>
+</ol>
+
+<h2>First screen</h2>
+<div class="pair">
+  <div class="shot"><img src="before_menu.webp" alt="Menu before"><span class="cap">BEFORE</span>
+    <span class="pin" style="left:87.5%;top:93.7%">5</span><span class="pin" style="left:50%;top:93.7%">6</span></div>
+  <div class="shot after"><img src="after_menu.webp" alt="Menu after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:87.5%;top:93.7%">5</span><span class="pin" style="left:50%;top:93.7%">6</span></div>
+</div>
+<ol class="changes">
+  <li><b>FREE-FOR-ALL under ALL is now MELEE</b> (12 letters to 5).</li>
+  <li><b>CUP, FIGHT and ALL are now checked for reach</b>: the <b>reach</b> rule fails any of these buttons (and the result cards' NEXT, AGAIN, MENU, REPLAY, SHARE) whose centre is above the bottom 40% of the safe area. All of them pass on all 16 shapes. Not visible: the phone's <b>back button</b> closes an open sheet, and on the bare first screen it quits the app.</li>
+</ol>
+
+<h2>Free-for-all result: the board is the table</h2>
+<div class="pair">
+  <div class="shot"><img src="before_melee_result.webp" alt="Free-for-all result before"><span class="cap">BEFORE</span>
+    <span class="pin" style="left:50%;top:11%">7</span><span class="pin" style="left:40%;top:89%">8</span></div>
+  <div class="shot after"><img src="after_melee_result.webp" alt="Free-for-all result after"><span class="cap">AFTER</span>
+    <span class="pin" style="left:50%;top:11%">7</span><span class="pin" style="left:40%;top:89.8%">8</span></div>
+</div>
+<ol class="changes">
+  <li><b>Each boxer's row shows punches landed of thrown at the end</b>, beside WIN or OUT. Before, a row showed only WINNER, SLIP or nothing.</li>
+  <li><b>The card is one line shorter</b>: "MOST LANDED ..." is gone, since the board now says it for everybody. Fastest glove and hardest punch stay.</li>
+</ol>
+
+<h2>A new shape: 3:4 tablet</h2>
+<div class="single shot after"><img src="after_melee_tablet.webp" alt="Free-for-all result on a 3:4 tablet"><span class="cap">AFTER · 1536 x 2048</span></div>
+<p class="lede">The panel's Expand match mode gives a 3:4 screen a wider panel (1440 x 1920 units) with the same height, so nothing has to shrink. All checks pass on it: offscreen, scroll, small text, clipping, touch size, overlap, reach, wordy, spill and anchors.</p>
+
+<h2>Tests</h2>
+<table>
+<tr><th>Fixture</th><th>Result</th><th>New</th></tr>
+<tr><td><code>OneScreenTests</code></td><td class="ok">72/72</td><td>16 shapes: home bar alone, punch hole with curved edges, 3:4 tablet plain and with a bar, foldable inner screen plain and with side cutouts. Reach, wordy and spill rules. A unit check of the word rule.</td></tr>
+<tr><td><code>StateFlowTests</code></td><td class="ok">2/2</td><td>Fails on any warning except the Inference Engine's Burst cold-start warning. Second test: back on each screen, CUP &gt; NEW CUP &gt; FIGHT counted for the cup, NEXT, REPLAY cut short by the menu's NEXT, back during a count, back out of the free-for-all in bullet time. The owner's <code>career.json</code> is kept aside and put back.</td></tr>
+<tr><td><code>SceneIntegrityTests</code></td><td class="ok">5/5</td><td>Menu, Arena, Melee, Testbed: missing scripts, references to deleted objects, UIDocuments without a layout or panel settings. Switched-off objects are searched too. A self-check plants a deleted mesh reference and expects it to be found.</td></tr>
+<tr><td><code>FreeForAllTests</code>, <code>MjParityTests</code></td><td class="ok">1/1, 3/3</td><td>Regression only.</td></tr>
+</table>
+<p class="lede">The slow-mo clock fix: in the free-for-all, bullet time sets <code>Time.timeScale</code> directly (there is no Bout to own the clock). Nothing set it back if the player left mid-slow-mo, so the menu would run slowed down. <code>MenuView.OnEnable</code> now resets the clock, and the new test leaves the free-for-all at 0.3x to check it.</p>
+</main>
+</body>
+</html>

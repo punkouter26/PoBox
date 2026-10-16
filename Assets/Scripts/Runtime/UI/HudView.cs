@@ -753,6 +753,14 @@ namespace PoBox.UI
             SceneManager.LoadSceneAsync(MatchSelection.MenuScene);
         }
 
+        /// <summary>The phone's back button (Escape): puts away what is open, then the replay, then goes back to the first screen.</summary>
+        public void Back()
+        {
+            if (CloseOverlays()) return;
+            if (MjReplay.Playing) { StopReplay(); return; }
+            ToBoxers();
+        }
+
         // ------------------------------------------------------------ sheets
 
         /// <summary>The one overlay rule: a tap outside the menu or the debug panel puts it away. True when there was one to put away.</summary>
@@ -901,6 +909,7 @@ namespace PoBox.UI
         {
             if (_root == null) return;
             _safeArea.Fit(_root, _safe);
+            if (Input.GetKeyDown(KeyCode.Escape)) Back();
             float now = Time.unscaledTime;
             if (_leaving)
             {

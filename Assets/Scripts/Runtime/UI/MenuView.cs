@@ -82,6 +82,9 @@ namespace PoBox.UI
             if (Application.isPlaying)
             {
                 Application.targetFrameRate = 60;
+                // Every way back lands here, so the clock is put right here: the free-for-all's bullet time sets it
+                // directly and nothing else puts it back when the scene is left in the middle of one.
+                Time.timeScale = 1f;
                 SettingsPage.Load();
             }
             Build();
@@ -162,6 +165,7 @@ namespace PoBox.UI
             _safeArea.Fit(_root, _safe);
             if (!Application.isPlaying) return;
 
+            if (Input.GetKeyDown(KeyCode.Escape)) Back();
             if (_leaving) Set(_fightWord, BusyWords[(int)(Time.unscaledTime * 3f) % BusyWords.Length]);
             _smoothed = Mathf.Lerp(_smoothed, Time.unscaledDeltaTime, 0.05f);
             if (Time.unscaledTime < _nextText) return;
@@ -233,6 +237,13 @@ namespace PoBox.UI
         public void OpenSettings(int tab) { Open(_sheet, true); _settings?.ShowTab(tab); }
         public void ToggleDebug() => Open(_debugPanel, !DebugOpen);
         void CloseAll() { Open(_sheet, false); Open(_debugPanel, false); Open(_cupSheet, false); }
+
+        /// <summary>The phone's back button (Escape): puts away what is open, and on the bare first screen leaves the app.</summary>
+        public void Back()
+        {
+            if (SettingsOpen || DebugOpen || CupOpen) CloseAll();
+            else if (!_leaving) Application.Quit();
+        }
 
         /// <summary>One at a time: they are docked in the same place.</summary>
         void Open(VisualElement which, bool open)

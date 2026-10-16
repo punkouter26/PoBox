@@ -15,9 +15,9 @@ namespace PoBox.Tests
     /// fails if anything is drawn off the screen, anything scrolls, any text is under the legibility floor,
     /// any label is cut off, any button is smaller than a thumb, two overlays (or two pieces of furniture)
     /// lie over each other, one of the five frame anchors (title, fps, menu, debug, version) is missing or has
-    /// left its corner, or the UI writes a warning to the log. Run for a small 16:9 phone, the 1080 x 1920
-    /// reference (16:9), 19.5:9, 20:9 and 21:9, each with and without a notch (a cutout 130 px off the top, a
-    /// home bar 80 off the bottom), through every state the HUD has: the walk-on, the round's banner, the fight
+    /// left its corner, the way on is out of the thumb's reach, a button's word is more than a word, or the UI
+    /// writes a warning to the log. Run for every shape in <see cref="Phones"/> (16:9 to 21:9 phones, notches, a
+    /// punch hole, a home bar, a tablet and a foldable), through every state the HUD has: the walk-on, the round's banner, the fight
     /// with the menu and each settings tab, the debug panel and each graph, a count with its inset, the round
     /// break and the result. The first screen (the boxers, the settings' tabs, the cup, the debug panel), the
     /// free-for-all (the settings' tabs, the debug panel, the result) and the testbed get the same treatment,
@@ -25,17 +25,58 @@ namespace PoBox.Tests
     /// </summary>
     public class OneScreenTests
     {
-        static readonly Vector2Int[] Phones =
+        /// <summary>A screen and what is cut out of it, in the phone's own pixels.</summary>
+        public sealed class Phone
         {
-            new Vector2Int(720, 1280),
-            new Vector2Int(1080, 1920),
-            new Vector2Int(1080, 2340),
-            new Vector2Int(1080, 2400),
-            new Vector2Int(1080, 2520),
+            public readonly Vector2Int size;
+            public readonly string cut;
+            readonly int _top, _bottom, _left, _right;
+
+            public Phone(int w, int h, string cut = "plain", int top = 0, int bottom = 0, int left = 0, int right = 0)
+            {
+                size = new Vector2Int(w, h);
+                this.cut = cut;
+                _top = top; _bottom = bottom; _left = left; _right = right;
+            }
+
+            public int x => size.x;
+            public int y => size.y;
+
+            /// <summary>
+            /// The safe area in the screen pixels it is given in, or none for a screen with nothing cut out. The panel is
+            /// drawn into a texture the shape of the phone but measured against the game view's width, so a phone's pixel
+            /// is the game view's width over the phone's.
+            /// </summary>
+            public Rect? Safe()
+            {
+                if (_top == 0 && _bottom == 0 && _left == 0 && _right == 0) return null;
+                float k = (float)Screen.width / size.x;
+                return new Rect(_left * k, _bottom * k, Screen.width - (_left + _right) * k, Screen.height - (_top + _bottom) * k);
+            }
+
+            public override string ToString() => $"{size.x}x{size.y} {cut}";
+        }
+
+        /// <summary>
+        /// 16:9 small and reference, 19.5:9, 20:9, 21:9, plain and with a notch (130 off the top, a home bar 80 off the
+        /// bottom); a home bar alone; a punch-hole camera with curved edges (110 top, 60 bottom, 40 a side); a 3:4
+        /// tablet plain and with its bar; a foldable's inner screen (about 5:6) plain and with a cutout down each side.
+        /// </summary>
+        static readonly Phone[] Phones =
+        {
+            new Phone(720, 1280), new Phone(720, 1280, "notch", 130, 80),
+            new Phone(1080, 1920), new Phone(1080, 1920, "notch", 130, 80),
+            new Phone(1080, 2340), new Phone(1080, 2340, "notch", 130, 80),
+            new Phone(1080, 2400), new Phone(1080, 2400, "notch", 130, 80),
+            new Phone(1080, 2520), new Phone(1080, 2520, "notch", 130, 80),
+            new Phone(720, 1280, "bar", 0, 48),
+            new Phone(1080, 2400, "hole", 110, 60, 40, 40),
+            new Phone(1536, 2048), new Phone(1536, 2048, "bar", 0, 40),
+            new Phone(1812, 2176), new Phone(1812, 2176, "sides", 60, 48, 60, 60),
         };
 
         [UnityTest]
-        public IEnumerator HudFitsOneScreenWithNoScrolling([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        public IEnumerator HudFitsOneScreenWithNoScrolling([ValueSource(nameof(Phones))] Phone phone)
         {
             yield return SceneManager.LoadSceneAsync("Arena", LoadSceneMode.Single);
             yield return null;
@@ -50,10 +91,10 @@ namespace PoBox.Tests
             var target = new RenderTexture(phone.x, phone.y, 24);
             panel.targetTexture = target;
             var warnings = new UiWarnings();
-            string at = notch ? "notched " : "";
+            string at = phone.Safe() == null ? "" : phone.cut + " ";
             try
             {
-                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                HudView.SafeAreaOverride = phone.Safe();
                 // The walk-on, then each thing that can open over the picture.
                 yield return Settle();
                 Bout bout = Bout.Instance;
@@ -126,7 +167,7 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator FreeForAllHudFitsOneScreen([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        public IEnumerator FreeForAllHudFitsOneScreen([ValueSource(nameof(Phones))] Phone phone)
         {
             if (!Application.CanStreamedLevelBeLoaded(MatchSelection.MeleeScene)) Assert.Ignore("the build has no Melee scene");
             yield return SceneManager.LoadSceneAsync(MatchSelection.MeleeScene, LoadSceneMode.Single);
@@ -141,7 +182,7 @@ namespace PoBox.Tests
             var warnings = new UiWarnings();
             try
             {
-                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                HudView.SafeAreaOverride = phone.Safe();
                 yield return Settle();
                 Check(hud.Root, phone, "free-for-all");
                 hud.ToggleSettings();
@@ -184,7 +225,7 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator BoxerMenuFitsOneScreenAndKeepsTheCornersDifferent([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        public IEnumerator BoxerMenuFitsOneScreenAndKeepsTheCornersDifferent([ValueSource(nameof(Phones))] Phone phone)
         {
             if (!MatchSelection.HasMenu) Assert.Ignore("no trained boxers, so the build has no menu scene");
             yield return SceneManager.LoadSceneAsync(MatchSelection.MenuScene, LoadSceneMode.Single);
@@ -201,7 +242,7 @@ namespace PoBox.Tests
             var warnings = new UiWarnings();
             try
             {
-                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                HudView.SafeAreaOverride = phone.Safe();
                 yield return Settle();
                 Check(menu.Root, phone, "boxer menu");
 
@@ -257,7 +298,7 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator TestbedHudFitsOneScreen([ValueSource(nameof(Phones))] Vector2Int phone, [Values(false, true)] bool notch)
+        public IEnumerator TestbedHudFitsOneScreen([ValueSource(nameof(Phones))] Phone phone)
         {
 #if UNITY_EDITOR
             // The testbed is an editor tool, not in the build, so it is loaded by its path.
@@ -275,7 +316,7 @@ namespace PoBox.Tests
             var warnings = new UiWarnings();
             try
             {
-                if (notch) HudView.SafeAreaOverride = Notch(phone);
+                HudView.SafeAreaOverride = phone.Safe();
                 yield return Settle();
                 Check(hud.Root, phone, "testbed, readings");
                 yield return Tap(hud.Root.Q<VisualElement>("picture"));
@@ -466,17 +507,6 @@ namespace PoBox.Tests
             yield return Settle();
         }
 
-        /// <summary>
-        /// A notch 130 phone pixels deep and a home bar 80, in the screen pixels the safe area is given in. The panel
-        /// is drawn into a texture the shape of the phone but measured against the game view's width, so a phone's
-        /// pixel is the game view's width over the phone's.
-        /// </summary>
-        static Rect Notch(Vector2Int phone)
-        {
-            float k = (float)Screen.width / phone.x;
-            return new Rect(0f, 80f * k, Screen.width, Screen.height - 210f * k);
-        }
-
         /// <summary>Every warning UI Toolkit or the game's interface writes while it is listening.</summary>
         sealed class UiWarnings : System.IDisposable
         {
@@ -500,6 +530,15 @@ namespace PoBox.Tests
         {
             float deadline = Time.realtimeSinceStartup + 20f;
             while (Time.realtimeSinceStartup < deadline && (Bout.Instance == null || Bout.Instance.Phase != BoutPhase.Fight)) yield return null;
+        }
+
+        [Test]
+        public void AButtonsWordIsOneShortWord()
+        {
+            foreach (string ok in new[] { "NEXT", "NEXT 7", "BOXERS ···", "SURE?", "READINGS", "SLOW-MO", "X-RAY", "" })
+                Assert.IsFalse(LayoutAudit.Wordy(ok), $"'{ok}' was called wordy");
+            foreach (string bad in new[] { "NEXT BOUT", "CHANGE BOXERS", "FREE-FOR-ALL", "KNOCKOUTS" })
+                Assert.IsTrue(LayoutAudit.Wordy(bad), $"'{bad}' passed as one short word");
         }
 
         [Test]
@@ -561,7 +600,7 @@ namespace PoBox.Tests
         }
 
         /// <summary>Each of the settings' three tabs, audited, ending back on the first.</summary>
-        static IEnumerator CheckSettingsTabs(SettingsPage settings, VisualElement root, Vector2Int phone, string what)
+        static IEnumerator CheckSettingsTabs(SettingsPage settings, VisualElement root, Phone phone, string what)
         {
             Assert.IsNotNull(settings, what + ": no settings page");
             for (int tab = 0; tab < 3; tab++)
@@ -573,7 +612,7 @@ namespace PoBox.Tests
             settings.ShowTab(0);
         }
 
-        static void Check(VisualElement root, Vector2Int phone, string what)
+        static void Check(VisualElement root, Phone phone, string what)
         {
             LayoutAudit.Report report = LayoutAudit.Check(root);
             Assert.IsTrue(report.Passed, $"{what} at {phone.x}x{phone.y}:\n{report.Summary()}");
