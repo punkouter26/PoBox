@@ -67,7 +67,7 @@ namespace PoBox.EditorTools
                 PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
                 PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
                 if ((int)PlayerSettings.Android.minSdkVersion < 31) PlayerSettings.Android.minSdkVersion = (AndroidSdkVersions)31;
-                PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.po.pobox");
+                PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, PlayAab.APP_ID);
                 PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
                 // A phone starts on the Mobile quality tier.
                 string[] names = QualitySettings.names;
