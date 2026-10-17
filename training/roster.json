@@ -8,7 +8,7 @@
   "boxers": {
     "trump": {
       "display": "TRUMP",
-      "glb": "../RIGGED_Trump.glb",
+      "glb": "../Assets/Models/Trump.glb",
       "height": 1.90,
       "persona": "brawler",
       "says": "comes forward, big slow shots to the head, little guard",
@@ -19,7 +19,7 @@
     },
     "grandma": {
       "display": "GRANDMA",
-      "glb": "../RIGGED_Grandma.glb",
+      "glb": "../Assets/Models/Grandma.glb",
       "persona": "counter-puncher",
       "says": "tight guard, stops the punch, answers with quick shots to the body",
       "age": 0.6,
@@ -28,7 +28,7 @@
     },
     "grandpa": {
       "display": "GRANDPA",
-      "glb": "../RIGGED_Grandpa.glb",
+      "glb": "../Assets/Models/Grandpa.glb",
       "persona": "out-boxer",
       "says": "stays at the end of his reach, patient, works behind the left hand",
       "age": 0.6,
@@ -38,22 +38,12 @@
     },
     "nick": {
       "display": "NICK",
-      "glb": "../RIGGED_Nick.glb",
+      "glb": "../Assets/Models/Nick.glb",
       "persona": "swarmer",
       "says": "always closing, many light fast punches",
       "age": 1.0,
       "speed": 1.0,
       "style": {"head": 1.3, "body": 1.2, "power": 0.7, "pace_s": 0.3, "taken": 0.6, "range_m": 0.66, "press": 0.3, "energy": 0.6}
-    },
-    "lilmatt": {
-      "display": "LIL MATT",
-      "glb": "../RIGGED_Matt.glb",
-      "persona": "body puncher",
-      "says": "gets inside and digs to the body with the right hand",
-      "age": 1.0,
-      "speed": 1.0,
-      "style": {"head": 0.9, "body": 1.9, "hand_l": 0.9, "hand_r": 1.3, "power": 1.2, "pace_s": 0.55, "taken": 0.9, "block_w": 0.03, "range_m": 0.70, "press": 0.25},
-      "style_note": "2026-10-02 04:00, after round 3: press 0.25 added. He has the shortest arms in the roster and was paid nothing for walking in, so against Grandpa, who stands off, he landed 0.01 punches a second all session."
     },
     "kim": {
       "display": "KIM",
