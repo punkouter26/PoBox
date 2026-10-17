@@ -42,6 +42,11 @@ namespace PoBox.EditorTools
     ///     governor on|off             let the render-scale governor run in the editor and ask for a frame rate it cannot reach
     ///     skip                        end the walk-on now
     ///     xray on|off                 the collision shapes over the boxers (Fx/PhysicsXray)
+    ///     perf                        one line: frame rate, CPU and GPU frame time, render scale, and the errors and
+    ///                                 warnings logged since the last perf (the first in a play session counts from its start)
+    ///
+    /// The smoke run of every scene the player sees (a few seconds' gap between lines, as play mode needs frames):
+    ///     play-menu, perf, stop, play, skip, perf, stop, play-melee, perf, stop, play-testbed, perf, stop
     ///
     /// The picture is rendered into textures of an exact size, so it is the phone's shape whatever shape
     /// the Game view happens to be. The capture technique and the Game view reflection are the ones proven
@@ -104,6 +109,7 @@ namespace PoBox.EditorTools
                 case "gc-begin": return GcBegin();
                 case "gc-report": return GcReport();
                 case "governor": return Governor(a.Length > 1 && a[1] == "on");
+                case "perf": return Perf();
                 case "xray": PoBox.Fx.PhysicsXray.On = a.Length > 1 && a[1] == "on"; return "x-ray " + (PoBox.Fx.PhysicsXray.On ? "on" : "off");
                 case "skip": if (Bout.Instance != null) Bout.Instance.walkOnSeconds = 0.01f; return "walk-on cut short";
                 default: return "unknown command";
@@ -354,6 +360,31 @@ namespace PoBox.EditorTools
         [InitializeOnLoadMethod]
         static void RestoreShotOnStop() =>
             EditorApplication.playModeStateChanged += s => { if (s == PlayModeStateChange.ExitingPlayMode) ShotRestore(); };
+
+        // What the perf command counts: errors (exceptions and asserts too) and warnings, from any thread.
+        static int s_errors, s_warnings;
+        static string s_firstError;
+
+        [InitializeOnLoadMethod]
+        static void CountLog()
+        {
+            Application.logMessageReceivedThreaded += (text, stack, type) =>
+            {
+                if (type == LogType.Warning) { System.Threading.Interlocked.Increment(ref s_warnings); return; }
+                if (type == LogType.Log) return;
+                if (System.Threading.Interlocked.Increment(ref s_errors) == 1) s_firstError = text.Split('\n')[0];
+            };
+        }
+
+        static string Perf()
+        {
+            PerfTelemetry p = PerfTelemetry.Instance;
+            string frame = p == null ? "no telemetry" : $"fps {p.Fps:0} cpu {p.FrameMs:0.0} ms gpu {p.GpuMs:0.0} ms scale {p.RenderScale:0.00} gc {p.GcAverageKb:0.0} kB";
+            string line = $"{frame} | errors {s_errors}{(s_errors > 0 ? $" (first: {s_firstError})" : "")} warnings {s_warnings}";
+            s_errors = s_warnings = 0;
+            s_firstError = null;
+            return line;
+        }
 
         /// <summary>Puts the shared panel asset back exactly as it was: a target texture left on it would be saved.</summary>
         static void ShotRestore()

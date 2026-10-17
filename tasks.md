@@ -287,13 +287,14 @@ Details in `rl_optimization_log.md` (2026-10-16 night). Every new behaviour is o
 
 Details in `DOCS/README.md`. Things moved out of the tree are in `../PoBox_quarantine_2026-10-16/` (MANIFEST.md).
 
-- [ ] L1 Root meshes: six unread ones and four copies of `Assets/Models` to quarantine (roster.json points at Assets/Models), Lil Matt retired, teeth scans to `BLENDER/source`.
+- [x] L1 Root meshes: six unread ones and four copies of `Assets/Models` to quarantine (roster.json points at Assets/Models), Lil Matt retired, teeth scans to `BLENDER/source`.
 - [ ] L2 Training disk: old `model_NNNNNN` snapshots, m1_sokol, the unshipped f1/u1_d8/rc1 runs; `handoff/`, six league-era tools, the spent ringcraft queue. (Held: the auto-mode permission check blocks moving checkpoints while a queue runs.)
-- [ ] L3 Dead editor code: the bakers' unused halves.
-- [ ] L4 No code builds scenes: the one-shot builders deleted (`Paths`, `Lighting` keep what is still used); the three looks built in code are authored volumes (`Look_Rocked`, `Look_Fringe`, `Look_Down`).
-- [ ] L5 Unused assets (36 files, 4 MB) and dead fields.
-- [ ] L6 Deduplication: `Ui` helpers shared by the three screens.
-- [ ] L7 Folders and names.
-- [ ] L8 One settings page: SOUND, VIEW, MORE; quality saved; X-RAY only where there are boxers.
-- [ ] L9 The plain broadcast by default: STATS and BETS off; the graph dock, the cycling chip and the result's graph and hit maps cut; three cameras.
-- [ ] L10 Runtime: the cornerman off until an address is set (4 failed posts a bout before); the scene smoke run as a dev command.
+- [x] L3 Dead editor code: the bakers' unused halves.
+- [x] L4 No code builds scenes: the one-shot builders deleted (`Paths`, `Lighting` keep what is still used); the three looks built in code are authored volumes (`Look_Rocked`, `Look_Fringe`, `Look_Down`).
+- [x] L5 Unused assets (36 files, 4 MB) and dead fields.
+- [x] L6 Deduplication: `Ui` helpers shared by the three screens; one FindDeep. Training side (exam/exam_v2, footwork_c/eval_cmujoco, pair_xml x3) left for after the night queue, which imports them.
+- [x] L7 Folders and names: MeleeView, TestbedView, Fx/SkinBinder, Online/, PhysicsXray static, MjBoxer.Config; league-era tools to tools/archive.
+- [x] L8 One settings page: SOUND, VIEW, MORE; quality saved; X-RAY only where there are boxers.
+- [x] L9 The plain broadcast by default: STATS and BETS off; the graph dock, the cycling chip and the result's graph and hit maps cut; three cameras.
+- [x] L10 Runtime: the cornerman off until an address is set (4 failed posts a bout before); `perf` in DevTools and the smoke sequence in its header.
+- [ ] L11 Play-mode tests (OneScreen, StateFlow, SceneIntegrity, FreeForAll, MjParity, MjGate) and the after shots: after the night queue (the GPU is training).

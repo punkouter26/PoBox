@@ -65,6 +65,8 @@ unity command menu --path "PoBox/Dev/Run Script"   # runs Temp/pobox-dev.txt, ou
 - `unity command eval` has a 5 s main-thread limit; split long editor work. A test run can leave the editor in
   play mode, which silently blocks compiles: check `EditorApplication.isPlaying` and stop play first.
 - Interrupted play runs can bake tilted gravity or zero timeScale into ProjectSettings; check the diff.
+- Never edit a `.unity` file on disk while the editor has that scene open: Unity raises a modal ("modified externally") that
+  blocks its main thread, and every CLI command times out until someone clicks Reload. Edit scenes through `eval`.
 - Compile-check C# without touching the editor: `dotnet build PoBox.Mj.csproj -nologo -v q -o "$TEMP/pobox_csbuild"`.
 - Dev script commands (`play`, `stop`, `shot-begin 1080 1920` / `shot-end name`, `call MenuView Fight`, ...) are
   listed at the top of `Assets/Scripts/Editor/DevTools.cs`.

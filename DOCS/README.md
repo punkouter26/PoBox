@@ -101,6 +101,53 @@ Earlier in the day (Phase B):
   `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
   same rules as the baseline). See `rl_optimization_log.md`.
 
+## Clean-up: ten options (2026-10-16, late night)
+
+Owner: "do all" of ten clean-up options. Plan and ticks: `tasks.md` Phase L. Moved-not-deleted files: `../PoBox_quarantine_2026-10-16/`
+(MANIFEST.md). UI report: `SCREENSHOTS/2026-10-17-clean/report.html`.
+
+- **Runtime run of the four scenes** (Menu, Arena, Melee, Testbed, a minute each): no exceptions. Arena 60-62 fps, CPU frame 16.5 ms,
+  GPU 1.6-3.6 ms, physics 0.2 ms, 10-22 kB of garbage a frame; Melee GPU 6.6-8.2 ms. The one runtime error: the cornerman posted to
+  `127.0.0.1:8787` in the editor by default, with no proxy running (4 failed posts a bout, 147 in the log). **CornerAI is now off
+  until an address is typed**, in the editor too. The mix peaks at +1.7 dBFS before the limiter, which takes off at most 2.5 dB: left as it is.
+  `perf` (DevTools) prints the frame and the errors and warnings since the last call; the smoke sequence is in DevTools' header.
+- **No code builds scenes or assets any more.** Deleted, all one-shots already applied: `GfxAuthoring`, `FreeForAllAuthoring`
+  (it rebuilt Melee by copying Arena), `PoBoxBuilder` (project settings, the menu scene), `AssetBakery` and `StageBakery` (textures,
+  materials, the mixer, the walk-on Timeline, cookies, the crowd mesh: all their output is in Assets), `PropPrefabs`, `FeatureAuthoring`,
+  `AnnouncerBuilder`, `VoiceWavs`. What was still used is `Editor/Paths.cs` (scene paths, `EnsureFolder`) and `Editor/Lighting.cs`
+  (`PoBox/Bake Arena Lighting`). 13 editor scripts to 6; the editor assembly 107 kB to 58 kB. The sections below that name those files
+  describe code that is in git before `63d497c`. The three looks built in code (rocked, bullet time's fringe, the count's grey) are
+  authored global Volumes on profiles (`Assets/Settings/Look_Rocked`, `Look_Fringe`, `Look_Down`) in Arena and Melee, so they are
+  tuned in the inspector; `ImpactVfx.rocked/fringe`, `ArenaMood.downLook`.
+- **The plain broadcast is the default.** Settings (`Settings.uxml`, `SettingsPage`): SOUND (sound, voice, buzz, slow-mo), VIEW
+  (quality, now kept between launches; 60/30 fps; **STATS**; **BETS**), MORE (X-ray only where there are boxers, brain, readings,
+  reset, Twitch, cornerman). STATS (`pobox.stats`, off) brings back the numbers: the frame rate, DEBUG, the version, the pods' hit
+  maps and balance gauges, the hardest-hit chip, the glove speed on a hard punch (km/h now, as the punch card and the free-for-all),
+  the punch card and the free-for-all's AI FAV. One rule does it: the views put `plain` on their root (`Ui.Frame`) and
+  `.plain .stats-only` is out of the layout; `LayoutAudit` places the three anchors only when they are shown, and `OneScreenTests`
+  audits the HUD once with STATS on. BETS (`pobox.bets`, off) is the coin pick before the first bell. **Cut**: the graph dock
+  (excitement, win chance, frame time; the win chance is the momentum bar), the cycling fifth chip (kJ, blocked, daze, stress, W:
+  the debug panel's), the result card's hit maps and win-share graph and two of its five rows, the TOP camera and the two
+  glove-focus buttons. `Sparkline` is gone with them. The caption and the overlays over the picture sit lower, where the dock was.
+  Fixed on the way: a long press on the frame rate overwrote the X-ray switch without saving it. Kept: LEAGUE in the fight's menu
+  (the ladder lives in the arena and marks the two in the ring).
+- **Names and folders**: `MeleeHud` to `MeleeView` and `TestbedHud` to `TestbedView` (with HudView and MenuView, all in `PoBox.UI`);
+  `Runtime/Rl/SkinBinder` to `Fx`; `Runtime/Net/TwitchChat` and `Broadcast/CornerAI` to `Runtime/Online` (`PoBox.Online`);
+  `PhysicsXray` a static class (it was a MonoBehaviour on nothing); `MjBoxer.Cfg` to `Config`. Shared: `UI/Ui.cs` (Set, the frame,
+  the frame rate) for the three views, one `FindDeep` (`TransformSearch`, now public) for the runtime and MjRetrofit.
+- **Unused**: 36 assets (4 MB: a crowd chant, a fabric colour map, 9 icons, 2 particle textures, 6 trunk/skin/boot materials, 6 physics
+  materials, the six scripted `League/Profile_*`, 6 synthesised punch WAVs); dead members (`PolicyProfile`'s scripted style,
+  `AudioDirector.whoosh/RockedNow/CloseNow`, `MjReplay.IsPlaying/Progress`, `MjBoxer.PelvisBody`, `TeethAnnouncer.travelSeconds/
+  secondsPerCharacter`, `FighterSkin.bruiseRadius`, `MenuView.redColor/blueColor`).
+- **Out of the tree** (quarantine, 200 MB): six root meshes nothing read (`2025_testobj.obj`, `TRUMP.glb`, `TRUMP_Rigged.glb`,
+  `test_*`) and four byte-identical copies of `Assets/Models` (`RIGGED_*`; `training/roster.json` now reads `Assets/Models`); Lil Matt
+  (retired, in no queue: roster entry, 20 models, a rig). Teeth scans to `BLENDER/source`. Six league-era training tools and the spent
+  ringcraft queue to `training/tools/archive`.
+- **Not done**: the training disk (old `model_NNNNNN` snapshots ~508 MB, `m1_sokol`, the unshipped f1/u1_d8/rc1 runs ~400 MB,
+  `handoff/`): the auto-mode permission check refused to move checkpoints while a queue was running; the list is in `tasks.md` L2.
+  The `.git` folder (771 MB) keeps the removed meshes' history. Training-side Python deduplication (`exam`/`exam_v2`,
+  `footwork_c`/`eval_cmujoco`, three `pair_xml`) waits for the night queue, which imports those files.
+
 ## The trainer: ten options and models/v3 (2026-10-16 night, staged, nothing trained)
 
 Owner: "do all" of ten training options. All flags off by default (a fixed-seed smoke matches the old trainer number for
@@ -862,34 +909,38 @@ works with the editor closed; it refuses to start while any editor has the proje
 
 ## Folder map
 
+(Rewritten 2026-10-16 late night; the scenes are authored, nothing here is generated.)
+
 ```
-Assets/Scenes/Menu.unity        the first screen: choose the boxers (generated)
-Assets/Scenes/Arena.unity       the ring (generated)
-Assets/Scripts/Runtime/Sim      fighter, brain, bout rules, excitement, physics stepper
-Assets/Scripts/Runtime/Broadcast  camera director, commentary
-Assets/Scripts/Runtime/Fx       fighter skin, impact effects, crowd and lamps, ropes, canvas marks
-Assets/Scripts/Runtime/Audio    sound, and the meter and limiter on the listener
-Assets/Scripts/Runtime/UI       HUD, graph, icons, hit map, balance gauge, layout audit
-Assets/Scripts/Runtime/League   profiles and the ladder
+Assets/Scenes                   Menu (pick the boxers), Arena, Melee (free-for-all), Testbed (one boxer, shoves, cubes)
+Assets/Boxers/NAME              one boxer: prefab, NAME Red/Blue corner prefabs, policy/match/getup.onnx, config.json, C MuJoCo recordings
+Assets/Models                   the owner's meshes (.glb), read by the game and by training/roster.json; Props/ from Blender
+Assets/Prefabs/Props            the venue's props (ring steps, press row, TV cameras, barriers, hung screen)
+Assets/Announcer                the teeth announcer: prefab, Teeth.glb, voice WAVs
+Assets/League                   Entrant_NAME: each boxer's ladder entry
+Assets/Resources                cpu_elo.json (the ladder starts from it)
+Assets/Settings                 URP assets, volume profiles (Arena_Volume, Arena_Pulse, Look_*), lighting
+Assets/UI                       Hud, Menu, Melee, Settings, Testbed (UXML), Theme.uss, panel settings, icons, Portraits/
+Assets/Audio                    Real/ and Kenney/ (CC0 recordings), Synth/ (voices, ring sounds), PoBox.mixer
+Assets/Textures                 PolyHaven (HDRI), AmbientCG (canvas weave), Kenney (particles), Generated (cookies, logo, decals)
+Assets/Shaders                  FighterOverlay, Crowd, LightBeam, ScreenRipple; Resources/ (X-ray, shockwave)
+Assets/Timeline                 the walk-on
+Assets/Scripts/Mj               MuJoCo side: MjBoxer, MjRing, MjReplay, MjCubePool, MjTestbed, fingerprint, reference recordings
+Assets/Scripts/Runtime/Sim      Fighter, MjBrain, Bout, Judges, FreeForAll, Excitement, MatchSelection/MatchSetup, SimBus
+Assets/Scripts/Runtime/Broadcast  camera director, melee camera, commentary, punch stats
+Assets/Scripts/Runtime/Fx       skin and skin binder, impact effects, mood and lamps, looks, ropes, canvas marks, X-ray (Xray/)
+Assets/Scripts/Runtime/Audio    sound, the meter and limiter, speech, haptics
+Assets/Scripts/Runtime/UI       the views (HudView, MenuView, MeleeView, TestbedView), SettingsPage, Ui, controls, LayoutAudit
+Assets/Scripts/Runtime/League   ladder, cup, fight log, prediction, entrant profile
+Assets/Scripts/Runtime/Online   Twitch chat plays, the AI cornerman
+Assets/Scripts/Runtime/Announcer  the teeth announcer
 Assets/Scripts/Runtime/Diag     performance readings
-Assets/Scripts/Runtime/Rl       trained fighters: body from MuJoCo, policy runner, skin binder
-Assets/Entrants/<name>          one trained fighter: model.xml, config.json, rig.json, inertia.json, policy.onnx
-Assets/Models                   the owner's meshes: Matt.glb, Zombie.glb
-training/                       the MuJoCo Warp trainer (see its README)
-Assets/Scripts/Editor           scene builder, asset bakery, stage bakery, fighter factory, Android, dev tools
-Assets/Timeline                 the walk-on (generated)
-Assets/Plugins                  mujoco.dll (Windows), Android/arm64-v8a/libmujoco.so
+Assets/Scripts/Editor           DevTools, MjRetrofit (import, corners, promote, checks), Lighting, Paths, Android
 Assets/Scripts/Tests            play-mode tests
-Assets/UI                       Hud.uxml, Menu.uxml, Theme.uss, panel settings, Kenney icons (CC0), Portraits/
-Assets/MuJoCo                   the match model each pair of boxers is simulated in
-Assets/Shaders                  FighterOverlay, Crowd
-Assets/Audio/Real               CC0 recordings from PoDecath (licences beside them)
-Assets/Audio/Kenney             CC0 punch, soft-impact and footstep recordings (Kenney's Impact Sounds)
-Assets/Audio/PoBox.mixer        Master > Hits, Crowd, Ring
-Assets/Textures/PolyHaven       the hall's ambient light: a CC0 HDRI of a boxing gym
-Assets/Textures/AmbientCG       the canvas's weave: a CC0 fabric normal map
-Assets/Audio/Synth              generated punch sounds
-Assets/Settings                 URP assets (from PoDecath), volume profiles
-Assets/League                   the six profiles
-DOCS/                           this file, and reports/
+Packages/org.mujoco, bin.mujoco the MuJoCo plugin, embedded with PoBox: changes
+training/                       the MuJoCo Warp trainer (see its README); models/v2 is the game's body, v3 staged
+server/                         the cornerman's proxy
+BLENDER/                        Blender sources (dated folders) and source/ (the teeth scans)
+DOCS/                           this file, dated documentation, reports/
+SCREENSHOTS/                    before/after reports of UI changes
 ```
