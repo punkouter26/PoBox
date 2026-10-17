@@ -66,8 +66,6 @@ namespace PoBox.Audio
         public AudioClip[] punchBlocked = new AudioClip[0];
         [Tooltip("The thud of the body that took it, laid under the slap.")]
         public AudioClip[] bodyThud = new AudioClip[0];
-        [Tooltip("Not used since the gloves' own loops (whooshSpeed); kept for the scene's reference.")]
-        public AudioClip whoosh;
         [Tooltip("A glove faster than the first, m/s, is heard moving the air; at the second it is as loud as it gets.")]
         public Vector2 whooshSpeed = new Vector2(3.5f, 9f);
         [Range(0f, 1f)] public float whooshVolume = 0.35f;
@@ -126,7 +124,7 @@ namespace PoBox.Audio
         [Tooltip("How far the crowd is pulled down while the bell rings, dB.")]
         public float bellDuckDb = 8f;
 
-        /// <summary>One register of the boxers' voices: takes of each sound (made by VoiceWavs, Assets/Audio/Synth/voice_*.wav).</summary>
+        /// <summary>One register of the boxers' voices: takes of each sound (Assets/Audio/Synth/voice_*.wav).</summary>
         [System.Serializable]
         public class VoiceSet
         {
@@ -165,9 +163,6 @@ namespace PoBox.Audio
         public float PeakDb => AudioMeter.Instance != null ? AudioMeter.Instance.PeakDb : -100f;
         /// <summary>How far the crowd is ducked at this moment, dB.</summary>
         public float DuckNow { get; private set; }
-        /// <summary>How rocked the mix is, 0 to 1, and how close the shot is, -1 wide to 1 close.</summary>
-        public float RockedNow => _rock;
-        public float CloseNow => _close;
 
         AudioSource[] _pool;
         AudioSource _bed, _crowdSource, _ringSource, _heart, _breath;
@@ -816,7 +811,7 @@ namespace PoBox.Audio
         static float Tiredness(Fighter f)
         {
             float spent = 1f - f.Stamina;
-            if (f.boxer != null && f.boxer.Cfg != null && f.boxer.Cfg.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)f.boxer.Reserve);
+            if (f.boxer != null && f.boxer.Config != null && f.boxer.Config.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)f.boxer.Reserve);
             return Mathf.Max(spent, 0.8f * f.Daze01);
         }
 

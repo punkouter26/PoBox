@@ -72,7 +72,7 @@ namespace PoBox.Tests
             testbed.autoReset = false;
             testbed.shoves = false;
             Assert.AreEqual(reference.control_dt, testbed.ControlDt, 1e-12, "control step");
-            CollectionAssert.AreEqual(reference.joint_order, boxer.Cfg.joint_order, "joint order");
+            CollectionAssert.AreEqual(reference.joint_order, boxer.Config.joint_order, "joint order");
 #if UNITY_EDITOR
             // Whatever rung the boxer has been promoted to, this is the zero brain's recording.
             boxer.SetPolicy(UnityEditor.AssetDatabase.LoadAssetAtPath<Unity.InferenceEngine.ModelAsset>("Assets/Boxers/zero_policy.onnx"));

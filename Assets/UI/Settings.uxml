@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     PoBox: the settings, one template used by the HUD's menu (Hud.uxml), the first screen (Menu.uxml) and the
-    free-for-all (Melee.uxml). SettingsPage.cs fills it in. Three tabs on one sheet, nothing scrolls:
+    free-for-all (Melee.uxml). SettingsPage.cs fills it in. Every option of the game is here, three tabs on one
+    sheet, nothing scrolls. The defaults are the plain broadcast: everything a viewer does not need is off.
 
-        SOUND     the sound and the picture's quality: all most people ever change
-        DISPLAY   the commentator's voice, the buzz of a hit, bullet time, the frame rate
-        DEBUG     the collision shapes, the brain cam (arena only), the readings, the Twitch channel for chat
-                  plays, and throwing the ladder away (arena only)
+        SOUND     the sound, the commentator's voice, the buzz of a hit, bullet time
+        VIEW      the picture's quality, the frame rate, STATS (the numbers: the hit maps, the balance gauges, the
+                  punch card, the glove speed on a hard punch, the frame rate and the version) and BETS (the
+                  coin pick before the first bell); both off unless chosen
+        MORE      the collision shapes (where there are boxers), the brain cam (arena only), the readings, throwing
+                  the ladder away (arena only), the Twitch channel for chat plays and the cornerman's proxy
 
     A switch is an icon and a short word with a dot that is lit while it is on; its tooltip says ON or OFF.
     RESET (the ladder) turns red and asks SURE? before it throws anything away.
@@ -16,8 +19,8 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <ui:VisualElement class="seg" picking-mode="Ignore">
         <ui:Button name="s-tab-sound" class="seg-btn seg-btn--on" text="SOUND" />
-        <ui:Button name="s-tab-display" class="seg-btn" text="DISPLAY" />
-        <ui:Button name="s-tab-debug" class="seg-btn" text="DEBUG" />
+        <ui:Button name="s-tab-view" class="seg-btn" text="VIEW" />
+        <ui:Button name="s-tab-more" class="seg-btn" text="MORE" />
     </ui:VisualElement>
 
     <ui:VisualElement name="s-page-sound" class="s-page" picking-mode="Ignore">
@@ -27,37 +30,49 @@
                 <ui:Label class="btn-word" text="SOUND" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
-            <ui:Button name="s-quality" class="btn btn--tool grid-2" tooltip="Picture quality">
-                <ui:Label class="btn-word btn-word--lead" text="QUALITY" picking-mode="Ignore" />
-                <ui:Label name="s-quality-badge" class="badge badge--btn" text="PC" picking-mode="Ignore" />
-            </ui:Button>
-        </ui:VisualElement>
-    </ui:VisualElement>
-
-    <ui:VisualElement name="s-page-display" class="s-page hidden" picking-mode="Ignore">
-        <ui:VisualElement class="grid" picking-mode="Ignore">
             <ui:Button name="s-voice" class="btn btn--tool grid-2" tooltip="Commentator's voice">
                 <PoBox.UI.Glyph kind="Voice" class="glyph--btn" />
                 <ui:Label class="btn-word" text="VOICE" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement class="grid" picking-mode="Ignore">
             <ui:Button name="s-buzz" class="btn btn--tool grid-2" tooltip="Buzz on a hit">
                 <PoBox.UI.Glyph kind="Buzz" class="glyph--btn" />
                 <ui:Label class="btn-word" text="BUZZ" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
-        </ui:VisualElement>
-        <ui:VisualElement class="grid" picking-mode="Ignore">
             <ui:Button name="s-bullet" class="btn btn--tool grid-2" tooltip="Bullet time on a big punch">
                 <PoBox.UI.Glyph kind="Burst" class="glyph--btn" />
                 <ui:Label class="btn-word" text="SLOW-MO" picking-mode="Ignore" />
                 <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
             </ui:Button>
-            <ui:Button name="s-fps" class="btn grid-2" text="60 FPS" tooltip="Frame rate cap" />
         </ui:VisualElement>
     </ui:VisualElement>
 
-    <ui:VisualElement name="s-page-debug" class="s-page hidden" picking-mode="Ignore">
+    <ui:VisualElement name="s-page-view" class="s-page hidden" picking-mode="Ignore">
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-quality" class="btn btn--tool grid-2" tooltip="Picture quality">
+                <ui:Label class="btn-word btn-word--lead" text="QUALITY" picking-mode="Ignore" />
+                <ui:Label name="s-quality-badge" class="badge badge--btn" text="PC" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-fps" class="btn grid-2" text="60 FPS" tooltip="Frame rate cap" />
+        </ui:VisualElement>
+        <ui:VisualElement class="grid" picking-mode="Ignore">
+            <ui:Button name="s-stats" class="btn btn--tool grid-2" tooltip="The numbers: hit maps, balance, punch card, glove speed, frame rate">
+                <PoBox.UI.Glyph kind="Balance" class="glyph--btn" />
+                <ui:Label class="btn-word" text="STATS" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="s-bets" class="btn btn--tool grid-2" tooltip="Pick a corner with coins before the first bell">
+                <PoBox.UI.Glyph kind="Glove" class="glyph--btn" />
+                <ui:Label class="btn-word" text="BETS" picking-mode="Ignore" />
+                <ui:VisualElement class="sw-dot" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="s-page-more" class="s-page hidden" picking-mode="Ignore">
         <!-- One row of four: two rows of two and the two fields were taller than the page and lay over each other. -->
         <ui:VisualElement class="grid" picking-mode="Ignore">
             <ui:Button name="s-xray" class="btn btn--tool grid-4" tooltip="Collision shapes over the boxers">

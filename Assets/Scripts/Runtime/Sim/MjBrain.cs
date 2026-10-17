@@ -253,7 +253,7 @@ namespace PoBox.Sim
         }
     }
 
-    static class TransformSearch
+    public static class TransformSearch
     {
         /// <summary>A descendant by name, however deep.</summary>
         public static Transform FindDeep(this Transform t, string name)

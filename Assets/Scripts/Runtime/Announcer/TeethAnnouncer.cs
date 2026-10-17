@@ -39,8 +39,6 @@ namespace PoBox.Announcer
         [Tooltip("Up in the lights, out of every camera's picture: where it waits, not drawn.")]
         public float awayHeight = 8f;
         public float ceilingHeight = 9f;
-        [Tooltip("No longer used: see arriveSeconds.")]
-        public float travelSeconds = 0.7f;
         [Tooltip("Seconds to come down from the lights, and to go back up.")]
         public float arriveSeconds = 1.1f;
         [Tooltip("Seconds it stays down after its last word.")]
@@ -56,8 +54,6 @@ namespace PoBox.Announcer
         [Tooltip("Share of that the upper jaw tips back by: a jaw on a cable has nothing to hold its top still.")]
         [Range(0f, 1f)] public float upperShare = 0.3f;
         public float syllablesPerSecond = 5.5f;
-        [Tooltip("Seconds of mouthing per character of a line it does not say aloud.")]
-        public float secondsPerCharacter = 0.055f;
         [Tooltip("Loudness of its own voice that opens the jaw fully, until it has been louder than that.")]
         public float loudnessForOpen = 0.16f;
         [Tooltip("Seconds the jaw takes to follow its voice. Longer is smoother, shorter is snappier; the voice is read this far ahead, so the jaw is not late for it.")]

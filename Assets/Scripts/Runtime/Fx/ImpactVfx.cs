@@ -48,6 +48,10 @@ namespace PoBox.Fx
         public ParticleSystem steam;
         [Tooltip("The volume laid over the house look for a moment after a punch out of the ordinary. Its weight is set here.")]
         public Volume pulse;
+        [Tooltip("The volume over the house look while the boxer in the picture is rocked (Look_Rocked: drained of colour, closed in). Its weight is set here.")]
+        public Volume rocked;
+        [Tooltip("Bullet time's fringe (Look_Fringe: chromatic aberration). Its weight is set here.")]
+        public Volume fringe;
         [Tooltip("Seconds the pulse takes to go.")]
         public float pulseSeconds = 0.28f;
         [Tooltip("Tank (0 to 1) under which a boxer starts to steam, and the tank at which it steams fully. A bout between trained boxers takes the tank to about 0.8.")]
@@ -75,7 +79,6 @@ namespace PoBox.Fx
 
         static readonly int ProgressId = Shader.PropertyToID("_Progress");
         static readonly int StrengthId = Shader.PropertyToID("_Strength");
-        Volume _rocked, _fringe;
         float _bulletT = -1f, _baseScale = 1f, _beat;
         float _rockedW, _ringT = 1f, _ringSize, _ringStrength;
         Vector3 _ringAt, _ringNormal;
@@ -84,23 +87,6 @@ namespace PoBox.Fx
 
         void Awake()
         {
-            // Rocked: drained of colour, closed in. Above the house look and the count's grey.
-            _rocked = gameObject.AddComponent<Volume>();
-            _rocked.isGlobal = true;
-            _rocked.priority = 12f;
-            _rocked.weight = 0f;
-            _rocked.profile.Add<ColorAdjustments>().saturation.Override(-55f);
-            Vignette v = _rocked.profile.Add<Vignette>();
-            v.intensity.Override(0.55f);
-            v.smoothness.Override(0.65f);
-
-            // Bullet time's fringe: chromatic aberration, which the pulse already puts in the same post pass.
-            _fringe = gameObject.AddComponent<Volume>();
-            _fringe.isGlobal = true;
-            _fringe.priority = 13f;
-            _fringe.weight = 0f;
-            _fringe.profile.Add<ChromaticAberration>().intensity.Override(1f);
-
             // The shader sits in a Resources folder, so a build carries it with nothing in the scene pointing at it.
             Shader ring = Shader.Find("PoBox/Shockwave");
             if (ring != null) _ring = new Material(ring);
@@ -128,7 +114,8 @@ namespace PoBox.Fx
             SimBus.FloorImpact -= OnFloor;
             SimBus.FootStep -= OnFootStep;
             SimBus.Block -= OnBlock;
-            if (_rocked != null) _rocked.weight = _rockedW = 0f;
+            _rockedW = 0f;
+            if (rocked != null) rocked.weight = 0f;
             EndBulletTime();
         }
 
@@ -137,7 +124,7 @@ namespace PoBox.Fx
             if (_bulletT >= 0f && Bout.Instance == null) Time.timeScale = _baseScale;
             _bulletT = -1f;
             ArenaMood.TimeScaleK = 1f;
-            if (_fringe != null) _fringe.weight = 0f;
+            if (fringe != null) fringe.weight = 0f;
         }
 
         void BulletTime(float dt)
@@ -149,7 +136,7 @@ namespace PoBox.Fx
             float s = Mathf.SmoothStep(0f, 1f, Mathf.Min(_bulletT / 0.1f, (1f - _bulletT) / 0.4f));
             ArenaMood.TimeScaleK = Mathf.Lerp(1f, bulletScale, s);
             if (Bout.Instance == null) Time.timeScale = _baseScale * ArenaMood.TimeScaleK;
-            _fringe.weight = s;
+            if (fringe != null) fringe.weight = s;
         }
 
         float _pulse;
@@ -176,7 +163,7 @@ namespace PoBox.Fx
             // The heart AudioDirector plays: 75 a minute, lub then dub a third of the way on, quicker when rocked.
             _beat = (_beat + Time.unscaledDeltaTime * 1.25f * (1f + 0.3f * _rockedW)) % 1f;
             float pound = Mathf.Exp(-_beat * 9f) + (_beat > 0.35f ? 0.6f * Mathf.Exp(-(_beat - 0.35f) * 9f) : 0f);
-            _rocked.weight = _rockedW * (0.75f + 0.25f * Mathf.Min(1f, pound));
+            if (rocked != null) rocked.weight = _rockedW * (0.75f + 0.25f * Mathf.Min(1f, pound));
             BulletTime(Time.unscaledDeltaTime);
 
             if (_ringT < 1f && _ring != null)

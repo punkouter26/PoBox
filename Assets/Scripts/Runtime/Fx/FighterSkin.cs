@@ -49,8 +49,6 @@ namespace PoBox.Fx
         public Renderer[] overlayRenderers = new Renderer[0];
         [Tooltip("Glove speed at which the trail starts, m/s.")]
         public float trailSpeed = 4.5f;
-        [Tooltip("How far a bruise spreads from where the punch landed, metres.")]
-        public float bruiseRadius = 0.09f;
         [Header("Head (drawn only)")]
         [Tooltip("How fast a head shot turns the head, degrees a second per m/s of the punch. Body shots a third of it.")]
         public float snapPerSpeed = 70f;
@@ -145,7 +143,7 @@ namespace PoBox.Fx
 
             float spent = 1f - fighter.Stamina;
             Mj.MjBoxer boxer = fighter.boxer;
-            if (boxer != null && boxer.Bound && boxer.Cfg.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)boxer.Reserve);
+            if (boxer != null && boxer.Bound && boxer.Config.fatigue_j > 0.0) spent = Mathf.Max(spent, 1f - (float)boxer.Reserve);
             float droop = tiredDroop * Mathf.Max(Mathf.InverseLerp(0.5f, 1f, spent), fighter.Daze01);
             Vector3 forward = boxer != null && boxer.Bound ? boxer.Forward : transform.forward;
             Vector3 turn = _snap + Vector3.Cross(Vector3.up, forward) * droop;
@@ -200,7 +198,7 @@ namespace PoBox.Fx
 
             float sweat = 1f - fighter.Stamina;
             Mj.MjBoxer boxer = fighter.boxer;
-            if (boxer != null && boxer.Cfg != null && boxer.Cfg.fatigue_j > 0.0) sweat = Mathf.Max(sweat, 1f - (float)boxer.Reserve);
+            if (boxer != null && boxer.Config != null && boxer.Config.fatigue_j > 0.0) sweat = Mathf.Max(sweat, 1f - (float)boxer.Reserve);
             // The face: where it is, and how flushed (the health lost, the first half of it showing most).
             Vector3 head = HeadPoint;
             var flush = new Vector4(head.x, head.y, head.z, Mathf.Sqrt(Mathf.Clamp01(1f - fighter.Health / 100f)));

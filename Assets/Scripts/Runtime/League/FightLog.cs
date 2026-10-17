@@ -87,7 +87,7 @@ namespace PoBox.League
             if (f != null && f.boxer != null)
             {
                 var brain = f.boxer.matchPolicy != null ? f.boxer.matchPolicy : f.boxer.Running;
-                c.brain = brain != null ? $"{f.boxer.Cfg.name}/{brain.name}" : "";
+                c.brain = brain != null ? $"{f.boxer.Config.name}/{brain.name}" : "";
             }
             if (f != null && f.pelvis != null) c.last = f.pelvis.transform.position;
             return c;
@@ -136,7 +136,7 @@ namespace PoBox.League
                 float effort = 0f;
                 if (body != null && body.Bound && body.Action != null)
                 {
-                    string[] joints = body.Cfg.joint_order;
+                    string[] joints = body.Config.joint_order;
                     Array.Clear(_sum, 0, 4);
                     Array.Clear(_n, 0, 4);
                     for (int j = 0; j < body.Action.Length && j < joints.Length; j++)

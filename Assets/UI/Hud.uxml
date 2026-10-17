@@ -2,21 +2,22 @@
 <!--
     PoBox: the whole interface in one document, laid out for a 1080 x 1920 portrait screen.
 
-    Five anchors that never move:
+    Anchors that never move:
         top-left      the game's name
-        top-centre    the frame rate (tap: frame-time graph, and the debug panel opens or closes)
         top-right     the menu (three bars; a cross while it is open)
+    and, with the settings' STATS on (class stats-only: out of the layout while the root is plain):
+        top-centre    the frame rate (tap: the debug panel opens or closes)
         bottom-left   DEBUG
         bottom-right  the version
 
-    Between them, top to bottom: the scoreboard, the picture, the dock (one graph).
+    Between them, top to bottom: the scoreboard and the picture.
 
     The scoreboard is three rows. The names sit on the health bars with the clock between them (a hit
     leaves a pale chunk on the bar that drains a moment later); under that the win-probability bar; under
-    that three chips, each a pair of numbers either side of an icon (landed, hardest hit, and a third that
-    cycles on a tap anywhere on the scoreboard). In the picture's top corners are two small pods, one a
-    fighter: where it has been hit, where its balance is, its tank, what its muscles have left (boxers
-    trained to tire only), what it is doing, and ON THE ROPES or TIRED when it is. The commentary is a
+    that the punches landed (and with STATS the hardest hit), each a pair of numbers either side of an icon.
+    In the picture's top corners are two small pods, one a fighter: its tank, what its muscles have left
+    (boxers trained to tire only), what it is doing, and ON THE ROPES or TIRED when it is; with STATS also
+    where it has been hit and where its balance is. The commentary is a
     caption over the bottom of the picture that goes away when it has nothing to say.
 
     The menu, the debug panel and the results card are absolutely positioned and open over that, docked at
@@ -45,7 +46,7 @@
                     <PoBox.UI.Glyph name="menu-glyph" kind="Menu" class="glyph--btn" />
                 </ui:Button>
                 <ui:VisualElement class="frame-centre" picking-mode="Ignore">
-                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
+                    <ui:Button name="fps" class="chip frame-fps stats-only" text="-- FPS" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -86,22 +87,17 @@
                         <PoBox.UI.Glyph kind="Glove" class="glyph" />
                         <ui:Label name="landed-blue" class="stat-val stat-val--r" text="0/0" picking-mode="Ignore" />
                     </ui:VisualElement>
-                    <ui:VisualElement class="stat" picking-mode="Ignore">
+                    <ui:VisualElement class="stat stats-only" picking-mode="Ignore">
                         <ui:Label name="peak-red" class="stat-val stat-val--l" text="0 N·s" picking-mode="Ignore" />
                         <PoBox.UI.Glyph kind="Burst" class="glyph" />
                         <ui:Label name="peak-blue" class="stat-val stat-val--r" text="0 N·s" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <ui:VisualElement name="cycle" class="stat stat--tap" picking-mode="Ignore">
-                        <ui:Label name="cycle-red" class="stat-val stat-val--l" text="0.0 kJ" picking-mode="Ignore" />
-                        <PoBox.UI.Glyph name="cycle-glyph" kind="Bolt" class="glyph glyph--tap" />
-                        <ui:Label name="cycle-blue" class="stat-val stat-val--r" text="0.0 kJ" picking-mode="Ignore" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="pod-red" class="pod pod--red" picking-mode="Ignore">
-                <PoBox.UI.HitMap name="hit-red" class="hitmap" />
-                <PoBox.UI.BalanceGauge name="bal-red" class="balance" />
+                <PoBox.UI.HitMap name="hit-red" class="hitmap stats-only" />
+                <PoBox.UI.BalanceGauge name="bal-red" class="balance stats-only" />
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-red" class="tank-fill" picking-mode="Ignore" />
                 </ui:VisualElement>
@@ -113,8 +109,8 @@
                 <ui:Label name="tired-red" class="pod-flag hidden" text="TIRED" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement name="pod-blue" class="pod pod--blue" picking-mode="Ignore">
-                <PoBox.UI.HitMap name="hit-blue" class="hitmap" mirror="true" />
-                <PoBox.UI.BalanceGauge name="bal-blue" class="balance" />
+                <PoBox.UI.HitMap name="hit-blue" class="hitmap stats-only" mirror="true" />
+                <PoBox.UI.BalanceGauge name="bal-blue" class="balance stats-only" />
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-blue" class="tank-fill" picking-mode="Ignore" />
                 </ui:VisualElement>
@@ -174,24 +170,11 @@
             <!-- During a count: the boxer left standing, while the main picture is on the one on the canvas. -->
             <ui:VisualElement name="pip" class="pip hidden" picking-mode="Ignore" />
 
-            <!-- A hard clean punch: the glove's speed, written where it landed. -->
-            <ui:Label name="flash" class="flash over hidden" text="" picking-mode="Ignore" />
+            <!-- A hard clean punch: the glove's speed, written where it landed (STATS only). -->
+            <ui:Label name="flash" class="flash over stats-only hidden" text="" picking-mode="Ignore" />
 
             <ui:Label name="ticker" class="ticker" text="" picking-mode="Ignore" />
 
-            <ui:VisualElement name="dock" class="dock" picking-mode="Ignore">
-                <ui:VisualElement name="strip" class="strip">
-                    <ui:VisualElement class="strip-head" picking-mode="Ignore">
-                        <ui:Label name="strip-title" class="strip-title" text="EXCITEMENT" picking-mode="Ignore" />
-                        <ui:Label name="strip-value" class="strip-value" text="0%" picking-mode="Ignore" />
-                        <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                        <ui:VisualElement name="dot0" class="dot dot--page" picking-mode="Ignore" />
-                        <ui:VisualElement name="dot1" class="dot dot--page" picking-mode="Ignore" />
-                        <ui:VisualElement name="dot2" class="dot dot--page" picking-mode="Ignore" />
-                    </ui:VisualElement>
-                    <PoBox.UI.Sparkline name="strip-graph" class="strip-graph spark--excite" />
-                </ui:VisualElement>
-            </ui:VisualElement>
 
             <ui:VisualElement name="results" class="sheet over hidden">
                 <ui:VisualElement class="res-head" picking-mode="Ignore">
@@ -206,11 +189,8 @@
                 <ui:Label name="res-extra" class="res-extra hidden" text="" picking-mode="Ignore" />
                 <ui:VisualElement name="res-judges" class="judges" picking-mode="Ignore" />
                 <ui:VisualElement class="res-mid" picking-mode="Ignore">
-                    <PoBox.UI.HitMap name="res-hit-red" class="res-hitmap" />
                     <ui:VisualElement name="res-tape" class="tape tape--card" picking-mode="Ignore" />
-                    <PoBox.UI.HitMap name="res-hit-blue" class="res-hitmap" mirror="true" />
                 </ui:VisualElement>
-                <PoBox.UI.Sparkline name="res-graph" class="res-graph spark--share" />
                 <ui:VisualElement class="grid res-actions" picking-mode="Ignore">
                     <ui:Button name="res-replay" class="btn btn--tool grid-4" tooltip="Replay the last knockdown">
                         <ui:VisualElement class="icon icon--movie" picking-mode="Ignore" />
@@ -254,13 +234,6 @@
                         <ui:Button name="cam-auto" class="btn grid-4" text="AUTO" />
                         <ui:Button name="cam-wide" class="btn grid-4" text="WIDE" />
                         <ui:Button name="cam-orbit" class="btn grid-4" text="ORBIT" />
-                        <ui:Button name="cam-top" class="btn grid-4" text="TOP" />
-                        <ui:Button name="cam-red" class="btn grid-4 btn--tool">
-                            <PoBox.UI.Glyph kind="Glove" class="glyph--btn glyph--red" />
-                        </ui:Button>
-                        <ui:Button name="cam-blue" class="btn grid-4 btn--tool">
-                            <PoBox.UI.Glyph kind="Glove" class="glyph--btn glyph--blue" />
-                        </ui:Button>
                     </ui:VisualElement>
                     <ui:Label class="label-micro page-label" text="SPEED" picking-mode="Ignore" />
                     <ui:VisualElement class="grid" picking-mode="Ignore">
@@ -286,12 +259,12 @@
             <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
 
             <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
-                <ui:Button name="debug" class="chip frame-debug">
+                <ui:Button name="debug" class="chip frame-debug stats-only">
                     <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
                     <ui:Label name="debug-text" class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

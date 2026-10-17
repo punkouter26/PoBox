@@ -128,7 +128,7 @@ namespace PoBox.Fx
             for (int k = 0; k < 2; k++)
             {
                 MjBoxer b = k == 0 ? _ring.red : _ring.blue;
-                BoxerConfig cfg = b.Cfg;
+                BoxerConfig cfg = b.Config;
                 Color tank = Color.Lerp(fresh, tired, Mathf.InverseLerp(1f, emptyReserve, (float)b.Reserve));
                 foreach (int g in _geoms[k])
                 {
@@ -176,7 +176,7 @@ namespace PoBox.Fx
                 _jointBody[k] = new int[b.Joints];
                 for (int i = 0; i < b.Joints; i++)
                 {
-                    int j = MujocoLib.mj_name2id(m, (int)MujocoLib.mjtObj.mjOBJ_JOINT, b.prefix + b.Cfg.joint_order[i]);
+                    int j = MujocoLib.mj_name2id(m, (int)MujocoLib.mjtObj.mjOBJ_JOINT, b.prefix + b.Config.joint_order[i]);
                     _jointBody[k][i] = j >= 0 ? m->jnt_bodyid[j] : -1;
                 }
             }

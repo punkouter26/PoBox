@@ -362,7 +362,7 @@ namespace PoBox.Sim
                 Daze += speed * share;
                 if (hurtFull > 0f) Hurt += speed * share;
                 if (staggerSpeed > 0f && e.zone == PartKind.Head && speed >= staggerSpeed) _rocked = staggerSeconds;
-                if (bodyDrain > 0f && share > 0f && e.zone != PartKind.Head && boxer != null && boxer.Cfg.fatigue_j > 0.0)
+                if (bodyDrain > 0f && share > 0f && e.zone != PartKind.Head && boxer != null && boxer.Config.fatigue_j > 0.0)
                     boxer.Reserve = Mathf.Max(0f, (float)boxer.Reserve - bodyDrain * speed);
                 // Just up from a count, the legs cannot go again straight away: the daze is held under the line.
                 if (fresh) Daze = Mathf.Min(Daze, LegsAt * 0.9f);
@@ -438,7 +438,7 @@ namespace PoBox.Sim
             float power = 0f, peak = 0f, sum = 0f;
             int driven = 0;
             BodyPart peakPart = null;
-            double[] limits = boxer.Cfg.force_limit;
+            double[] limits = boxer.Config.force_limit;
             for (int i = 0; i < parts.Length; i++)
             {
                 BodyPart part = parts[i];

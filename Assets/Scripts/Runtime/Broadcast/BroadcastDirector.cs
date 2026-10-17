@@ -228,8 +228,8 @@ namespace PoBox.Broadcast
                 {
                     _brainOf[k] = a;
                     _brains[k] = a.GetComponent<MjBrain>();
-                    _elbow[2 * k] = System.Array.IndexOf(a.boxer.Cfg.joint_order, "elbow_l");
-                    _elbow[2 * k + 1] = System.Array.IndexOf(a.boxer.Cfg.joint_order, "elbow_r");
+                    _elbow[2 * k] = System.Array.IndexOf(a.boxer.Config.joint_order, "elbow_l");
+                    _elbow[2 * k + 1] = System.Array.IndexOf(a.boxer.Config.joint_order, "elbow_r");
                 }
                 if (_brains[k] == null) continue;
                 for (int hand = 0; hand < 2; hand++)

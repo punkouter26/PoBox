@@ -60,7 +60,7 @@ namespace PoBox.Mj
         /// <summary>Its daze and the opponent's, as shares of where the legs go: what a policy with obs_state reads (set by the game's brain).</summary>
         [NonSerialized] public double DazeShare, OpponentDazeShare;
 
-        public BoxerConfig Cfg { get; private set; }
+        public BoxerConfig Config { get; private set; }
         public bool Bound { get; private set; }
         public int Joints { get; private set; }
 
@@ -83,7 +83,6 @@ namespace PoBox.Mj
         readonly int[] _glove = new int[2], _foot = new int[2], _forearm = new int[2], _upperBody = new int[2], _foreBody = new int[2];
 
         // Where the things a punch is measured against are in the model (for MjRing).
-        public int PelvisBody => _pelvis;
         public int HeadGeom => _head;
         public int TorsoGeom => _torso;
         public int GloveGeom(int hand) => _glove[hand];
@@ -99,8 +98,8 @@ namespace PoBox.Mj
 
         void Awake()
         {
-            Cfg = JsonUtility.FromJson<BoxerConfig>(config.text);
-            Joints = Cfg.joint_order.Length;
+            Config = JsonUtility.FromJson<BoxerConfig>(config.text);
+            Joints = Config.joint_order.Length;
             Action = new double[Joints];
             _obsF = new float[ObservationSize];
             SetPolicy(policy);
@@ -146,13 +145,13 @@ namespace PoBox.Mj
             _jq = new int[Joints]; _jv = new int[Joints]; _act = new int[Joints];
             for (int i = 0; i < Joints; i++)
             {
-                int j = Id(MujocoLib.mjtObj.mjOBJ_JOINT, Cfg.joint_order[i]);
+                int j = Id(MujocoLib.mjtObj.mjOBJ_JOINT, Config.joint_order[i]);
                 _jq[i] = _m->jnt_qposadr[j];
                 _jv[i] = _m->jnt_dofadr[j];
-                _act[i] = Id(MujocoLib.mjtObj.mjOBJ_ACTUATOR, Cfg.joint_order[i]);
+                _act[i] = Id(MujocoLib.mjtObj.mjOBJ_ACTUATOR, Config.joint_order[i]);
                 // envs/boxing.py's speed limit: a drive pulling its hardest has nothing left over at the limit.
                 // The model is compiled afresh from the scene each time, so this is added once.
-                if (Cfg.speed_limit) _m->dof_damping[_jv[i]] += Cfg.force_limit[i] / Cfg.velocity_limit[i];
+                if (Config.speed_limit) _m->dof_damping[_jv[i]] += Config.force_limit[i] / Config.velocity_limit[i];
                 // The fatigue ceiling's numbers, from the compiled model as the trainer reads them: a position drive's force is
                 // kp (target - q) - kv qdot, held inside its force range (models/v3's are not the same both ways).
                 _kp[i] = _m->actuator_gainprm[_act[i] * MujocoLib.mjNGAIN];
@@ -186,14 +185,14 @@ namespace PoBox.Mj
         public void ResetToGuard(double x, double y, double yaw)
         {
             double* q = _d->qpos + _rootQ;
-            q[0] = x; q[1] = y; q[2] = Cfg.stand_height + 0.002;
+            q[0] = x; q[1] = y; q[2] = Config.stand_height + 0.002;
             q[3] = Math.Cos(yaw / 2); q[4] = 0; q[5] = 0; q[6] = Math.Sin(yaw / 2);
             for (int k = 0; k < 6; k++) _d->qvel[_rootV + k] = 0;
             for (int i = 0; i < Joints; i++)
             {
-                _d->qpos[_jq[i]] = Cfg.default_joint_pos[i];
+                _d->qpos[_jq[i]] = Config.default_joint_pos[i];
                 _d->qvel[_jv[i]] = 0;
-                _d->ctrl[_act[i]] = _held[i] = Cfg.default_joint_pos[i];
+                _d->ctrl[_act[i]] = _held[i] = Config.default_joint_pos[i];
                 Action[i] = 0;
             }
             MujocoLib.mj_forward(_m, _d);
@@ -272,7 +271,7 @@ namespace PoBox.Mj
             for (int p = 0; p < 4; p++)
             {
                 double[] g = _guard[p], o = _standIn[p];
-                o[0] = ox + c * g[0] - s * g[1]; o[1] = oy + s * g[0] + c * g[1]; o[2] = Cfg.stand_height + g[2];
+                o[0] = ox + c * g[0] - s * g[1]; o[1] = oy + s * g[0] + c * g[1]; o[2] = Config.stand_height + g[2];
             }
         }
 
@@ -291,7 +290,7 @@ namespace PoBox.Mj
             int n = Joints;
             for (int i = 0; i < n; i++)
             {
-                o[9 + i] = _d->qpos[_jq[i]] - Cfg.default_joint_pos[i];
+                o[9 + i] = _d->qpos[_jq[i]] - Config.default_joint_pos[i];
                 o[9 + n + i] = _d->qvel[_jv[i]];
                 o[9 + 2 * n + i] = Action[i];
             }
@@ -320,10 +319,10 @@ namespace PoBox.Mj
             double rx = ringCentre.x - pos[0], ry = ringCentre.y - pos[1];
             // A bout's ring is the trainer's (envs/boxing.py: not held to its size); the footwork stage holds it to one.
             double reach = Kind == Match ? 100.0 : 1.0;
-            o[at++] = Clamp((cy * rx + sy * ry) / Cfg.ring_half, -reach, reach);
-            o[at++] = Clamp((-sy * rx + cy * ry) / Cfg.ring_half, -reach, reach);
+            o[at++] = Clamp((cy * rx + sy * ry) / Config.ring_half, -reach, reach);
+            o[at++] = Clamp((-sy * rx + cy * ry) / Config.ring_half, -reach, reach);
             // In a bout the command is zeros; a policy trained with obs_state reads its own state there (envs/match.py).
-            bool state = Kind == Match && Cfg.obs_state;
+            bool state = Kind == Match && Config.obs_state;
             o[at++] = state ? Reserve : Cmd[0]; o[at++] = state ? DazeShare : Cmd[1]; o[at++] = state ? OpponentDazeShare : Cmd[2];
             for (int i = 0; i < ObservationSize; i++) o[i] = Clamp(o[i], -100.0, 100.0);
         }
@@ -367,14 +366,14 @@ namespace PoBox.Mj
         {
             for (int i = 0; i < Joints; i++)
             {
-                Action[i] = Clamp(Action[i], -Cfg.action_clip, Cfg.action_clip);
-                double perUnit = Cfg.action_scale_j != null && Cfg.action_scale_j.Length > i ? Cfg.action_scale_j[i] : Cfg.action_scale;
-                double want = Clamp(Cfg.default_joint_pos[i] + Action[i] * perUnit, Cfg.lower[i], Cfg.upper[i]);
+                Action[i] = Clamp(Action[i], -Config.action_clip, Config.action_clip);
+                double perUnit = Config.action_scale_j != null && Config.action_scale_j.Length > i ? Config.action_scale_j[i] : Config.action_scale;
+                double want = Clamp(Config.default_joint_pos[i] + Action[i] * perUnit, Config.lower[i], Config.upper[i]);
                 double q = _d->qpos[_jq[i]];
                 // Hurt or tired: the spring to the target is weakened, the damping is not. Under the ceiling, tiredness caps
                 // the drive's torque instead, and only the daze weakens the spring.
-                double tired = 1.0 - Cfg.fatigue_weak * Clamp(1.0 - Reserve / 0.5, 0.0, 1.0);
-                bool ceiling = Cfg.fatigue_ceiling && Cfg.fatigue_j > 0.0;
+                double tired = 1.0 - Config.fatigue_weak * Clamp(1.0 - Reserve / 0.5, 0.0, 1.0);
+                bool ceiling = Config.fatigue_ceiling && Config.fatigue_j > 0.0;
                 double scale = DriveScale * (ceiling ? 1.0 : tired);
                 if (scale < 0.999) want = q + scale * (want - q);
                 if (ceiling && tired < 0.999)
@@ -401,10 +400,10 @@ namespace PoBox.Mj
         /// <summary>Once a control step of a bout is over: what its drives put out comes off the reserve, which fills again over fatigue_rec_s.</summary>
         public void Tire(double dt)
         {
-            if (Cfg.fatigue_j <= 0.0) return;
+            if (Config.fatigue_j <= 0.0) return;
             double watts = 0.0;
             for (int i = 0; i < Joints; i++) watts += Math.Abs(_d->actuator_force[_act[i]] * _d->qvel[_jv[i]]);
-            Reserve = Clamp(Reserve + dt * ((1.0 - Reserve) / Cfg.fatigue_rec_s - watts / (Cfg.fatigue_j * Cfg.strength)), 0.0, 1.0);
+            Reserve = Clamp(Reserve + dt * ((1.0 - Reserve) / Config.fatigue_rec_s - watts / (Config.fatigue_j * Config.strength)), 0.0, 1.0);
         }
 
         public int TorsoBody => _torsoBody;
@@ -469,7 +468,7 @@ namespace PoBox.Mj
                 floorN += (float)v[0];
             }
         }
-        public bool Fallen => PelvisHeight < Cfg.stand_height * 0.6 || Upright < 0.4;
+        public bool Fallen => PelvisHeight < Config.stand_height * 0.6 || Upright < 0.4;
         /// <summary>Where a glove is (0 left, 1 right), Unity's frame.</summary>
         public Vector3 GlovePosition(int hand)
         {

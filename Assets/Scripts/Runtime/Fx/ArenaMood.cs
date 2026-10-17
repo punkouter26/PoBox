@@ -60,8 +60,8 @@ namespace PoBox.Fx
         public float downSpotHeight = 5.5f;
         [Tooltip("What is left of the house lights during a count.")]
         [Range(0f, 1f)] public float downHouse = 0.3f;
-        [Tooltip("Colour taken out of the picture during a count, as the colour adjustments' saturation.")]
-        public float downSaturation = -35f;
+        [Tooltip("The colour coming out during a count (Look_Down), over the house look; its weight is set here.")]
+        public Volume downLook;
         [Tooltip("How bright the spot is over the exchange after a clean punch, as a fraction of its knockdown level.")]
         [Range(0f, 1f)] public float hotSpot = 0.35f;
         [Tooltip("The corners' stools and buckets: in the ring only for the break between rounds.")]
@@ -92,7 +92,6 @@ namespace PoBox.Fx
         float[] _rest;
         float _flash, _phones, _side, _nextPop, _down, _heat;
         Vector3 _hotAt;
-        Volume _grey;
         readonly float[] _landed = new float[2];
         MaterialPropertyBlock _block;
 
@@ -105,12 +104,6 @@ namespace PoBox.Fx
             Flash = 0f;
             foreach (Light s in sweeps) if (s != null) s.intensity = 0f;
             if (downSpot != null) { downSpot.intensity = 0f; downSpot.enabled = false; }
-            // The colour coming out: a global volume of its own over the house look, weighted by the count.
-            _grey = gameObject.AddComponent<Volume>();
-            _grey.isGlobal = true;
-            _grey.priority = 11f;
-            _grey.weight = 0f;
-            _grey.profile.Add<ColorAdjustments>().saturation.Override(downSaturation);
         }
 
         void OnEnable()
@@ -128,7 +121,7 @@ namespace PoBox.Fx
             Shader.SetGlobalFloat(FlashId, 0f);
             Shader.SetGlobalFloat(PhonesId, 0f);
             Shader.SetGlobalFloat(SideId, 0f);
-            if (_grey != null) _grey.weight = 0f;
+            if (downLook != null) downLook.weight = 0f;
         }
 
         void OnHit(HitEvent e)
@@ -198,7 +191,7 @@ namespace PoBox.Fx
             // The count: whoever is down, alone in a light of their own.
             Fighter downed = phase == BoutPhase.Count && bout != null ? bout.Downed : null;
             _down = Mathf.MoveTowards(_down, downed != null ? 1f : 0f, dt * (downed != null ? 3f : 1.5f));
-            if (_grey != null) _grey.weight = _down;
+            if (downLook != null) downLook.weight = _down;
             if (downSpot != null)
             {
                 float hot = phase == BoutPhase.Fight ? _heat * hotSpot * (1f - _down) : 0f;

@@ -1132,3 +1132,24 @@ get-up identical to a baseline recorded before the change (fixed seed, 4 worlds 
 - Checks: `tools/smoke_flags.py --compare` identical; `--flags` all pass on v2 and v3; one CPU iteration each of a v3
   gauntlet (every new flag), get-up (`--models models/v3`), hand-over bank and exam_v2 (`--models models/v3`) ran clean
   (throwaway output deleted). Unity with the new `MjBoxer.Drive`: MjParity 3/3, MjGate 24/24 (v2 unchanged).
+
+## 2026-10-16 23:00, overnight (owner: "train and improve all behaviours ... for next 10 hours")
+
+Decision: one match round for all eight on v2 with every improvement staged so far, then exams; the old day queue (m2/m3
+under the pre-rules terms, 26 jobs never run) is superseded and backed up in `logs/queue.before-night-2026-10-17.json`.
+The queue is `training/queue_night_staged.json` (copied into `logs/queue.json`). v3 (~16 h) does not fit in 10 h.
+
+1. `rules_punch` (the world rules into every v2 config, fatigue 8000 included, so the exams box under them), `bank_trump`
+   (Trump had no hand-over bank).
+2. `m10_NAME` for Matt (from m9, 196 iterations under the rules), Zombie (sf1), Nick, Grandpa, Grandma (m1), Trump
+   (shipped), Kim (m7), Sokol (m2): `queue_punch_staged.json`'s m9 recipe plus rc2_matt's terms: punch rules as flags,
+   self-contact 0.02, repeat decay 0.7 and combinations 0.1 (the one-punch spam), hurt starts 0.2 with the clinch 0.1,
+   ropes 0.05 and cut-off 0.05, hand-over share 0.3 -> 0.5 (carrying on failed m9 and rc1 at 52/58), 600 iterations
+   capped at 0.75 h, stopping early once landed >= 1.2/s, falls <= 0.03 and repeat share <= 0.6 hold 40 iterations.
+   Grandma and Grandpa (attack 0.35/s and 0.02/s in D8) on Kim's attack recipe: hit 2.0, taken 0.3, seek 0.3.
+3. `exam_m10_NAME` after each (3.5.0, 60 trials, 12 rounds, `logs/book_punch.json`); last `exam_punch_baseline`
+   (the shipped brains under the same rules), then `queue.stop`. Estimate ~8 h + 1.7 h baseline.
+
+Smoke first: the m10_matt command, 2 iterations at 512 rings, ran clean (`checkpoints/smoke_m10`, throwaway). Unity stays
+open in edit mode (a clean-up pass is editing scripts; no play mode, so the runner is not held). Nothing is promoted
+overnight: the exams decide and promotion is done with the editor.

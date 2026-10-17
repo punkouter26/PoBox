@@ -161,8 +161,8 @@ namespace PoBox.Mj
                 red.opponent = blue;
                 blue.opponent = red;
             }
-            _m->opt.timestep = 1.0 / _b[0].Cfg.physics_hz;
-            _decimation = Math.Max(1, _b[0].Cfg.control_decimation);
+            _m->opt.timestep = 1.0 / _b[0].Config.physics_hz;
+            _decimation = Math.Max(1, _b[0].Config.control_decimation);
             _dt = _m->opt.timestep * _decimation;
             for (int k = 0; k < n; k++)
             {
@@ -505,12 +505,12 @@ namespace PoBox.Mj
                         if (landed)
                         {
                             _cool[k, hand] = 0.25;
-                            if (them.Cfg.hit_push > 0.0)
+                            if (them.Config.hit_push > 0.0)
                             {
                                 // envs/boxing.py's hit_push: along the line from the glove to the zone, at its surface.
                                 double d = toHead ? dHead : dBody, inv = toHead ? ih : ib, reach = d - (toHead ? rHead : rBody);
                                 double nx = (toHead ? hx : bx) * inv, ny = (toHead ? hy : by) * inv, nz = (toHead ? hz : bz) * inv;
-                                double j = them.Cfg.hit_push * PunchMass * arriving / _dt;
+                                double j = them.Config.hit_push * PunchMass * arriving / _dt;
                                 double* com = _d->xipos + 3 * them.TorsoBody;
                                 double rx = g[0] + nx * reach - com[0], ry = g[1] + ny * reach - com[1], rz = g[2] + nz * reach - com[2];
                                 double fx = nx * j, fy = ny * j, fz = nz * j;

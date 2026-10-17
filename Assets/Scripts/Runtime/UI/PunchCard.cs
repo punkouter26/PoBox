@@ -13,7 +13,7 @@ namespace PoBox.UI
     /// faster than the one before, and the card says so (IN SEQUENCE) or not (ARMS ONLY). Under it: the glove's speed
     /// at the landing in km/h, the impulse, and the floor's hardest push in body weights.
     ///
-    /// Shown for <see cref="showSeconds"/> over the picture, bottom right, at most once
+    /// Shown with the settings' STATS on, for <see cref="showSeconds"/> over the picture, bottom right, at most once
     /// every <see cref="cooldown"/> seconds, never during a replay, on the results or with the brain cam on (which
     /// has the same strip of screen, from the left).
     /// </summary>
@@ -89,7 +89,7 @@ namespace PoBox.UI
 
         void FixedUpdate()
         {
-            if (bout == null || bout.Phase != BoutPhase.Fight) return;
+            if (!SettingsPage.Stats || bout == null || bout.Phase != BoutPhase.Fight) return;
             for (int c = 0; c < 2; c++)
             {
                 Fighter f = c == 0 ? bout.red : bout.blue;
@@ -116,7 +116,7 @@ namespace PoBox.UI
 
         void OnHit(HitEvent e)
         {
-            if (_card == null || bout == null || !e.clean || e.impulse < minImpulse || Time.unscaledTime < _nextAt) return;
+            if (!SettingsPage.Stats || _card == null || bout == null || !e.clean || e.impulse < minImpulse || Time.unscaledTime < _nextAt) return;
             int c = e.attacker == bout.red ? 0 : e.attacker == bout.blue ? 1 : -1;
             if (c < 0) return;
             int h = e.hand < 0 ? 0 : 1;

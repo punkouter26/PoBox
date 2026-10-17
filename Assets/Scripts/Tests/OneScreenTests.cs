@@ -119,12 +119,14 @@ namespace PoBox.Tests
                 yield return Tap(picture);
                 Assert.IsFalse(hud.DebugOpen, "a tap on the picture did not close the debug panel");
 
-                for (int page = 0; page < 3; page++)
-                {
-                    hud.SetStripPage(page);
-                    yield return Settle();
-                    Check(hud.Root, phone, at + "graph page " + page);
-                }
+                // With the settings' STATS on: the frame rate, DEBUG, the version and the numbers in their places too.
+                bool stats = SettingsPage.Stats;
+                SettingsPage.Stats = true;
+                Ui.Frame(hud.Root);
+                yield return Settle();
+                Check(hud.Root, phone, at + "stats on");
+                SettingsPage.Stats = stats;
+                Ui.Frame(hud.Root);
 
                 // The round's banner, the fight, a count with its inset, a round break and the result, quickly:
                 // two half-second rounds at four times the speed, off the owner's ladder.
@@ -173,8 +175,8 @@ namespace PoBox.Tests
             yield return SceneManager.LoadSceneAsync(MatchSelection.MeleeScene, LoadSceneMode.Single);
             yield return null;
 
-            MeleeHud hud = Object.FindAnyObjectByType<MeleeHud>();
-            Assert.IsNotNull(hud, "the Melee scene has no MeleeHud");
+            MeleeView hud = Object.FindAnyObjectByType<MeleeView>();
+            Assert.IsNotNull(hud, "the Melee scene has no MeleeView");
             PanelSettings panel = hud.GetComponent<UIDocument>().panelSettings;
             RenderTexture previous = panel.targetTexture;
             var target = new RenderTexture(phone.x, phone.y, 24);
@@ -298,7 +300,7 @@ namespace PoBox.Tests
         }
 
         [UnityTest]
-        public IEnumerator TestbedHudFitsOneScreen([ValueSource(nameof(Phones))] Phone phone)
+        public IEnumerator TestbedViewFitsOneScreen([ValueSource(nameof(Phones))] Phone phone)
         {
 #if UNITY_EDITOR
             // The testbed is an editor tool, not in the build, so it is loaded by its path.
@@ -307,8 +309,8 @@ namespace PoBox.Tests
             Assert.Ignore("the testbed is not in the build");
 #endif
             yield return null;
-            var hud = Object.FindAnyObjectByType<PoBox.Mj.TestbedHud>();
-            Assert.IsNotNull(hud, "the Testbed scene has no TestbedHud");
+            var hud = Object.FindAnyObjectByType<PoBox.UI.TestbedView>();
+            Assert.IsNotNull(hud, "the Testbed scene has no TestbedView");
             PanelSettings panel = hud.GetComponent<UIDocument>().panelSettings;
             RenderTexture previous = panel.targetTexture;
             var target = new RenderTexture(phone.x, phone.y, 24);
@@ -352,8 +354,8 @@ namespace PoBox.Tests
 
                 Bout bout = Bout.Instance;
                 Assert.IsNotNull(bout, "the Arena scene has no Bout");
-                Assert.AreEqual(red, bout.red.boxer.Cfg.name, "the red corner is not the boxer that was picked for it");
-                Assert.AreEqual(blue, bout.blue.boxer.Cfg.name, "the blue corner is not the boxer that was picked for it");
+                Assert.AreEqual(red, bout.red.boxer.Config.name, "the red corner is not the boxer that was picked for it");
+                Assert.AreEqual(blue, bout.blue.boxer.Config.name, "the blue corner is not the boxer that was picked for it");
                 Assert.IsTrue(bout.red.boxer.Bound && bout.blue.boxer.Bound, "the picked pair is not running on MuJoCo");
                 foreach (Fighter f in new[] { bout.red, bout.blue })
                     Assert.IsFalse(f.IsDown, f.displayName + " fell over without being hit");

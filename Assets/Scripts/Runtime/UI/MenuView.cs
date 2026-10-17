@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using PoBox.League;
 using PoBox.Sim;
+using static PoBox.UI.Ui;
 
 namespace PoBox.UI
 {
@@ -45,9 +46,6 @@ namespace PoBox.UI
         }
 
         public Boxer[] boxers = new Boxer[0];
-        [Tooltip("Not drawn any more: the corners take their colours from Theme.uss. Kept because the scene builder sets them.")]
-        public Color redColor = new Color(0.89f, 0.24f, 0.24f);
-        public Color blueColor = new Color(0.20f, 0.49f, 0.94f);
 
         public int Red { get; private set; }
         public int Blue { get; private set; }
@@ -106,8 +104,6 @@ namespace PoBox.UI
             _sheet = _root.Q<VisualElement>("menu-sheet");
             _debugPanel = _root.Q<VisualElement>("debug-panel");
             _fps = _root.Q<Button>("fps");
-            Label version = _root.Q<Label>("version");
-            if (version != null) version.text = "v" + Application.version;
 
             _picker = _root.Q<VisualElement>("picker");
             BuildCards();
@@ -127,7 +123,6 @@ namespace PoBox.UI
             if (settings != null) settings.clicked += ToggleSettings;
             Button debug = _root.Q<Button>("debug");
             if (debug != null) debug.clicked += ToggleDebug;
-            // A tap on the frame rate is the panel; so is the hidden switch here, as this screen has no X-ray.
             DebugPanel.Hook(_root, _fps, ToggleDebug, ToggleDebug);
             _cupSheet = _root.Q<VisualElement>("cup-sheet");
             _cupBracket = _root.Q<VisualElement>("cup-bracket");
@@ -142,8 +137,9 @@ namespace PoBox.UI
             VisualElement picture = _root.Q<VisualElement>("picture");
             if (picture != null) picture.RegisterCallback<PointerDownEvent>(_ => CloseAll());
             _debugValues = DebugPanel.Build(_debugPanel, DebugKeys);
-            // The first screen has no ladder to reset (that is the arena's) and no brain cam.
-            _settings = new SettingsPage(_root, null, ToggleDebug);
+            // The first screen has no ladder to reset (that is the arena's), no brain cam and no boxers to X-ray.
+            _settings = new SettingsPage(_root, null, ToggleDebug, xray: false);
+            Frame(_root);
 
             // The pair fought last time; failing that the first boxer against the second.
             Red = Mathf.Max(0, IndexOf(MatchSelection.LastRed));
@@ -170,7 +166,8 @@ namespace PoBox.UI
             _smoothed = Mathf.Lerp(_smoothed, Time.unscaledDeltaTime, 0.05f);
             if (Time.unscaledTime < _nextText) return;
             _nextText = Time.unscaledTime + 0.25f;      // four times a second: text made every frame is garbage every frame
-            if (_fps != null) _fps.text = $"{1f / Mathf.Max(_smoothed, 1e-4f):0} FPS";
+            Frame(_root);
+            Set(_fps, $"{1f / Mathf.Max(_smoothed, 1e-4f):0} FPS");
             if (DebugOpen) RefreshDebug();
             if (_settings != null && SettingsOpen && _settings.Armed) _settings.Refresh();
         }
@@ -372,11 +369,6 @@ namespace PoBox.UI
                 line.EnableInClassList("cup-line--next", m == next);
                 _cupBracket.Add(line);
             }
-        }
-
-        static void Set(Label l, string text)
-        {
-            if (l != null && l.text != text) l.text = text;
         }
     }
 }

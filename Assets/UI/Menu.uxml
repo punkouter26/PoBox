@@ -28,7 +28,7 @@
                     <ui:VisualElement class="icon icon--gear" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="frame-centre" picking-mode="Ignore">
-                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
+                    <ui:Button name="fps" class="chip frame-fps stats-only" text="-- FPS" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -68,12 +68,12 @@
             <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
 
             <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
-                <ui:Button name="debug" class="chip frame-debug">
+                <ui:Button name="debug" class="chip frame-debug stats-only">
                     <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
                     <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

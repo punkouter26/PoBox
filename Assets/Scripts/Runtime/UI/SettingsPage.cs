@@ -4,27 +4,33 @@ using PoBox.Audio;
 using PoBox.Diag;
 using PoBox.Fx;
 using PoBox.League;
-using PoBox.Net;
+using PoBox.Online;
 
 namespace PoBox.UI
 {
     /// <summary>
     /// The settings (Assets/UI/Settings.uxml), the same on the HUD's menu, the first screen and the free-for-all: three
-    /// tabs on one sheet. SOUND: sound and quality. DISPLAY: the commentator's voice, the buzz of a hit, bullet time and
-    /// the frame rate. DEBUG: the collision shapes, the brain cam, the readings, the Twitch channel for chat plays, and
-    /// throwing the ladder away. Every choice is kept on the device. RESET LADDER is only offered where there is a
-    /// ladder, BRAIN only where there is a brain cam (the arena).
+    /// tabs on one sheet, every option of the game. SOUND: sound, the commentator's voice, the buzz of a hit, bullet
+    /// time. VIEW: quality, the frame rate, STATS (the numbers over the picture) and BETS (the coin pick before the
+    /// bell), both off by default. MORE: the collision shapes, the brain cam, the readings, throwing the ladder away,
+    /// the Twitch channel for chat plays and the cornerman's proxy. Every choice is kept on the device. RESET is only
+    /// offered where there is a ladder, BRAIN only where there is a brain cam (the arena), X-RAY only where there are
+    /// boxers.
     /// </summary>
     public sealed class SettingsPage
     {
-        static readonly string[] TabNames = { "sound", "display", "debug" };
+        static readonly string[] TabNames = { "sound", "view", "more" };
 
         /// <summary>The brain cam over the arena's picture (HudView draws it).</summary>
         public static bool BrainCam;
+        /// <summary>The numbers over the picture (hit maps, balance, the punch card, glove speed, the frame rate, DEBUG, the version). Off: the plain broadcast.</summary>
+        public static bool Stats;
+        /// <summary>The coin pick before the first bell (League/Prediction.cs).</summary>
+        public static bool Bets;
 
         readonly Button[] _tabs = new Button[3];
         readonly VisualElement[] _pages = new VisualElement[3];
-        readonly Button _sound, _quality, _voice, _buzz, _bullet, _fps, _xray, _brain, _reset;
+        readonly Button _sound, _quality, _voice, _buzz, _bullet, _fps, _stats, _bets, _xray, _brain, _reset;
         readonly Label _qualityBadge, _resetWord;
         readonly Glyph _resetGlyph;
         readonly TextField _twitch, _corner;
@@ -37,7 +43,8 @@ namespace PoBox.UI
 
         /// <param name="readings">What READINGS does: opens the screen's debug panel. Null hides the button.</param>
         /// <param name="brain">The screen has a brain cam, so BRAIN is offered.</param>
-        public SettingsPage(VisualElement root, LeagueTable league, System.Action readings = null, bool brain = false)
+        /// <param name="xray">The screen has boxers to draw the collision shapes over, so X-RAY is offered.</param>
+        public SettingsPage(VisualElement root, LeagueTable league, System.Action readings = null, bool brain = false, bool xray = true)
         {
             _league = league;
             for (int i = 0; i < 3; i++)
@@ -53,6 +60,8 @@ namespace PoBox.UI
             _buzz = root.Q<Button>("s-buzz");
             _bullet = root.Q<Button>("s-bullet");
             _fps = root.Q<Button>("s-fps");
+            _stats = root.Q<Button>("s-stats");
+            _bets = root.Q<Button>("s-bets");
             _xray = root.Q<Button>("s-xray");
             _brain = root.Q<Button>("s-brain");
             _reset = root.Q<Button>("s-reset"); _resetWord = root.Q<Label>("s-reset-word"); _resetGlyph = root.Q<Glyph>("s-reset-glyph");
@@ -60,6 +69,8 @@ namespace PoBox.UI
             _corner = root.Q<TextField>("s-corner");
             _reset?.EnableInClassList("hidden", league == null);
             _brain?.EnableInClassList("hidden", !brain);
+            _xray?.EnableInClassList("hidden", !xray);
+            _bets?.EnableInClassList("hidden", league == null);
 
             Hook(_sound, () => AudioDirector.Muted = !AudioDirector.Muted);
             Hook(_voice, () => SpeechCommentary.Enabled = !SpeechCommentary.Enabled);
@@ -67,6 +78,8 @@ namespace PoBox.UI
             Hook(_bullet, () => ArenaMood.BulletTime = !ArenaMood.BulletTime);
             Hook(_xray, () => PhysicsXray.On = !PhysicsXray.On);
             Hook(_brain, () => BrainCam = !BrainCam);
+            Hook(_stats, () => Stats = !Stats);
+            Hook(_bets, () => Bets = !Bets);
             Hook(_quality, () =>
             {
                 int n = QualitySettings.names.Length;
@@ -94,10 +107,10 @@ namespace PoBox.UI
             }
             if (_corner != null)
             {
-                _corner.value = Broadcast.CornerAI.Url;
+                _corner.value = CornerAI.Url;
                 _corner.RegisterValueChangedCallback(e =>
                 {
-                    PlayerPrefs.SetString(Broadcast.CornerAI.PrefKey, (e.newValue ?? "").Trim());
+                    PlayerPrefs.SetString(CornerAI.PrefKey, (e.newValue ?? "").Trim());
                     PlayerPrefs.Save();
                 });
             }
@@ -140,6 +153,11 @@ namespace PoBox.UI
             ArenaMood.BulletTime = PlayerPrefs.GetInt("pobox.bullettime", 1) == 1;
             PhysicsXray.On = PlayerPrefs.GetInt("pobox.xray", 0) == 1;
             BrainCam = PlayerPrefs.GetInt("pobox.brain", 0) == 1;
+            Stats = PlayerPrefs.GetInt("pobox.stats", 0) == 1;
+            Bets = PlayerPrefs.GetInt("pobox.bets", 0) == 1;
+            int quality = PlayerPrefs.GetInt("pobox.quality", -1);
+            // Only in play: in the editor the documents are built out of play too, and the project's level is the project's.
+            if (Application.isPlaying && quality >= 0 && quality < QualitySettings.names.Length && quality != QualitySettings.GetQualityLevel()) QualitySettings.SetQualityLevel(quality, true);
             PerfTelemetry perf = PerfTelemetry.Instance;
             if (perf != null) perf.SetTargetFps(PlayerPrefs.GetInt("pobox.fps", perf.targetFps));
         }
@@ -152,6 +170,9 @@ namespace PoBox.UI
             PlayerPrefs.SetInt("pobox.bullettime", ArenaMood.BulletTime ? 1 : 0);
             PlayerPrefs.SetInt("pobox.xray", PhysicsXray.On ? 1 : 0);
             PlayerPrefs.SetInt("pobox.brain", BrainCam ? 1 : 0);
+            PlayerPrefs.SetInt("pobox.stats", Stats ? 1 : 0);
+            PlayerPrefs.SetInt("pobox.bets", Bets ? 1 : 0);
+            PlayerPrefs.SetInt("pobox.quality", QualitySettings.GetQualityLevel());
             if (PerfTelemetry.Instance != null) PlayerPrefs.SetInt("pobox.fps", PerfTelemetry.Instance.targetFps);
             PlayerPrefs.Save();
         }
@@ -164,6 +185,8 @@ namespace PoBox.UI
             Toggle(_bullet, "Bullet time", ArenaMood.BulletTime);
             Toggle(_xray, "X-ray", PhysicsXray.On);
             Toggle(_brain, "Brain cam", BrainCam);
+            Toggle(_stats, "Stats", Stats);
+            Toggle(_bets, "Bets", Bets);
             if (_qualityBadge != null)
             {
                 string[] names = QualitySettings.names;

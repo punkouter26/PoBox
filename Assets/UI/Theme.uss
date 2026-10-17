@@ -104,10 +104,9 @@
     --break-top:     776px;          /* under-board + the tallest a pod gets (about 444, both flags up) + gap-3 */
 
     /* And from the bottom. */
-    --dock-h:        196px;
-    --over-dock:     308px;          /* frame-clear + dock-h + gap-2: the caption sits on the dock */
-    --over-caption:  380px;          /* over-dock + caption 56 + gap-4: the inset sits on the caption */
-    --walkon-bottom: 520px;          /* over-caption + 140 */
+    --over-dock:     112px;          /* frame-clear + gap-2: the caption sits on the bottom row */
+    --over-caption:  184px;          /* over-dock + caption 56 + gap-4: the inset sits on the caption */
+    --walkon-bottom: 324px;          /* over-caption + 140 */
 
     /* The free-for-all, from the top. */
     --ffa-under-board: 280px;        /* frame-clear + two rows of (80 + 6) + gap-1 */
@@ -141,6 +140,8 @@ Label { margin: 0; padding: 0; }
 
 .spacer { flex-grow: 1; }
 .hidden { display: none; }
+/* The settings' STATS off (Ui.Frame): the numbers, the frame rate, DEBUG and the version are out of the layout. */
+.plain .stats-only { display: none; }
 
 .label-micro { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
 
@@ -261,7 +262,6 @@ Label { margin: 0; padding: 0; }
 .dot { width: 20px; height: 20px; border-radius: 10px; background-color: var(--accent); }
 .dot--warn { background-color: var(--warn); }
 .dot--bad { background-color: var(--danger); }
-.dot--page { width: 16px; height: 16px; border-radius: 8px; margin-left: 10px; background-color: rgba(255, 255, 255, 0.25); }
 .dot--on { background-color: var(--ink); }
 
 /* ------------------------------------------------------------------ scoreboard */
@@ -385,12 +385,10 @@ Label { margin: 0; padding: 0; }
     align-items: center;
     background-color: var(--row);
 }
-.stat--tap { background-color: var(--accent-tint); }
 .stat-val { flex: 1 1 0; font-size: var(--t-small); -unity-font-style: bold; color: var(--ink); }
 .stat-val--l { -unity-text-align: middle-right; padding-right: 10px; }
 .stat-val--r { -unity-text-align: middle-left; padding-left: 10px; }
 .stat .glyph { margin: 0; flex-shrink: 0; }
-.glyph--tap { color: var(--accent); }
 
 /* A fighter's pod, in the picture's top corner: where it has been hit, and where its balance is. */
 .pod {
@@ -611,26 +609,6 @@ Label { margin: 0; padding: 0; }
     padding: 0 18px;
 }
 
-/* ------------------------------------------------------------------ dock */
-
-.dock {
-    position: absolute;
-    left: var(--gap-4);
-    right: var(--gap-4);
-    bottom: var(--frame-clear);
-}
-
-.strip { height: var(--dock-h); background-color: var(--overlay); border-radius: var(--radius); padding: 10px 16px 12px 16px; }
-.strip-head { flex-direction: row; align-items: center; height: 40px; }
-.strip-title { font-size: var(--t-micro); letter-spacing: 2px; color: var(--ink-dim); }
-.strip-value { font-size: var(--t-body); -unity-font-style: bold; margin-left: 16px; }
-.strip-graph { flex-grow: 1; margin-top: 6px; }
-
-/* The graphs' colours (Sparkline.cs reads them), one class a page: --warn, --ink and --accent, written out because a
-   custom property is read as it is written. */
-.spark--excite { --line-color: rgb(255, 198, 84); --fill-color: rgba(255, 198, 84, 0.16); }
-.spark--share  { --line-color: rgb(240, 244, 249); --fill-color: rgba(255, 255, 255, 0.12); }
-.spark--frame  { --line-color: rgb(46, 191, 140); --fill-color: rgba(46, 191, 140, 0.16); }
 
 /* ------------------------------------------------------------------ sheets */
 
@@ -660,7 +638,6 @@ Label { margin: 0; padding: 0; }
 .res-extra { font-size: var(--t-small); -unity-font-style: bold; color: var(--warn); margin-top: var(--gap-2); }
 /* The free-for-all's punch count: its leaders, a line each. */
 .res-note { font-size: var(--t-small); color: var(--ink-dim); white-space: normal; margin-top: var(--gap-2); }
-.res-graph { height: 96px; margin-top: var(--gap-3); background-color: var(--row); border-radius: var(--radius-sm); }
 .res-actions { margin-top: var(--gap-4); }
 
 /* The three judges' cards, each marked with the colour of the corner it went to. */
@@ -684,7 +661,6 @@ Label { margin: 0; padding: 0; }
 /* Both fighters' numbers, with each one's hit map beside its column. */
 .res-mid { flex-direction: row; align-items: center; margin-top: var(--gap-3); }
 .res-mid .tape { flex: 1 1 0; margin-top: 0; }
-.res-hitmap { width: 116px; height: 176px; flex-shrink: 0; }
 
 /* Tabs: a row of segments over pages that are all the same height, so the sheet does not jump between them.
    The HUD's menu has MATCH, LEAGUE and SETTINGS; the settings have SOUND, DISPLAY and DEBUG. */

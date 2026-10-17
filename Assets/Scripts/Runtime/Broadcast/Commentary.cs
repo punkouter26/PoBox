@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.Networking;
 using PoBox.Sim;
 
+using PoBox.Online;
+
 namespace PoBox.Broadcast
 {
     /// <summary>
@@ -197,7 +199,7 @@ namespace PoBox.Broadcast
         void Tiring(int corner, Fighter f)
         {
             Mj.MjBoxer body = f.boxer;
-            if (body == null || !body.Bound || body.Cfg.fatigue_j <= 0.0) return;
+            if (body == null || !body.Bound || body.Config.fatigue_j <= 0.0) return;
             for (int t = 0; t < TiredAt.Length; t++)
             {
                 if (_tiredSaid[corner, t]) { if (body.Reserve > TiredAt[t] + Rested) _tiredSaid[corner, t] = false; continue; }
@@ -270,7 +272,7 @@ namespace PoBox.Broadcast
         CornerFacts Facts(int me, Fighter f, int them, Fighter o)
         {
             Mj.MjBoxer body = f.boxer;
-            bool tires = body != null && body.Bound && body.Cfg.fatigue_j > 0.0;
+            bool tires = body != null && body.Bound && body.Config.fatigue_j > 0.0;
             return new CornerFacts
             {
                 boxer = f.displayName, opponent = o.displayName, cards = bout.CardsText(), round = bout.Round, rounds = bout.rounds,
@@ -311,7 +313,7 @@ namespace PoBox.Broadcast
             int landed = Landed(me, f), thrown = Thrown(me, f), theirs = Landed(them, o);
             int blocked = f.stats.blocked - _roundStart[me].blocked;
             Mj.MjBoxer body = f.boxer;
-            bool tires = body != null && body.Bound && body.Cfg.fatigue_j > 0.0;
+            bool tires = body != null && body.Bound && body.Config.fatigue_j > 0.0;
             if (f.Stamina < 0.35f || (tires && body.Reserve < 0.4)) return "breathe. Hands up, feet under you, pick one good shot.";
             if (Head(me, f) > 25f && theirs > landed) return "guard up! He's finding your head.";
             if (landed > theirs * 1.3f && landed >= 3) return "you're out-landing him. Press, keep the pressure on!";

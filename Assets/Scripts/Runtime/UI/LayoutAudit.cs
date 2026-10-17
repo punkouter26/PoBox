@@ -211,6 +211,8 @@ namespace PoBox.UI
         {
             VisualElement e = root.Q<VisualElement>(name);
             if (e == null) { report.anchors.Add($"{name}: missing"); return; }
+            // The frame rate, DEBUG and the version are only there with the settings' STATS (Ui.Frame): out of the layout, nothing to place.
+            if (e.ClassListContains("stats-only") && e.resolvedStyle.display == DisplayStyle.None) return;
             Rect b = e.worldBound;
             float edge = screen.width * 0.08f, band = screen.height * 0.08f;
 

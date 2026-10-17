@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    PoBox: the free-for-all's HUD (Melee scene, MeleeHud.cs), on the same five anchors as the HUD and the first
-    screen: the round and its time top-left, the frame rate top-centre (tap: the debug panel), the way back and the
-    settings top-right, DEBUG bottom-left and the version bottom-right. Under the frame, every boxer in the ring in
+    PoBox: the free-for-all's HUD (Melee scene, MeleeView.cs), on the same anchors as the HUD and the first
+    screen: the round and its time top-left, the way back and the settings top-right; with the settings' STATS on,
+    the frame rate top-centre (tap: the debug panel), DEBUG bottom-left and the version bottom-right. Under the frame, every boxer in the ring in
     two rows of four (MeleeHud builds them): its colour, its name, and nothing while it fights, the count over it,
     SLIP, OUT or WINNER. The referee's calls across the middle; the result, the same card as the arena's, docked at
     the bottom with REPLAY, SHARE, AGAIN and MENU; the settings and the debug panel docked there too, one at a time.
@@ -30,7 +30,7 @@
                     <ui:VisualElement class="icon icon--gear" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="frame-centre" picking-mode="Ignore">
-                    <ui:Button name="fps" class="chip frame-fps" text="-- FPS" />
+                    <ui:Button name="fps" class="chip frame-fps stats-only" text="-- FPS" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -49,7 +49,7 @@
                         <ui:Label name="method" class="res-method" text="" picking-mode="Ignore" />
                     </ui:VisualElement>
                 </ui:VisualElement>
-                <!-- The punch count's leaders: most landed, the fastest glove, the hardest punch. -->
+                <!-- The fastest glove and the hardest punch (punches landed are on the board's rows). -->
                 <ui:Label name="stats" class="res-note" text="" picking-mode="Ignore" />
                 <ui:VisualElement class="grid res-actions" picking-mode="Ignore">
                     <ui:Button name="replay" class="btn btn--tool grid-4 hidden" tooltip="Replay the last knockdown">
@@ -78,12 +78,12 @@
             <ui:VisualElement name="debug-panel" class="debug-panel over hidden" />
 
             <ui:VisualElement name="frame-bottom" class="frame-row frame-row--bottom" picking-mode="Ignore">
-                <ui:Button name="debug" class="chip frame-debug">
+                <ui:Button name="debug" class="chip frame-debug stats-only">
                     <ui:VisualElement name="debug-dot" class="dot" picking-mode="Ignore" />
                     <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

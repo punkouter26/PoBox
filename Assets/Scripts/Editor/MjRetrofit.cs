@@ -6,7 +6,6 @@ using System.Text.RegularExpressions;
 using Mujoco;
 using PoBox.Fx;
 using PoBox.Mj;
-using PoBox.Rl;
 using PoBox.Sim;
 using Unity.InferenceEngine;
 using UnityEditor;
@@ -73,7 +72,7 @@ namespace PoBox.EditorTools
         public static PoBox.UI.MenuView.Boxer Card(string name)
         {
             var cfg = JsonUtility.FromJson<Sizes>(File.ReadAllText($"{BoxersDir}/{Title(name)}/config.json"));
-            string portrait = $"{AssetBakery.PortraitDir}/{name}.png";
+            string portrait = $"{Paths.PortraitDir}/{name}.png";
             if (File.Exists(portrait))
             {
                 AssetDatabase.ImportAsset(portrait);
@@ -252,9 +251,6 @@ namespace PoBox.EditorTools
             return PartKind.Foot;
         }
 
-        static Transform FindDeep(Transform t, string name) =>
-            t.GetComponentsInChildren<Transform>(true).FirstOrDefault(x => x.name == name);
-
         /// <summary>
         /// The boxer dressed for each corner: Assets/Boxers/NAME/NAME Red.prefab and NAME Blue.prefab, variants of
         /// its prefab with the game's parts on it (Fighter, MjBrain, FighterSkin, a BodyPart on every body with
@@ -268,7 +264,7 @@ namespace PoBox.EditorTools
             var cfg = JsonUtility.FromJson<BoxerConfig>(File.ReadAllText($"{dir}/config.json"));
             var overlay = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Fighter_Overlay.mat");
             var trail = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Fx_Trail.mat");
-            var profile = AssetDatabase.LoadAssetAtPath<League.PolicyProfile>($"{AssetBakery.LeagueDir}/Entrant_{name.ToUpperInvariant()}.asset");
+            var profile = AssetDatabase.LoadAssetAtPath<League.PolicyProfile>($"{Paths.LeagueDir}/Entrant_{name.ToUpperInvariant()}.asset");
             var sb = new StringBuilder(title);
             for (int corner = 0; corner < 2; corner++)
             {
@@ -291,7 +287,7 @@ namespace PoBox.EditorTools
                 var byName = new Dictionary<string, BodyPart>();
                 foreach (string body in BodyOrder)
                 {
-                    Transform t = FindDeep(go.transform, prefix + body) ?? throw new System.InvalidOperationException($"{title}: no body {prefix}{body}");
+                    Transform t = go.transform.FindDeep(prefix + body) ?? throw new System.InvalidOperationException($"{title}: no body {prefix}{body}");
                     var part = t.gameObject.AddComponent<BodyPart>();
                     part.owner = fighter;
                     part.kind = KindOf(body);
@@ -302,7 +298,7 @@ namespace PoBox.EditorTools
                     part.renderers = new Renderer[0];   // the shapes stay off; the mesh is what is drawn
                     byName[body] = part;
                 }
-                Transform head = FindDeep(go.transform, prefix + "head_geom");
+                Transform head = go.transform.FindDeep(prefix + "head_geom");
 
                 fighter.corner = corner;
                 fighter.cornerColor = CornerColour[corner];
@@ -340,14 +336,14 @@ namespace PoBox.EditorTools
                 skin.parts = parts.ToArray();
                 skin.rimColor = CornerColour[corner];
                 skin.headOffset = Vector3.zero;
-                skin.trails = new[] { Trail(FindDeep(go.transform, prefix + "glove_l"), trail, CornerColour[corner]),
-                                      Trail(FindDeep(go.transform, prefix + "glove_r"), trail, CornerColour[corner]) };
+                skin.trails = new[] { Trail(go.transform.FindDeep(prefix + "glove_l"), trail, CornerColour[corner]),
+                                      Trail(go.transform.FindDeep(prefix + "glove_r"), trail, CornerColour[corner]) };
                 var mesh = go.GetComponent<SkinBinder>()?.skin;
                 // The glove spheres are MuJoCo's (punches are measured with them) but not drawn: the owner took
                 // the red and blue gloves off on 2026-10-14, and the mesh's own hands show.
                 foreach (string hand in new[] { "glove_l", "glove_r" })
                 {
-                    var r = FindDeep(go.transform, prefix + hand)?.GetComponent<MeshRenderer>();
+                    var r = go.transform.FindDeep(prefix + hand)?.GetComponent<MeshRenderer>();
                     if (r != null) r.enabled = false;
                 }
                 skin.extraRenderers = mesh != null ? mesh.GetComponentsInChildren<Renderer>(true) : new Renderer[0];

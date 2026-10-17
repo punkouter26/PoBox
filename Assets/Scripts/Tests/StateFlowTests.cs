@@ -67,7 +67,7 @@ namespace PoBox.Tests
                 rules.introSeconds = 0.5f;      // unscaled, and a background editor runs at a few frames a second
                 rules.Restart();
                 Time.timeScale = 4f;
-                MeleeHud melee = Object.FindAnyObjectByType<MeleeHud>();
+                MeleeView melee = Object.FindAnyObjectByType<MeleeView>();
                 yield return Until(() => melee.ResultOpen, 30f, "the free-for-all never put its result up");
 
                 // AGAIN: the same free-for-all, to its result again.
@@ -169,7 +169,7 @@ namespace PoBox.Tests
                 menu = Object.FindAnyObjectByType<MenuView>();
                 yield return Press(menu.Root, "melee");
                 yield return Until(() => FreeForAll.Instance != null && FreeForAll.Instance.Phase == FreeForAll.Stage.Fight, 60f, "ALL never reached the fight");
-                MeleeHud melee = Object.FindAnyObjectByType<MeleeHud>();
+                MeleeView melee = Object.FindAnyObjectByType<MeleeView>();
                 Time.timeScale = 0.3f;          // what the bullet time sets in the free-for-all, where no Bout owns the clock
                 melee.ToggleSettings();
                 melee.Back();

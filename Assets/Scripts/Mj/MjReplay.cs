@@ -33,11 +33,8 @@ namespace PoBox.Mj
 
         public static MjReplay Instance { get; private set; }
         public static bool Playing => Instance != null && Instance._playing;
-        public bool IsPlaying => _playing;
         /// <summary>There is something to show: a marked knockdown, or the last seconds recorded.</summary>
         public bool HasClip => _clipCount > 1 || _count > 1;
-        /// <summary>0 to 1 through the clip while it plays.</summary>
-        public float Progress => _playing && _clipCount > 1 ? _at / (_clipCount - 1) : 0f;
 
         MjRing _ring;
         MujocoLib.mjModel_* _m;

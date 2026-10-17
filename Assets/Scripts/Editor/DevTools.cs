@@ -82,10 +82,10 @@ namespace PoBox.EditorTools
             string[] a = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             switch (a[0])
             {
-                case "play": return Play(PoBoxBuilder.ScenePath);
-                case "play-menu": return Play(PoBoxBuilder.MenuScenePath);
-                case "play-testbed": return Play("Assets/Scenes/Testbed.unity");
-                case "play-melee": return Play("Assets/Scenes/Melee.unity");
+                case "play": return Play(Paths.ArenaScene);
+                case "play-menu": return Play(Paths.MenuScene);
+                case "play-testbed": return Play(Paths.TestbedScene);
+                case "play-melee": return Play(Paths.MeleeScene);
                 case "portraits": return Portraits();
                 case "stop": EditorApplication.isPlaying = false; return "stopping";
                 case "step": return "frame " + Step(int.Parse(a[1]));
@@ -387,9 +387,9 @@ namespace PoBox.EditorTools
             if (hud != null && hud.Root != null) return LayoutAudit.Check(hud.Root).Summary();
             MenuView menu = UnityEngine.Object.FindAnyObjectByType<MenuView>();
             if (menu != null && menu.Root != null) return LayoutAudit.Check(menu.Root).Summary();
-            MeleeHud melee = UnityEngine.Object.FindAnyObjectByType<MeleeHud>();
+            MeleeView melee = UnityEngine.Object.FindAnyObjectByType<MeleeView>();
             if (melee != null && melee.Root != null) return LayoutAudit.Check(melee.Root).Summary();
-            PoBox.Mj.TestbedHud testbed = UnityEngine.Object.FindAnyObjectByType<PoBox.Mj.TestbedHud>();
+            PoBox.UI.TestbedView testbed = UnityEngine.Object.FindAnyObjectByType<PoBox.UI.TestbedView>();
             if (testbed != null && testbed.Root != null) return LayoutAudit.Check(testbed.Root).Summary();
             return "no HUD";
         }
@@ -409,7 +409,7 @@ namespace PoBox.EditorTools
             if (b == null || main == null || !EditorApplication.isPlaying) return "play the arena first";
             const int width = 640, height = 832;
             var written = new List<string>();
-            AssetBakery.EnsureFolder(AssetBakery.PortraitDir);
+            Paths.EnsureFolder(Paths.PortraitDir);
 
             Vector3 keptPosition = main.transform.position;
             Quaternion keptRotation = main.transform.rotation;
@@ -454,7 +454,7 @@ namespace PoBox.EditorTools
                     main.Render();
 
                     Texture2D shot = Read(rt);
-                    string path = $"{AssetBakery.PortraitDir}/{f.boxer.Cfg.name}.png";
+                    string path = $"{Paths.PortraitDir}/{f.boxer.Config.name}.png";
                     File.WriteAllBytes(Path.GetFullPath(path), shot.EncodeToPNG());
                     UnityEngine.Object.DestroyImmediate(shot);
                     written.Add(path);

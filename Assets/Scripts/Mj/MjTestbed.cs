@@ -92,9 +92,9 @@ namespace PoBox.Mj
             if (_m == null) return;
             boxer.Bind(_m, _d);
             // Unity keeps its fixed step as 0.004999993, and that is what the plugin gave MuJoCo. The trainer's is exact.
-            _m->opt.timestep = 1.0 / boxer.Cfg.physics_hz;
+            _m->opt.timestep = 1.0 / boxer.Config.physics_hz;
             if (cubes != null) cubes.Bind(_m, _d);
-            _decimation = Math.Max(1, boxer.Cfg.control_decimation);
+            _decimation = Math.Max(1, boxer.Config.control_decimation);
             ControlDt = _m->opt.timestep * _decimation;
             ResetBoxer();
         }
@@ -137,7 +137,7 @@ namespace PoBox.Mj
             if (shoves && Now >= _nextShove)
             {
                 _nextShove = Now + 2.0 + 2.0 * _rng.NextDouble();
-                Shove((10.0 + 20.0 * _rng.NextDouble()) * Math.Min(1.0, boxer.Cfg.strength), (_rng.NextDouble() * 2 - 1) * Math.PI, 0.1 + 0.1 * _rng.NextDouble());
+                Shove((10.0 + 20.0 * _rng.NextDouble()) * Math.Min(1.0, boxer.Config.strength), (_rng.NextDouble() * 2 - 1) * Math.PI, 0.1 + 0.1 * _rng.NextDouble());
             }
             ControlStepBegins?.Invoke();
             boxer.Observe();
@@ -155,7 +155,7 @@ namespace PoBox.Mj
         {
             _behaviour = kind;
             _taskBegan = Now; _checkAt = Now + 4.0; _distAt = boxer.DistanceFromOrigin;
-            if (kind == MjBoxer.Walk) boxer.SetEpisode(MjBoxer.Walk, 0.6 * boxer.Cfg.speed, 0.0, 0.0, 1.2, 0.0);
+            if (kind == MjBoxer.Walk) boxer.SetEpisode(MjBoxer.Walk, 0.6 * boxer.Config.speed, 0.0, 0.0, 1.2, 0.0);
             else if (kind == MjBoxer.Turn) boxer.SetEpisode(MjBoxer.Turn, 0.0, 0.0, 0.0, 1.5, Math.PI);
             else boxer.SetEpisode(MjBoxer.Stand, 0.0, 0.0, 0.0, 1.3, 0.0);
         }
