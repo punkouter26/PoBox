@@ -76,12 +76,7 @@ def policies() -> dict:
     return book
 
 
-def pair_model(a: str, b: str):
-    for x, y in ((a, b), (b, a)):
-        stem = os.path.join(MODELS, f"{x}_vs_{y}")
-        if os.path.exists(stem + "_spar.xml"):
-            return stem, x, y
-    return None, a, b
+pair_model = E.pair_model
 
 
 BOOK = ""
@@ -100,7 +95,7 @@ if __name__ == "__main__":
         del sys.argv[i:i + 2]
     # The old exam with the new bodies, configs and policies put in: its rounds and get-up test call these by name.
     E.HERE = HERE
-    E.load_policy, E.act, E.policies, E.pair_model = load_policy, act, policies, pair_model
+    E.load_policy, E.act, E.policies, E.MODELS = load_policy, act, policies, MODELS
     E.VETERANS = NAMES          # every boxer on the new line is trained with a guard
     _join = os.path.join
 

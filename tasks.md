@@ -292,7 +292,7 @@ Details in `DOCS/README.md`. Things moved out of the tree are in `../PoBox_quara
 - [x] L3 Dead editor code: the bakers' unused halves.
 - [x] L4 No code builds scenes: the one-shot builders deleted (`Paths`, `Lighting` keep what is still used); the three looks built in code are authored volumes (`Look_Rocked`, `Look_Fringe`, `Look_Down`).
 - [x] L5 Unused assets (36 files, 4 MB) and dead fields.
-- [x] L6 Deduplication: `Ui` helpers shared by the three screens; one FindDeep. Training side (exam/exam_v2, footwork_c/eval_cmujoco, pair_xml x3) left for after the night queue, which imports them.
+- [x] L6 Deduplication: `Ui` helpers shared by the three screens; one FindDeep; `exam.MODELS` instead of exam_v2's copy of `pair_model`; footwork_c's angle helpers from eval_cmujoco (both exams smoke-run after). The two `pair_xml` differ (signature and return) and stay.
 - [x] L7 Folders and names: MeleeView, TestbedView, Fx/SkinBinder, Online/, PhysicsXray static, MjBoxer.Config; league-era tools to tools/archive.
 - [x] L8 One settings page: SOUND, VIEW, MORE; quality saved; X-RAY only where there are boxers.
 - [x] L9 The plain broadcast by default: STATS and BETS off; the graph dock, the cycling chip and the result's graph and hit maps cut; three cameras.

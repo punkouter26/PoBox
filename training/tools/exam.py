@@ -442,9 +442,12 @@ def policies() -> dict:
     return book
 
 
+MODELS = os.path.join(HERE, "models", "v2")
+
+
 def pair_model(a: str, b: str):
     for x, y in ((a, b), (b, a)):
-        stem = os.path.join(HERE, "models", "v2", f"{x}_vs_{y}")
+        stem = os.path.join(MODELS, f"{x}_vs_{y}")
         if os.path.exists(stem + "_spar.xml"):
             return stem, x, y
     return None, a, b

@@ -33,17 +33,10 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "tools"))
+from eval_cmujoco import heading, yaw_of  # noqa: E402
+
 STAND, WALK, TURN = 0, 1, 2
-
-
-def yaw_of(q) -> float:
-    w, x, y, z = q
-    return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
-
-
-def heading(v, yaw: float) -> np.ndarray:
-    c, s = math.cos(yaw), math.sin(yaw)
-    return np.array([c * v[0] + s * v[1], -s * v[0] + c * v[1], v[2]])
 
 
 def speed_limit(m, prefix: str, cfg: dict) -> None:
