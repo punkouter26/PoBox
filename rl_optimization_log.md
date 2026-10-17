@@ -1153,3 +1153,24 @@ The queue is `training/queue_night_staged.json` (copied into `logs/queue.json`).
 Smoke first: the m10_matt command, 2 iterations at 512 rings, ran clean (`checkpoints/smoke_m10`, throwaway). Unity stays
 open in edit mode (a clean-up pass is editing scripts; no play mode, so the runner is not held). Nothing is promoted
 overnight: the exams decide and promotion is done with the editor.
+- **Results (23:01-05:07, then the exams 05:51-06:59).** All eight m10 runs ran their 0.75 h (398-480 iterations each, ~19k samples a
+  second; the first half hour of m10_matt ran at ~8k while a UI capture held play mode). **The night's exams were void**: `logs/book_punch.json`
+  named the m9 runs (staged, never trained), so every exam stopped on a missing file in 10 s. A new book, `logs/book_m10.json` (each boxer's
+  m10), and the eight exams again (`exam2_m10_NAME`, 3.5.0, 60 trials, 12 rounds, ~8 min each). Lesson: a queue that trains new runs needs
+  the exam book written for those runs, checked by one two-trial exam before the night starts.
+- **No boxer passes all six lines; the shipped brains pass none of eight under the same rules** (`exam_punch_baseline`, shipped against
+  shipped; the m10 exam is m10 against m10). Lines passed, shipped -> m10: Matt 4 -> 5, Zombie 3 -> 5, Nick 3 -> 5, Grandpa 2 -> 2,
+  Grandma 2 -> 3, Trump 3 -> 5, Kim 3 -> 4, Sokol 4 -> 5. **No line lost anywhere.** Gained: footing for Matt, Zombie, Nick and Trump
+  (falls 1.1-8.1 a minute -> 0.0-0.1); carrying on for Zombie, Nick, Trump, Kim and Sokol (hand-over share 0.5); attack for Grandma
+  (0.19 -> 0.64 a second). Still failing: Matt carrying on (51/57, mark 90%); attack for Zombie (0.72/s), Nick (0.79), Trump (0.44),
+  Kim (0.40), Grandpa (0.02: it blocks, 0.66 a second); footing for Grandpa (2.7), Grandma (7.0), Kim (2.0), Sokol (1.6); Grandma's
+  get-up 0/60 and Grandpa's 24/60 (the D8 get-up problem, untouched by a match round).
+- **The punch variety terms did not work at these weights.** Training's repeat share rose for every boxer (first 20 -> last 20
+  iterations: Matt 0.66 -> 0.76, Sokol 0.76 -> 0.89, Trump 0.17 -> 0.60), combinations stayed at ~0.001 a second and the clinch at 0:
+  with repeat decay 0.7 and combo 0.1 the landing pay still wins, and hurt starts at 0.2 never dazed anyone far enough to clinch.
+  Matt and Sokol still land 0-1% to the head. Next, if wanted: repeat decay 0.4 with the head weighted up (`--head-w`), and combo 0.3.
+- **Not promoted.** m10 beats the shipped brain on every line for seven of eight, under the rules the game now plays by, so promotion is
+  recommended, but it is more than copying the ONNX: these brains read their reserve and daze (`--obs-state`, the config needs
+  `obs_state`), and Matt, Nick, Grandma and Grandpa trained under the speed limit, which the game turns on only with their retrained
+  footwork (D8). It needs the editor (`MjRetrofit.PromoteBoxing`, gate and parity tests), which was held all night by a dialog.
+  Report: `SCREENSHOTS/2026-10-17-night/report.html`.

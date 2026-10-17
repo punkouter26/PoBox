@@ -249,7 +249,11 @@
       },
       "cubes": 8,
       "speed_limit": true,
-      "fatigue_j": 30000.0
+      "fatigue_j": 8000.0,
+      "hit_push": 0.6,
+      "stagger_v": 5.0,
+      "hurt_full": 400.0,
+      "body_drain": 0.0025
     },
     {
       "name": "grandpa",
@@ -495,7 +499,11 @@
       },
       "cubes": 8,
       "speed_limit": true,
-      "fatigue_j": 30000.0
+      "fatigue_j": 8000.0,
+      "hit_push": 0.6,
+      "stagger_v": 5.0,
+      "hurt_full": 400.0,
+      "body_drain": 0.0025
     }
   ],
   "ring_half": 3.05

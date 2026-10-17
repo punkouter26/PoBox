@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight m10 training</title>
+<style>
+  :root { --bg: #f7f7f5; --ink: #1d1f22; --dim: #5d6168; --card: #fff; --line: #e2e2de; --good: #1f7a4d; --bad: #b3261e; --accent: #2b5fb8; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 16px; margin: 18px 0 6px; }
+  .sub { color: var(--dim); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; }
+  .up { color: var(--good); font-weight: 600; } .down { color: var(--bad); font-weight: 600; }
+  img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  .levels p { margin: 6px 0; } .levels b { display: inline-block; min-width: 64px; }
+  .tldr { border-left: 4px solid var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<h1>Overnight training: m10, all eight boxers</h1>
+<p class="sub">2026-10-16 23:01 to 2026-10-17 06:59 · v2 bodies · the game's punch rules on · exams in C MuJoCo 3.5.0, 60 trials, 12 rounds</p>
+
+<div class="card tldr">
+<b>In short.</b> One 45-minute boxing round each, under the rules the game now plays by. No boxer passes all six exam lines, and the
+shipped brains pass none under these rules either. Against the shipped brains, seven of eight gained lines and none lost one: they fall far
+less and keep their feet after getting up. The one-punch spam was <b>not</b> fixed: they repeat the same punch more, not less.
+Nothing is promoted yet (it needs the editor and two config changes); promotion is recommended.
+</div>
+
+<h2>Exam: shipped brain against m10, lines passed of six</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>Shipped</th><th>m10</th><th>Gained</th><th>Still failing</th></tr>
+<tr><td>Matt</td><td>4</td><td class="up">5</td><td>footing (1.11 → 0.00 falls/min)</td><td>carrying on 51/57 (mark 90%)</td></tr>
+<tr><td>Zombie</td><td>3</td><td class="up">5</td><td>footing (8.11 → 0.00), carrying on (36/52 → 52/52)</td><td>attack 0.72/s at 3.6 m/s (mark 4.0 m/s)</td></tr>
+<tr><td>Nick</td><td>3</td><td class="up">5</td><td>footing (8.11 → 0.11), carrying on</td><td>attack 0.79/s</td></tr>
+<tr><td>Trump</td><td>3</td><td class="up">5</td><td>footing (1.22 → 0.00), carrying on</td><td>attack 0.44/s</td></tr>
+<tr><td>Sokol</td><td>4</td><td class="up">5</td><td>carrying on (53/59 → 58/60)</td><td>footing 1.56/min</td></tr>
+<tr><td>Kim</td><td>3</td><td class="up">4</td><td>carrying on</td><td>footing 2.0/min, attack 0.40/s</td></tr>
+<tr><td>Grandma</td><td>2</td><td class="up">3</td><td>attack (0.19 → 0.64/s)</td><td>footing 7.0/min, getting up 0/60</td></tr>
+<tr><td>Grandpa</td><td>2</td><td>2</td><td>none (falls 4.8 → 2.7/min, not enough)</td><td>footing, attack 0.02/s, getting up 24/60</td></tr>
+</table>
+<p class="sub">Shipped is examined against the other shipped brains, m10 against the other m10 brains, both under the same rules
+(<code>logs/exam_punch_baseline.json</code>, <code>logs/exam_m10_NAME.json</code>).</p>
+</div>
+
+<h2>The three charts that matter</h2>
+
+<h3>1. Repeat share: how often the next punch is the same as the last</h3>
+<img src="tb_repeat.png" alt="TensorBoard chart of env/repeat_share for the eight m10 runs, mostly rising">
+<div class="card levels">
+<p><b>Toddler</b> They kept throwing the same punch over and over, and got even more like that.</p>
+<p><b>Child</b> We tried to make a repeated punch worth less so they would mix it up. The line was meant to go down; for every boxer it went up
+(Matt from 0.66 to 0.76, Sokol 0.76 to 0.89, Trump 0.17 to 0.60).</p>
+<p><b>Adult</b> With a repeat decay of 0.7 and a combination bonus of 0.1, landing pay still dominates: the boxers that learned to land more
+learned it with their one best punch. Combinations stayed at about 0.001 a second. Next try: decay 0.4, combination 0.3, and the head weighted up,
+since Matt and Sokol still land 0-1% to the head.</p>
+</div>
+
+<h3>2. Punches landed a second</h3>
+<img src="tb_hits.png" alt="TensorBoard chart of env/hits_per_s, most runs rising slowly">
+<div class="card levels">
+<p><b>Toddler</b> Most of them hit more often by the end.</p>
+<p><b>Child</b> Zombie went from 0.20 to 0.57 a second, Grandma 0.15 to 0.46, Trump 0.15 to 0.48, Nick 0.72 to 0.92. Matt and Sokol, already the
+busiest, stayed about where they were. Grandpa (the flat line at the bottom) still barely punches.</p>
+<p><b>Adult</b> The attack line wants a rate at 4 m/s or more against the whole field; four boxers are still under it. Grandpa blocks 0.66 a
+second and lands 0.02: the same lesson as his D8 run. The punch rules (push, stagger, lasting damage) make the field harder to hit than the
+old training was.</p>
+</div>
+
+<h3>3. Falls an episode</h3>
+<img src="tb_falls.png" alt="TensorBoard chart of env/falls, dropping steeply for seven runs, one staying high">
+<div class="card levels">
+<p><b>Toddler</b> They stopped falling over.</p>
+<p><b>Child</b> Seven of the eight fell far less by the end: Grandma from 0.23 to 0.05, Trump 0.25 to 0.04, Nick 0.19 to 0.05. The line that
+stays high is Kim (0.43 to 0.36).</p>
+<p><b>Adult</b> This is the night's real gain, and it is what the exam's footing and carrying-on lines measured: footing passes for Matt,
+Zombie, Nick and Trump, and carrying on for five, after the hand-over share went from 0.3 to 0.5 (half the episodes start from the moment a
+get-up hands over). Kim's falls are her own: against Grandma and Grandpa, who block, she overreaches.</p>
+</div>
+
+<h2>Against earlier runs</h2>
+<div class="card">
+<p><b>Better:</b> Matt's m9 and rc1 both failed carrying on at 52/58; m10 is 51/57 (the same) but now passes footing without losing attack.
+Zombie's m1 was rejected and sf1 failed attack at 0.20/s; m10 lands 0.72/s and passes five lines. Trump's D8 exam failed attack and guard; m10
+passes guard.</p>
+<p><b>Worse or flat:</b> the punch mix (above). Grandpa is flat. Grandma's get-up is still 0 of 60: a match round cannot fix a get-up policy
+that never stands unaided under the speed limit.</p>
+</div>
+
+<h2>What went wrong in the night</h2>
+<div class="card">
+<p>The eight exams after each run stopped in ten seconds: the exam book (<code>logs/book_punch.json</code>) named the m9 runs, which were staged
+but never trained. A new book (<code>logs/book_m10.json</code>) and the eight exams ran again in the morning (05:51-06:59). A UI capture held
+play mode for about ten minutes at the start of Matt's run (8k samples a second, then 19k).</p>
+</div>
+
+<h2>To promote m10</h2>
+<div class="card">
+<p>Recommended for the seven that gained lines (Grandpa is no better). It needs the editor and, per boxer:</p>
+<ol>
+<li><code>obs_state</code> in <code>Assets/Boxers/NAME/config.json</code> (these brains read their reserve and daze as inputs).</li>
+<li>For Matt, Nick and Grandma, trained under the speed limit: the speed limit on in the game too, with their retrained footwork (the D8 rule).</li>
+<li><code>MjRetrofit.PromoteBoxing(name, "m10_NAME", get-up run)</code>, then MjGate and MjParity tests, then the CPU Elo again.</li>
+</ol>
+</div>
+</main>
+</body>
+</html>
