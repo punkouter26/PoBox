@@ -25,6 +25,7 @@ namespace PoBox.Fx
         public float strength = 0.35f;
 
         CinemachineImpulseSource _source;
+        float _shakeAt = -99f;
         Vector3 _offset, _placed;
         Quaternion _turn = Quaternion.identity;
 
@@ -35,7 +36,7 @@ namespace PoBox.Fx
             // As the broadcast director's: Dissipating (Legacy needs a signal asset), a short bump, its own channel.
             def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Dissipating;
             def.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
-            def.ImpulseDuration = 0.22f;
+            def.ImpulseDuration = BroadcastDirector.ShakeSeconds;
             def.DissipationDistance = 40f;
             def.DissipationRate = 0.25f;
             def.ImpulseChannel = 2;
@@ -57,7 +58,8 @@ namespace PoBox.Fx
         void OnHit(HitEvent e)
         {
             float k = Mathf.InverseLerp(hitImpulse.x, hitImpulse.y, e.impulse);
-            if (k <= 0f) return;
+            if (k <= 0f || Time.unscaledTime - _shakeAt < BroadcastDirector.ShakeSeconds * 0.6f) return;
+            _shakeAt = Time.unscaledTime;
             Vector3 n = e.normal.sqrMagnitude > 0.01f ? e.normal.normalized : Vector3.down;
             _source.GenerateImpulseAtPositionWithVelocity(e.point, -n * (k * strength));
         }
@@ -65,7 +67,9 @@ namespace PoBox.Fx
         void OnFloor(Vector3 point, float impulse)
         {
             float k = Mathf.Clamp01(impulse / fullFall);
-            if (k > 0.3f) _source.GenerateImpulseAtPositionWithVelocity(point, Vector3.down * (k * strength));
+            if (k <= 0.3f || Time.unscaledTime - _shakeAt < BroadcastDirector.ShakeSeconds * 0.6f) return;
+            _shakeAt = Time.unscaledTime;
+            _source.GenerateImpulseAtPositionWithVelocity(point, Vector3.down * (k * strength));
         }
 
         void LateUpdate()

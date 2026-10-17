@@ -113,7 +113,11 @@ namespace PoBox.Broadcast
             _bandBottomWanted = Mathf.Clamp(bottom01, _bandTopWanted + 0.1f, 1f);
         }
 
+        /// <summary>How long one camera shake lasts, real seconds; <see cref="Fx.CameraJolt"/> uses it too.</summary>
+        public const float ShakeSeconds = 0.5f;
+
         CinemachineImpulseSource _impulse;
+        float _shakeAt = -99f;
         Fighter _initiative, _impactVictim;
         Shot _forced;
         float _forcedUntil, _nextCut, _lastImpactCut = -99f, _cutAt, _orbitAngle, _orbitHeldUntil, _sepSmooth = 1.2f, _sepVelocity;
@@ -128,7 +132,8 @@ namespace PoBox.Broadcast
             // Dissipating, not the default Legacy, which needs a signal asset and is silent without one.
             def.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Dissipating;
             def.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Bump;
-            def.ImpulseDuration = 0.22f;
+            // Long enough that the picture sways rather than snaps (0.22 s read as a jitter).
+            def.ImpulseDuration = ShakeSeconds;
             def.DissipationDistance = 40f;
             def.DissipationRate = 0.25f;
             def.ImpulseChannel = 1;
@@ -182,8 +187,12 @@ namespace PoBox.Broadcast
         {
             _initiative = e.attacker;
             float strength = Mathf.Clamp01(e.impulse / 25f);
-            if (e.impulse > 3f && _impulse != null)
+            // One shake at a time: a combo's punches would otherwise stack bumps into a rattle.
+            if (e.impulse > 3f && _impulse != null && Time.unscaledTime - _shakeAt >= ShakeSeconds * 0.6f)
+            {
+                _shakeAt = Time.unscaledTime;
                 _impulse.GenerateImpulseAtPositionWithVelocity(e.point, -e.normal * (strength * shakeVelocity));
+            }
 
             // A close-up locked on one boxer by hand stays on that boxer.
             if (Pinned == Shot.Impact) return;
@@ -199,6 +208,7 @@ namespace PoBox.Broadcast
             _lastImpactCut = Time.unscaledTime;
             if (Pinned != Shot.Impact) _impactVictim = f;
             Force(Shot.Impact, 1.3f);
+            _shakeAt = Time.unscaledTime;
             if (_impulse != null) _impulse.GenerateImpulseAtPositionWithVelocity(f.pelvis.transform.position, Vector3.down * shakeVelocity);
         }
 
