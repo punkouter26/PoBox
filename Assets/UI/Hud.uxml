@@ -5,10 +5,10 @@
     Anchors that never move:
         top-left      the game's name
         top-right     the menu (three bars; a cross while it is open)
+        bottom-right  the version: the day the build was made, YYMMDD
     and, with the settings' STATS on (class stats-only: out of the layout while the root is plain):
         top-centre    the frame rate (tap: the debug panel opens or closes)
         bottom-left   DEBUG
-        bottom-right  the version
 
     Between them, top to bottom: the scoreboard and the picture.
 
@@ -264,7 +264,7 @@
                     <ui:Label name="debug-text" class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="000000" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

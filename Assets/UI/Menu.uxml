@@ -73,7 +73,7 @@
                     <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="000000" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

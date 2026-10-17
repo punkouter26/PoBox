@@ -42,7 +42,7 @@ namespace PoBox.UI
             _behaviour = root.Q<Button>("behaviour");
             _shove = root.Q<Button>("shove");
             _fps = root.Q<Button>("fps");
-            root.Q<Label>("version").text = $"v{Application.version}  MuJoCo {MujocoLib.mj_version() / 1000000}.{MujocoLib.mj_version() / 1000 % 1000}.{MujocoLib.mj_version() % 1000}";
+            root.Q<Label>("version").text = $"{Application.version}  MuJoCo {MujocoLib.mj_version() / 1000000}.{MujocoLib.mj_version() / 1000 % 1000}.{MujocoLib.mj_version() % 1000}";
 
             root.Q<Button>("menu").clicked += () => Open(_sheet, !Showing(_sheet));
             root.Q<Button>("debug").clicked += () => Open(_debugPanel, !Showing(_debugPanel));

@@ -2,7 +2,7 @@
 <!--
     PoBox: the free-for-all's HUD (Melee scene, MeleeView.cs), on the same anchors as the HUD and the first
     screen: the round and its time top-left, the way back and the settings top-right; with the settings' STATS on,
-    the frame rate top-centre (tap: the debug panel), DEBUG bottom-left and the version bottom-right. Under the frame, every boxer in the ring in
+    the frame rate top-centre (tap: the debug panel) and DEBUG bottom-left; the version (YYMMDD) bottom-right always. Under the frame, every boxer in the ring in
     two rows of four (MeleeHud builds them): its colour, its name, and nothing while it fights, the count over it,
     SLIP, OUT or WINNER. The referee's calls across the middle; the result, the same card as the arena's, docked at
     the bottom with REPLAY, SHARE, AGAIN and MENU; the settings and the debug panel docked there too, one at a time.
@@ -83,7 +83,7 @@
                     <ui:Label class="frame-debug-text" text="DEBUG" picking-mode="Ignore" />
                 </ui:Button>
                 <ui:VisualElement class="spacer" picking-mode="Ignore" />
-                <ui:Label name="version" class="chip frame-version stats-only" text="v0.0.0" picking-mode="Ignore" />
+                <ui:Label name="version" class="chip frame-version" text="000000" picking-mode="Ignore" />
             </ui:VisualElement>
 
         </ui:VisualElement>

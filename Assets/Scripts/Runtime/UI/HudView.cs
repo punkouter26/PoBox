@@ -17,8 +17,8 @@ namespace PoBox.UI
     /// <summary>
     /// The whole interface, in one document, on one portrait screen, with nothing that scrolls.
     ///
-    /// The game's name top-left and the menu top-right never move; with the settings' STATS on (Ui.Frame), so do the
-    /// frame rate top-centre, DEBUG bottom-left and the version bottom-right. Between them: a scoreboard of three
+    /// The game's name top-left, the menu top-right and the version (the build's day, YYMMDD) bottom-right never move;
+    /// with the settings' STATS on (Ui.Frame), nor do the frame rate top-centre and DEBUG bottom-left. Between them: a scoreboard of three
     /// rows (the names written on the health bars with the clock between them, a hit leaving a pale chunk on the bar
     /// that drains a moment later; a tug-of-war win-probability bar; the punches landed, and with STATS the hardest
     /// hit) and the picture.

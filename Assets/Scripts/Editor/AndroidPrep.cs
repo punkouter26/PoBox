@@ -122,6 +122,12 @@ namespace PoBox.EditorTools
             string report = Report(true);
             if (report.StartsWith("NOT ready")) { Debug.LogError("[PoBox] Android build not started. " + report); return; }
             Directory.CreateDirectory("Build/Android");
+            // The version is the day it was built, YYMMDD, shown bottom right on every screen; as the version code it
+            // only ever goes up, so a phone takes each build over the last.
+            string day = DateTime.Now.ToString("yyMMdd");
+            PlayerSettings.bundleVersion = day;
+            PlayerSettings.Android.bundleVersionCode = int.Parse(day);
+            AssetDatabase.SaveAssets();
             var options = new BuildPlayerOptions
             {
                 scenes = Array.ConvertAll(EditorBuildSettings.scenes, s => s.path),

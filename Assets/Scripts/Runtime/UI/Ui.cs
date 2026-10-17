@@ -15,13 +15,14 @@ namespace PoBox.UI
 
         /// <summary>
         /// The frame's furniture as the settings have it: with STATS off the document's root is "plain" and every
-        /// element marked "stats-only" (the frame rate, DEBUG, the version, the numbers) is out of the layout.
+        /// element marked "stats-only" (the frame rate, DEBUG, the numbers) is out of the layout. The version, bottom
+        /// right, is always there: the day the build was made, YYMMDD (AndroidPrep.Build stamps it).
         /// </summary>
         public static void Frame(VisualElement root)
         {
             if (root == null) return;
             root.EnableInClassList("plain", !SettingsPage.Stats);
-            Set(root.Q<Label>("version"), "v" + Application.version);
+            Set(root.Q<Label>("version"), Application.version);
         }
 
         /// <summary>The frame rate on its chip and DEBUG's dot, both coloured by how far over budget the frame is.</summary>

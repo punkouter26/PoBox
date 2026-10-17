@@ -13,7 +13,7 @@ namespace PoBox.UI
 {
     /// <summary>
     /// The free-for-all's HUD (Assets/UI/Melee.uxml), on the anchors every screen has: the round and its time, the way
-    /// back and the settings along the top (with the settings' STATS, the frame rate, DEBUG and the version too); every boxer
+    /// back and the settings along the top, the version bottom right (with the settings' STATS, the frame rate and DEBUG too); every boxer
     /// in two rows of four (its colour, its name, and the count over it, SLIP, OUT or WINNER); the referee's calls
     /// (SimBus.Say) across the picture; the result, the arena's card, with REPLAY, SHARE, AGAIN and MENU when it is
     /// over. The debug panel has the frame, the physics and the brains' costs; three fingers, or a long press on the
