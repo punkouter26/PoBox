@@ -116,7 +116,7 @@ pair model, and runs the self-collision check on each body:
   in, a charge for being crowded. It changes nothing about what a hit is. `tools/restyle.py` writes a
   changed style into the rig and every config without rebuilding a body.
 
-**The league is `tools/league.py`**: each boxer 18 minutes on the bag from `bag_matt` (a warm start), then
+**The league is `tools/archive/league.py`**: each boxer 18 minutes on the bag from `bag_matt` (a warm start), then
 five rounds of three ring sessions. `train_box.py` gained `--freeze NAME` (a partner that boxes its best punch
 and does not learn) and `--career` (one TensorBoard line per boxer, `boxer_<name>`, through every stage).
 
@@ -131,7 +131,7 @@ What the night taught:
 - **A style that keeps opponents out needs opponents who are paid to come in.** Grandpa (long arms, paid to
   stand at 0.90 m) was out of everyone's reach. Nick, who is paid to walk in, was the only one who landed
   on him (0.96 a second); Trump is paid for it too and did not.
-- **When a session leaves a boxer worse, put the earlier policy back**: `tools/restore_policy.py` writes it
+- **When a session leaves a boxer worse, put the earlier policy back**: `tools/archive/restore_policy.py` writes it
   over the checkpoint the league will resume from and keeps the bad one as `passive_<name>.pt`. A rejected
   session's folder has `REJECTED.txt`, or the one bad `.onnx` deleted, so the importer passes it over.
 - **The viewer and the editor cost training**: the editor in Play mode halves it; MuJoCo's viewer on the
