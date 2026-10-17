@@ -59,6 +59,12 @@ RANGES_DEG = {
     "shoulder_z": (-110, 110),  # with the arm down this is the swing forward and back
     "elbow": (-150, 0),         # left; mirrored on the right
 }
+# A person's joints are not as strong one way as the other (models/v3, a rig with "human_force": true): the share of the
+# force limit each way, (negative, positive). Dorsiflexing the foot (ankle_y < 0) takes about a fifth of the torque of
+# pointing it; bending the knee (knee > 0) about half that of straightening it; turning the hip in or out (hip_z) a
+# third of the hip's swing. Measured strength ratios from the dynamometry literature, rounded; rolling the foot
+# (ankle_x) already has its own small limit.
+HUMAN_FORCE = {"ankle_y": (0.2, 1.0), "knee": (1.0, 0.5), "hip_z": (0.3, 0.3)}
 ARMATURE = {"abdomen": 0.08, "hip": 0.10, "knee": 0.10, "ankle": 0.03, "shoulder": 0.03, "elbow": 0.02}
 # Winter / Dempster segment masses as a fraction of body mass.
 SEGMENT_MASS_FRAC = {
@@ -112,6 +118,10 @@ class Fighter:
         self.strength = float(rig.get("strength", 1.0))
         self.speed = float(rig.get("speed", 1.0))
         self.mass_kg = float(rig.get("mass_kg", 75.0))
+        # models/v3: each way's force limit as a person's (HUMAN_FORCE), a drive's own damping measured standing
+        # (tools/pd_sweep.py --loaded --rig), and the head's sphere; all optional, a rig without them builds as before.
+        self.human_force = bool(rig.get("human_force", False))
+        self.joint_kv = {k: float(v) for k, v in rig.get("joint_kv", {}).items()}
         self.joints: List[Dict] = []
         self.actuators: List[str] = []
         self.lines: List[str] = []
@@ -148,15 +158,20 @@ class Fighter:
             default = -default
         full = f"{name}_{side}" if side else name
         kp, kv, fl = (round(x * self.strength, 3) for x in JOINT_GAINS.get(name, self.gains[group]))
+        kv = self.joint_kv.get(full, self.joint_kv.get(name, kv))
+        neg, pos = HUMAN_FORCE.get(name, (1.0, 1.0)) if self.human_force else (1.0, 1.0)
+        if side == "r" and name in MIRRORED:
+            neg, pos = pos, neg
+        f_lo, f_hi = round(fl * neg, 3), round(fl * pos, 3)
         arm = ARMATURE[group]
         self.joints.append({
             "name": full, "group": group, "axis": axis,
             "lower": math.radians(lo), "upper": math.radians(hi), "default": math.radians(default),
-            "kp": kp, "kv": kv, "force_limit": fl, "armature": arm,
+            "kp": kp, "kv": kv, "force_limit": fl, "force_lo": -f_lo, "force_hi": f_hi, "armature": arm,
             "velocity_limit": round(VELOCITY_LIMIT[group] * self.speed, 3),
         })
         self.actuators.append(
-            f'<position name="{self.p}{full}" joint="{self.p}{full}" kp="{kp}" kv="{kv}" forcerange="-{fl} {fl}" '
+            f'<position name="{self.p}{full}" joint="{self.p}{full}" kp="{kp}" kv="{kv}" forcerange="-{f_lo} {f_hi}" '
             f'ctrlrange="{math.radians(lo):.4f} {math.radians(hi):.4f}"/>')
         return (f'<joint name="{self.p}{full}" type="hinge" axis="{axis}" range="{lo} {hi}" '
                 f'damping="0.5" armature="{arm}" stiffness="0"/>')
@@ -379,6 +394,11 @@ def fighter_config(rig: Dict, name: str, rig_path: str, a: "Fighter", root_z: fl
         "force_limit": [j["force_limit"] for j in a.joints],
         "armature": [j["armature"] for j in a.joints],
         "velocity_limit": [j["velocity_limit"] for j in a.joints],
+        **({"force_lo": [j["force_lo"] for j in a.joints], "force_hi": [j["force_hi"] for j in a.joints]} if a.human_force else {}),
+        # models/v3: each joint's radians per unit of action, its furthest reach from the guard over the clip, so the clip
+        # is the joint's range (one 0.5 for all of them could not straighten an elbow: 1.5 rad from the guard, 1.95 needed).
+        **({"action_scale_j": [round(max(j["upper"] - j["default"], j["default"] - j["lower"]) / 3.0, 4) for j in a.joints]}
+           if rig.get("per_joint_action", False) else {}),
         "total_mass_kg": report["mass_kg"],
         "height_m": rig.get("height_m", 0.0),
         "stand_height": round(root_z, 4),
@@ -484,7 +504,7 @@ def main() -> None:
     ap.add_argument("--name", default="fighter")
     ap.add_argument("--versus", default="", help="a second rig: also writes <name>_vs_<versus-name>_spar.xml, the two in one ring")
     ap.add_argument("--versus-name", default="")
-    ap.add_argument("--out-dir", default=os.path.join(HERE, "models"))
+    ap.add_argument("--out-dir", default=os.path.join(HERE, "models", "v2"))
     ap.add_argument("--cubes", type=int, default=0, help="cubes in the pool thrown at the fighter (see cubes_xml)")
     args = ap.parse_args()
     os.makedirs(args.out_dir, exist_ok=True)

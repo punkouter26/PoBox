@@ -98,6 +98,15 @@ class ExamRing(Ring):
         self.hurt, self.stagger, self.share = np.zeros(2), np.zeros(2), np.zeros(2)
         self.push = np.zeros((2, 6))          # force and torque on each trunk for the next control step
         self.b_torso = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, p + "torso") for p in ("a_", "b_")]
+        # models/v3 (envs/boxing.py): each joint's action scale, and a tired drive's torque capped (fatigue_ceiling) at what
+        # is left of its force range, from the model, per side.
+        A = self.A
+        self.act_scale = [np.array(c.get("action_scale_j", [0.5] * A)) for c in self.cfgs]
+        self.ceiling = [bool(c.get("fatigue_ceiling", False)) for c in self.cfgs]
+        self.kp = [m.actuator_gainprm[k * A:(k + 1) * A, 0].copy() for k in range(2)]
+        self.kv = [-m.actuator_biasprm[k * A:(k + 1) * A, 2].copy() for k in range(2)]
+        self.f_lo = [m.actuator_forcerange[k * A:(k + 1) * A, 0].copy() for k in range(2)]
+        self.f_hi = [m.actuator_forcerange[k * A:(k + 1) * A, 1].copy() for k in range(2)]
 
     def state(self, k: int) -> np.ndarray:
         """What a policy trained with obs_state reads in the command's place (envs/match.py)."""
@@ -169,11 +178,15 @@ class ExamRing(Ring):
                 continue
             a = np.asarray(actions[k]).clip(-3.0, 3.0)
             self.last[k] = a
-            w = (self.default[k] + a * 0.5).clip(self.lo[k], self.hi[k])
+            w = (self.default[k] + a * self.act_scale[k]).clip(self.lo[k], self.hi[k])
             q = d.qpos[self.jq[k]]
-            scale = self.scale[k] * (1.0 - 0.4 * np.clip(1.0 - self.reserve[k] / 0.5, 0.0, 1.0))
+            tired = 1.0 - 0.4 * np.clip(1.0 - self.reserve[k] / 0.5, 0.0, 1.0)
+            scale = self.scale[k] * (1.0 if self.ceiling[k] else tired)
             if scale < 0.999:
                 w = q + scale * (w - q)
+            if self.ceiling[k] and tired < 0.999:
+                base = q + self.kv[k] * d.qvel[self.jv[k]] / self.kp[k]
+                w = np.minimum(np.maximum(w, base + tired * self.f_lo[k] / self.kp[k]), base + tired * self.f_hi[k] / self.kp[k])
             want.append(w)
         d.ctrl[:] = np.concatenate(want)
         for k in range(2):
@@ -431,7 +444,7 @@ def policies() -> dict:
 
 def pair_model(a: str, b: str):
     for x, y in ((a, b), (b, a)):
-        stem = os.path.join(HERE, "models", f"{x}_vs_{y}")
+        stem = os.path.join(HERE, "models", "v2", f"{x}_vs_{y}")
         if os.path.exists(stem + "_spar.xml"):
             return stem, x, y
     return None, a, b
@@ -463,6 +476,7 @@ def main() -> None:
             stem, x, y = pair_model(a, b)
             if stem:
                 pairs.append((stem, x, y))
+    # Three parts on purpose: tools/exam_v2.py redirects exactly this join to its --models folder (v2 or v3).
     cfgs = {n: json.load(open(os.path.join(HERE, "models", f"{n}_policy_config.json"), encoding="utf-8")) for n in names}
     rows = {n: {"vs": {}, "getup": None} for n in subjects}
     t0 = time.time()

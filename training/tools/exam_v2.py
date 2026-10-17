@@ -88,6 +88,11 @@ BOOK = ""
 
 
 if __name__ == "__main__":
+    if "--models" in sys.argv:
+        # models/v3 (or another folder of the same bodies' files): the pairs and configs are read from there.
+        i = sys.argv.index("--models")
+        MODELS = sys.argv[i + 1] if os.path.isabs(sys.argv[i + 1]) else os.path.join(HERE, sys.argv[i + 1])
+        del sys.argv[i:i + 2]
     if "--book" in sys.argv:
         # Kept before it leaves argv (exam.py's parser does not know it); policies() reads it later.
         i = sys.argv.index("--book")

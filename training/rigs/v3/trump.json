@@ -1,0 +1,382 @@
+{
+  "source": "C:/Users/punko/Downloads/PoBox/RIGGED_Trump.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.9,
+  "mass_kg": 108.3,
+  "notes": [
+    "mass from the mesh's volume: 183 litres is a body-mass index of 49.9, held to 30",
+    "trunk slimmed to torso 0.127, pelvis 0.091: its own arms touched it",
+    "trunk slimmed to torso 0.119, pelvis 0.086: its own arms touched it",
+    "trunk slimmed to torso 0.112, pelvis 0.081: its own arms touched it",
+    "trunk slimmed to torso 0.105, pelvis 0.076: its own arms touched it",
+    "v3 (tools/build_v3.py): human force each way, per-joint action scale, head 0.114 m (95% of its half-width), joint_kv standing",
+    "joint_kv from tools/pd_sweep.py --loaded (target zeta 0.85)"
+  ],
+  "bones": [
+    {
+      "name": "mixamorig:Hips",
+      "parent": null,
+      "head": [
+        0.0,
+        -0.0,
+        0.85
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        0.98
+      ]
+    },
+    {
+      "name": "mixamorig:LeftUpLeg",
+      "parent": "mixamorig:Hips",
+      "head": [
+        0.11,
+        0.02,
+        0.8
+      ],
+      "tail": [
+        0.145,
+        0.03,
+        0.44
+      ]
+    },
+    {
+      "name": "mixamorig:LeftLeg",
+      "parent": "mixamorig:LeftUpLeg",
+      "head": [
+        0.145,
+        0.03,
+        0.44
+      ],
+      "tail": [
+        0.16,
+        0.035,
+        0.1
+      ]
+    },
+    {
+      "name": "mixamorig:LeftFoot",
+      "parent": "mixamorig:LeftLeg",
+      "head": [
+        0.16,
+        0.035,
+        0.1
+      ],
+      "tail": [
+        0.17,
+        -0.12,
+        0.03
+      ]
+    },
+    {
+      "name": "mixamorig:LeftToeBase",
+      "parent": "mixamorig:LeftFoot",
+      "head": [
+        0.17,
+        -0.12,
+        0.03
+      ],
+      "tail": [
+        0.173,
+        -0.1665,
+        0.009
+      ]
+    },
+    {
+      "name": "mixamorig:RightUpLeg",
+      "parent": "mixamorig:Hips",
+      "head": [
+        -0.11,
+        0.02,
+        0.8
+      ],
+      "tail": [
+        -0.145,
+        0.03,
+        0.44
+      ]
+    },
+    {
+      "name": "mixamorig:RightLeg",
+      "parent": "mixamorig:RightUpLeg",
+      "head": [
+        -0.145,
+        0.03,
+        0.44
+      ],
+      "tail": [
+        -0.16,
+        0.035,
+        0.1
+      ]
+    },
+    {
+      "name": "mixamorig:RightFoot",
+      "parent": "mixamorig:RightLeg",
+      "head": [
+        -0.16,
+        0.035,
+        0.1
+      ],
+      "tail": [
+        -0.17,
+        -0.12,
+        0.03
+      ]
+    },
+    {
+      "name": "mixamorig:RightToeBase",
+      "parent": "mixamorig:RightFoot",
+      "head": [
+        -0.17,
+        -0.12,
+        0.03
+      ],
+      "tail": [
+        -0.173,
+        -0.1665,
+        0.009
+      ]
+    },
+    {
+      "name": "mixamorig:Spine",
+      "parent": "mixamorig:Hips",
+      "head": [
+        0.0,
+        -0.0,
+        0.98
+      ],
+      "tail": [
+        0.0,
+        -0.0,
+        1.13
+      ]
+    },
+    {
+      "name": "mixamorig:Spine2",
+      "parent": "mixamorig:Spine1",
+      "head": [
+        0.0,
+        -0.0,
+        1.28
+      ],
+      "tail": [
+        0.0,
+        -0.01,
+        1.56
+      ]
+    },
+    {
+      "name": "mixamorig:LeftArm",
+      "parent": "mixamorig:LeftShoulder",
+      "head": [
+        0.2,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        0.42,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:LeftForeArm",
+      "parent": "mixamorig:LeftArm",
+      "head": [
+        0.42,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        0.6402,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:LeftHand",
+      "parent": "mixamorig:LeftForeArm",
+      "head": [
+        0.6402,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        0.7715,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:LeftHandMiddle1",
+      "parent": "mixamorig:LeftHand",
+      "head": [
+        0.7515,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        0.7715,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:Neck",
+      "parent": "mixamorig:Spine2",
+      "head": [
+        0.0,
+        -0.01,
+        1.56
+      ],
+      "tail": [
+        0.0,
+        -0.02,
+        1.66
+      ]
+    },
+    {
+      "name": "mixamorig:Head",
+      "parent": "mixamorig:Neck",
+      "head": [
+        0.0,
+        -0.02,
+        1.66
+      ],
+      "tail": [
+        0.0,
+        -0.02,
+        1.9
+      ]
+    },
+    {
+      "name": "mixamorig:RightArm",
+      "parent": "mixamorig:RightShoulder",
+      "head": [
+        -0.2,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        -0.42,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:RightForeArm",
+      "parent": "mixamorig:RightArm",
+      "head": [
+        -0.42,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        -0.6402,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:RightHand",
+      "parent": "mixamorig:RightForeArm",
+      "head": [
+        -0.6402,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        -0.7715,
+        0.06,
+        1.5
+      ]
+    },
+    {
+      "name": "mixamorig:RightHandMiddle1",
+      "parent": "mixamorig:RightHand",
+      "head": [
+        -0.7515,
+        0.06,
+        1.5
+      ],
+      "tail": [
+        -0.7715,
+        0.06,
+        1.5
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "mixamorig:Hips",
+    "neck": "mixamorig:Neck",
+    "head": "mixamorig:Head",
+    "spine": "mixamorig:Spine",
+    "torso": "mixamorig:Spine2",
+    "thigh_l": "mixamorig:LeftUpLeg",
+    "shin_l": "mixamorig:LeftLeg",
+    "foot_l": "mixamorig:LeftFoot",
+    "toe_l": "mixamorig:LeftToeBase",
+    "upper_arm_l": "mixamorig:LeftArm",
+    "forearm_l": "mixamorig:LeftForeArm",
+    "hand_l": "mixamorig:LeftHand",
+    "hand_tip_l": "mixamorig:LeftHandMiddle1",
+    "thigh_r": "mixamorig:RightUpLeg",
+    "shin_r": "mixamorig:RightLeg",
+    "foot_r": "mixamorig:RightFoot",
+    "toe_r": "mixamorig:RightToeBase",
+    "upper_arm_r": "mixamorig:RightArm",
+    "forearm_r": "mixamorig:RightForeArm",
+    "hand_r": "mixamorig:RightHand",
+    "hand_tip_r": "mixamorig:RightHandMiddle1"
+  },
+  "all_bones": 24,
+  "radii": {
+    "thigh": 0.09,
+    "shin": 0.062,
+    "upper_arm": 0.058,
+    "forearm": 0.048,
+    "torso": 0.1054,
+    "pelvis": 0.0759,
+    "head": 0.114
+  },
+  "mesh": {
+    "vertices": 31895,
+    "height_m": 1.9,
+    "volume_l": 182.7,
+    "bmi_from_volume": 49.9
+  },
+  "strength": 1.102,
+  "speed": 1.0,
+  "style": {
+    "head": 1.8,
+    "body": 0.8,
+    "power": 1.8,
+    "pace_s": 0.9,
+    "taken": 0.4,
+    "block_w": 0.0,
+    "range_m": 0.6,
+    "press": 0.4,
+    "energy": 0.8
+  },
+  "display": "TRUMP",
+  "persona": "brawler",
+  "says": "comes forward, big slow shots to the head, little guard",
+  "human_force": true,
+  "per_joint_action": true,
+  "joint_kv": {
+    "abdomen_z": 41.2,
+    "abdomen_y": 57.855,
+    "abdomen_x": 57.855,
+    "shoulder_x": 3.526,
+    "shoulder_z": 8.999,
+    "elbow": 3.244,
+    "hip_x": 59.163,
+    "hip_z": 13.224,
+    "hip_y": 58.946,
+    "knee": 19.027,
+    "ankle_y": 13.224,
+    "ankle_x": 1.763
+  }
+}

@@ -44,6 +44,12 @@ def observe(self, g):
 
 
 if __name__ == "__main__":
+    if "--models" in sys.argv:
+        # models/v3: envs/cgetup.py reads its bodies from C.MODELS.
+        i = sys.argv.index("--models")
+        V2 = sys.argv[i + 1] if os.path.isabs(sys.argv[i + 1]) else _join(HERE, sys.argv[i + 1])
+        del sys.argv[i:i + 2]
+    C.MODELS = V2
     C.os.path.join = join
     C.CGetUp._observe = observe
     B.PPO = PPO103

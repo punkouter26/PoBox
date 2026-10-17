@@ -76,6 +76,7 @@ class Solo:
         self.key = m.key_qpos[0].copy()
         self.default, self.stand = self.key[self.jq], float(self.key[2])
         self.lo, self.hi = np.array(cfg["lower"]), np.array(cfg["upper"])
+        self.act_scale = np.array(cfg.get("action_scale_j", [0.5] * len(cfg["lower"])))     # models/v3: per joint (envs/boxing.py)
         self.limit = np.array(cfg["velocity_limit"])
         self.frail, self.quick = min(1.0, float(cfg.get("strength", 1.0))), float(cfg.get("speed", 1.0))
         self.ring_half = float(cfg.get("ring_half", 3.05))
@@ -179,7 +180,7 @@ class Solo:
         m, d = self.m, self.d
         action = np.asarray(action, dtype=float).clip(-3.0, 3.0)
         self.last = action
-        want = (self.default + action * 0.5).clip(self.lo, self.hi)
+        want = (self.default + action * self.act_scale).clip(self.lo, self.hi)
         q = d.qpos[self.jq]
         d.ctrl[:] = q + self.scale * (want - q)      # a weakened boxer is asked for a point part of the way (envs/boxing.py)
         d.xfrc_applied[self.torso_body, :3] = self.shove_force if self.shove_left > 1e-6 else 0.0

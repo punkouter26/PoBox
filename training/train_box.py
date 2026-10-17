@@ -143,6 +143,12 @@ def main() -> None:
     ap.add_argument("--seek-w", type=float, default=0.0,
                     help="pay per m/s of closing on the opponent while outside punching range, whatever the style "
                          "(tasks.md F2); 0 = off. Try 0.3")
+    ap.add_argument("--selfcontact-w", type=float, default=0.0,
+                    help="footwork and spar: charge per cm of the boxer's own parts pressed into each other (envs/boxing.py); 0 = off. Try 0.02")
+    ap.add_argument("--repeat-decay", type=float, default=1.0, help="spar: the same punch again is worth this times the last one's pay; 1 = off")
+    ap.add_argument("--combo-w", type=float, default=0.0, help="spar: pay per m/s of a punch landed within 0.8 s of one from the other hand")
+    ap.add_argument("--hurt-start", type=float, default=0.0, help="spar: share of episodes that begin dazed (needs --daze)")
+    ap.add_argument("--fatigue-ceiling", action="store_true", help="spar: a tired drive's torque is capped instead of its spring weakened")
     ap.add_argument("--ropes-start", type=float, default=0.0,
                     help="share of episodes that begin as a free-for-all round does: both boxers at the ropes, facing the "
                          "middle (tasks.md F3); 0 = none. Try 0.3")
@@ -173,7 +179,8 @@ def main() -> None:
                           fall_penalty=args.fall_penalty, walk_share=args.walk_share, turn_share=args.turn_share,
                           disturb=args.disturb, randomise=args.randomise, rsi=args.rsi,
                           shove_hi=args.shove_max, start_spread=args.start_spread,
-                          speed_limit=args.speed_limit, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max)
+                          speed_limit=args.speed_limit, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
+                          selfcontact_w=args.selfcontact_w)
     else:
         env = (MatchEnv if args.stage == "v2" else BoxingEnv)(args.xml, args.num_envs, device=device, seed=args.seed, action_scale=args.action_scale,
                         episode_len_s=args.episode_s, cuda_graph=not args.no_cuda_graph, obs_noise=args.obs_noise,
@@ -183,7 +190,8 @@ def main() -> None:
                         daze_weak=args.daze_weak, block_w=args.block_w,
                         speed_limit=args.speed_limit, fatigue_j=args.fatigue_j, start_spread=args.start_spread,
                         action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max, seek_w=args.seek_w,
-                        ropes_start=args.ropes_start)
+                        ropes_start=args.ropes_start, selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay,
+                        combo_w=args.combo_w, hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling)
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     # One learner per distinct fighter. Two copies of the same fighter share one, and it learns from both.
     names = env.names if env.hetero else [env.names[0]]

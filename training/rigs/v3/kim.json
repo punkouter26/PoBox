@@ -1,0 +1,338 @@
+{
+  "source": "C:/Users/punko/Downloads/PoBox/Kim.glb",
+  "frame": "blender_z_up (x = character left, -y = forward, z = up)",
+  "height_m": 1.65,
+  "mass_kg": 54.0,
+  "notes": [
+    "bone names were not recognisable; limbs were identified from the skeleton's shape. Check the list below",
+    "made symmetric: left and right differed by up to 3.2 cm",
+    "arms straightened to a T-pose: they rested -8 degrees below the shoulder line",
+    "v3 (tools/build_v3.py): human force each way, per-joint action scale, head 0.086 m (95% of its half-width), joint_kv standing",
+    "joint_kv from tools/pd_sweep.py --loaded (target zeta 0.85)"
+  ],
+  "bones": [
+    {
+      "name": "Hips",
+      "parent": null,
+      "head": [
+        0.0,
+        0.0217,
+        0.7766
+      ],
+      "tail": [
+        0.0,
+        0.0139,
+        0.9008
+      ]
+    },
+    {
+      "name": "Spine",
+      "parent": "Hips",
+      "head": [
+        0.0,
+        0.0139,
+        0.9008
+      ],
+      "tail": [
+        0.0,
+        0.0092,
+        1.0872
+      ]
+    },
+    {
+      "name": "Chest",
+      "parent": "Spine",
+      "head": [
+        0.0,
+        0.0092,
+        1.0872
+      ],
+      "tail": [
+        0.0,
+        0.0376,
+        1.3435
+      ]
+    },
+    {
+      "name": "Neck",
+      "parent": "Chest",
+      "head": [
+        0.0,
+        0.0376,
+        1.3435
+      ],
+      "tail": [
+        0.0,
+        0.0447,
+        1.4289
+      ]
+    },
+    {
+      "name": "UpperArm.L",
+      "parent": "Shoulder.L",
+      "head": [
+        0.233,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        0.4536,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "LowerArm.L",
+      "parent": "UpperArm.L",
+      "head": [
+        0.4536,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        0.6585,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "Hand.L",
+      "parent": "LowerArm.L",
+      "head": [
+        0.6585,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        0.7385,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "UpperArm.R",
+      "parent": "Shoulder.R",
+      "head": [
+        -0.233,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        -0.4536,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "LowerArm.R",
+      "parent": "UpperArm.R",
+      "head": [
+        -0.4536,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        -0.6585,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "Hand.R",
+      "parent": "LowerArm.R",
+      "head": [
+        -0.6585,
+        0.0343,
+        1.2792
+      ],
+      "tail": [
+        -0.7385,
+        0.0343,
+        1.2792
+      ]
+    },
+    {
+      "name": "UpperLeg.L",
+      "parent": "Hips",
+      "head": [
+        0.0764,
+        0.0217,
+        0.73
+      ],
+      "tail": [
+        0.0677,
+        0.0172,
+        0.4504
+      ]
+    },
+    {
+      "name": "LowerLeg.L",
+      "parent": "UpperLeg.L",
+      "head": [
+        0.0677,
+        0.0172,
+        0.4504
+      ],
+      "tail": [
+        0.0497,
+        0.0257,
+        0.101
+      ]
+    },
+    {
+      "name": "Foot.L",
+      "parent": "LowerLeg.L",
+      "head": [
+        0.0497,
+        0.0257,
+        0.101
+      ],
+      "tail": [
+        0.0497,
+        -0.1087,
+        0.0233
+      ]
+    },
+    {
+      "name": "Toe.L",
+      "parent": "Foot.L",
+      "head": [
+        0.0497,
+        -0.1087,
+        0.0233
+      ],
+      "tail": [
+        0.0497,
+        -0.149,
+        -0.0
+      ]
+    },
+    {
+      "name": "UpperLeg.R",
+      "parent": "Hips",
+      "head": [
+        -0.0764,
+        0.0217,
+        0.73
+      ],
+      "tail": [
+        -0.0677,
+        0.0172,
+        0.4504
+      ]
+    },
+    {
+      "name": "LowerLeg.R",
+      "parent": "UpperLeg.R",
+      "head": [
+        -0.0677,
+        0.0172,
+        0.4504
+      ],
+      "tail": [
+        -0.0497,
+        0.0257,
+        0.101
+      ]
+    },
+    {
+      "name": "Foot.R",
+      "parent": "LowerLeg.R",
+      "head": [
+        -0.0497,
+        0.0257,
+        0.101
+      ],
+      "tail": [
+        -0.0497,
+        -0.1087,
+        0.0233
+      ]
+    },
+    {
+      "name": "Toe.R",
+      "parent": "Foot.R",
+      "head": [
+        -0.0497,
+        -0.1087,
+        0.0233
+      ],
+      "tail": [
+        -0.0497,
+        -0.149,
+        -0.0
+      ]
+    }
+  ],
+  "map": {
+    "pelvis": "Hips",
+    "thigh_l": "UpperLeg.L",
+    "shin_l": "LowerLeg.L",
+    "foot_l": "Foot.L",
+    "toe_l": "Toe.L",
+    "thigh_r": "UpperLeg.R",
+    "shin_r": "LowerLeg.R",
+    "foot_r": "Foot.R",
+    "toe_r": "Toe.R",
+    "spine": "Spine",
+    "torso": "Chest",
+    "hand_r": "Hand.R",
+    "forearm_r": "LowerArm.R",
+    "upper_arm_r": "UpperArm.R",
+    "hand_l": "Hand.L",
+    "forearm_l": "LowerArm.L",
+    "upper_arm_l": "UpperArm.L",
+    "neck": "Neck",
+    "head": "Neck"
+  },
+  "all_bones": 21,
+  "radii": {
+    "thigh": 0.0644,
+    "shin": 0.0479,
+    "upper_arm": 0.0496,
+    "forearm": 0.0322,
+    "torso": 0.1268,
+    "pelvis": 0.135,
+    "head": 0.0864
+  },
+  "mesh": {
+    "vertices": 32463,
+    "height_m": 1.65,
+    "volume_l": 90.7,
+    "bmi_from_volume": 32.8
+  },
+  "strength": 0.706,
+  "speed": 1.1,
+  "style": {
+    "head": 1.3,
+    "body": 0.9,
+    "power": 1.0,
+    "pace_s": 0.25,
+    "taken": 0.9,
+    "block_w": 0.02,
+    "counter": 1.4,
+    "range_m": 0.72,
+    "press": 0.6,
+    "crowd": 0.2,
+    "energy": 0.7
+  },
+  "display": "KIM",
+  "persona": "hit-and-move",
+  "says": "fast and agile: quick light combinations from the end of her reach, then gone; circles off the ropes",
+  "human_force": true,
+  "per_joint_action": true,
+  "joint_kv": {
+    "abdomen_z": 13.217,
+    "abdomen_y": 15.886,
+    "abdomen_x": 17.425,
+    "shoulder_x": 2.259,
+    "shoulder_z": 3.268,
+    "elbow": 1.872,
+    "hip_x": 26.896,
+    "hip_z": 8.472,
+    "hip_y": 27.045,
+    "knee": 8.472,
+    "ankle_y": 8.472,
+    "ankle_x": 1.13
+  }
+}

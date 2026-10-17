@@ -1,0 +1,2254 @@
+[
+ {
+  "run": "bench_match",
+  "viewer": false,
+  "cmd": [
+   "tools/bench_match.py",
+   "--write",
+   "logs/bench_match.json"
+  ]
+ },
+ {
+  "run": "books_v3",
+  "viewer": false,
+  "cmd": [
+   "tools/stage_v3.py",
+   "--books"
+  ]
+ },
+ {
+  "run": "shipped_policy_matt",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Matt/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_matt.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_matt",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_matt.pt",
+   "--config",
+   "models/v3/matt_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_matt.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_matt",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Matt/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_matt.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_matt",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_matt.pt",
+   "--config",
+   "models/v3/matt_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_matt.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_matt",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Matt/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_matt.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_matt",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_matt.pt",
+   "--config",
+   "models/v3/matt_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_matt.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_sokol",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Sokol/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_sokol.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_sokol",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_sokol.pt",
+   "--config",
+   "models/v3/sokol_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_sokol.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_sokol",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Sokol/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_sokol.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_sokol",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_sokol.pt",
+   "--config",
+   "models/v3/sokol_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_sokol.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_sokol",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Sokol/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_sokol.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_sokol",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_sokol.pt",
+   "--config",
+   "models/v3/sokol_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_sokol.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_kim",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Kim/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_kim.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_kim",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_kim.pt",
+   "--config",
+   "models/v3/kim_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_kim.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_kim",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Kim/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_kim.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_kim",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_kim.pt",
+   "--config",
+   "models/v3/kim_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_kim.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_kim",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Kim/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_kim.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_kim",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_kim.pt",
+   "--config",
+   "models/v3/kim_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_kim.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_zombie",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Zombie/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_zombie.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_zombie",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_zombie.pt",
+   "--config",
+   "models/v3/zombie_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_zombie.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_zombie",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Zombie/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_zombie.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_zombie",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_zombie.pt",
+   "--config",
+   "models/v3/zombie_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_zombie.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_zombie",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Zombie/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_zombie.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_zombie",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_zombie.pt",
+   "--config",
+   "models/v3/zombie_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_zombie.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_nick",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Nick/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_nick.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_nick",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_nick.pt",
+   "--config",
+   "models/v3/nick_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_nick.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_nick",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Nick/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_nick.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_nick",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_nick.pt",
+   "--config",
+   "models/v3/nick_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_nick.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_nick",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Nick/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_nick.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_nick",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_nick.pt",
+   "--config",
+   "models/v3/nick_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_nick.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_trump",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Trump/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_trump.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_trump",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_trump.pt",
+   "--config",
+   "models/v3/trump_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_trump.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_trump",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Trump/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_trump.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_trump",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_trump.pt",
+   "--config",
+   "models/v3/trump_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_trump.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_trump",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Trump/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_trump.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_trump",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_trump.pt",
+   "--config",
+   "models/v3/trump_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_trump.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_grandpa",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandpa/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_grandpa.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_grandpa",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_grandpa.pt",
+   "--config",
+   "models/v3/grandpa_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_grandpa.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_grandpa",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandpa/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_grandpa.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_grandpa",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_grandpa.pt",
+   "--config",
+   "models/v3/grandpa_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_grandpa.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_grandpa",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandpa/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_grandpa.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_grandpa",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_grandpa.pt",
+   "--config",
+   "models/v3/grandpa_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_grandpa.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_policy_grandma",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandma/policy.onnx",
+   "--out",
+   "checkpoints/shipped/policy_grandma.pt"
+  ]
+ },
+ {
+  "run": "rescale_policy_grandma",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/policy_grandma.pt",
+   "--config",
+   "models/v3/grandma_policy_config.json",
+   "--out",
+   "checkpoints/v3/policy_grandma.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_getup_grandma",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandma/getup.onnx",
+   "--out",
+   "checkpoints/shipped/getup_grandma.pt"
+  ]
+ },
+ {
+  "run": "rescale_getup_grandma",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/getup_grandma.pt",
+   "--config",
+   "models/v3/grandma_policy_config.json",
+   "--out",
+   "checkpoints/v3/getup_grandma.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "shipped_match_grandma",
+  "viewer": false,
+  "cmd": [
+   "tools/onnx_to_pt.py",
+   "--onnx",
+   "../Assets/Boxers/Grandma/match.onnx",
+   "--out",
+   "checkpoints/shipped/match_grandma.pt"
+  ]
+ },
+ {
+  "run": "rescale_match_grandma",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/rescale_actions.py",
+   "--ckpt",
+   "checkpoints/shipped/match_grandma.pt",
+   "--config",
+   "models/v3/grandma_policy_config.json",
+   "--out",
+   "checkpoints/v3/match_grandma.pt",
+   "--check"
+  ]
+ },
+ {
+  "run": "rules_v3",
+  "viewer": false,
+  "cmd": [
+   "tools/set_rules.py",
+   "--models",
+   "models/v3",
+   "--fatigue-j",
+   "8000",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025"
+  ]
+ },
+ {
+  "run": "v3f_matt",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_matt",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/matt_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_matt.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_matt",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "matt",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_matt/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_matt.json"
+  ]
+ },
+ {
+  "run": "v3u_matt",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_matt",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "matt",
+   "--b",
+   "zombie",
+   "--resume",
+   "checkpoints/v3/getup_matt.pt",
+   "checkpoints/v3/getup_zombie.pt",
+   "--freeze",
+   "zombie",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_matt",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "matt",
+   "--ckpt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--out",
+   "logs/handover_v3_matt.npz"
+  ]
+ },
+ {
+  "run": "v3m_matt",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_matt",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "matt",
+   "--resume",
+   "checkpoints/v3/match_matt.pt",
+   "--against",
+   "sokol=checkpoints/v3/match_sokol.pt",
+   "kim=checkpoints/v3/match_kim.pt",
+   "zombie=checkpoints/v3/match_zombie.pt",
+   "nick=checkpoints/v3/match_nick.pt",
+   "trump=checkpoints/v3/match_trump.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--block-w",
+   "0.5",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_matt.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_matt",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "matt",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_matt.json",
+   "--book",
+   "logs/book_v3_matt.json"
+  ]
+ },
+ {
+  "run": "v3f_sokol",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_sokol",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/sokol_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_sokol.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_sokol",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "sokol",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_sokol/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_sokol.json"
+  ]
+ },
+ {
+  "run": "v3u_sokol",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_sokol",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "sokol",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_sokol.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_sokol",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "sokol",
+   "--ckpt",
+   "checkpoints/v3u_sokol/latest_sokol.pt",
+   "--out",
+   "logs/handover_v3_sokol.npz"
+  ]
+ },
+ {
+  "run": "v3m_sokol",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_sokol",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "sokol",
+   "--resume",
+   "checkpoints/v3/match_sokol.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "kim=checkpoints/v3/match_kim.pt",
+   "zombie=checkpoints/v3/match_zombie.pt",
+   "nick=checkpoints/v3/match_nick.pt",
+   "trump=checkpoints/v3/match_trump.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--block-w",
+   "0.5",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_sokol.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_sokol",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "sokol",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_sokol.json",
+   "--book",
+   "logs/book_v3_sokol.json"
+  ]
+ },
+ {
+  "run": "v3f_kim",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_kim",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/kim_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_kim.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_kim",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "kim",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_kim/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_kim.json"
+  ]
+ },
+ {
+  "run": "v3u_kim",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_kim",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "kim",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_kim.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_kim",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "kim",
+   "--ckpt",
+   "checkpoints/v3u_kim/latest_kim.pt",
+   "--out",
+   "logs/handover_v3_kim.npz"
+  ]
+ },
+ {
+  "run": "v3m_kim",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_kim",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "kim",
+   "--resume",
+   "checkpoints/v3/match_kim.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "zombie=checkpoints/v3/match_zombie.pt",
+   "nick=checkpoints/v3/match_nick.pt",
+   "trump=checkpoints/v3/match_trump.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--block-w",
+   "0.5",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_kim.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_kim",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "kim",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_kim.json",
+   "--book",
+   "logs/book_v3_kim.json"
+  ]
+ },
+ {
+  "run": "v3f_zombie",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_zombie",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/zombie_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_zombie.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_zombie",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "zombie",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_zombie/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_zombie.json"
+  ]
+ },
+ {
+  "run": "v3u_zombie",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_zombie",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "zombie",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_zombie.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_zombie",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "zombie",
+   "--ckpt",
+   "checkpoints/v3u_zombie/latest_zombie.pt",
+   "--out",
+   "logs/handover_v3_zombie.npz"
+  ]
+ },
+ {
+  "run": "v3m_zombie",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_zombie",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "zombie",
+   "--resume",
+   "checkpoints/v3/match_zombie.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "kim=checkpoints/v3m_kim/latest_kim.pt",
+   "nick=checkpoints/v3/match_nick.pt",
+   "trump=checkpoints/v3/match_trump.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--block-w",
+   "0.5",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_zombie.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_zombie",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "zombie",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_zombie.json",
+   "--book",
+   "logs/book_v3_zombie.json"
+  ]
+ },
+ {
+  "run": "v3f_nick",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_nick",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/nick_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_nick.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_nick",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "nick",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_nick/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_nick.json"
+  ]
+ },
+ {
+  "run": "v3u_nick",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_nick",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "nick",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_nick.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_nick",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "nick",
+   "--ckpt",
+   "checkpoints/v3u_nick/latest_nick.pt",
+   "--out",
+   "logs/handover_v3_nick.npz"
+  ]
+ },
+ {
+  "run": "v3m_nick",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_nick",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "nick",
+   "--resume",
+   "checkpoints/v3/match_nick.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "kim=checkpoints/v3m_kim/latest_kim.pt",
+   "zombie=checkpoints/v3m_zombie/latest_zombie.pt",
+   "trump=checkpoints/v3/match_trump.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--block-w",
+   "0.5",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_nick.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_nick",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "nick",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_nick.json",
+   "--book",
+   "logs/book_v3_nick.json"
+  ]
+ },
+ {
+  "run": "v3f_trump",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_trump",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/trump_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_trump.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_trump",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "trump",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_trump/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_trump.json"
+  ]
+ },
+ {
+  "run": "v3u_trump",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_trump",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "trump",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_trump.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_trump",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "trump",
+   "--ckpt",
+   "checkpoints/v3u_trump/latest_trump.pt",
+   "--out",
+   "logs/handover_v3_trump.npz"
+  ]
+ },
+ {
+  "run": "v3m_trump",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_trump",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "trump",
+   "--resume",
+   "checkpoints/v3/match_trump.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "kim=checkpoints/v3m_kim/latest_kim.pt",
+   "zombie=checkpoints/v3m_zombie/latest_zombie.pt",
+   "nick=checkpoints/v3m_nick/latest_nick.pt",
+   "grandpa=checkpoints/v3/match_grandpa.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "1.5",
+   "--taken-w",
+   "1.0",
+   "--gamma",
+   "0.995",
+   "--weights",
+   "matt=2",
+   "grandma=2",
+   "grandpa=2",
+   "--fall-penalty",
+   "8",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_trump.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_trump",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "trump",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_trump.json",
+   "--book",
+   "logs/book_v3_trump.json"
+  ]
+ },
+ {
+  "run": "v3f_grandpa",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_grandpa",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/grandpa_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_grandpa.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_grandpa",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "grandpa",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_grandpa/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_grandpa.json"
+  ]
+ },
+ {
+  "run": "v3u_grandpa",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_grandpa",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "grandpa",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_grandpa.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_grandpa",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "grandpa",
+   "--ckpt",
+   "checkpoints/v3u_grandpa/latest_grandpa.pt",
+   "--out",
+   "logs/handover_v3_grandpa.npz"
+  ]
+ },
+ {
+  "run": "v3m_grandpa",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_grandpa",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "grandpa",
+   "--resume",
+   "checkpoints/v3/match_grandpa.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "kim=checkpoints/v3m_kim/latest_kim.pt",
+   "zombie=checkpoints/v3m_zombie/latest_zombie.pt",
+   "nick=checkpoints/v3m_nick/latest_nick.pt",
+   "trump=checkpoints/v3m_trump/latest_trump.pt",
+   "grandma=checkpoints/v3/match_grandma.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "2.0",
+   "--taken-w",
+   "0.3",
+   "--seek-w",
+   "0.3",
+   "--reset-std",
+   "0.35",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_grandpa.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_grandpa",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "grandpa",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_grandpa.json",
+   "--book",
+   "logs/book_v3_grandpa.json"
+  ]
+ },
+ {
+  "run": "v3f_grandma",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--run-name",
+   "v3f_grandma",
+   "--stage",
+   "footwork",
+   "--xml",
+   "models/v3/grandma_solo.xml",
+   "--resume",
+   "checkpoints/v3/policy_grandma.pt",
+   "--more-iters",
+   "800",
+   "--max-hours",
+   "0.5",
+   "--rsi",
+   "0.5",
+   "--style-w",
+   "0.3",
+   "--max-std",
+   "0.35",
+   "--selfcontact-w",
+   "0.02",
+   "--keep-old-runs"
+  ]
+ },
+ {
+  "run": "exam_v3f_grandma",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/footwork_c.py",
+   "--name",
+   "grandma",
+   "--models",
+   "models/v3",
+   "--exam",
+   "--policy",
+   "checkpoints/v3f_grandma/latest.pt",
+   "--seeds",
+   "10",
+   "--episodes",
+   "3",
+   "--json",
+   "logs/exam_v3f_grandma.json"
+  ]
+ },
+ {
+  "run": "v3u_grandma",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--getup",
+   "--run-name",
+   "v3u_grandma",
+   "--stage",
+   "v2",
+   "--models",
+   "models/v3",
+   "--a",
+   "grandma",
+   "--b",
+   "matt",
+   "--resume",
+   "checkpoints/v3/getup_grandma.pt",
+   "checkpoints/v3u_matt/latest_matt.pt",
+   "--freeze",
+   "matt",
+   "--reset-std",
+   "0",
+   "--max-std",
+   "0.4",
+   "--more-iters",
+   "600",
+   "--done-when",
+   "0.85"
+  ]
+ },
+ {
+  "run": "bank_v3_grandma",
+  "viewer": false,
+  "cmd": [
+   "tools/make_handover_v2.py",
+   "--models",
+   "models/v3",
+   "--name",
+   "grandma",
+   "--ckpt",
+   "checkpoints/v3u_grandma/latest_grandma.pt",
+   "--out",
+   "logs/handover_v3_grandma.npz"
+  ]
+ },
+ {
+  "run": "v3m_grandma",
+  "viewer": true,
+  "cmd": [
+   "tools/train_resilient.py",
+   "--gauntlet",
+   "--run-name",
+   "v3m_grandma",
+   "--stage",
+   "match",
+   "--models",
+   "models/v3",
+   "--name",
+   "grandma",
+   "--resume",
+   "checkpoints/v3/match_grandma.pt",
+   "--against",
+   "matt=checkpoints/v3m_matt/latest_matt.pt",
+   "sokol=checkpoints/v3m_sokol/latest_sokol.pt",
+   "kim=checkpoints/v3m_kim/latest_kim.pt",
+   "zombie=checkpoints/v3m_zombie/latest_zombie.pt",
+   "nick=checkpoints/v3m_nick/latest_nick.pt",
+   "trump=checkpoints/v3m_trump/latest_trump.pt",
+   "grandpa=checkpoints/v3m_grandpa/latest_grandpa.pt",
+   "--daze",
+   "--obs-state",
+   "--hit-push",
+   "0.6",
+   "--stagger-v",
+   "5",
+   "--hurt-full",
+   "400",
+   "--body-drain",
+   "0.0025",
+   "--hit-w",
+   "2.0",
+   "--taken-w",
+   "0.3",
+   "--seek-w",
+   "0.3",
+   "--reset-std",
+   "0.35",
+   "--fall-penalty",
+   "12",
+   "--selfcontact-w",
+   "0.02",
+   "--repeat-decay",
+   "0.7",
+   "--combo-w",
+   "0.1",
+   "--hurt-start",
+   "0.2",
+   "--clinch-w",
+   "0.1",
+   "--fatigue-ceiling",
+   "--sep-max",
+   "3.5",
+   "--num-envs",
+   "4608",
+   "--more-iters",
+   "600",
+   "--max-hours",
+   "0.75",
+   "--max-std",
+   "0.35",
+   "--handover",
+   "logs/handover_v3_grandma.npz",
+   "--handover-share",
+   "0.3",
+   "--done-when",
+   "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6",
+   "--done-window",
+   "40"
+  ]
+ },
+ {
+  "run": "exam_v3m_grandma",
+  "viewer": false,
+  "env": {
+   "PYTHONPATH": ".mj350"
+  },
+  "cmd": [
+   "tools/exam_v2.py",
+   "--models",
+   "models/v3",
+   "--only",
+   "grandma",
+   "--trials",
+   "60",
+   "--rounds",
+   "12",
+   "--json",
+   "logs/exam_v3m_grandma.json",
+   "--book",
+   "logs/book_v3_grandma.json"
+  ]
+ }
+]

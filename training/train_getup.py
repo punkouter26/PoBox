@@ -84,6 +84,7 @@ def main() -> None:
     ap.add_argument("--done-pose", type=float, default=0.15, help="radians a joint from the guard, while standing")
     ap.add_argument("--stage", default="getup", choices=["getup", "v2"],
                     help="v2: the retrofit's bodies (models/v2) and its 103-number observation (envs/match.py)")
+    ap.add_argument("--models", default="", help="v2 stage: another folder of bodies with the same observation (models/v3)")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -93,7 +94,7 @@ def main() -> None:
                 args.num_envs = int(json.load(fh)["best"])
         except Exception:
             args.num_envs = 2048
-    xml, x, y = pair_xml(args.a, args.b, os.path.join("models", "v2") if args.stage == "v2" else "models")
+    xml, x, y = pair_xml(args.a, args.b, (args.models or os.path.join("models", "v2")) if args.stage == "v2" else "models")
     resume = dict(zip((args.a, args.b), args.resume))
     env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
                                                               speed_limit=args.speed_limit, action_rate_w=args.action_rate_w,

@@ -263,3 +263,22 @@ Details in `DOCS/README.md` and `SCREENSHOTS/2026-10-16-ui-integrity/report.html
 - [x] J8 One-short-word and spill rules in `LayoutAudit`; four button words shortened; the settings' DEBUG tab (rows drawn over each other) fixed.
 - [x] J9 The free-for-all's board is its result table (punches landed per boxer).
 - [ ] J10 A phone run of every state (back button, cutouts, frame pacing, heat): no device was attached. Goes with D6, G10, I8.
+
+## Phase K: the trainer, ten options (owner, 2026-10-16 night; staged, nothing trained)
+
+Details in `rl_optimization_log.md` (2026-10-16 night). Every new behaviour is off by default (`tools/smoke_flags.py`).
+
+- [x] K1 Drive damping measured standing (`tools/pd_sweep.py --loaded`), into the v3 rigs as `joint_kv`.
+- [x] K2 Self-contact charge (`--selfcontact-w`); the shipped footwork brain presses 0.93 cm a step, arms at the clip.
+- [x] K3 Per-joint action scale (`action_scale_j`) everywhere, Unity included; `tools/rescale_actions.py` for warm starts.
+- [x] K4 Fatigue as a torque ceiling (`fatigue_ceiling`), trainer, exam and Unity.
+- [x] K5 Human force each way (`rig_to_mjcf.HUMAN_FORCE`) in models/v3.
+- [x] K6 Punch variety: `--repeat-decay`, `--combo-w` (G14), counted per boxer.
+- [x] K7 `--hurt-start` (H7), `--done-when` on the gauntlet; rc2_matt staged with hand-over 0.5 (H8).
+- [x] K8 bench_match staged (first job of both queues).
+- [x] K9 v1 models, rigs and tools quarantined; cgetup on models/v2 (G9).
+- [x] K10 Head spheres at 95% of the head's half-width in models/v3 (I7, without the retrain).
+- [ ] K11 Run `queue_flags_staged.json` (~2 h, v2); examine rc2_matt; promote if it passes.
+- [ ] K12 Run `queue_v3_staged.json` (~16 h); a boxer whose v3 exam passes goes in with all three brains and its v3 prefab
+      (MjRetrofit from models/v3, gate and parity tests). v3's force each way and action scale fail the shipped brains
+      (tools/ablate_v3.py): nothing of v3 reaches the game untrained.

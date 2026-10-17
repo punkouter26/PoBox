@@ -126,7 +126,8 @@ class Ring:
         d = self.d
         action = action.clip(-3.0, 3.0)
         self.last = action
-        d.ctrl[:] = np.concatenate([(self.default[k] + action[k] * 0.5).clip(self.lo[k], self.hi[k]) for k in range(2)])
+        scale = [np.array(c.get("action_scale_j", [0.5] * self.A)) for c in self.cfgs]      # models/v3: per joint
+        d.ctrl[:] = np.concatenate([(self.default[k] + action[k] * scale[k]).clip(self.lo[k], self.hi[k]) for k in range(2)])
         for _ in range(4):
             mujoco.mj_step(self.m, d)
         fell = []
@@ -145,7 +146,7 @@ def main() -> None:
     ap.add_argument("--b", default="zombie")
     ap.add_argument("--run", default="match")
     ap.add_argument("--seconds", type=float, default=300.0)
-    ap.add_argument("--models", default=os.path.join(HERE, "models"))
+    ap.add_argument("--models", default=os.path.join(HERE, "models", "v2"))
     args = ap.parse_args()
     import json
     stem = os.path.join(args.models, f"{args.a}_vs_{args.b}")

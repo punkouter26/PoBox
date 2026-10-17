@@ -70,6 +70,22 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     return torch.stack([c * v[..., 0] + s * v[..., 1], -s * v[..., 0] + c * v[..., 1], v[..., 2]], dim=-1)
 
 
+def punch_variety(landed, arriving, zone, last_kind, streak, since_hit, combo_s: float, pause_s: float = 2.0):
+    """Which punch each fighter landed this step and how it follows the last one. landed, arriving, zone: (N,K,2), per
+    glove; last_kind: (N,K) hand x 2 + zone of the last punch landed (-1 none); streak: how many in a row before this were
+    that punch; since_hit: seconds since the last one. A punch is its hand and where it went (the faster glove's if both
+    land); a pause of pause_s starts the count afresh; a combination is the other hand within combo_s.
+    Returns any_land, same (this one repeats the last), combo, combo_q (its speed, m/s), the new streak and last_kind."""
+    any_land = landed.any(-1)
+    hand = (landed.float() * arriving).argmax(-1)
+    kind = hand * 2 + zone.gather(-1, hand[..., None]).squeeze(-1)
+    same = any_land & (kind == last_kind) & (since_hit <= pause_s)
+    streak = torch.where(any_land, torch.where(same, streak + 1.0, torch.zeros_like(streak)), streak)
+    combo = any_land & (last_kind >= 0) & (hand != torch.div(last_kind, 2, rounding_mode="floor")) & (since_hit < combo_s)
+    combo_q = combo.float() * (landed.float() * arriving).amax(-1)
+    return any_land, same, combo, combo_q, streak, torch.where(any_land, kind, last_kind)
+
+
 class BoxingEnv:
     TERMS = ["alive", "upright", "height", "face", "range", "close", "hit", "taken", "block", "lin_z", "ang", "act",
              "rate", "energy", "qvel", "limit", "slip", "stance", "legs", "lean", "fall", "ko", "style", "rope", "cutoff", "clinch"]
@@ -89,7 +105,9 @@ class BoxingEnv:
                  action_rate_w: float = 0.0, obs_delay_max: int = 0, seek_w: float = 0.0, ropes_start: float = 0.0,
                  hit_push: float = 0.0, stagger_v: float = 0.0, stagger_s: float = 0.3, stagger_drive: float = 0.55,
                  hurt_full: float = 0.0, hurt_hi: float = 0.4, hurt_weak: float = 0.25, hurt_tau: float = 600.0,
-                 obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0):
+                 obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0,
+                 selfcontact_w: float = 0.0, repeat_decay: float = 1.0, combo_w: float = 0.0, combo_s: float = 0.8,
+                 hurt_start: float = 0.0, fatigue_ceiling: bool = False):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -148,6 +166,21 @@ class BoxingEnv:
         self.seek_w, self.ropes_start = seek_w, ropes_start
         if seek_w and not self.MODE:          # the bout's step only; footwork and get-up have steps of their own
             self.TERMS = self.TERMS + ["seek"]
+        # Five more, all off unless asked for (2026-10-16 night, staged). selfcontact_w: a charge per centimetre of
+        # a boxer's own parts pressed into each other (MuJoCo's soft contacts: the harder they press, the deeper), for
+        # the guard the footwork brain held against itself, arm actions at the clip (AGENTS: a small self-contact
+        # penalty when a policy leans on it); the bout's and footwork's steps. repeat_decay: the third jab in a row is
+        # worth repeat_decay^2 of the first (a punch is its hand and where it lands; a pause of 2 s starts afresh), for
+        # the spam (tasks.md G14). combo_w: paid per m/s of a punch landing within combo_s of one from the other hand.
+        # hurt_start: the share of episodes that begin dazed, 55-90% of the way to the legs going, so the clinch's pay
+        # is ever earned (H7; needs --daze). fatigue_ceiling: a tired drive's torque is capped at what is left of its
+        # force range, instead of its spring being weakened (a weak spring still reaches full torque on a big ask).
+        self.selfcontact_w, self.repeat_decay, self.combo_w, self.combo_s = selfcontact_w, repeat_decay, combo_w, combo_s
+        self.hurt_start = hurt_start
+        if selfcontact_w and self.MODE != "getup":   # getting up leans on its own arms by design
+            self.TERMS = self.TERMS + ["self"]
+        if combo_w and not self.MODE:
+            self.TERMS = self.TERMS + ["combo"]
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -315,6 +348,14 @@ class BoxingEnv:
         self.stand_height = torch.stack([key[q + 2] for q in self.root_q])   # (K,)
         self.joint_lo = F([c["lower"] for c in self.cfgs])               # (K, A)
         self.joint_hi = F([c["upper"] for c in self.cfgs])
+        # Radians per unit of action, joint by joint: the config's action_scale_j where it has one (models/v3, each joint's
+        # reach from the guard over the clip), else the one number for all of them, as every brain before v3 was trained.
+        self.scale_ka = F([c.get("action_scale_j", [action_scale] * len(order)) for c in self.cfgs])     # (K, A)
+        # The ceiling's numbers: each drive's force range from the model, per side (models/v3's are not symmetric).
+        self.ceiling = torch.tensor([fatigue_ceiling or bool(c.get("fatigue_ceiling", False)) for c in self.cfgs], device=device)
+        fr = m.actuator_forcerange[: self.K * len(order)].reshape(self.K, len(order), 2)
+        self.f_lo, self.f_hi = F(fr[..., 0]), F(fr[..., 1])
+        self._kp = self._kv = None
         self.qvel_limit = F([c["velocity_limit"] for c in self.cfgs])    # (K, A): an old fighter's joints are slower
         # Two rules of a living body, each off unless asked for here or in the fighter's own config (which is
         # what the exam and the game read, so a policy trained under a rule is examined and played under it).
@@ -330,6 +371,7 @@ class BoxingEnv:
         self.tires = self.fatigue_j > 0.0                                        # (K,) which fighters tire
         self.fatigue_j = torch.where(self.tires, self.fatigue_j, torch.full_like(self.fatigue_j, float("inf")))
         self.fatigue_rec_s, self.fatigue_weak = fatigue_rec_s, fatigue_weak
+        self.ceiling_on = self.fatigue_on and bool((self.ceiling & self.tires).any())
         # Four rules of a punch (2026-10-16, the owner's "50 head shots and no visible effect"), each the taker's
         # own, from its config or the argument, off unless asked for; the game's Fighter and MjRing do the same.
         # hit_push: a landed punch also pushes the taker's trunk, at the point it landed, with this share of the
@@ -381,6 +423,9 @@ class BoxingEnv:
         self.push = z(N, K, 6)                                                   # force and torque on the trunk next step
         self.prev_block = torch.zeros(N, K, 2, dtype=torch.bool, device=device)
         self.since_block = torch.full((N, K), 99.0, device=device)               # seconds since this fighter stopped a punch
+        # The last punch each fighter landed, as hand x 2 + zone (-1 none), and how many in a row were that punch.
+        self.last_kind = torch.full((N, K), -1, dtype=torch.long, device=device)
+        self.streak = z(N, K)
         self.gravity_world = torch.tensor([0.0, 0.0, -1.0], device=device)
         self._acc = {k: torch.zeros((), device=device) for k in
                      ("ret_sum", "len_sum", "fell_sum", "done_n", "steps", "upright_sum", "dist_sum",
@@ -388,7 +433,13 @@ class BoxingEnv:
                       "sat_sum", "ko_sum", "daze_sum", "weak_sum", "reserve_sum")}
         self._acc.update({f"rt_{t}": torch.zeros((), device=device) for t in self.TERMS})
         # The same counts kept per fighter, for a match between two different ones.
-        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head", "rope", "cutoff", "clinch")}
+        self._kacc = {k: torch.zeros(self.K, device=device) for k in ("hits", "speed", "fell", "ko", "ret", "blocks", "legs", "head", "rope", "cutoff", "clinch",
+                                                                      "repeats", "combos", "self")}
+        if selfcontact_w:
+            # Which fighter each shape belongs to (0 a_, 1 b_, -1 the ring, the floor, a cube or the bag).
+            names = [mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, int(b)) or "" for b in m.geom_bodyid]
+            self.geom_owner = torch.tensor([0 if n.startswith("a_") else 1 if (n.startswith("b_") and self.K == 2) else -1 for n in names],
+                                           device=device, dtype=torch.long)
         # Carrying on after a knockdown: a share of a fighter's episodes begin in a state its own get-up
         # policy left its body in (tools/make_handover_bank.py), not in its guard. `handover` maps a
         # fighter's name to that file; a fighter with no file starts every episode in its guard, as before.
@@ -553,6 +604,12 @@ class BoxingEnv:
         self.stagger = torch.where(m1, torch.zeros_like(self.stagger), self.stagger)
         self.push = torch.where(m1[..., None], torch.zeros_like(self.push), self.push)
         self.legs_at = torch.where(m1, self.daze_hi * (1.0 - self.hurt_hi * self._hurt01()), self.legs_at)
+        self.last_kind = torch.where(m1, torch.full_like(self.last_kind, -1), self.last_kind)
+        self.streak = torch.where(m1, torch.zeros_like(self.streak), self.streak)
+        if self.hurt_start > 0.0 and self.daze_on:
+            # Begun hurt: most of the way to the legs going, so a clinch (or a careful round) is worth something.
+            hurt = m1 & (self._u(self.N, self.K) < self.hurt_start)
+            self.daze = torch.where(hurt, self._u(self.N, self.K, lo=0.55, hi=0.9) * self.legs_at, self.daze)
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of
@@ -670,12 +727,45 @@ class BoxingEnv:
         from where each joint is to where the policy wants it: the spring is weaker, the damping is not.
         The game's MujocoRing does exactly this with the same number."""
         N, K, A = self.N, self.K, self.A
-        want = (self.default_joint + action * self.action_scale).clamp(self.joint_lo, self.joint_hi)
+        want = (self.default_joint + action * self.scale_ka).clamp(self.joint_lo, self.joint_hi)
         q = self.qpos[:, self.jq]
-        if self.daze_on or self.MODE or self.fatigue_on:
+        if self.ceiling_on:
+            # A tired drive under the ceiling: the spring keeps the daze's weakening only, and the target is held where
+            # the drive's force, kp (target - q) - kv qdot, stays inside what is left of its force range on each side.
+            tired = self._tired()
+            ceil = self.ceiling.view(1, K)
+            want = q + (self.drive_scale * torch.where(ceil, torch.ones_like(tired), tired))[..., None] * (want - q)
+            kp, kv = self._gains()
+            share = torch.where(ceil, tired, torch.full_like(tired, 1e6))[..., None]
+            base = q + kv * self.qvel[:, self.jv] / kp
+            want = torch.minimum(torch.maximum(want, base + share * self.f_lo / kp), base + share * self.f_hi / kp)
+        elif self.daze_on or self.MODE or self.fatigue_on:
             scale = self.drive_scale * self._tired() if self.fatigue_on else self.drive_scale
             want = q + scale[..., None] * (want - q)
         self.ctrl.copy_(want.reshape(N, K * A))
+
+    def _gains(self):
+        """Each world's kp and kv, (worlds, K, A): the bodies are randomised a world (FootworkEnv._randomise) after __init__."""
+        if self._kp is None:
+            g, b = wp.to_torch(self.mw.actuator_gainprm), wp.to_torch(self.mw.actuator_biasprm)
+            g, b = (g[None], b[None]) if g.dim() == 2 else (g, b)
+            n = self.K * self.A
+            self._kp = g[:, :n, 0].reshape(-1, self.K, self.A).clone()
+            self._kv = (-b[:, :n, 2]).reshape(-1, self.K, self.A).clone()
+        return self._kp, self._kv
+
+    def _selfcontact(self) -> torch.Tensor:
+        """Metres of each fighter's own parts pressed into each other at the last substep, (N, K): the soft contacts'
+        overlap, which grows with how hard they press. Read off the contact list on the GPU, without a sync."""
+        c = self.dw.contact
+        geom, dist, world = wp.to_torch(c.geom).long(), wp.to_torch(c.dist), wp.to_torch(c.worldid).long()
+        live = torch.arange(dist.shape[0], device=self.device) < wp.to_torch(self.dw.nacon)[0]
+        own = self.geom_owner[geom]                                            # (C, 2)
+        mine = live & (own[:, 0] == own[:, 1]) & (own[:, 0] >= 0)
+        pen = (-dist).clamp_min(0.0) * mine.float()
+        out = torch.zeros(self.N * self.K, device=self.device)
+        out.index_add_(0, (world.clamp(0, self.N - 1) * self.K + own[:, 0].clamp_min(0)), pen)
+        return out.view(self.N, self.K)
 
     def _spend(self, tau: torch.Tensor, jv: torch.Tensor) -> None:
         """Takes the step's joules from the reserve and lets it fill again. Every stage's step calls this: footwork
@@ -770,6 +860,12 @@ class BoxingEnv:
             * torch.where(zone == 0, k1(self.s_head), k1(self.s_body)) * self.s_hand.view(1, K, 2)
         own_pace = (self.since_hit / self.s_pace).clamp(0.0, 1.0).pow(2).clamp_min(0.05)
         dealt = worth.sum(-1) * own_pace * torch.where(self.since_block < 1.0, self.s_counter, torch.ones_like(self.s_counter))
+        # Which punch it was (the faster glove's, if both land): its hand and where it went. Counted always (a run with
+        # the flags off is the baseline); paid only with repeat_decay below 1 and combo_w above 0.
+        any_land, same, combo, combo_q, self.streak, self.last_kind = punch_variety(
+            landed, arriving, zone, self.last_kind, self.streak, self.since_hit, self.combo_s)
+        if self.repeat_decay < 1.0:
+            dealt = dealt * torch.where(any_land, self.repeat_decay ** self.streak, torch.ones_like(dealt))
         self.since_hit = torch.where(plain > 0.0, torch.zeros_like(self.since_hit), self.since_hit + self.dt)
         taken = plain.flip(1) if self.spar else torch.zeros_like(plain)
 
@@ -904,6 +1000,11 @@ class BoxingEnv:
         r["rope"] = -self.rope_w * rope_q if self.rope_w else none
         r["cutoff"] = self.cutoff_w * cut_q if self.cutoff_w else none
         r["clinch"] = self.clinch_w * clinch_q if self.clinch_w else none
+        if self.combo_w:
+            r["combo"] = self.combo_w * combo_q
+        self_q = self._selfcontact() if self.selfcontact_w else none
+        if self.selfcontact_w:
+            r["self"] = -self.selfcontact_w * 100.0 * self_q                  # per centimetre pressed in
         r["lin_z"] = -0.3 * lin_b[..., 2] ** 2
         r["ang"] = -0.02 * (ang_b[..., :2] ** 2).sum(-1)
         r["act"] = -0.001 * self.effort_scale * (action ** 2).sum(-1)
@@ -973,6 +1074,9 @@ class BoxingEnv:
         ka["rope"] += rope_q.sum(0)
         ka["cutoff"] += cut_q.sum(0)
         ka["clinch"] += clinch_q.sum(0)
+        ka["repeats"] += same.float().sum(0)
+        ka["combos"] += combo.float().sum(0)
+        ka["self"] += self_q.sum(0)
 
         self.prev_glove, self.prev_head, self.prev_body = glove.clone(), g["t_head"].clone(), g["t_body"].clone()
         self.prev_foot_xy = g["foot_xy"].clone()
@@ -1033,6 +1137,11 @@ class BoxingEnv:
                 out[f"{name}_rope"] = ka["rope"][i] / (s * self.N)
                 out[f"{name}_cutoff"] = ka["cutoff"][i] / (s * self.N)
                 out[f"{name}_clinch"] = ka["clinch"][i] / (s * self.N)
+                # Variety: the share of landed punches that were the last one again (same hand, same zone), and
+                # combinations (the other hand within combo_s) a second; centimetres of its own parts pressed in.
+                out[f"{name}_repeat_share"] = ka["repeats"][i] / max(1.0, ka["hits"][i])
+                out[f"{name}_combos_per_s"] = ka["combos"][i] / seconds
+                out[f"{name}_self_cm"] = ka["self"][i] * 100.0 / (s * self.N)
         for v in list(self._acc.values()) + list(self._kacc.values()):
             v.zero_()
         return out

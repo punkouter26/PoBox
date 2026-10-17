@@ -41,8 +41,18 @@ from envs.match import MatchEnv  # noqa: E402
 from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
 
 
+def done_rule(text: str):
+    """'key>=value' or 'key<=value' -> a test on a dict of the learner's numbers."""
+    for op in (">=", "<="):
+        if op in text:
+            key, value = (x.strip() for x in text.split(op))
+            v = float(value)
+            return (lambda s: s[key] >= v) if op == ">=" else (lambda s: s[key] <= v)
+    raise SystemExit(f"--done-when: '{text}' is not key>=value or key<=value")
+
+
 def pair_xml(a: str, b: str, first: str) -> str:
-    for folder in ([first] if first else []) + [os.path.join(HERE, "models")]:
+    for folder in ([first] if first else []) + [os.path.join(HERE, "models", "v2")]:
         for x, y in ((a, b), (b, a)):
             p = os.path.join(folder, f"{x}_vs_{y}_spar.xml")
             if os.path.exists(p):
@@ -125,6 +135,15 @@ def main() -> None:
     ap.add_argument("--hurt-full", type=float, default=0.0, help="punishment that lasts: m/s of punches taken for the full effect; try 400")
     ap.add_argument("--body-drain", type=float, default=0.0, help="a body shot takes this much of the taker's reserve per m/s (envs/boxing.py); try 0.0025")
     ap.add_argument("--obs-state", action="store_true", help="match: the learner reads its reserve, its daze and the opponent's in the command's three numbers")
+    ap.add_argument("--selfcontact-w", type=float, default=0.0, help="charge per cm of the learner's own parts pressed into each other (envs/boxing.py); try 0.02")
+    ap.add_argument("--repeat-decay", type=float, default=1.0, help="the same punch again (hand and zone) is worth this times the last one's pay; 1 = off, try 0.6")
+    ap.add_argument("--combo-w", type=float, default=0.0, help="pay per m/s of a punch landed within --combo-s of one from the other hand; try 0.1")
+    ap.add_argument("--combo-s", type=float, default=0.8)
+    ap.add_argument("--hurt-start", type=float, default=0.0, help="share of episodes that begin dazed, 55-90%% of the way to the legs going (needs --daze); try 0.25")
+    ap.add_argument("--fatigue-ceiling", action="store_true", help="a tired drive's torque is capped at what is left of its force range, not its spring weakened")
+    ap.add_argument("--done-when", default="", help="stop once these hold for --done-window iterations in a row, e.g. "
+                                                    "'hits_per_s>=1.5,falls<=0.03,repeat_share<=0.5' (the learner's numbers, as logged under env/)")
+    ap.add_argument("--done-window", type=int, default=40)
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -147,7 +166,9 @@ def main() -> None:
                         handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
                         rope_w=args.rope_w, cutoff_w=args.cutoff_w, clinch_w=args.clinch_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
                         seek_w=args.seek_w, ropes_start=args.ropes_start, hit_push=args.hit_push, stagger_v=args.stagger_v,
-                        hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (), **extra_env)
+                        hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (),
+                        selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay, combo_w=args.combo_w, combo_s=args.combo_s,
+                        hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -204,7 +225,10 @@ def main() -> None:
         return t.reshape(env.N, 2, *t.shape[1:])[:, k]
 
     obs = [e.reset() for e in envs]
-    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step", "rope", "cutoff", "clinch")
+    per = ("hits_per_s", "hit_speed", "head_share", "falls", "blocks_per_s", "legs_gone_per_min", "knockdowns_per_min", "reward_per_step", "rope", "cutoff", "clinch",
+           "repeat_share", "combos_per_s", "self_cm")
+    done_when = [done_rule(c) for c in args.done_when.split(",") if c.strip()]
+    good_for = 0
     t_start = time.time()
     total = 0
     for it in range(start, iters):
@@ -270,7 +294,9 @@ def main() -> None:
             with open(os.path.join(HERE, "logs", f"{run}.status.json"), "w", encoding="utf-8") as fh:
                 json.dump({"run": run, "mode": args.stage, "fighters": [args.name], "iter": it, "hours": hours, "fps": sps, "max_hours": args.max_hours,
                            "updated": time.strftime("%Y-%m-%d %H:%M:%S"), "ppo": stats, "env": mean, "against": rows}, fh, indent=2)
-        stopping = os.path.exists(stop_file) or (args.max_hours > 0.0 and hours >= args.max_hours)
+        if done_when:
+            good_for = good_for + 1 if all(rule(mean) for rule in done_when) else 0
+        stopping = os.path.exists(stop_file) or (args.max_hours > 0.0 and hours >= args.max_hours) or (done_when and good_for >= args.done_window)
         if (it + 1) % args.save_every == 0 or it + 1 == iters or stopping:
             ck = os.path.join(ck_dir, f"model_{it + 1:06d}_{args.name}.pt")
             # The first opponent's policy is kept beside it, so the viewer has a pair to show (as train_box.py
@@ -284,7 +310,8 @@ def main() -> None:
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
                                   "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "clinch_w": args.clinch_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
                                   "hit_push": args.hit_push, "stagger_v": args.stagger_v, "hurt_full": args.hurt_full, "body_drain": args.body_drain,
-                                  "obs_state": args.obs_state}})
+                                  "obs_state": args.obs_state, "selfcontact_w": args.selfcontact_w, "repeat_decay": args.repeat_decay,
+                                  "combo_w": args.combo_w, "hurt_start": args.hurt_start, "fatigue_ceiling": args.fatigue_ceiling}})
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))
             if not args.no_onnx:
                 try:
@@ -303,7 +330,8 @@ def main() -> None:
                     os.remove(os.path.join(ck_dir, f))
             print(f"saved iteration {it + 1} to {ck_dir}", flush=True)
         if stopping:
-            print(f"[stop] after iteration {it + 1}, {hours:.2f} h", flush=True)
+            why = f", {args.done_when} held for {good_for} iterations" if done_when and good_for >= args.done_window else ""
+            print(f"[stop] after iteration {it + 1}, {hours:.2f} h{why}", flush=True)
             break
     writer.close()
     csv_f.close()

@@ -1,5 +1,14 @@
 # PoBox training
 
+> **2026-10-16 (night).** The v1 bodies (`models/*.xml` and `rigs/*.json` outside `v2/`), `models/dev`, `models/guard` and
+> the v1-only tools `eval_ring`, `export_mujoco_layout`, `export_reference`, `smoke_env` and `audit_bodies` moved to
+> `../PoBox_quarantine_2026-10-16/training/`. Sections below that name them describe v1. The bodies are `models/v2` (the
+> game's) and `models/v3` (`tools/build_v3.py`: human force each way, per-joint action scale, heads inside the skull,
+> damping measured standing; not in the game yet). New: `tools/smoke_flags.py` (every flag off = the old run, number for
+> number; each flag on runs), `tools/rescale_actions.py` (a brain moved to another action scale), `tools/ablate_v3.py`,
+> `tools/stage_v3.py` (writes `queue_flags_staged.json` and `queue_v3_staged.json`). `tools/exam_v2.py`,
+> `tools/make_handover_v2.py`, `train_getup.py --stage v2` and `tools/set_rules.py` take `--models`.
+
 Teaches a fighter to box in MuJoCo (MuJoCo Warp, on the GPU) and exports the result as ONNX for Unity.
 Built 2026-10-01 on the pattern of `../../PoDecath/training`; `ppo.py` is PoDecath's, unchanged.
 

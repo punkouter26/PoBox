@@ -26,6 +26,8 @@ import mujoco
 import numpy as np
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The bodies it loads: models/v2 (the v1 files left training/models on 2026-10-16); a caller may point it at models/v3.
+MODELS = os.path.join(HERE, "models", "v2")
 TERMS = ["height", "head", "upright", "stood", "pose", "still", "face", "feet", "act", "rate", "energy", "qvel", "limit"]
 
 
@@ -47,18 +49,18 @@ def to_heading(v: np.ndarray, yaw: np.ndarray) -> np.ndarray:
 
 
 def boxer_names() -> List[str]:
-    return sorted(f[:-8] for f in os.listdir(os.path.join(HERE, "models")) if f.endswith("_bag.xml") and f[:-8] != "dev")
+    return sorted(f[:-8] for f in os.listdir(MODELS) if f.endswith("_bag.xml") and f[:-8] != "dev")
 
 
 def load_alone(name: str):
     """A boxer by itself: its bag model with the bag turned to air. Returns the model and its config."""
-    m = mujoco.MjModel.from_xml_path(os.path.join(HERE, "models", f"{name}_bag.xml"))
+    m = mujoco.MjModel.from_xml_path(os.path.join(MODELS, f"{name}_bag.xml"))
     for g in range(m.ngeom):
         if (mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith("bag"):
             m.geom_contype[g] = 0
             m.geom_conaffinity[g] = 0
             m.geom_rgba[g, 3] = 0.0
-    with open(os.path.join(HERE, "models", f"{name}_policy_config.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join(MODELS, f"{name}_policy_config.json"), "r", encoding="utf-8") as f:
         cfg = json.load(f)
     return m, cfg
 
@@ -117,6 +119,8 @@ class CGetUp:
         self.default = self.key[self.jq].copy()
         self.stand = float(self.key[self.rq + 2])
         self.lo, self.hi = np.array(cfg["lower"]), np.array(cfg["upper"])
+        if "action_scale_j" in cfg:                    # models/v3: per joint (envs/boxing.py)
+            self.action_scale = np.array(cfg["action_scale_j"])
         self.qvel_limit = np.array(cfg["velocity_limit"])
         self.weight = float(m.body_subtreemass[self.pelvis]) * 9.81
         own = guard_of(name)

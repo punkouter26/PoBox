@@ -24,7 +24,7 @@ OUT = os.path.join(HERE, "checkpoints", "getup_final")
 
 
 def export(name: str, ckpt: str, note: str = "") -> None:
-    with open(os.path.join(HERE, "models", f"{name}_policy_config.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join(HERE, "models", "v2", f"{name}_policy_config.json"), "r", encoding="utf-8") as f:
         cfg = json.load(f)
     A = len(cfg["joint_order"])
     ppo = PPO(100, A, 1, "cpu", PPOConfig())

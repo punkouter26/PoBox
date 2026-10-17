@@ -18,6 +18,9 @@ namespace PoBox.Mj
         /// <summary>Two more (2026-10-16): the share of a punch's impulse that pushes this boxer's trunk when it is hit (MjRing), and whether its policy reads its own state in the command's place.</summary>
         public double hit_push;
         public bool obs_state;
+        /// <summary>models/v3: each joint's radians per unit of action (none: action_scale for all), and a tired drive's torque capped at what is left of its force range instead of its spring weakened (envs/boxing.py).</summary>
+        public double[] action_scale_j;
+        public bool fatigue_ceiling;
         public double stand_height, total_mass_kg, action_scale = 0.5, action_clip = 3.0, ring_half = 3.05, strength = 1.0, speed = 1.0;
         public int control_decimation = 4, physics_hz = 200;
     }
@@ -150,6 +153,12 @@ namespace PoBox.Mj
                 // envs/boxing.py's speed limit: a drive pulling its hardest has nothing left over at the limit.
                 // The model is compiled afresh from the scene each time, so this is added once.
                 if (Cfg.speed_limit) _m->dof_damping[_jv[i]] += Cfg.force_limit[i] / Cfg.velocity_limit[i];
+                // The fatigue ceiling's numbers, from the compiled model as the trainer reads them: a position drive's force is
+                // kp (target - q) - kv qdot, held inside its force range (models/v3's are not the same both ways).
+                _kp[i] = _m->actuator_gainprm[_act[i] * MujocoLib.mjNGAIN];
+                _kv[i] = -_m->actuator_biasprm[_act[i] * MujocoLib.mjNBIAS + 2];
+                _fLo[i] = _m->actuator_forcerange[_act[i] * 2];
+                _fHi[i] = _m->actuator_forcerange[_act[i] * 2 + 1];
             }
             int root = Id(MujocoLib.mjtObj.mjOBJ_JOINT, "root");
             _rootQ = _m->jnt_qposadr[root]; _rootV = _m->jnt_dofadr[root];
@@ -359,16 +368,26 @@ namespace PoBox.Mj
             for (int i = 0; i < Joints; i++)
             {
                 Action[i] = Clamp(Action[i], -Cfg.action_clip, Cfg.action_clip);
-                double want = Clamp(Cfg.default_joint_pos[i] + Action[i] * Cfg.action_scale, Cfg.lower[i], Cfg.upper[i]);
+                double perUnit = Cfg.action_scale_j != null && Cfg.action_scale_j.Length > i ? Cfg.action_scale_j[i] : Cfg.action_scale;
+                double want = Clamp(Cfg.default_joint_pos[i] + Action[i] * perUnit, Cfg.lower[i], Cfg.upper[i]);
                 double q = _d->qpos[_jq[i]];
-                // Hurt or tired: the spring to the target is weakened, the damping is not.
-                double scale = DriveScale * (1.0 - Cfg.fatigue_weak * Clamp(1.0 - Reserve / 0.5, 0.0, 1.0));
+                // Hurt or tired: the spring to the target is weakened, the damping is not. Under the ceiling, tiredness caps
+                // the drive's torque instead, and only the daze weakens the spring.
+                double tired = 1.0 - Cfg.fatigue_weak * Clamp(1.0 - Reserve / 0.5, 0.0, 1.0);
+                bool ceiling = Cfg.fatigue_ceiling && Cfg.fatigue_j > 0.0;
+                double scale = DriveScale * (ceiling ? 1.0 : tired);
                 if (scale < 0.999) want = q + scale * (want - q);
+                if (ceiling && tired < 0.999)
+                {
+                    double at = q + _kv[i] * _d->qvel[_jv[i]] / _kp[i];
+                    want = Math.Min(Math.Max(want, at + tired * _fLo[i] / _kp[i]), at + tired * _fHi[i] / _kp[i]);
+                }
                 _d->ctrl[_act[i]] = _held[i] = want;
             }
         }
 
         readonly double[] _held = new double[64];
+        readonly double[] _kp = new double[64], _kv = new double[64], _fLo = new double[64], _fHi = new double[64];
 
         /// <summary>
         /// The targets of this control step written again. The plugin's MjActuator copies its own Control field

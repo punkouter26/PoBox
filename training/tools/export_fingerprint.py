@@ -70,7 +70,7 @@ def fingerprint(path: str) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", default=os.path.join(HERE, "models"))
+    ap.add_argument("--models", default=os.path.join(HERE, "models", "v2"))
     args = ap.parse_args()
     for path in sorted(glob.glob(os.path.join(args.models, "*_solo.xml"))):
         fp = fingerprint(path)

@@ -1079,3 +1079,56 @@ Day queue (09:08 on, ~9.4 h), each run then its exam; opponents are the newest b
   a round. Bradley-Terry fit, Elo scale, mean 1000. 168 bouts in 803 s on 8 workers: MATT 1547 (40-0-2), SOKOL 1147, KIM 1072,
   GRANDPA 939, TRUMP 912, ZOMBIE 912, NICK 787, GRANDMA 685. Written to `Assets/Resources/cpu_elo.json` (the game's ladder starts
   there) and `logs/cpu_bouts.ndjson`. Re-run after every promotion.
+
+## 2026-10-16 night, staged (not run): ten trainer options, and models/v3 (owner: "do all")
+
+Nothing trained or promoted; nothing put in `logs/queue.json`. Every new behaviour is a flag or a config key that is off by
+default: with all of them off, `tools/smoke_flags.py --compare` gives footwork, the match, the match under every rule and
+get-up identical to a baseline recorded before the change (fixed seed, 4 worlds x 30 steps, CPU), number for number.
+
+- **Self-contact charge** (`--selfcontact-w`, footwork and the bout): per cm of a boxer's own parts pressed into each other,
+  read off MuJoCo Warp's contact list on the GPU (no sync). Why, measured with the shipped brains (16 worlds x 5 s, CPU):
+  Matt's footwork brain presses 0.93 cm a step, mostly the right thigh into the torso (0.44) and the forearms into it
+  (0.2 each); the match brain 0.15. Its arm actions sit at the clip: shoulder_x_l and elbow_r 100% of the time. Suggested 0.02.
+- **Variety** (`--repeat-decay`, `--combo-w`; G14): a punch is its hand and its zone; the same one again pays repeat_decay
+  times the last (a 2 s pause starts afresh); the other hand within 0.8 s pays combo_w per m/s. Counted always and logged
+  per boxer (`repeat_share`, `combos_per_s`, `self_cm`). `punch_variety()` is checked on a made-up sequence.
+- **Hurt starts** (`--hurt-start`; H7): a share of episodes begin dazed, 55-90% of the way to the legs going, so the clinch
+  pay is ever earned. **`--done-when`** on the gauntlet ("hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6" for 40 iterations).
+- **Fatigue ceiling** (`--fatigue-ceiling` or config `fatigue_ceiling`; the open question of 2026-10-14): a tired drive's
+  force, kp (target - q) - kv qdot, is held inside its force range times the strength left (per side, from the model);
+  the spring keeps only the daze's weakening. Checked: worst excess 3e-5 N m, 64-70% of tired drives at the cap. The same
+  in `tools/exam.py` and `MjBoxer.Drive` (Unity), both inert without the key.
+- **Per-joint action scale** (config `action_scale_j`): each joint's reach from the guard over the clip. One 0.5 for all
+  could not straighten an elbow (1.5 rad from the guard; 1.95 needed) nor reach the shoulder's range: the saturation
+  above. In every stage, `tools/exam.py`, `footwork_c.py`, `eval_cmujoco.py`, `envs/cgetup.py` and `MjBoxer.Drive`.
+  `tools/rescale_actions.py` moves a brain to it (last layer, noise and the last-action inputs' statistics times
+  old/new): targets agree within 1.3e-4 rad wherever the old action was inside its clip; 10% of joint-samples pressed on
+  the clip and now reach up to 0.45 rad further, which is the point.
+- **models/v3** (`tools/build_v3.py`; `rigs/v2` rebuilds `models/v2` byte for byte, checked under 3.5.0 and 3.11, so v3
+  differs by exactly these): human force each way (`rig_to_mjcf.HUMAN_FORCE`: ankle dorsiflexion 0.2, knee flexion 0.5,
+  hip rotation 0.3; Matt's ankle_y -46/+232 N m); per-joint action scale; head spheres at 95% of the measured half-width
+  (were 100-137%); damping for zeta 0.85 measured standing (`tools/pd_sweep.py --loaded`: a balance hand on the pelvis,
+  nothing vertical, (w_n, zeta) fitted to the whole trace). Standing, legs are a closed chain a single joint's step barely
+  moves (31-39% reached), so hips, knees and ankles take the model's inertia; arms and trunk are measured. Matt: hips kv
+  31.6 -> 58.8, knees -> 21, ankles -> 12.6, shoulders 8.4 -> 3.4-6.3, elbows 5.8 -> 3.1. All eight pass the self-contact
+  check in 25 poses; 28 pairs. Configs carry v2's rules and `fatigue_ceiling: true`.
+- **What v3 costs the shipped brains** (`tools/ablate_v3.py`, Matt's footwork, 3 seeds x 2 episodes, C MuJoCo 3.5.0):
+  v2 stand/walk pass, 0 falls/min, vel err 0.031; +damping pass (turn passes too), +head pass; +force each way FAIL
+  (2.19 falls/min); +action scale FAIL (1.15, vel err 0.29); all of v3 FAIL (Matt 1.15 falls/min, Grandma 8.05). So
+  every boxer's brains are topped up on v3 before any of it can reach the game.
+- **Cleanup (G9)**: `envs/cgetup.py` reads `MODELS` (models/v2); the v1 models, rigs, `models/dev`, `models/guard`, five
+  v1-only tools and the spent `queue_d8_staged.json` / `queue_doall_staged.json` moved to `../PoBox_quarantine_2026-10-16/training/`.
+- **Staged** (`tools/stage_v3.py` writes both): `training/queue_flags_staged.json` (v2, ~2 h: bench_match; Matt's
+  footwork with the self-contact charge + exam; `rc2_matt` from m9 with variety, hurt starts and the clinch, hand-over
+  0.5 (H8), self-contact, ringcraft, --done-when + exam). `training/queue_v3_staged.json` (99 jobs, ~2 h a boxer, ~16 h):
+  bench_match; the exam books; every shipped brain rebuilt from Assets and rescaled; the punch rules into v3's configs;
+  then per boxer (Matt, Sokol, Kim, Zombie, Nick, Trump, Grandpa, Grandma) footwork top-up + exam, get-up top-up against a
+  frozen partner, hand-over bank, a match round on v3 against the others' newest v3 brains + exam on v3.
+- **Promoting v3 into the game** (not done): `MjRetrofit` reads `training/models/v2` and `rigs/v2`; it would read v3, the
+  prefabs rebuilt, `PoBox/Mj/Check Every Boxer Against Training`, fingerprints and C MuJoCo recordings from v3, the gate
+  and parity tests; one boxer's v3 brains go in together (footwork, get-up, match), never mixed with v2 bodies.
+- Bench (`bench_match`) is staged, not run: it times whole PPO iterations on the GPU, which is training's work.
+- Checks: `tools/smoke_flags.py --compare` identical; `--flags` all pass on v2 and v3; one CPU iteration each of a v3
+  gauntlet (every new flag), get-up (`--models models/v3`), hand-over bank and exam_v2 (`--models models/v3`) ran clean
+  (throwaway output deleted). Unity with the new `MjBoxer.Drive`: MjParity 3/3, MjGate 24/24 (v2 unchanged).

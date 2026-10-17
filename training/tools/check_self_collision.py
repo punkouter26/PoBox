@@ -33,7 +33,7 @@ def touching(m, d, prefix: str):
     return out
 
 
-def check(name: str, models: str = os.path.join(HERE, "models")) -> int:
+def check(name: str, models: str = os.path.join(HERE, "models", "v2")) -> int:
     path = os.path.join(models, f"{name}_bag.xml")
     m = mujoco.MjModel.from_xml_path(path)
     d = mujoco.MjData(m)
@@ -113,7 +113,7 @@ def check(name: str, models: str = os.path.join(HERE, "models")) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", action="append", default=[])
-    ap.add_argument("--models", default=os.path.join(HERE, "models"))
+    ap.add_argument("--models", default=os.path.join(HERE, "models", "v2"))
     args = ap.parse_args()
     bad = sum(check(n, args.models) for n in (args.name or ["matt", "zombie"]))
     sys.exit(1 if bad else 0)

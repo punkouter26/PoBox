@@ -101,6 +101,19 @@ Earlier in the day (Phase B):
   `training/queue_punch_staged.json` (rules, `m9_NAME` + exam for each, then the shipped brains examined under the
   same rules as the baseline). See `rl_optimization_log.md`.
 
+## The trainer: ten options and models/v3 (2026-10-16 night, staged, nothing trained)
+
+Owner: "do all" of ten training options. All flags off by default (a fixed-seed smoke matches the old trainer number for
+number). The details and measurements are in `rl_optimization_log.md`; the plan in `tasks.md` Phase K.
+
+- New, off by default: a self-contact charge, punch variety (repeat decay, combinations), hurt starts, `--done-when`,
+  fatigue as a torque ceiling, per-joint action scale; the last two also in the C MuJoCo exam and in `MjBoxer.Drive`.
+- `training/models/v3` and `rigs/v3` beside v2 (`tools/build_v3.py`): human force each way, per-joint action scale, heads
+  inside the skull, damping measured standing. The game still runs v2. v3 fails the shipped brains until they are topped
+  up (`tools/ablate_v3.py`), so it is staged as a full retrain: `training/queue_v3_staged.json` (~16 h). The trainer-only
+  part on v2 is `training/queue_flags_staged.json` (~2 h).
+- v1 models, rigs and five v1-only tools moved to `../PoBox_quarantine_2026-10-16/training/`.
+
 ## Mobile UI: zero-scroll and integrity, ten options (2026-10-16 night)
 
 Owner: "do all" of ten UI options. The G4 pass had already done the anchors, the one results card, the tabbed settings,

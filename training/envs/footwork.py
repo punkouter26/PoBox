@@ -392,6 +392,9 @@ class FootworkEnv(BoxingEnv):
         # Moving like a person, judged against the walking and turning clips: paid by the trainer, when it
         # has a judge. Nothing here.
         r["style"] = torch.zeros(N, K, device=self.device)
+        if self.selfcontact_w:
+            # The guard pressed into its own body (envs/boxing.py): a charge per centimetre of overlap; logged as rt_self.
+            r["self"] = -self.selfcontact_w * 100.0 * self._selfcontact()
 
         fell = (pos[..., 2] < self.stand_height * 0.6) | (upright < 0.4) | ~torch.isfinite(pos).all(-1)
         timeout = self.step_count >= self.max_steps

@@ -22,8 +22,9 @@ ap.add_argument("--stagger-v", type=float)
 ap.add_argument("--hurt-full", type=float)
 ap.add_argument("--body-drain", type=float)
 ap.add_argument("--obs-state", type=int, choices=[0, 1])
+ap.add_argument("--models", default=os.path.join("models", "v2"), help="the folder of configs to change (models/v3 for the v3 bodies)")
 args = ap.parse_args()
-for path in glob.glob(os.path.join(HERE, "models", "v2", "*_policy_config.json")):
+for path in glob.glob(os.path.join(HERE, args.models, "*_policy_config.json")):
     with open(path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     mine = [e for e in cfg.get("fighters", [cfg]) if not args.only or e.get("name") in args.only]
