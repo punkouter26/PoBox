@@ -1175,7 +1175,7 @@ overnight: the exams decide and promotion is done with the editor.
   footwork (D8). It needs the editor (`MjRetrofit.PromoteBoxing`, gate and parity tests), which was held all night by a dialog.
   Report: `SCREENSHOTS/2026-10-17-night/report.html`.
 
-## 2026-10-17 23:55, overnight (owner: "train and improve all behaviours ... for next 10 hours")
+## 2026-10-17 23:35, overnight (owner: "train and improve all behaviours ... for next 10 hours")
 
 Decision: one more match round for all eight, `m11_NAME` from m10 against the others' m10, each aimed at the lines its
 `exam2_m10` failed; the grandparents' get-up first. Queue `training/queue_m11_staged.json` (22 jobs, copied into
