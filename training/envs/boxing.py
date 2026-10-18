@@ -107,7 +107,7 @@ class BoxingEnv:
                  hurt_full: float = 0.0, hurt_hi: float = 0.4, hurt_weak: float = 0.25, hurt_tau: float = 600.0,
                  obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0,
                  selfcontact_w: float = 0.0, repeat_decay: float = 1.0, combo_w: float = 0.0, combo_s: float = 0.8,
-                 hurt_start: float = 0.0, fatigue_ceiling: bool = False):
+                 hurt_start: float = 0.0, fatigue_ceiling: bool = False, slow_v: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -177,6 +177,9 @@ class BoxingEnv:
         # force range, instead of its spring being weakened (a weak spring still reaches full torque on a big ask).
         self.selfcontact_w, self.repeat_decay, self.combo_w, self.combo_s = selfcontact_w, repeat_decay, combo_w, combo_s
         self.hurt_start = hurt_start
+        # slow_v: a landed punch slower than this (m/s) is worth (speed / slow_v)^2 of its pay, for the exam's attack line
+        # (a mean landing speed of 4 m/s times the boxer's speed factor): pats stop paying. 0 = off.
+        self.slow_v = slow_v
         if selfcontact_w and self.MODE != "getup":   # getting up leans on its own arms by design
             self.TERMS = self.TERMS + ["self"]
         if combo_w and not self.MODE:
@@ -858,6 +861,8 @@ class BoxingEnv:
         k1 = lambda t: t.view(1, K, 1)
         worth = landed.float() * arriving * (arriving / 6.0).clamp_min(0.1).pow(k1(self.s_power) - 1.0) \
             * torch.where(zone == 0, k1(self.s_head), k1(self.s_body)) * self.s_hand.view(1, K, 2)
+        if self.slow_v:
+            worth = worth * (arriving / self.slow_v).clamp(max=1.0).pow(2)
         own_pace = (self.since_hit / self.s_pace).clamp(0.0, 1.0).pow(2).clamp_min(0.05)
         dealt = worth.sum(-1) * own_pace * torch.where(self.since_block < 1.0, self.s_counter, torch.ones_like(self.s_counter))
         # Which punch it was (the faster glove's, if both land): its hand and where it went. Counted always (a run with

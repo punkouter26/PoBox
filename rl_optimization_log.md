@@ -1174,3 +1174,29 @@ overnight: the exams decide and promotion is done with the editor.
   `obs_state`), and Matt, Nick, Grandma and Grandpa trained under the speed limit, which the game turns on only with their retrained
   footwork (D8). It needs the editor (`MjRetrofit.PromoteBoxing`, gate and parity tests), which was held all night by a dialog.
   Report: `SCREENSHOTS/2026-10-17-night/report.html`.
+
+## 2026-10-17 23:55, overnight (owner: "train and improve all behaviours ... for next 10 hours")
+
+Decision: one more match round for all eight, `m11_NAME` from m10 against the others' m10, each aimed at the lines its
+`exam2_m10` failed; the grandparents' get-up first. Queue `training/queue_m11_staged.json` (22 jobs, copied into
+`logs/queue.json`; the old one backed up as `logs/queue.before-night-2026-10-18.json`). Estimate ~9.2 h.
+
+- **New flag `--slow-v`** (envs/boxing.py, train_gauntlet.py; off by default): a landed punch slower than this pays
+  (speed / slow_v)^2 of its worth. Why: Zombie (3.6 m/s), Nick (3.3), Kim (2.7, mark 4.4) and Grandpa (1.3, mark 3.0) fail
+  attack on the speed of what lands, not only the count, and nothing paid for speed above the style's `power`.
+  `tools/smoke_flags.py --compare` against a baseline saved just before: identical; `--flags` all pass.
+- **Get-up**: `u1_d9_grandpa_matt` (D8's recipe from his shipped get-up, 600 iterations: D8 reached 83-90% unaided in
+  training, but that checkpoint is gone, so the exam used the shipped one, 24/60); `u1_d9_grandma_matt` (from D8's, 1500
+  more: D8 stalled at 0% unaided, help 0.22). New banks `logs/handover_d9_NAME.npz` (the v2 banks are kept).
+- **m11, common**: m10's recipe with variety stronger (repeat decay 0.7 -> 0.5, combo 0.1 -> 0.25: at m10's weights repeat
+  share rose for every boxer), 700 iterations capped at 0.8 h, same early stop. Per boxer:
+  Matt hand-over share 0.7 (carrying on 51/57), Grandpa and Trump weighted 2 (0 and 0.42 landed/s against them).
+  Zombie, Nick: hit 2.0, seek 0.3, slow-v 4, weight 2 on the opponents they land ~0 on. Sokol: fall penalty 16, Kim 2,
+  Trump 3 (his falls). Kim: hit 2.0, seek 0.3, slow-v 4.4, fall penalty 16, Nick and Sokol 3. Trump: hit 2.0, seek 0.3,
+  slow-v 4, Grandma and Matt 2. Grandma: fall penalty 16, Trump 3 (8.2 falls/min), the new bank. Grandpa: hit 2.5,
+  seek 0.3, slow-v 3, std reset 0.3 (std was 0.11 and he lands 0.02/s), Trump 3, the new bank.
+- **Exams**: a `book_m11` job writes `logs/book_m11.json` just before them (m11 where it trained, else m10; the d9
+  get-up where it trained), so a failed run cannot void the exams as `book_punch` did; then the eight exams on 3.5.0.
+- Smoke first: `m11_grandpa`'s command, 2 iterations at 512 rings, ran clean (throwaway, deleted); the book job ran.
+  Unity is open in edit mode (opened 23:25 by someone else; not closed): the runner holds at job boundaries if Play
+  mode loads the GPU. Nothing is promoted overnight.

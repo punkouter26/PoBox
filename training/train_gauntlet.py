@@ -140,6 +140,7 @@ def main() -> None:
     ap.add_argument("--combo-w", type=float, default=0.0, help="pay per m/s of a punch landed within --combo-s of one from the other hand; try 0.1")
     ap.add_argument("--combo-s", type=float, default=0.8)
     ap.add_argument("--hurt-start", type=float, default=0.0, help="share of episodes that begin dazed, 55-90%% of the way to the legs going (needs --daze); try 0.25")
+    ap.add_argument("--slow-v", type=float, default=0.0, help="a landed punch slower than this (m/s) pays (speed / slow_v)^2 of its worth; try 4")
     ap.add_argument("--fatigue-ceiling", action="store_true", help="a tired drive's torque is capped at what is left of its force range, not its spring weakened")
     ap.add_argument("--done-when", default="", help="stop once these hold for --done-window iterations in a row, e.g. "
                                                     "'hits_per_s>=1.5,falls<=0.03,repeat_share<=0.5' (the learner's numbers, as logged under env/)")
@@ -168,7 +169,7 @@ def main() -> None:
                         seek_w=args.seek_w, ropes_start=args.ropes_start, hit_push=args.hit_push, stagger_v=args.stagger_v,
                         hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (),
                         selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay, combo_w=args.combo_w, combo_s=args.combo_s,
-                        hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, **extra_env)
+                        hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, slow_v=args.slow_v, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
@@ -311,7 +312,7 @@ def main() -> None:
                                   "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "clinch_w": args.clinch_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
                                   "hit_push": args.hit_push, "stagger_v": args.stagger_v, "hurt_full": args.hurt_full, "body_drain": args.body_drain,
                                   "obs_state": args.obs_state, "selfcontact_w": args.selfcontact_w, "repeat_decay": args.repeat_decay,
-                                  "combo_w": args.combo_w, "hurt_start": args.hurt_start, "fatigue_ceiling": args.fatigue_ceiling}})
+                                  "combo_w": args.combo_w, "hurt_start": args.hurt_start, "fatigue_ceiling": args.fatigue_ceiling, "slow_v": args.slow_v}})
             shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{args.name}.pt"))
             if not args.no_onnx:
                 try:

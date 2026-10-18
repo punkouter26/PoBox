@@ -107,6 +107,7 @@ def main() -> None:
             "selfcontact_w ": ("footwork", {"selfcontact_w": 0.5}),
             "repeat_decay": ("match_rules", {"repeat_decay": 0.6}),
             "combo_w": ("match_rules", {"combo_w": 0.3}),
+            "slow_v": ("match_rules", {"slow_v": 4.0}),
             "hurt_start": ("match_rules", {"hurt_start": 1.0}),
             "fatigue_ceiling": ("match_rules", {"fatigue_ceiling": True}),
         }
@@ -122,7 +123,7 @@ def main() -> None:
             already = flag == "fatigue_ceiling" and json.load(open(os.path.join(args.models, "matt_policy_config.json"))).get("fatigue_ceiling", False)
             if already:
                 print(f"{'':16s}   (the configs here already turn it on: nothing to change)")
-            failed += (not finite) + (not moved and flag.strip() not in ("repeat_decay", "combo_w") and not already)
+            failed += (not finite) + (not moved and flag.strip() not in ("repeat_decay", "combo_w", "slow_v") and not already)
         print("all flags pass" if not failed else f"{failed} failure(s)")
         raise SystemExit(failed)
 
