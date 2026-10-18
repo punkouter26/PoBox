@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight m11 training</title>
+<style>
+  :root { --bg: #f7f7f5; --ink: #1d1f22; --dim: #5d6168; --card: #fff; --line: #e2e2de; --good: #1f7a4d; --bad: #b3261e; --accent: #2b5fb8; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 16px; margin: 18px 0 6px; }
+  .sub { color: var(--dim); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; }
+  .up { color: var(--good); font-weight: 600; } .down { color: var(--bad); font-weight: 600; }
+  img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  .levels p { margin: 6px 0; } .levels b { display: inline-block; min-width: 64px; }
+  .tldr { border-left: 4px solid var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<h1>Overnight training: m11, all eight boxers</h1>
+<p class="sub">2026-10-17 23:35 to 2026-10-18 08:15, then a mixed-roster exam to 08:45 · v2 bodies · the game's punch rules · exams in C MuJoCo 3.5.0, 60 trials, 12 rounds</p>
+
+<div class="card tldr">
+<b>In short.</b> Two new get-ups and one more 48-minute boxing round each, every recipe aimed at what that boxer failed last night.
+Grandpa is the clear win (2 → 4 lines: he gets up 49 of 60 times and no longer falls), Grandma stopped falling (7 a minute → 0.1), Sokol nearly
+passes footing. Elsewhere the round traded one line for another: the opponents were last night's stronger m10 brains, and most learners grew more careful
+and landed less. Still no boxer passes all six lines. Recommended for the game: Sokol, Grandma and Grandpa from m11 (Grandpa with his new get-up),
+the other five stay on m10. Nothing is promoted yet (needs the editor; task M2).
+</div>
+
+<h2>Exam: lines passed of six</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>m10</th><th>m11</th><th>Mix</th><th>Gained</th><th>Still failing / lost</th></tr>
+<tr><td>Matt</td><td>5</td><td class="">5</td><td>5</td><td>carrying on 51/57 → 53/57 (passes)</td><td>attack 1.20 → 0.65/s (m11); in the mix (m10) guard: takes 0.35 head shots/s</td></tr>
+<tr><td>Zombie</td><td>5</td><td class="">5</td><td>5</td><td>-</td><td>attack 0.72 → 0.42/s, 3.6 m/s (mark 4.0)</td></tr>
+<tr><td>Nick</td><td>5</td><td class="down">4</td><td>4</td><td>-</td><td>footing 0.11 → 2.33 (m11); mix 4.67, all against Sokol's m11</td></tr>
+<tr><td>Sokol</td><td>5</td><td class="">5</td><td>5</td><td>footing 1.56 → 0.89 (m11) → 0.33 in the mix (mark 0.2)</td><td>footing, by a hair</td></tr>
+<tr><td>Kim</td><td>4</td><td class="down">3</td><td>3</td><td>-</td><td>footing 2.0 → 5.4, attack 0.40 → 0.29, carrying on lost</td></tr>
+<tr><td>Trump</td><td>5</td><td class="down">4</td><td>5</td><td>-</td><td>attack 0.44 → 0.48/s (mark 0.5); m11 also fell 1.33/min</td></tr>
+<tr><td>Grandma</td><td>3</td><td class="">3</td><td>3</td><td>footing 7.0 → 0.11</td><td>attack 0.64 → 0.24/s; getting up still 0/60</td></tr>
+<tr><td>Grandpa</td><td>2</td><td class="up">4</td><td>4</td><td>footing 2.7 → 0.0; getting up 24/60 → 49/60 (new get-up)</td><td>attack 0.02/s; carrying on 20/49</td></tr>
+<tr><th>All</th><th>34</th><th>33</th><th>34</th><th></th><th></th></tr>
+</table>
+<p class="sub">m10 is examined against the other m10 brains, m11 against the other m11 brains, and the mix (Matt, Zombie, Nick, Kim, Trump on m10;
+Sokol, Grandma, Grandpa on m11; the grandparents on their new get-ups) against itself: the roster the game would get
+(<code>logs/exam_m10_NAME.json</code>, <code>logs/exam_m11_NAME.json</code>, <code>logs/exam_mix_NAME.json</code>). Each exam's field differs,
+so a line near its mark can flip on the opponents alone (Nick's falls are all against Sokol's m11).</p>
+</div>
+
+<h2>The three charts that matter</h2>
+
+<h3>1. Punches landed a second (env/hits_per_s), the eight m11 runs</h3>
+<img src="tb_hits.png" alt="TensorBoard chart of env/hits_per_s for the eight m11 runs">
+<div class="card levels"><p><b>Toddler</b> Most of them hit a bit less often than when they started, because the other boxers got better at hitting back.</p><p><b>Child</b> Matt went from 0.73 to 0.55 a second and Sokol from 1.04 to 0.74, while Zombie (0.43 → 0.59), Trump (0.47 → 0.64) and Kim (0.23 → 0.38) went up. Grandpa stayed at 0.05: he still nearly never punches.</p><p><b>Adult</b> First 20 against last 20 iterations. The opponents were each one's m10 brain, which land far more than the ones m10 trained against (on Matt at the start 0.68/s against 0.45/s last night), so taking less (Matt 0.68 → 0.24/s) paid more than landing. Repeat decay 0.5 and combinations 0.25 also cut what a landed punch is worth; repeat share still rose for seven of eight and combinations stayed near 0.</p></div>
+
+<h3>2. Speed of the punches that land (env/hit_speed), m/s</h3>
+<img src="tb_speed.png" alt="TensorBoard chart of env/hit_speed for the eight m11 runs">
+<div class="card levels"><p><b>Toddler</b> We asked them to punch harder, and the ones we asked mostly did.</p><p><b>Child</b> The new rule pays a slow punch less. In training Zombie went 3.4 → 4.3 m/s, Nick 3.6 → 3.9, Grandpa 1.9 → 2.7 (his mark is 3.0); Kim did not move (3.9 → 3.5).</p><p><b>Adult</b> <code>--slow-v</code> scales a landed punch's worth by (speed / slow_v)<sup>2</sup> below slow_v. The training gains did not carry into the exams: Zombie still lands at 3.4-3.6 m/s there and Nick at 2.9-3.2, against other opponents and without the noise the trainer acts with. The bottom line is Grandpa.</p></div>
+
+<h3>3. Falls an episode (env/fall_rate)</h3>
+<img src="tb_falls.png" alt="TensorBoard chart of env/fall_rate for the eight m11 runs">
+<div class="card levels"><p><b>Toddler</b> Most of them fell down much less by the end.</p><p><b>Child</b> Grandpa fell in 37% of episodes at the start and 4% at the end, Grandma 33% → 10%. Kim went the wrong way, 48% → 60%.</p><p><b>Adult</b> Fall penalty 16 and the weights on the opponents who drop them worked for the grandparents (exam footing 2.7 → 0.0 and 7.0 → 0.11 a minute) and Sokol (1.56 → 0.33 in the mix, mark 0.2). Kim trained against Nick and Sokol at weight 3 and fell more: she is the lightest drive (strength 0.71) under the hurt and body-drain rules, and needs a different fix (her footwork under the rules, or her get-up hand-over) rather than more punishment.</p></div>
+
+<h2>Compared with last night</h2>
+<div class="card">
+<p>Last night (m10, against the older brains): seven of eight gained lines, none lost one. Tonight: Grandpa +2, Matt and Sokol traded or improved within a line,
+Nick, Kim and Trump lost one each on their own m11 exam. Better: the get-ups (Grandpa) and footing (both grandparents, Sokol). Worse: attack, because the field got harder
+and the variety terms took pay away from landing. Grandma's get-up is still 0 of 60 after 2,100 iterations in all: in training she never stands unaided (bank made from only 304 states out of 9,000 knockdowns).
+That is her body under the rules (strength 0.53, speed limit, fatigue), not training time: owner's call (more get-up strength, or the game helping her up).</p>
+</div>
+
+<h2>Next, if wanted</h2>
+<div class="card">
+<ul>
+<li>Promote the mix (M2): Sokol m11; Grandma m11; Grandpa m11 + <code>u1_d9_grandpa_matt</code>; the rest m10. Needs <code>obs_state</code> in the configs, PromoteBoxing, gate and parity tests, CPU Elo.</li>
+<li>Variety: drop repeat decay back to 0.7 and pay the head instead (a <code>--head-w</code>); the decay costs landing more than it buys a mix.</li>
+<li>Grandpa's attack: a bag stage (punching a still target) before the match; in the ring he never lands enough for the pay to teach him.</li>
+<li>Grandma's get-up: the owner's decision above.</li>
+</ul>
+</div>
+</main>
+</body>
+</html>

@@ -1200,3 +1200,21 @@ Decision: one more match round for all eight, `m11_NAME` from m10 against the ot
 - Smoke first: `m11_grandpa`'s command, 2 iterations at 512 rings, ran clean (throwaway, deleted); the book job ran.
   Unity is open in edit mode (opened 23:25 by someone else; not closed): the runner holds at job boundaries if Play
   mode loads the GPU. Nothing is promoted overnight.
+- **Results (23:35-08:15; all 22 jobs exit 0).** Get-ups: `u1_d9_grandpa_matt` 600 iterations (bank 1500 states); `u1_d9_grandma_matt` 1500
+  (bank only 304 states from 9000 knockdowns: she still seldom stands unaided). m11: all eight ran the 0.8 h cap (471-524 iterations).
+  Exams, m11 against m11 (`logs/exam_m11_NAME.json`), lines m10 -> m11: Matt 5 -> 5 (carrying on now passes 53/57, attack lost: 0.65/s at
+  3.5 m/s), Zombie 5 -> 5 (attack 0.72 -> 0.42/s), Nick 5 -> 4 (footing lost, 2.33/min), Sokol 5 -> 5 (footing 1.56 -> 0.89), Kim 4 -> 3
+  (carrying on lost, falls 5.4/min), Trump 5 -> 4 (footing lost, 1.33), Grandma 3 -> 3 (footing passes 7.0 -> 0.11, attack lost 0.24/s;
+  get-up 0/60), **Grandpa 2 -> 4** (footing 0.0; get-up 49/60 in 3.3 s with d9; attack still 0.02/s). 33 lines against m10's 34.
+- **Why attack fell**: the training field was the m10 brains, which land far more (on Matt at iteration 0: 0.68/s against 0.45/s for m10's
+  field), so taking less paid more than landing (Matt taken 0.68 -> 0.24/s, landed 0.73 -> 0.55). Repeat decay 0.5 / combo 0.25 cut a landed
+  punch's worth and still did not mix the punches (repeat share rose for 7 of 8, combinations ~0). `--slow-v` raised the speed of what lands
+  in training (Zombie 3.4 -> 4.3, Nick 3.6 -> 3.9, Grandpa 1.9 -> 2.7) but not in the exam (Zombie 3.4-3.6, Nick 2.9-3.2). Clinch 0 again.
+- **Mixed roster exam** (`logs/book_mix.json`, `logs/exam_mix_NAME.json`, run 8 in parallel on the CPU, ~15 min): Matt, Zombie, Nick, Kim,
+  Trump m10; Sokol, Grandma, Grandpa m11; grandparents on d9 get-ups. Lines: Matt 5 (guard fails: 0.35 head shots/s), Zombie 5, Nick 4
+  (falls 6.3/min, all against Sokol m11), Sokol 5 (footing 0.33, mark 0.2), Kim 3, Trump 5, Grandma 3, Grandpa 4: 34. Each exam's field
+  differs, so a line near its mark flips on the opponents alone.
+- **Recommendation (not done; needs the editor, task M2)**: promote that mix. Grandma's get-up is her body under the rules, not training
+  time (2100 iterations, never stands unaided): owner's call. Next: repeat decay back to 0.7 with a head term instead; a bag stage for
+  Grandpa's punching; Kim's falls need her footwork under the rules, not a bigger penalty. Report: `SCREENSHOTS/2026-10-18-night/report.html`.
+  TensorBoard's throwaway `smoke_m11` run deleted.

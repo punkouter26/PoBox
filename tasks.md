@@ -309,5 +309,5 @@ Details in `rl_optimization_log.md` and `SCREENSHOTS/2026-10-17-night/report.htm
 
 ## Overnight m11 (owner, 2026-10-17 23:35: "train and improve all behaviours ... next 10 hours")
 
-- [ ] N1 Grandparents' get-up (u1_d9) and banks; m11_NAME for all eight aimed at each one's failing m10 lines (`--slow-v` new); exams on 3.5.0 with `logs/book_m11.json`.
-- [ ] N2 Report (`SCREENSHOTS/2026-10-18-night/report.html`) and the promotion call (with M2).
+- [x] N1 Grandparents' get-up (u1_d9) and banks; m11_NAME for all eight aimed at each one's failing m10 lines (`--slow-v` new); exams on 3.5.0 with `logs/book_m11.json`.
+- [x] N2 Report (`SCREENSHOTS/2026-10-18-night/report.html`) and the promotion call: the mix (Sokol, Grandma, Grandpa m11 + Grandpa's d9 get-up; the rest m10), done with M2.
