@@ -304,7 +304,7 @@ Details in `DOCS/README.md`. Things moved out of the tree are in `../PoBox_quara
 Details in `rl_optimization_log.md` and `SCREENSHOTS/2026-10-17-night/report.html`.
 
 - [x] M1 m10_NAME for all eight (the game's punch rules, variety, hurt starts, ringcraft, hand-over 0.5) and their exams on 3.5.0.
-- [ ] M2 Promote m10 for the seven that gained lines (not Grandpa): `obs_state` in their configs, the speed limit with retrained footwork for Matt, Nick and Grandma (D8), PromoteBoxing, gate and parity tests, CPU Elo.
+- [x] M2 (2026-10-18: the mix, Zombie m12, Grandma referee-stood; Elo not re-run) Promote m10 for the seven that gained lines (not Grandpa): `obs_state` in their configs, the speed limit with retrained footwork for Matt, Nick and Grandma (D8), PromoteBoxing, gate and parity tests, CPU Elo.
 - [ ] M3 The punch mix: repeat share rose for all eight; try repeat decay 0.4, combo 0.3, head weighted up.
 
 ## Overnight m11 (owner, 2026-10-17 23:35: "train and improve all behaviours ... next 10 hours")

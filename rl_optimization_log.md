@@ -1218,3 +1218,19 @@ Decision: one more match round for all eight, `m11_NAME` from m10 against the ot
   time (2100 iterations, never stands unaided): owner's call. Next: repeat decay back to 0.7 with a head term instead; a bag stage for
   Grandpa's punching; Kim's falls need her footwork under the rules, not a bigger penalty. Report: `SCREENSHOTS/2026-10-18-night/report.html`.
   TensorBoard's throwaway `smoke_m11` run deleted.
+
+## 2026-10-18 10:55-12:45, promotion and m12_zombie (owner: "do all", then "finish in 1 hour")
+
+- **In the game now** (M2): Matt, Nick, Kim, Trump box with m10, Zombie with `m12_zombie`, Sokol, Grandma and Grandpa with m11. Every
+  `Assets/Boxers/NAME/config.json` is the trainer's `models/v2` config (speed limit on for all eight) plus `obs_state: true`. Footwork
+  under the speed limit: f1 for Matt, Nick, Grandma; f1b for Zombie; `f2_grandpa` for Grandpa (f1_grandpa and u1_d8_grandpa_matt were
+  gone from disk), each with its C MuJoCo 3.5.0 recordings. Grandpa gets up with `u1_d9_grandpa_matt` (exported at 103 inputs).
+  **Grandma has no get-up brain**: she never stands unaided under the rules, so the referee stands her up, as Sokol was before his.
+- **Tests**: gate 24/24, parity 3/3 (the fingerprint check now expects the speed limit's damping, force / speed limit a joint, added
+  by `MjBoxer.Bind`; Matt's `reference_hold.json` recorded again with it), state flow 2/2, free-for-all 1/1.
+- **`m12_zombie`** (from m10 against the game's roster, m10's variety weights 0.7 / 0.1 with `--slow-v 4`, hit 2.0, seek 0.3; 400
+  iterations in 0.8 h, slowed by the Unity tests): exam against that roster 5 of 6, attack 0.61 -> 1.14/s at 4.0 m/s (just under the
+  mark), guard stops 57% (was 1%), no falls. Promoted. m12 for Nick, Trump, Kim dropped for time (still in `queue_m12_staged.json`).
+- **`f2_grandpa`**: D8's footwork recipe again, 800 iterations: walk, turn, joints pass; stand 93% (mark 95%, 2 of 30 down under shoves;
+  f1 had 100%). Promoted anyway: his match brain needs the speed limit, and the footwork brain only stands and walks between exchanges.
+- Not done: the CPU Elo re-run (13 min, CPU), skipped for the hour.
