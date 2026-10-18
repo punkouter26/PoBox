@@ -50,7 +50,17 @@ namespace PoBox.Tests
 
         static unsafe void CompareModel()
         {
-            var diffs = ModelFingerprint.FromJson(File.ReadAllText(Boxer + "/fingerprint.json")).Differences(MjScene.Instance.Model);
+            var fp = ModelFingerprint.FromJson(File.ReadAllText(Boxer + "/fingerprint.json"));
+            // The speed limit is a rule, not part of the compiled file: MjBoxer.Bind adds force / speed limit to each
+            // joint's damping, as footwork_c.py's speed_limit() does to the trainer's model.
+            BoxerConfig cfg = UnityEngine.Object.FindAnyObjectByType<MjTestbed>().boxer.Config;
+            if (cfg.speed_limit)
+                foreach (var j in fp.joints)
+                {
+                    int i = Array.IndexOf(cfg.joint_order, j.name.Substring(j.name.IndexOf('_') + 1));
+                    if (i >= 0) j.damping += cfg.force_limit[i] / cfg.velocity_limit[i];
+                }
+            var diffs = fp.Differences(MjScene.Instance.Model);
             Assert.IsEmpty(diffs, string.Join("\n", diffs));
             Assert.AreEqual(0.005, MjScene.Instance.Model->opt.timestep, 0.0, "MuJoCo's step");
         }
