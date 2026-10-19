@@ -504,6 +504,51 @@ namespace PoBox.EditorTools
             return $"Rigidbody {bodies}, ArticulationBody {articulations}, Collider {colliders}, Joint {joints}";
         }
 
+        /// <summary>
+        /// Boxing gloves on every boxer: a ball the size of its physics glove (a sphere of 7.5 cm) over each fist, so
+        /// what is seen is what lands. The meshes' hands are open and only Matt's have fingers to curl. Drawn only: no
+        /// collider (the glove that lands is MuJoCo's), and FighterSkin paints it the corner's colour. Run again, it
+        /// replaces the ones it made.
+        /// </summary>
+        public static string Glove()
+        {
+            const string matPath = "Assets/Materials/Glove.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                mat.SetFloat("_Smoothness", 0.35f);
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            Mesh ball = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+            var said = new StringBuilder();
+            foreach (string dir in Directory.GetDirectories(BoxersDir))
+            {
+                string title = Path.GetFileName(dir), prefabPath = $"{dir}/{title}.prefab";
+                if (!File.Exists(prefabPath)) continue;
+                GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+                int made = 0;
+                foreach (MjGeom geom in root.GetComponentsInChildren<MjGeom>(true))
+                {
+                    if (!geom.name.EndsWith("glove_l") && !geom.name.EndsWith("glove_r")) continue;
+                    Transform old = geom.transform.Find(FighterSkin.GloveName);
+                    if (old != null) Object.DestroyImmediate(old.gameObject);
+                    var glove = new GameObject(FighterSkin.GloveName);
+                    glove.transform.SetParent(geom.transform, false);
+                    float size = 2f * geom.Sphere.Radius + 0.005f;
+                    glove.transform.localScale = Vector3.one * size / Mathf.Max(1e-4f, geom.transform.lossyScale.x);
+                    glove.AddComponent<MeshFilter>().sharedMesh = ball;
+                    glove.AddComponent<MeshRenderer>().sharedMaterial = mat;
+                    made++;
+                }
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+                PrefabUtility.UnloadPrefabContents(root);
+                said.AppendLine($"{title}: {made} gloves");
+            }
+            return said.ToString();
+        }
+
+        [MenuItem("PoBox/Mj/Glove Every Boxer")] static void Gloves() => Debug.Log(Glove());
         [MenuItem("PoBox/Mj/Dress Every Boxer For Both Corners")] static void Corners() => Debug.Log(BuildAllCorners());
         [MenuItem("PoBox/Mj/Check Every Boxer Against Training")] static void CheckEvery() => Debug.Log(CheckAll());
     }

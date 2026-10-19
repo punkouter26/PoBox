@@ -13,7 +13,7 @@ namespace PoBox.Tests
     public class FreeForAllTests
     {
         [UnityTest]
-        public IEnumerator EveryBoxerFightsAndASlipIsNotCounted()
+        public IEnumerator EveryBoxerFightsAndASlipIsCounted()
         {
             if (!Application.CanStreamedLevelBeLoaded(MatchSelection.MeleeScene)) Assert.Ignore("the build has no Melee scene");
             yield return SceneManager.LoadSceneAsync(MatchSelection.MeleeScene, LoadSceneMode.Single);
@@ -37,14 +37,14 @@ namespace PoBox.Tests
                 int landing = all.Count(f => f.stats.landed > 0);
                 Assert.GreaterOrEqual(landing, 4, $"only {landing} boxers landed a punch in 20 s: punches are not being measured against each one's opponent");
 
-                // A fall with no punch behind it is a slip: the referee does not count it.
+                // A fall with no punch behind it is a knockdown too: the referee counts it.
                 Fighter victim = all.FirstOrDefault(f => !f.IsDown && !rules.IsOut(f));
                 if (victim != null && rules.Phase == FreeForAll.Stage.Fight)
                 {
                     victim.ForceDown();
                     yield return null;
-                    Assert.IsTrue(rules.Slipped(victim), $"{victim.displayName} went down with no punch and it was not called a slip");
-                    Assert.AreEqual(-1, rules.CountOf(victim), $"{victim.displayName} slipped and was counted");
+                    Assert.IsFalse(rules.Slipped(victim), $"{victim.displayName} went down in the fight and was not counted");
+                    Assert.GreaterOrEqual(rules.CountOf(victim), 0, $"{victim.displayName} went down with no punch and nobody counted");
                 }
             }
             finally { Time.timeScale = 1f; }

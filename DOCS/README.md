@@ -69,6 +69,50 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## Review fixes: punches that miss, knockdowns, get-ups that stand, gloves (2026-10-18, evening)
+
+The owner's review (every screen and scene played) found ten issues; the answers: accuracy realistic, KOs common, the
+judges to weigh the centre each in their own way, Grandma to be trained to get up, a slip is a knockdown, a slow count
+of ten, 45 s rounds kept, Back left as it is, bodies left in the Melee ring, no APK target.
+
+- **Get-ups stand in the game** (the README's old "why the game differs from the exam is not yet known"). The cause was
+  the reserve: a get-up spends hard (several kW of |torque x speed| as the drives come back), the game started it on
+  whatever reserve the boxer had (0.0 to 0.4 in a bout), and on 60% drives no brain stands. The exam starts at a full
+  reserve. Now a get-up starts at half or more (full drives) and spends nothing while the get-up brain has the body
+  (`Fighter`, `MjRing`); the get-up retrains are staged with the trainer's matching `--no-drain`. The get-up brain is
+  also shown the real opponent and the bout's ring (`MjBoxer.GetUp`), as the spar env trained it: the dumped first
+  observation matched C MuJoCo to 1e-3 on 102 of 103 numbers. Trump, forced down: up at 5, then at 2.
+- **The count** (`Bout`): a number a second, the leftover time kept (it was one number a frame at most, so the count
+  slowed with the frame rate); it stands still while the boxer is on its feet and the get-up brain hands over; a fall
+  in the intro is counted; both down at once is one count over the two (DOUBLE KO if neither beats it); the third
+  knockdown of a bout stops it (TKO); the KO time is the scoreboard's. Free-for-all: slips are counted, and its count
+  waits for a boxer on its feet too.
+- **Knockdowns common**: the daze line 42 -> 26 (weakening from 14 -> 9), drains over 3.5 s (was 2.5), a body shot 0.45
+  of a head shot (was 0.3), on the 16 corner prefabs. Survey at 4x (fight log): Grandpa v Zombie KO/TKO in R2-R3 three
+  times out of three (was 100+ head shots and no knockdown), Trump v Nick a KO, draws and a decision; Matt v Grandma
+  still none (Matt lands only to her body).
+- **Fatigue**: the reserve is no longer filled to full at every placement (the referee's stand-up included); the stool
+  gives what a minute would (1 - e^(-60/fatigue_rec_s), 95%). The HUD's tank and TIRED now read that reserve.
+- **Accuracy and blocks**: a glove driving at the body counts as thrown (only head-bound ones did, so 92-100% "landed");
+  a punch stopped on the gloves or forearms counts as blocked against the body too. Trump v Nick now 20-45% landed and
+  100+ blocks a bout.
+- **Judges** (`Judges.Level`): VOLUME counts outright, POWER calls 4% level, CRAFT 10%; a level round goes to the centre.
+  Matt v Grandma went from three unanimous 30-27 shutouts to split decisions.
+- **Gloves**: every boxer wears a ball the size of its physics glove (7.5 cm sphere) in its corner's colour, or its Melee
+  paint (`PoBox/Mj/Glove Every Boxer`, `FighterSkin`). Drawn only; the boxer check shows 0 differences for all eight.
+- **HUD** (report: `SCREENSHOTS/2026-10-18-review/report.html`): the punch tape's counts no longer swell over the icon
+  and each other; the win bar is labelled WIN %; a drawn cup bout's AGAIN counts for the cup; the HUD builds a UI tree
+  that comes up late; ALL shows busy like FIGHT; the ELO line names red on a draw.
+- **Tests**: MjParity 3/3, MjGate 24/24, OneScreen 73/73 (the layout audit's spill rule now reads the layout before
+  transforms: a count swelling for a moment is not a squeezed parent), StateFlow 2/2, FreeForAll 1/1 (one run of three
+  had 3 boxers landing in 20 s against its minimum of 4), SceneIntegrity 5/5; the boxer check 0 differences for all eight.
+- **Garbage**: the stand-in's array per control step is gone; the game's scripts now allocate about 0.5 kB a frame.
+- **Not fixed here (training)**: Kim's match brain empties her reserve in about 5 s and she falls (C MuJoCo too, 20/20
+  inside 10 s); Zombie's, Nick's and Matt's get-ups are below the mark under the speed limit and Grandma's never stood:
+  retrains staged in `training/logs/queue.json` (Grandma d10c, Matt, Zombie, Nick, all `--no-drain`). 8 kJ of fatigue
+  empties a normal boxer in 7-15 s in the trainer as in the game: an owner's call. The meshes' hands are open (only Matt
+  has finger bones), Kim's arms stretch and Grandma's hair is a pale texture: asset work in Blender.
+
 ## Sokol in the menu; punches that land, boxers that tire (2026-10-16, morning)
 
 - **Sokol is the eighth card** on the first screen and boxes one-on-one: `m2_sokol` (passes every line of the boxing

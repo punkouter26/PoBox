@@ -877,11 +877,11 @@ MonoBehaviour:
   ringCentre: {x: 0, y: 0, z: 0}
   ringHalf: 0
   dazeRule: 1
-  dazeTau: 2.5
-  dazeLo: 14
-  dazeHi: 42
+  dazeTau: 3.5
+  dazeLo: 9
+  dazeHi: 26
   dazeWeak: 0.45
-  dazeBody: 0.3
+  dazeBody: 0.45
   slackSeconds: {x: 1.2, y: 2.4}
   handOverSeconds: 1.5
 --- !u!114 &8644333955677635799

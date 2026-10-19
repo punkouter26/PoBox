@@ -565,6 +565,22 @@ namespace PoBox.Tests
         }
 
         [Test]
+        public void ACloseRoundCanSplitOnTheCentre()
+        {
+            // Blue lands one more of the same punch (2.4% of the two), red holds the centre: VOLUME counts and gives it
+            // to blue; POWER (4%) and CRAFT (10%) call it level and give it to red for the ring.
+            var judges = new Judges { impulseFloor = 2.2f };
+            var hit = new HitEvent { impulse = 8f, zone = PartKind.Head, clean = true };
+            for (int i = 0; i < 20; i++) judges.OnHit(0, hit);
+            for (int i = 0; i < 21; i++) judges.OnHit(1, hit);
+            judges.OnCentre(0, 20f);
+            judges.CloseRound();
+            Assert.AreEqual("10-9", judges.Card(0), "POWER did not call a 2.4% round level");
+            Assert.AreEqual("9-10", judges.Card(1), "VOLUME");
+            Assert.AreEqual("10-9", judges.Card(2), "CRAFT did not give a close round to the fighter who held the centre");
+        }
+
+        [Test]
         public void AKnockdownCostsAPoint()
         {
             var judges = new Judges { impulseFloor = 2.2f };

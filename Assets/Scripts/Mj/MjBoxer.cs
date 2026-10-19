@@ -35,7 +35,9 @@ namespace PoBox.Mj
     /// </summary>
     public unsafe class MjBoxer : MonoBehaviour
     {
-        public const int Stand = 0, Walk = 1, Turn = 2, Match = 3;
+        /// <summary>GetUp: off the canvas in a bout. The get-up stage is the trainer's sparring env (envs/getup.py, a
+        /// BoxingEnv with the opponent frozen in it), so it is shown the real opponent and the bout's ring, as Match is.</summary>
+        public const int Stand = 0, Walk = 1, Turn = 2, Match = 3, GetUp = 4;
         public const int ObservationSize = 103;
 
         [Tooltip("In front of every name of this boxer in the model: a_ for the red corner, b_ for the blue.")]
@@ -256,13 +258,15 @@ namespace PoBox.Mj
         {
             double* pos = _d->xpos + 3 * _pelvis;
             double yaw = Yaw(_d->xquat + 4 * _pelvis);
-            if (Kind == Match && opponent != null && opponent.Bound)
+            if ((Kind == Match || Kind == GetUp) && opponent != null && opponent.Bound)
             {
                 // A bout: the other boxer, as it is.
                 _theirs = Yaw(_d->xquat + 4 * opponent._pelvis);
-                int[] theirs = { opponent._head, opponent._torso, opponent._glove[0], opponent._glove[1] };
                 for (int p = 0; p < 4; p++)
-                    for (int k = 0; k < 3; k++) _standIn[p][k] = _d->geom_xpos[3 * theirs[p] + k];
+                {
+                    int geom = p == 0 ? opponent._head : p == 1 ? opponent._torso : opponent._glove[p - 2];
+                    for (int k = 0; k < 3; k++) _standIn[p][k] = _d->geom_xpos[3 * geom + k];
+                }
                 return;
             }
             double ox = Kind == Walk ? pos[0] + Math.Cos(yaw) * 1.2 : Opp[0], oy = Kind == Walk ? pos[1] + Math.Sin(yaw) * 1.2 : Opp[1];
@@ -318,7 +322,7 @@ namespace PoBox.Mj
             double cy = Math.Cos(yaw), sy = Math.Sin(yaw);
             double rx = ringCentre.x - pos[0], ry = ringCentre.y - pos[1];
             // A bout's ring is the trainer's (envs/boxing.py: not held to its size); the footwork stage holds it to one.
-            double reach = Kind == Match ? 100.0 : 1.0;
+            double reach = Kind == Match || Kind == GetUp ? 100.0 : 1.0;
             o[at++] = Clamp((cy * rx + sy * ry) / Config.ring_half, -reach, reach);
             o[at++] = Clamp((-sy * rx + cy * ry) / Config.ring_half, -reach, reach);
             // In a bout the command is zeros; a policy trained with obs_state reads its own state there (envs/match.py).

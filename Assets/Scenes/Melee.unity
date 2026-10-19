@@ -22932,7 +22932,7 @@ MonoBehaviour:
   roundSeconds: 45
   introSeconds: 2.5
   breakSeconds: 3
-  countInterval: 0.7
+  countInterval: 1
   slipSeconds: 15
   settleSeconds: 1.5
   startInside: 0.5

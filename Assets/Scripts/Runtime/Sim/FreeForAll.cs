@@ -19,9 +19,10 @@ namespace PoBox.Sim
     ///     never seen an opponent five metres off), and box once another boxer is a step and a half away. A brain
     ///     (which sees one opponent) is kept facing the nearest boxer on its feet, turns on whoever has just hit
     ///     it, and leaves alone one that two are already on.
-    ///   * A punch that puts a boxer down starts its own count, a number every <see cref="countInterval"/> seconds,
-    ///     while the rest fight on; up before ten, it fights on; counted out, it stays where it lies. A fall with
-    ///     no punch behind it is a slip and is not counted; a boxer who cannot get up from one in slipSeconds cannot go on.
+    ///   * Going down in the fight, punched or not (a slip is a knockdown too), starts the boxer's own count, a number
+    ///     every <see cref="countInterval"/> seconds, while the rest fight on; the count stands still once it is back on
+    ///     its feet; up before ten, it fights on; counted out, it stays where it lies. A fall before the bell is not
+    ///     counted; a boxer who cannot get up from one in slipSeconds cannot go on.
     ///   * The round runs on through a count: the bell does not save anyone. Between rounds everybody still in
     ///     gets a minute on the stool (Fighter.Respawn) and goes back to the ropes.
     ///   * The last boxer standing wins. If more than one is in after the last round, the judges give it to the one
@@ -42,8 +43,8 @@ namespace PoBox.Sim
         [Tooltip("Real seconds between rounds.")]
         public float breakSeconds = 3f;
         [Tooltip("Seconds per number of a count.")]
-        public float countInterval = 0.7f;
-        [Tooltip("Seconds a boxer who slipped (no punch, no count) may stay down before it is ruled unable to go on.")]
+        public float countInterval = 1f;
+        [Tooltip("Seconds a boxer down with no count (it fell before the bell) may stay down before it is ruled unable to go on.")]
         public float slipSeconds = 15f;
         [Tooltip("Real seconds after the final bell before the ring stops: the last punch and fall finish.")]
         public float settleSeconds = 1.5f;
@@ -88,7 +89,7 @@ namespace PoBox.Sim
         /// <summary>The count over a boxer knocked down (0 to 10); -1 when it is standing, slipped, or already out.</summary>
         public int CountOf(Fighter f) =>
             !_out.Contains(f) && _counted.Contains(f) && _downFor.TryGetValue(f, out float t) ? Mathf.Min(10, Mathf.FloorToInt(t / countInterval)) : -1;
-        /// <summary>Down without a punch behind it: a slip, not counted.</summary>
+        /// <summary>Down with no count over it (it fell before the bell).</summary>
         public bool Slipped(Fighter f) => f != null && f.IsDown && !_out.Contains(f) && !_counted.Contains(f);
         public int Left { get { int n = 0; foreach (Fighter f in fighters) if (f != null && !_out.Contains(f)) n++; return n; } }
 
@@ -147,11 +148,11 @@ namespace PoBox.Sim
                 if (t != null) { t.startColor = new Color(c.r, c.g, c.b, 0.55f); t.endColor = new Color(c.r, c.g, c.b, 0f); }
         }
 
-        /// <summary>A punch put it down (the cause has an attacker): the referee counts. Anything else is a slip.</summary>
+        /// <summary>Down in the fight, by a punch or a slip: the referee counts.</summary>
         void OnKnockdown(Fighter f, HitEvent cause)
         {
             if (Phase != Stage.Fight || f == null || _out.Contains(f)) return;
-            if (cause.attacker != null) _counted.Add(f);
+            _counted.Add(f);
         }
 
         // ------------------------------------------------------------ flow
@@ -329,10 +330,11 @@ namespace PoBox.Sim
             {
                 if (f == null || _out.Contains(f)) continue;
                 if (!f.IsDown) { _downFor.Remove(f); _counted.Remove(f); continue; }
+                if (f.OnFeet) continue;         // up: the count waits while the get-up hands the body over
                 _downFor.TryGetValue(f, out float t);
                 t += dt;
                 _downFor[f] = t;
-                // Ten after a knockdown: counted out. After a slip there is no count, but a boxer who cannot get up
+                // Ten after a knockdown: counted out. Down with no count, a boxer who cannot get up
                 // (from under a pile, say) in all that time cannot go on.
                 bool knockedDown = _counted.Contains(f);
                 if (knockedDown ? Mathf.FloorToInt(t / countInterval) < 10 : t < slipSeconds) continue;

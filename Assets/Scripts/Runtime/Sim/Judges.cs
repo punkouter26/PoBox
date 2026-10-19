@@ -14,12 +14,13 @@ namespace PoBox.Sim
     ///     VOLUME   how many clean punches landed, wherever they landed, with a little for being the busier.
     ///     CRAFT    clean impulse to head and body alike, plus credit for every punch stopped on the guard.
     ///
-    /// A round goes 10-9 to whoever a judge had ahead, 10-10 when that judge's two totals are within 4% of
-    /// each other, and a fighter put down in the round loses a further point for each time (10-8, 10-7).
+    /// A round goes 10-9 to whoever a judge had ahead, 10-10 when that judge's two totals are close enough
+    /// to call level, and a fighter put down in the round loses a further point for each time (10-8, 10-7).
     ///
-    /// Ring generalship is a tie-break and nothing more: a round all three would otherwise call level goes to
-    /// the fighter who held the centre of the ring for at least 60% of the time either of them clearly did
-    /// (<see cref="OnCentre"/>, fed by the bout). It never outweighs a punch landed, only an even round.
+    /// Ring generalship is a tie-break, and each judge has its own idea of close (<see cref="Level"/>): VOLUME
+    /// counts and calls only a dead heat level, POWER allows 4%, CRAFT, who values the ring most, 10%. A round a
+    /// judge calls level goes to the fighter who held the centre of the ring for at least 60% of the time either
+    /// of them clearly did (<see cref="OnCentre"/>, fed by the bout). So a close round can split the three.
     /// </summary>
     public class Judges
     {
@@ -36,6 +37,8 @@ namespace PoBox.Sim
         public float impulseFloor = 2.2f;
         /// <summary>The share of centre time that breaks a level round.</summary>
         public const float GeneralshipShare = 0.6f;
+        /// <summary>How close two totals are for each judge to call them level, as a share of the two together.</summary>
+        public static readonly float[] Level = { 0.04f, 0f, 0.10f };
 
         /// <summary>Red's share of the time either corner held the centre, in the round being fought (0.5 when neither has).</summary>
         public float CentreShare => _centre[0] + _centre[1] > 0f ? _centre[0] / (_centre[0] + _centre[1]) : 0.5f;
@@ -82,7 +85,7 @@ namespace PoBox.Sim
         {
             float r = round[judge, 0], b = round[judge, 1];
             if (_downs[0] != _downs[1]) return _downs[0] < _downs[1] ? 1 : -1;
-            if (Mathf.Abs(r - b) <= 0.04f * (r + b) + 1e-4f)
+            if (Mathf.Abs(r - b) <= Level[judge] * (r + b) + 1e-4f)
             {
                 float share = CentreShare;
                 return share >= GeneralshipShare ? 1 : share <= 1f - GeneralshipShare ? -1 : 0;

@@ -160,9 +160,10 @@ namespace PoBox.Sim
             GettingUp = true;
             _out = Out.None;
             boxer.SetPolicy(boxer.getUpPolicy);
-            // The get-up stage shows a stand-in of the opponent in its guard where the opponent stands.
+            // The get-up stage trained with the opponent in the ring (frozen in its guard, as the referee holds this
+            // one's): it is shown that opponent as it is, as the trainer's spar env shows it.
             Vector3 them = fighter.opponent != null ? fighter.opponent.pelvis.transform.position : boxer.transform.position + boxer.Forward;
-            boxer.SetEpisodeAt(MjBoxer.Stand, 0, 0, 0, them.x, them.z);
+            boxer.SetEpisodeAt(MjBoxer.GetUp, 0, 0, 0, them.x, them.z);
         }
 
         /// <summary>Sent by the fighter when it is back on its feet: the match policy takes the body over where the get-up left it.</summary>
@@ -224,32 +225,37 @@ namespace PoBox.Sim
 
         /// <summary>
         /// A policy announces nothing: a punch is recognised by what it is, a glove moving at the opponent's head
-        /// faster than a guard moves. Named by how the glove travels: straight, up into it, round at it, or low.
+        /// or body faster than a guard moves, landed or not (a miss is a punch thrown too). Named by how the glove
+        /// travels: straight, up into it, round at it, or low.
         /// </summary>
         void NotePunches()
         {
             if (fighter.IsDown || fighter.opponent == null || _gloves == null) return;
             Vector3 head = fighter.opponent.HeadPosition;
-            float bodyY = fighter.opponent.torso != null ? fighter.opponent.torso.transform.position.y : head.y - 0.5f;
+            Vector3 body = fighter.opponent.torso != null ? fighter.opponent.torso.transform.position : head - 0.5f * Vector3.up;
             for (int hand = 0; hand < 2; hand++)
             {
                 Transform glove = _gloves[hand];
                 if (glove == null || Time.time - _punchNotedAt[hand] < 0.35f) continue;
-                Vector3 to = head - glove.position;
-                float distance = to.magnitude;
-                if (distance < 0.05f || distance > 1.3f) continue;
                 Vector3 v = ring.GloveVelocity(boxer, hand);
-                float closing = Vector3.Dot(v, to / distance);
+                float closing = Mathf.Max(Closing(head - glove.position, v), Closing(body - glove.position, v));
                 if (closing < punchSpeed) continue;
                 _punchNotedAt[hand] = Time.time;
                 float speed = Mathf.Max(0.01f, v.magnitude);
                 PunchType type;
-                if (glove.position.y < bodyY + 0.12f) type = PunchType.Body;
+                if (glove.position.y < body.y + 0.12f) type = PunchType.Body;
                 else if (v.y / speed > 0.6f) type = PunchType.Uppercut;
                 else if (closing / speed < 0.75f) type = PunchType.Hook;
                 else type = hand == 0 ? PunchType.Jab : PunchType.Cross;
                 fighter.NotePunch(hand == 0 ? -1 : 1, type);
             }
+        }
+
+        /// <summary>A glove's speed towards a target this far away, m/s; 0 out of reach (beyond 1.3 m) or already on it.</summary>
+        static float Closing(Vector3 to, Vector3 v)
+        {
+            float distance = to.magnitude;
+            return distance < 0.05f || distance > 1.3f ? 0f : Vector3.Dot(v, to / distance);
         }
     }
 

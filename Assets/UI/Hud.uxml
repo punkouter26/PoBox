@@ -15,8 +15,8 @@
     The scoreboard is three rows. The names sit on the health bars with the clock between them (a hit
     leaves a pale chunk on the bar that drains a moment later); under that the win-probability bar; under
     that the punches landed (and with STATS the hardest hit), each a pair of numbers either side of an icon.
-    In the picture's top corners are two small pods, one a fighter: its tank, what its muscles have left
-    (boxers trained to tire only), what it is doing, and ON THE ROPES or TIRED when it is; with STATS also
+    In the picture's top corners are two small pods, one a fighter: its tank (what its muscles have left, for
+    boxers trained to tire), what it is doing, and ON THE ROPES or TIRED when it is; with STATS also
     where it has been hit and where its balance is. The commentary is a
     caption over the bottom of the picture that goes away when it has nothing to say.
 
@@ -79,18 +79,27 @@
                     <ui:VisualElement class="momentum-mid" picking-mode="Ignore" />
                     <ui:Label name="momentum-red" class="momentum-text momentum-text--l" text="50%" picking-mode="Ignore" />
                     <ui:Label name="momentum-blue" class="momentum-text momentum-text--r" text="50%" picking-mode="Ignore" />
+                    <ui:Label class="momentum-key" text="WIN %" picking-mode="Ignore" />
                 </ui:VisualElement>
 
                 <ui:VisualElement name="tape" class="chips" picking-mode="Ignore">
                     <ui:VisualElement class="stat" picking-mode="Ignore">
-                        <ui:Label name="landed-red" class="stat-val stat-val--l" text="0/0" picking-mode="Ignore" />
+                        <ui:VisualElement class="stat-half stat-half--l" picking-mode="Ignore">
+                            <ui:Label name="landed-red" class="stat-val stat-val--l" text="0/0" picking-mode="Ignore" />
+                        </ui:VisualElement>
                         <PoBox.UI.Glyph kind="Glove" class="glyph" />
-                        <ui:Label name="landed-blue" class="stat-val stat-val--r" text="0/0" picking-mode="Ignore" />
+                        <ui:VisualElement class="stat-half stat-half--r" picking-mode="Ignore">
+                            <ui:Label name="landed-blue" class="stat-val stat-val--r" text="0/0" picking-mode="Ignore" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                     <ui:VisualElement class="stat stats-only" picking-mode="Ignore">
-                        <ui:Label name="peak-red" class="stat-val stat-val--l" text="0 N·s" picking-mode="Ignore" />
+                        <ui:VisualElement class="stat-half stat-half--l" picking-mode="Ignore">
+                            <ui:Label name="peak-red" class="stat-val stat-val--l" text="0 N·s" picking-mode="Ignore" />
+                        </ui:VisualElement>
                         <PoBox.UI.Glyph kind="Burst" class="glyph" />
-                        <ui:Label name="peak-blue" class="stat-val stat-val--r" text="0 N·s" picking-mode="Ignore" />
+                        <ui:VisualElement class="stat-half stat-half--r" picking-mode="Ignore">
+                            <ui:Label name="peak-blue" class="stat-val stat-val--r" text="0 N·s" picking-mode="Ignore" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
@@ -101,9 +110,6 @@
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-red" class="tank-fill" picking-mode="Ignore" />
                 </ui:VisualElement>
-                <ui:VisualElement name="reserve-bar-red" class="tank tank--reserve hidden" picking-mode="Ignore">
-                    <ui:VisualElement name="reserve-red" class="tank-fill tank-fill--reserve" picking-mode="Ignore" />
-                </ui:VisualElement>
                 <ui:Label name="act-red" class="act" text="GUARD" picking-mode="Ignore" />
                 <ui:Label name="ropes-red" class="pod-flag pod-flag--ropes hidden" text="ON THE ROPES" picking-mode="Ignore" />
                 <ui:Label name="tired-red" class="pod-flag hidden" text="TIRED" picking-mode="Ignore" />
@@ -113,9 +119,6 @@
                 <PoBox.UI.BalanceGauge name="bal-blue" class="balance stats-only" />
                 <ui:VisualElement class="tank" picking-mode="Ignore">
                     <ui:VisualElement name="tank-blue" class="tank-fill" picking-mode="Ignore" />
-                </ui:VisualElement>
-                <ui:VisualElement name="reserve-bar-blue" class="tank tank--reserve hidden" picking-mode="Ignore">
-                    <ui:VisualElement name="reserve-blue" class="tank-fill tank-fill--reserve" picking-mode="Ignore" />
                 </ui:VisualElement>
                 <ui:Label name="act-blue" class="act" text="GUARD" picking-mode="Ignore" />
                 <ui:Label name="ropes-blue" class="pod-flag pod-flag--ropes hidden" text="ON THE ROPES" picking-mode="Ignore" />

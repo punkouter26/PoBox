@@ -78,16 +78,19 @@ namespace PoBox.Sim
         public Vector3 ringCentre;
         public float ringHalf;
 
-        [Header("Daze (trained fighters): the rule the policies were trained under")]
+        // The game's line is lower than it was (14 and 42, tau 2.5, body 0.3; envs/boxing.py's default line is 36) and drains
+        // slower: the owner wants knockdowns common (2026-10-18). Under the old numbers a bout of 100 head shots
+        // put nobody down. The brains see the daze as a share of the line, so they read it the same way.
+        [Header("Daze (trained fighters): the rule the policies were trained under, the line lowered")]
         public bool dazeRule;
         [Tooltip("Seconds for the daze to drain to a third.")]
-        public float dazeTau = 2.5f;
+        public float dazeTau = 3.5f;
         [Tooltip("Daze at which the joint drives start to weaken, and at which the legs go.")]
-        public float dazeLo = 14f, dazeHi = 42f;
+        public float dazeLo = 9f, dazeHi = 26f;
         [Tooltip("Share of drive strength lost just below the upper threshold.")]
         public float dazeWeak = 0.45f;
         [Tooltip("What a body shot adds to the daze, as a share of what the same punch to the head would.")]
-        public float dazeBody = 0.3f;
+        public float dazeBody = 0.45f;
         [Tooltip("How long the drives stay slack after the legs go, seconds, least and most. Then the fighter starts to get up.")]
         public Vector2 slackSeconds = new Vector2(1.2f, 2.4f);
         [Tooltip("Seconds a fighter that has got up by itself stands before the match policy takes the body back.")]
@@ -134,6 +137,8 @@ namespace PoBox.Sim
         public bool IsDown { get; private set; }
         /// <summary>Down, and trying to get up.</summary>
         public bool IsRising { get; private set; }
+        /// <summary>Getting up and already on its feet: the count has been beaten, though the get-up policy still has the body.</summary>
+        public bool OnFeet => IsDown && IsRising && _onFeet;
         public bool IsOut => Health <= 0f;
         public bool Staggered => dazeRule ? Daze > dazeLo : _stagger > 0f;
         public float TimeSinceHit => Time.time - _lastHitAt;
@@ -209,7 +214,7 @@ namespace PoBox.Sim
         const float PunchLife = 0.5f;
         float _stagger, _rocked, _downTimer, _lowTime, _lastHitAt = -99f, _floorY, _stoodFor;
         Vector3 _prevCom, _prevHead;
-        bool _hasPrevCom, _canGetUp;
+        bool _hasPrevCom, _canGetUp, _onFeet;
         readonly Vector3[] _sole = new Vector3[4];
         readonly List<Vector2> _hullPoints = new List<Vector2>(8), _hull = new List<Vector2>(9);
         /// <summary>The mass behind a glove: a punch's impulse is this times its closing speed (as training scores it), N s.</summary>
@@ -241,6 +246,7 @@ namespace PoBox.Sim
             if (newBout)
             {
                 Health = 100f; Stamina = 1f; Hurt = 0f;
+                if (boxer != null) boxer.Reserve = 1.0;
                 stats = default;
                 Array.Clear(taken, 0, taken.Length);
                 bruises.Clear();
@@ -251,6 +257,9 @@ namespace PoBox.Sim
                 // A minute on the stool.
                 Health = Mathf.Min(100f, Health + 10f);
                 Stamina = Mathf.Min(1f, Stamina + 0.4f);
+                // The reserve fills over fatigue_rec_s: what a minute would give it, however short the break is played.
+                if (boxer != null && boxer.Config != null)
+                    boxer.Reserve += (1.0 - boxer.Reserve) * (1.0 - Math.Exp(-60.0 / Math.Max(1.0, boxer.Config.fatigue_rec_s)));
             }
         }
 
@@ -415,6 +424,7 @@ namespace PoBox.Sim
             IsDown = true;
             IsRising = false;
             _stoodFor = 0f;
+            _onFeet = false;
             Daze = 0f;
             stats.downs++;
             if (IsOut) _downTimer = float.PositiveInfinity;       // out cold never gets up
@@ -591,6 +601,9 @@ namespace PoBox.Sim
                     _downTimer -= dt;
                     if (_downTimer <= 0f && !IsOut)
                     {
+                        // Its breath back on the canvas: the get-up starts with its drives whole (a reserve of half or
+                        // more), as the get-up brains were trained and examined. Spent, none of them can stand.
+                        if (boxer != null) boxer.Reserve = Math.Max(boxer.Reserve, 0.5);
                         // A boxer gets up by itself if it has been taught to; if it has not, the referee stands
                         // it back in its guard.
                         SendMessage("BeginGetUp", SendMessageOptions.DontRequireReceiver);
@@ -610,6 +623,9 @@ namespace PoBox.Sim
                     DriveScale = 1f;
                     bool standing = PelvisHeight > standingPelvisHeight * 0.88f && Upright > 0.85f;
                     _stoodFor = standing ? _stoodFor + dt : 0f;
+                    // Up a quarter of a second beats the count; only falling back to the canvas loses it again.
+                    if (_stoodFor >= 0.25f) _onFeet = true;
+                    else if (PelvisHeight < standingPelvisHeight * 0.6f) _onFeet = false;
                     if (_stoodFor >= handOverSeconds) FinishGetUp();
                 }
                 return;

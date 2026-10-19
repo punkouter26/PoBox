@@ -223,7 +223,7 @@ namespace PoBox.Mj
             b.ResetToGuard(floorPoint.x, floorPoint.z, Math.Atan2(facing.z, facing.x));
             b.SetEpisodeAt(MjBoxer.Match, 0, 0, 0, 0, 0);
             b.DriveScale = 1.0;
-            b.Reserve = 1.0;
+            // The reserve is left as it is: a boxer stood up by the referee is as tired as it was. The bout fills it (Fighter.Respawn).
             _held[k] = false;
             SetGhost(k, false);
             Forget(k);                      // the other's target has just jumped too
@@ -435,7 +435,7 @@ namespace PoBox.Mj
             if (solidBodies)
             {
                 // Staggered: the boxers whose turn comes next have finished their control step now.
-                for (int k = _sub; k < _b.Length; k += _decimation) { _b[k].AfterStep(_dt); _b[k].Tire(_dt); }
+                for (int k = _sub; k < _b.Length; k += _decimation) { _b[k].AfterStep(_dt); if (!_rising[k]) _b[k].Tire(_dt); }
                 if (_sub < _b.Length) MujocoLib.mj_kinematics(_m, _d);
                 if (_sub != 0) return;
                 TrackPunches();
@@ -447,7 +447,10 @@ namespace PoBox.Mj
             // As the trainer: the stand-in's (here the opponent's) velocity from where the bodies were left, then
             // the bodies brought up to date before anybody observes.
             foreach (MjBoxer b in _b) b.AfterStep(_dt);
-            foreach (MjBoxer b in _b) b.Tire(_dt);
+            // Getting up costs nothing from the reserve: the get-up brains were trained so (envs/boxing.py's _tire was
+            // skipped by the get-up stage), and spending at a get-up's ~12 kW empties it in under a second, after which
+            // no brain can stand (seen: every get-up in the game counted out, against 28 of 30 in the exam).
+            for (int k = 0; k < _b.Length; k++) if (!_rising[k]) _b[k].Tire(_dt);
             MujocoLib.mj_kinematics(_m, _d);
             TrackPunches();
             TrackCanvas();
@@ -611,7 +614,8 @@ namespace PoBox.Mj
 
         /// <summary>
         /// A punch stopped (envs/boxing.py, the block): a glove of a boxer whose opponent this one is, coming at this
-        /// one's head faster than 2 m/s and within 45 cm of it, touching this one's glove or forearm. Raised once when it begins.
+        /// one's head or body faster than 2 m/s and within 45 cm of it, touching this one's glove or forearm. Raised once
+        /// when it begins. (The trainer's block looks at the head only; the body's is for the game's counts and judges.)
         /// </summary>
         void TrackBlocks(int k)
         {
@@ -622,15 +626,16 @@ namespace PoBox.Mj
 
         void TrackBlocks(int k, int j, MjBoxer me, MjBoxer them)
         {
-            double* head = Geom(me.HeadGeom);
-            double rHead = _m->geom_size[3 * me.HeadGeom];
+            double* head = Geom(me.HeadGeom), body = Geom(me.TorsoGeom);
+            double rHead = _m->geom_size[3 * me.HeadGeom], rBody = _m->geom_size[3 * me.TorsoGeom];
             for (int hand = 0; hand < 2; hand++)
             {
                 double* tg = Geom(them.GloveGeom(hand));
                 double rTheirs = _m->geom_size[3 * them.GloveGeom(hand)];
-                double coming = _speed[j, hand, 0];
+                double coming = Math.Max(_speed[j, hand, 0], _speed[j, hand, 1]);
                 double hx = head[0] - tg[0], hy = head[1] - tg[1], hz = head[2] - tg[2];
-                bool near = Math.Sqrt(hx * hx + hy * hy + hz * hz) - rHead < 0.45;
+                double bx = body[0] - tg[0], by = body[1] - tg[1], bz = body[2] - tg[2];
+                bool near = Math.Sqrt(hx * hx + hy * hy + hz * hz) - rHead < 0.45 || Math.Sqrt(bx * bx + by * by + bz * bz) - rBody < 0.45;
                 bool touching = false;
                 for (int mine = 0; mine < 2 && !touching; mine++)
                 {

@@ -347,6 +347,20 @@ Label { margin: 0; padding: 0; }
 .momentum-text { position: absolute; top: 0; bottom: 0; font-size: var(--t-small); -unity-font-style: bold; -unity-text-align: middle-center; }
 .momentum-text--l { left: 12px; }
 .momentum-text--r { right: 12px; }
+/* What the bar is, on a dark pill over the middle line. */
+.momentum-key {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 120px;
+    margin-left: -60px;
+    font-size: var(--t-micro);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    background-color: var(--surface);
+    border-radius: var(--radius-xs);
+}
 
 /* Tale of the tape, mirrored: one row serves both fighters, with the key in the middle. */
 .tape { margin-top: var(--gap-2); }
@@ -389,6 +403,13 @@ Label { margin: 0; padding: 0; }
 .stat-val--l { -unity-text-align: middle-right; padding-right: 10px; }
 .stat-val--r { -unity-text-align: middle-left; padding-left: 10px; }
 .stat .glyph { margin: 0; flex-shrink: 0; }
+/* On the scoreboard each number sits in its half at its natural width, swelling (.pop) from the edge by the
+   icon: a number stretched over its whole half would swell about the half's middle and slide across the icon. */
+.stat-half { flex: 1 1 0; flex-direction: row; align-items: center; }
+.stat-half--l { justify-content: flex-end; }
+.stat-half .stat-val { flex: 0 0 auto; }
+.stat-half .stat-val--l { transform-origin: 100% 50%; }
+.stat-half .stat-val--r { transform-origin: 0 50%; }
 
 /* A fighter's pod, in the picture's top corner: where it has been hit, and where its balance is. */
 .pod {
@@ -408,10 +429,6 @@ Label { margin: 0; padding: 0; }
 .tank { width: 116px; height: 10px; margin-top: 4px; border-radius: 5px; background-color: var(--row-lead); overflow: hidden; }
 .tank-fill { height: 10px; width: 100%; background-color: var(--accent); }
 .tank-fill--low { background-color: var(--warn); }
-/* Under the tank, for a boxer trained to tire: what its muscles have left. Below half its drives weaken. */
-.tank--reserve { height: 6px; border-radius: 3px; }
-.tank-fill--reserve { height: 6px; background-color: var(--reserve); }
-.tank-fill--weak { background-color: var(--danger); }
 /* A word about the boxer's state under the action badge: ON THE ROPES, TIRED. */
 .pod-flag {
     width: 116px;

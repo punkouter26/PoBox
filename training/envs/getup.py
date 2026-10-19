@@ -35,6 +35,7 @@ import math
 from typing import Dict
 
 import mujoco
+import numpy as np
 import torch
 import warp as wp
 
@@ -49,10 +50,38 @@ class GetUpEnv(BoxingEnv):
                  shove: float = 2.5, stand_share: float = 0.12, assist: float = 0.6, **kw):
         self.slack_lo, self.slack_hi, self.shove, self.stand_share = slack_lo, slack_hi, shove, stand_share
         self.assist0 = assist
+        speed_ramp = kw.pop("speed_ramp", -1.0)
+        self.assist_max = kw.pop("assist_max", 0.75)
+        # The game (2026-10-18) takes nothing from the reserve while the get-up brain has the body: off = no drain here either.
+        self.drain = not kw.pop("no_drain", False)
         kw.setdefault("episode_len_s", 10.0)
         kw["push_vel"] = 0.0          # the shove is given at the start of the episode, by the reset
         kw["daze"] = False
         super().__init__(xml_path, num_envs, **kw)
+        # The speed limit eased in (2026-10-18, Grandma): her shipped get-up stands 30 of 30 without the speed limit's damping
+        # and 0 of 30 with it, fatigue or not. speed_share is how much of that damping (force / speed limit a joint) is on;
+        # it climbs while the learners get up from a real fall (at any time, as the exam counts) more than 60% of the time and
+        # drops under 40%. Off (-1): all of it.
+        self.speed_share, self.speed_ema, self.speed_watch = 1.0, 0.0, list(range(self.K))
+        self.speed_ramp = speed_ramp >= 0.0
+        if self.speed_ramp:
+            m_nv = self.m.nv
+            extra = np.zeros(m_nv)
+            for p, c in zip(("a_", "b_"), self.cfgs):
+                if kw.get("speed_limit", False) or c.get("speed_limit", False):
+                    for n, fl, vl in zip(c["joint_order"], c["force_limit"], c["velocity_limit"]):
+                        extra[self.m.jnt_dofadr[mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_JOINT, p + n)]] += fl / vl
+            # self.m.dof_damping already holds the extra; each world's (randomised) damping is that times its own factor.
+            frac = np.divide(extra, self.m.dof_damping, out=np.zeros(m_nv), where=self.m.dof_damping > 0)
+            self._damp = wp.to_torch(self.mw.dof_damping)
+            self._damp_full = self._damp.clone()
+            self._damp_frac = torch.tensor(frac, device=self.device, dtype=self._damp.dtype)
+            self.set_speed_share(speed_ramp)
+
+    def set_speed_share(self, s: float) -> None:
+        self.speed_share = float(min(1.0, max(0.0, s)))
+        if self.speed_ramp:
+            self._damp.copy_(self._damp_full * (1.0 - (1.0 - self.speed_share) * self._damp_frac))
 
     # ---- set-up --------------------------------------------------------------------------------
     def _prepare_model(self, m) -> None:
@@ -188,7 +217,8 @@ class GetUpEnv(BoxingEnv):
         jp = self.qpos[:, self.jq]
         jv = self.qvel[:, self.jv]
         tau = self.act_force.reshape(N, K, A)
-        self._spend(tau, jv)
+        if self.drain:
+            self._spend(tau, jv)
         to_t = g["t_body"] - pos
         face = torch.cos(torch.atan2(to_t[..., 1], to_t[..., 0]) - yaw)
         contact = g["foot_contact"]
@@ -284,7 +314,16 @@ class GetUpEnv(BoxingEnv):
             rate_k = self._gk_floor["up_end"] / ends_k
             self.up_ema = 0.9 * self.up_ema + 0.1 * rate_k
             step = torch.where(self.up_ema > 0.6, -0.004, torch.where(self.up_ema < 0.3, 0.004, 0.0))
-            self.assist = (self.assist + step).clamp(0.0, 0.75)
+            self.assist = (self.assist + step).clamp(0.0, self.assist_max)
+        if self.speed_ramp:
+            w = self.speed_watch
+            ends = float((self._gk_floor["ends"][w] + self._gk_raw["ends"][w]).sum().item())
+            if ends >= 8.0:
+                # The exam's measure: up (half a second standing) at any time after a real fall, not still up at the end.
+                rate = float(self._gk["n_up"][w].sum().item()) / ends
+                self.speed_ema = 0.9 * self.speed_ema + 0.1 * rate
+                if self.speed_ema > 0.6 or self.speed_ema < 0.4:
+                    self.set_speed_share(self.speed_share + (0.005 if self.speed_ema > 0.6 else -0.005))
         raw_ends = self._gk_raw["ends"].sum().item()
         out = {
             "ep_return": a["ret_sum"] / n,
@@ -297,6 +336,7 @@ class GetUpEnv(BoxingEnv):
             "up_rate_unaided": self._gk_raw["up_end"].sum().item() / max(1.0, raw_ends),
             "time_to_stand_unaided": self._gk_raw["t_up"].sum().item() / max(1.0, self._gk_raw["n_up"].sum().item()),
             "assist": self.assist.mean().item(),
+            "speed_share": self.speed_share,
             "time_to_stand": self._gk["t_up"].sum().item() / max(1.0, self._gk["n_up"].sum().item()),
             "height": a["h_sum"] / s,
             "upright": a["up_sum"] / s,

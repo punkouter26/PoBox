@@ -136,10 +136,11 @@ namespace PoBox.UI
                 }
 
                 // In the flow and out of its parent's top or bottom: the parent was squeezed below what it holds, and
-                // what follows it is drawn over it (a page with more rows than its height).
+                // what follows it is drawn over it (a page with more rows than its height). Judged on the layout, before
+                // any transform: a number swelling for a moment (.pop) is not a squeezed parent.
                 VisualElement parent = e.hierarchy.parent;
-                if (parent != null && e.resolvedStyle.position == Position.Relative && parent.worldBound.height > 0.5f
-                    && (b.yMax > parent.worldBound.yMax + 1.5f || b.yMin < parent.worldBound.yMin - 1.5f))
+                if (parent != null && e.resolvedStyle.position == Position.Relative && parent.layout.height > 0.5f
+                    && (e.layout.yMax > parent.layout.height + 1.5f || e.layout.yMin < -1.5f))
                     report.spill.Add($"{Path(e)} [{b.yMin:0}-{b.yMax:0}] out of {Path(parent)} [{parent.worldBound.yMin:0}-{parent.worldBound.yMax:0}]");
 
                 if (e is Button && e.enabledInHierarchy && e.pickingMode == PickingMode.Position && (b.width < MinTouch - 1.5f || b.height < MinTouch - 1.5f))   // one device pixel of snapping at 720 wide

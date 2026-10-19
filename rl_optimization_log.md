@@ -1234,3 +1234,69 @@ Decision: one more match round for all eight, `m11_NAME` from m10 against the ot
 - **`f2_grandpa`**: D8's footwork recipe again, 800 iterations: walk, turn, joints pass; stand 93% (mark 95%, 2 of 30 down under shoves;
   f1 had 100%). Promoted anyway: his match brain needs the speed limit, and the footwork brain only stands and walks between exchanges.
 - Not done: the CPU Elo re-run (13 min, CPU), skipped for the hour.
+
+## 2026-10-18 afternoon, Grandma's get-up: the speed limit, not her mass (owner: "train" Grandma to get up)
+
+- **Body, measured (C MuJoCo 3.5.0, `models/v2`).** Grandma 87.8 kg / 1.70 m (BMI 30.4, the roster's BMI-30 ceiling; her mesh
+  measures 43.8) and Grandpa 79.8 kg / 1.62 m (also the ceiling) have the same strength per kilogram: knee 1.57 N m/kg (Matt
+  3.22, Nick 3.69), the same speed limits (knee 15 rad/s, hip 11.25), the same fatigue reserve per kilogram (48.2 J/kg; Matt 99).
+  Static squat, feet flat, centre of mass over the feet (gravity bias minus the floor's push through the foot Jacobians): the
+  hip is the limit, 67% of hers (Grandpa 63%, Matt 30%, Nick 29%); knee 9-23%. With a balance hand on the pelvis (horizontal
+  and turning only, nothing vertical) and the speed limit's damping on, she rises from a deep squat (knee 2.0 rad) to 0.88 of her
+  height in 0.35 s, 0.38 s at 60% drive (Grandpa 0.38 / 0.42). Her body can stand; her mass is not what stops her.
+- **The muscle rules, one at a time** (getting-up exam only, 30 knockdowns, configs edited in a scratch copy of models/v2):
+  her shipped get-up (`checkpoints/onnx/getup_grandma.pt`) stands 30/30 in 2.2 s with no rules, 29/30 with fatigue only, **0/30
+  with the speed limit** (with or without fatigue). Grandpa's d9 get-up on her body: 0/30 under every variant (the bodies differ:
+  her legs are shorter, thigh 0.365 v 0.377 m, shin 0.315 v 0.336, so her trunk is higher). D9's own brain: 0-2/30 under every
+  variant: 2100 iterations with the lifting hand left it unable to stand even without the rules.
+- **Fix, recipe only:** ease the speed limit in rather than lifting her. New flag `train_getup.py --speed-ramp S0` (envs/getup.py,
+  off by default, old runs unchanged): the speed limit's damping (force / speed limit a joint) is on at a share that starts at S0
+  and moves 0.005 an iteration, up while the learners get up from the floor more than 60% of the time, down under 40%; saved in
+  the checkpoint; `--done-when` also needs all of it. Checked: knee damping 9.67 at share 1, 0.50 at 0, 5.08 at a half.
+- **Run** `u1_d10_grandma_matt`: from her shipped get-up, Matt's frozen, `--assist 0 --speed-ramp 0 --reset-std 0.3 --max-std 0.4`,
+  2000 iterations capped at 1.5 h, then `exam_d10_grandma` (getting up, 60 knockdowns, 3.5.0, `logs/book_d10_grandma.json`).
+  Mark (R3, frail): 60% on her feet within 9 s.
+- **17:14-17:18 `u1_d10_grandma_matt` (REJECTED, stopped at 78).** From the floor 0% within 20 iterations, help creeping up from 0.
+  Why, measured on the GPU env without learning (`checkpoints/onnx/getup_grandma.pt`, speed share 0): it is up at some point after
+  40% of falls, still up at the end after 27%, against 30/30 in the C MuJoCo exam. Two causes: (1) **the first PPO update from an
+  ONNX-rebuilt brain tears it up** (KL 61-404 at iteration 0 in D8, d9 and here: Adam's first step moves every weight by the full
+  learning rate, and the smaller the action noise the bigger the KL); with the helping hand on (D8, d9) the brain survived it,
+  without it it does not. (2) Action noise of 0.3-0.4 a joint is a lot for a body near its limits. Fixes: `--lr 3e-5` on an ONNX
+  start (it adapts up), noise 0.15 (max 0.2), and `--assist-max 0` (new, train_getup.py: the helping hand's ceiling, 0 = never),
+  so the speed limit is the only thing eased. The speed controller now counts the exam's measure (up at any time after a real
+  fall) instead of still up at the end. `u1_d10b_grandma_matt` (same, before the lr fix: KL 405 at iteration 0, from the floor 1%
+  at 10) was killed by a CUDA out-of-memory with Unity in Play mode (GPU 99%, 9.4 of 12 GB) before a save.
+- **Every shipped get-up under the game's rules** (current `Assets/Boxers/*/getup.onnx` rebuilt to .pt, the exam's get-up line,
+  3.5.0, 30 knockdowns; the Unity session reported nearly every in-game knockdown is a KO): Zombie 6/30, Nick 14/30, Grandma 0/30
+  FAIL; Kim 29/30, Sokol 30/30, Trump 28/30, Grandpa 25/30, Matt 24/30 (exactly the mark) pass. Carrying on fails for Matt 18/24,
+  Kim 26/29, Nick 8/14, Grandpa 12/25. Kim's in-game KOs were her reserve (empty when she went down: the game now starts a get-up
+  at reserve >= 0.5). Parity check of that: two match brains boxing from the marks in the exam ring (C MuJoCo, 10 s, |tau*qdot|):
+  Kim 773 W (reserve 1.0 -> 0.29 at 5 s -> 0.0 at 10 s), Nick 646 W (-> 0.25), Zombie 601 W (-> 0.41), Matt 327-568 W (-> 0.47-0.69).
+  So the trainer's brains empty a frail-to-average reserve in 7-15 s of boxing too: not game-only (the game's ~1.2 kW is about
+  1.5-2x the exam's). The get-up env already starts each knockdown at reserve 0.3-1.0 (BoxingEnv's reset).
+- **Staged** (`logs/queue.json`, held by the Unity session's `logs/queue.hold` until its Play mode is done): `u1_d10c_grandma_matt`
+  (the d10 recipe + `--lr 3e-5 --assist-max 0`, 2000 iterations, 1.5 h), then get-up retrains on Grandpa's d9 recipe (from the
+  shipped get-up, partner frozen, max std 0.4, 600 iterations, 0.5 h) + `--lr 3e-5` for Matt (v Zombie), Zombie and Nick (v Matt).
+  Each is followed by its get-up exam (60 knockdowns, 3.5.0, carrying on kept) and `tools/export_getup_v2.py` (new: writes
+  `latest_NAME.onnx` at 103 inputs next to the checkpoint, as d9 Grandpa's, only if getting up passed; Matt also has to beat the
+  shipped 80%). Kim, Trump, Sokol skipped (they pass; the game's reserve fix covers them).
+- **Kim v Sokol parity check** (Unity: Kim down 1-3 s after the bell in 30/30, drives at their limit). C MuJoCo 3.5.0, shipped
+  Assets match brains (obs_state on), exam marks, models/v2 configs, punch rules, 20 x 10 s: down within 3 s 0/20 (pelvis 0.74 m
+  at 0.3 s against her 0.76 standing; mean |torque|/limit 0.23), so the early falls are a Unity parity break (the Unity session is
+  on it). But down within 10 s 20/20 (3.8-9.5 s, median ~5 s) as her reserve runs out (0.00 at the end, Sokol 0.65); her shipped
+  get-up then stands 5/20. Her m10 brain spends her 8 kJ x strength in ~5 s: a training problem for her match brain (pacing).
+- **Get-up observation parity** (the Unity session's dump `Temp/getup_dump_a_.json`, Trump red v Matt blue, first get-up step):
+  loaded into `models/v2/trump_vs_matt_spar.xml` (nq 112 / nv 102 / nu 42 as the dump), C MuJoCo 3.5.0, the exam ring's observation:
+  102 of 103 match within 1e-3 (index 82, the opponent's head velocity, 0.001: the dump has no previous head position); Trump's
+  shipped get-up gives the same actions on both (max 0.001). The game's dumped ctrl is up to 3.3 rad from q and 2.8 rad from
+  default + 0.5 x action: the break is after the brain, in what the game drives with (handed to the Unity session).
+- **Reserve while rising.** The game now takes nothing from the reserve while the get-up brain has the body (the Unity session
+  measured ~12 kW in-game while rising, reserve 0.50 -> 0.39 in 4 control steps). The C exam does drain: Trump's shipped get-up
+  (trump_vs_matt, 10 trials) puts out 2.0 kW on average while rising, reserve to 0.00 (mean 0.26), and still stands 10/10 in 1.7 s
+  (carrying on 4/10): the game's 6x higher power is a separate drive-parity question, handed back. New flag `train_getup.py
+  --no-drain` (envs/getup.py: the reserve drawn at the reset, 0.3-1, kept for the episode), added to the four staged d10 runs
+  to match the game. The exam keeps draining, so it stays the harder test.
+- Correction (Unity session): the dump's ctrl interleaves the two boxers (a_ even, b_ odd); Trump's ctrl[::2] after Drive equals
+  clip(default + 0.5 x clip(action, 3)) exactly, so the drive is at parity. The "12 kW" was the first 4 control steps' slope as
+  the drives come back from 0.04. The real game/exam gap was the starting reserve (exam 1.0; game what was left, 0.39 in the test).
+  Game rule kept: a get-up starts at reserve >= 0.5 and nothing drains while rising, as the --no-drain retrains.

@@ -23,8 +23,8 @@ namespace PoBox.UI
     /// that drains a moment later; a tug-of-war win-probability bar; the punches landed, and with STATS the hardest
     /// hit) and the picture.
     ///
-    /// Over the picture: a pod in each top corner showing what that fighter has left in the tank (and, for a boxer
-    /// trained to tire, in its muscles), what it is doing this moment, and ON THE ROPES or TIRED when it is (with
+    /// Over the picture: a pod in each top corner showing what that fighter has left in the tank (for a boxer
+    /// trained to tire, what its muscles have left), what it is doing this moment, and ON THE ROPES or TIRED when it is (with
     /// STATS also where it has been hit and where its balance is); the commentary as a caption
     /// along the bottom that fades when it has nothing to say; during the walk-on each fighter's name across
     /// the lower third; between rounds the three cards and the round's numbers (who held the centre of the
@@ -50,6 +50,7 @@ namespace PoBox.UI
         const int LeagueRows = 8;
         const int ResultRows = 3;
 
+        UIDocument _doc;
         VisualElement _root, _safe;
         readonly SafeArea _safeArea = new SafeArea();
 
@@ -74,8 +75,8 @@ namespace PoBox.UI
         AudioDirector _audio;
         int _walkShown = -1;
 
-        // pods: the tank, the reserve, the action badge and the two flags
-        readonly VisualElement[] _tank = new VisualElement[2], _reserve = new VisualElement[2], _reserveBar = new VisualElement[2], _ghost = new VisualElement[2];
+        // pods: the tank, the action badge and the two flags
+        readonly VisualElement[] _tank = new VisualElement[2], _ghost = new VisualElement[2];
         readonly Label[] _act = new Label[2], _ropes = new Label[2], _tired = new Label[2];
         // what has just changed, swollen until the next tick (Theme.uss .pop)
         readonly List<VisualElement> _popped = new List<VisualElement>(16);
@@ -157,16 +158,23 @@ namespace PoBox.UI
 
         void OnEnable()
         {
-            // Built and hooked once a document: enabled again on the same tree, the buttons keep the handlers they have.
-            VisualElement root = GetComponent<UIDocument>().rootVisualElement;
-            if (root == null) return;
-            if (root != _root) Build(root);
-
             SimBus.Line += OnLine;
             SimBus.PunchThrown += OnPunch;
             SimBus.Hit += OnHit;
             SimBus.Knockdown += OnKnockdown;
             _twitch ??= TwitchChat.FromPrefs();
+            BuildIfNew();
+        }
+
+        /// <summary>
+        /// Built and hooked once a document: enabled again on the same tree, the buttons keep the handlers they have.
+        /// A tree that is not there yet, or a new one, is built on the first frame it is (as MenuView and MeleeView do).
+        /// </summary>
+        void BuildIfNew()
+        {
+            if (_doc == null) _doc = GetComponent<UIDocument>();
+            VisualElement root = _doc.rootVisualElement;
+            if (root != null && root != _root) Build(root);
         }
 
         void Build(VisualElement root)
@@ -206,8 +214,6 @@ namespace PoBox.UI
             for (int i = 0; i < 2; i++)
             {
                 _tank[i] = _root.Q<VisualElement>("tank-" + corners[i]);
-                _reserve[i] = _root.Q<VisualElement>("reserve-" + corners[i]);
-                _reserveBar[i] = _root.Q<VisualElement>("reserve-bar-" + corners[i]);
                 _ghost[i] = _root.Q<VisualElement>(corners[i] + "-ghost");
                 _act[i] = _root.Q<Label>("act-" + corners[i]);
                 _ropes[i] = _root.Q<Label>("ropes-" + corners[i]);
@@ -367,6 +373,7 @@ namespace PoBox.UI
         /// </summary>
         void BuildBrain()
         {
+            _brainBars = new VisualElement[0];
             if (_safe == null) return;
             _brain = new VisualElement { name = "brain" };
             _brain.AddToClassList("brain");
@@ -657,7 +664,12 @@ namespace PoBox.UI
                 Career c = Career.Load();
                 if (c != null && c.Report(MatchSelection.Red, MatchSelection.Blue, winner))
                     cup = c.Champion != null ? $"CUP WON BY {c.Shown(c.Champion)}" : "CUP · THROUGH TO THE NEXT ROUND";
-                else if (c != null && winner < 0) cup = "CUP · A DRAW: FIGHT IT AGAIN";
+                else if (c != null && winner < 0)
+                {
+                    // A draw decides nothing: the bout stays the cup's, so AGAIN (or its countdown) fights it again and that one counts.
+                    Career.Live = true;
+                    cup = "CUP · A DRAW: FIGHT IT AGAIN";
+                }
             }
             string line = pick != null && cup != null ? pick + "  ·  " + cup : pick ?? cup ?? "";
             if (_resExtra == null) return;
@@ -832,6 +844,7 @@ namespace PoBox.UI
 
         void Update()
         {
+            BuildIfNew();
             if (_root == null) return;
             _safeArea.Fit(_root, _safe);
             if (Input.GetKeyDown(KeyCode.Escape)) Back();
@@ -1019,27 +1032,24 @@ namespace PoBox.UI
         }
 
         /// <summary>
-        /// The tank; under it the muscles' reserve, for a boxer whose config has it tire (for any other it would
-        /// always be full); the badge under that: down, getting up, dazed, the punch just thrown, or in its
-        /// guard; and the two flags, ON THE ROPES and TIRED (the reserve under half, where the drives weaken).
+        /// The tank: for a boxer whose config has it tire, its muscles' reserve (MjBoxer.Reserve, the one thing that
+        /// weakens its drives), otherwise the game's stamina; the badge under it: down, getting up, dazed, the punch
+        /// just thrown, or in its guard; and the two flags, ON THE ROPES and TIRED.
         /// </summary>
         void RefreshStatus(int corner, Fighter f)
         {
-            if (_tank[corner] != null)
-            {
-                _tank[corner].style.width = Length.Percent(f.Stamina * 100f);
-                _tank[corner].EnableInClassList("tank-fill--low", f.Stamina < 0.35f);
-            }
             Mj.MjBoxer body = f.boxer;
             bool tires = body != null && body.Bound && body.Config.fatigue_j > 0.0;
-            float reserve = tires ? (float)body.Reserve : 1f;
-            if (_reserveBar[corner] != null) _reserveBar[corner].EnableInClassList("hidden", !tires);
-            if (_reserve[corner] != null)
+            float tank = tires ? (float)body.Reserve : f.Stamina;
+            // The reserve's drives start to weaken under half and lose fatigue_weak of their strength at empty:
+            // the tank goes amber where they start and TIRED goes up halfway down, a fifth short at the default 0.4.
+            float low = tires ? 0.5f : 0.35f, tired = tires ? 0.25f : 0.35f;
+            if (_tank[corner] != null)
             {
-                _reserve[corner].style.width = Length.Percent(reserve * 100f);
-                _reserve[corner].EnableInClassList("tank-fill--weak", reserve < 0.5f);
+                _tank[corner].style.width = Length.Percent(tank * 100f);
+                _tank[corner].EnableInClassList("tank-fill--low", tank < low);
             }
-            Flag(_tired[corner], tires && reserve < 0.5f);
+            Flag(_tired[corner], tank < tired);
             Flag(_ropes[corner], f.OnTheRopes);
 
             if (_act[corner] == null) return;
@@ -1207,9 +1217,9 @@ namespace PoBox.UI
             Set(_resMethod, bout.Method);
             if (_resElo != null)
             {
-                // The ladder points the winner took (or what red moved by, on a draw).
+                // The ladder points the winner took; on a draw, red's, with red's name.
                 float delta = w == blue ? -bout.EloDelta : bout.EloDelta;
-                _resElo.text = (delta >= 0f ? "+" : "") + delta.ToString("0") + " ELO";
+                _resElo.text = (w == null ? red.displayName + " " : "") + (delta >= 0f ? "+" : "") + delta.ToString("0") + " ELO";
             }
 
             // The punch count: landed of thrown and the share; the hardest punch and the fastest glove that landed.

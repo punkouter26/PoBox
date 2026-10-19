@@ -70,6 +70,13 @@ def main() -> None:
                     help="boxers that start at --assist whatever their checkpoint says: for a get-up policy borrowed from "
                          "another body, which has learned the movement and not yet this body's weight")
     ap.add_argument("--speed-limit", action="store_true", help="as train_box.py --speed-limit")
+    ap.add_argument("--no-drain", action="store_true",
+                    help="the reserve is drawn at the reset (0.3 to 1) and nothing is taken from it while getting up, as the game does")
+    ap.add_argument("--assist-max", type=float, default=0.75, help="the most the helping hand may lift, a share of body weight; 0 = never")
+    ap.add_argument("--speed-ramp", type=float, default=-1.0,
+                    help="ease the speed limit's damping in from this share (0 = none of it), up while the learners get up "
+                         "from the floor over 60%% of the time, down under 40%%; --done-when then also needs all of it. "
+                         "-1 = off (all of it, as before). A checkpoint that carries a share resumes from it")
     ap.add_argument("--action-rate-w", type=float, default=0.0,
                     help="charge per squared change in action between control steps, on top of the stage's own small one; "
                          "0 = off. For smoother, less buzzy drives. Try 0.01 (doubles the stage's own)")
@@ -98,12 +105,15 @@ def main() -> None:
     resume = dict(zip((args.a, args.b), args.resume))
     env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
                                                               speed_limit=args.speed_limit, action_rate_w=args.action_rate_w,
-                                                              obs_delay_max=args.obs_delay_max)
+                                                              obs_delay_max=args.obs_delay_max,
+                                                              assist_max=args.assist_max, no_drain=args.no_drain,
+                                                              **({"speed_ramp": args.speed_ramp} if args.speed_ramp >= 0.0 else {}))
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     names = env.names
     assert names == [x, y], f"{xml} holds {names}"
     run = args.run_name or f"getup_{x}_{y}"
     frozen = [n in args.freeze for n in names]
+    env.speed_watch = [k for k in range(K) if not frozen[k]]
     minibatches = max(1, round(args.steps * N / 24576))
     learners, extras = [], []
     for k, n in enumerate(names):
@@ -117,6 +127,8 @@ def main() -> None:
             if "assist" in extra and n not in args.fresh_assist:
                 env.assist[k] = float(extra["assist"])
                 env.up_ema[k] = float(extra.get("up_ema", 0.0))
+            if env.speed_ramp and "speed_share" in extra:
+                env.set_speed_share(float(extra["speed_share"]))
         else:
             cfg.lr = args.lr
             with torch.no_grad():
@@ -211,12 +223,12 @@ def main() -> None:
         if it % 10 == 0:
             print(f"it {it:6d} | {sps:7.0f} sps | ret {s['ep_return']:7.2f} | on its feet at the end {s['up_rate']:4.0%} | "
                   + " | ".join(f"{n}: from the floor {s[n + '_up_rate_from_floor']:.0%}, unaided {s[n + '_up_rate_unaided']:.0%}, help {s[n + '_assist']:.3f}, off guard {s[n + '_pose_err']:.2f}" for n in names)
-                  + f" | {s['time_to_stand_unaided']:4.1f} s | kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:6.1f} min", flush=True)
+                  + f" | {s['time_to_stand_unaided']:4.1f} s | speed limit {env.speed_share:.0%} | kl {stats['kl']:.4f} lr {stats['lr']:.1e} std {stats['action_std']:.2f} | {hours * 60:6.1f} min", flush=True)
             with open(os.path.join(HERE, "logs", f"{run}.status.json"), "w", encoding="utf-8") as fh:
                 json.dump({"run": run, "mode": "getup", "fighters": names, "iter": it, "hours": hours, "fps": sps, "max_hours": args.max_hours,
                            "updated": time.strftime("%Y-%m-%d %H:%M:%S"), "ppo": stats, "env": s}, fh, indent=2)
         if args.done_when > 0.0:
-            ok = all(fz or (s[n + "_up_rate_unaided"] >= args.done_when and s[n + "_assist"] <= 0.001 and s[n + "_pose_err"] <= args.done_pose)
+            ok = env.speed_share >= 1.0 and all(fz or (s[n + "_up_rate_unaided"] >= args.done_when and s[n + "_assist"] <= 0.001 and s[n + "_pose_err"] <= args.done_pose)
                      for n, fz in zip(names, frozen))
             good_for = good_for + 1 if ok else 0
         stopping = os.path.exists(stop_file) or (args.max_hours > 0.0 and hours >= args.max_hours) or (args.done_when > 0.0 and good_for >= 40)
@@ -227,7 +239,7 @@ def main() -> None:
                 ck = os.path.join(ck_dir, f"model_{it + 1:06d}_{n}.pt")
                 p.save(ck, {"iter": it + 1, "mode": "getup", "fighters": names, "fighter": n, "obs_dim": D, "act_dim": A,
                             "action_scale": env.action_scale, "run_name": run, "trainer": "gpu", "assist": float(env.assist[k].item()),
-                            "up_ema": float(env.up_ema[k].item()), "lr": p.cfg.lr, "career": int(extras[k].get("career", 0)),
+                            "up_ema": float(env.up_ema[k].item()), "speed_share": env.speed_share, "lr": p.cfg.lr, "career": int(extras[k].get("career", 0)),
                             "renormed": True, "xml": os.path.abspath(xml)})
                 shutil.copyfile(ck, os.path.join(ck_dir, f"latest_{n}.pt"))
             saved = sorted(f for f in os.listdir(ck_dir) if f.startswith("model_"))

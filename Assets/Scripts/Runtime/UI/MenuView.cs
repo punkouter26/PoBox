@@ -57,7 +57,7 @@ namespace PoBox.UI
         /// <summary>The corner the next tap on a card fills: 0 red, 1 blue.</summary>
         public int Turn { get; private set; }
 
-        static readonly string[] BusyWords = { "FIGHT ·", "FIGHT ··", "FIGHT ···" };
+        static readonly string[] BusyDots = { " ·", " ··", " ···" };
         static readonly string[] DebugKeys = { "FRAME", "MEMORY", "SCREEN", "SAFE" };
 
         UIDocument _doc;
@@ -66,6 +66,9 @@ namespace PoBox.UI
         Button _cupFight;
         Career _cup;
         Label _versus, _fightWord;
+        // The word on the button that was pressed (FIGHT or ALL's MELEE), which trails dots while its scene loads
+        Label _busyWord;
+        string _busyBase;
         Button _fight, _fps, _melee, _cupButton;
         Button[] _cards = new Button[0];
         Label[] _tags = new Label[0];
@@ -162,7 +165,7 @@ namespace PoBox.UI
             if (!Application.isPlaying) return;
 
             if (Input.GetKeyDown(KeyCode.Escape)) Back();
-            if (_leaving) Set(_fightWord, BusyWords[(int)(Time.unscaledTime * 3f) % BusyWords.Length]);
+            if (_leaving) Set(_busyWord, _busyBase + BusyDots[(int)(Time.unscaledTime * 3f) % BusyDots.Length]);
             _smoothed = Mathf.Lerp(_smoothed, Time.unscaledDeltaTime, 0.05f);
             if (Time.unscaledTime < _nextText) return;
             _nextText = Time.unscaledTime + 0.25f;      // four times a second: text made every frame is garbage every frame
@@ -296,6 +299,8 @@ namespace PoBox.UI
             _leaving = true;
             CloseAll();
             if (_fight != null) _fight.AddToClassList("btn--busy");
+            _busyWord = _fightWord;
+            _busyBase = "FIGHT";
             foreach (Button card in _cards) card?.SetEnabled(false);
             _melee?.SetEnabled(false);
             _cupButton?.SetEnabled(false);
@@ -310,6 +315,9 @@ namespace PoBox.UI
             _leaving = true;
             CloseAll();
             if (_melee != null) _melee.AddToClassList("btn--busy");
+            _busyWord = _melee?.Q<Label>(className: "thumb-sub");
+            _busyBase = "MELEE";
+            foreach (Button card in _cards) card?.SetEnabled(false);
             _fight?.SetEnabled(false);
             _cupButton?.SetEnabled(false);
             SceneManager.LoadSceneAsync(MatchSelection.MeleeScene);

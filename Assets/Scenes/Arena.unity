@@ -64461,7 +64461,7 @@ MonoBehaviour:
   roundSeconds: 45
   introSeconds: 2.5
   walkOnSeconds: 5
-  countInterval: 0.7
+  countInterval: 1
   breakSeconds: 3
   resultsSeconds: 18
   autoAdvance: 1

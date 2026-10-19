@@ -311,3 +311,24 @@ Details in `rl_optimization_log.md` and `SCREENSHOTS/2026-10-17-night/report.htm
 
 - [x] N1 Grandparents' get-up (u1_d9) and banks; m11_NAME for all eight aimed at each one's failing m10 lines (`--slow-v` new); exams on 3.5.0 with `logs/book_m11.json`.
 - [x] N2 Report (`SCREENSHOTS/2026-10-18-night/report.html`) and the promotion call: the mix (Sokol, Grandma, Grandpa m11 + Grandpa's d9 get-up; the rest m10), done with M2.
+
+## Review fixes (owner, 2026-10-18 evening: "fix all")
+
+Answers: accuracy realistic; KOs common; judges weigh the centre each their own way; train Grandma to get up; a slip is
+a knockdown; a slow count to ten; 45 s rounds kept; Back as it is; bodies stay in the Melee ring (boxers learn to step
+round them); no APK target. Details in `DOCS/README.md` and `SCREENSHOTS/2026-10-18-review/report.html`.
+
+- [x] R1 Get-ups stand in the game: start at reserve >= 0.5, no drain while rising; the get-up brain sees the bout's opponent and ring.
+- [x] R2 The count: 1 s a number, frame-rate independent, holds while on the feet, intro falls, double knockdown, TKO at 3, KO time as the clock; Melee counts slips.
+- [x] R3 Knockdowns common: daze 26/9, tau 3.5, body 0.45 (16 corner prefabs).
+- [x] R4 Fatigue: no refill on every placement; the stool gives a minute's worth; HUD tank and TIRED read the reserve.
+- [x] R5 Accuracy and blocks: body-bound punches thrown, blocks against the body.
+- [x] R6 Judges' own level: VOLUME 0, POWER 4%, CRAFT 10%.
+- [x] R7 Gloves on all eight (drawn only, corner or Melee colour).
+- [x] R8 HUD: tape overlap, WIN % label, cup draw rematch counts, late UI tree, ALL busy, ELO name.
+- [x] R9 Garbage per control step (stand-in array).
+- [ ] R10 Get-up retrains (`--no-drain`): Grandma d10c, Matt, Zombie, Nick; exams; promote with `MjRetrofit.PromoteBoxing`.
+- [ ] R11 Kim: match brain empties her reserve in ~5 s and she falls (C MuJoCo too); her footwork and match under the rules.
+- [ ] R12 Melee: train boxers to step round bodies on the canvas (a match stage with downed bodies left in the ring).
+- [ ] R13 Owner's call: fatigue 8 kJ empties a normal boxer in 7-15 s (trainer and game alike).
+- [ ] R14 Assets (Blender): open hands (only Matt has fingers), Kim's stretching arms, Grandma's pale hair (the menu portraits leave gloves off by design).

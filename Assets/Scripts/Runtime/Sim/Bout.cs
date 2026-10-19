@@ -42,7 +42,9 @@ namespace PoBox.Sim
         [Tooltip("Real seconds the two are shown in their corners before the first round: the cameras and the lights have it, the fighters stand. 0 = none.")]
         public float walkOnSeconds = 5f;
         [Tooltip("Seconds per number of the referee's count.")]
-        public float countInterval = 0.7f;
+        public float countInterval = 1f;
+        [Tooltip("Knockdowns in a bout that stop it: the referee waves it off at this one (TKO). 0 = never.")]
+        public int stopAfterDowns = 3;
         [Tooltip("Real seconds between the end of one round and the start of the next.")]
         public float breakSeconds = 3f;
         [Tooltip("Real seconds the results stay up before the next bout starts on its own.")]
@@ -60,6 +62,8 @@ namespace PoBox.Sim
         public float RoundTimeLeft { get; private set; }
         public int Count { get; private set; }
         public Fighter Downed { get; private set; }
+        /// <summary>The other fighter, when both are down at once: the count is over both of them.</summary>
+        public Fighter AlsoDowned { get; private set; }
         public Fighter Winner { get; private set; }
         /// <summary>"KO R2 0:31", "SPLIT DECISION", "MAJORITY DRAW".</summary>
         public string Method { get; private set; } = "";
@@ -131,6 +135,7 @@ namespace PoBox.Sim
             Clock = 0f;
             Count = 0;
             Downed = null;
+            AlsoDowned = null;
             Decision = false;
             judges.Reset();
 
@@ -154,7 +159,7 @@ namespace PoBox.Sim
         {
             if (red == null || blue == null) return;
             BoutNumber++;
-            Winner = null; Method = ""; EloDelta = 0f; Round = 1; Clock = 0f; Count = 0; Downed = null;
+            Winner = null; Method = ""; EloDelta = 0f; Round = 1; Clock = 0f; Count = 0; Downed = null; AlsoDowned = null;
             Decision = false;
             judges.Reset();
             Place(true);
@@ -229,17 +234,26 @@ namespace PoBox.Sim
                     Clock += dt;
                     RoundTimeLeft -= dt;
                     NoteCentre(dt);
-                    if (RoundTimeLeft <= 0f) EndRound();
+                    // Down with nobody counting (back down during the hand-over after a get-up): the count starts again.
+                    if (Lying(red)) OnKnockdown(red, default);
+                    else if (Lying(blue)) OnKnockdown(blue, default);
+                    else if (RoundTimeLeft <= 0f) EndRound();
                     break;
 
                 case BoutPhase.Count:
                     Clock += dt;
+                    // The count stands still while everybody it is over is back on their feet: up is up, whoever
+                    // still has the body (the get-up policy hands it over a moment later).
+                    if (!Lying(Downed) && !Lying(AlsoDowned)) break;
                     _countTimer += dt;
-                    if (_countTimer >= countInterval)
+                    while (_countTimer >= countInterval && Phase == BoutPhase.Count)
                     {
-                        _countTimer = 0f;
+                        _countTimer -= countInterval;
                         Count++;
-                        if (Count >= 10) Finish(Other(Downed), $"KO R{Round} {ClockText(roundSeconds - RoundTimeLeft)}", true);
+                        if (Count < 10) continue;
+                        string at = $"R{Round} {ClockText(RoundTimeLeft)}";
+                        if (Lying(Downed) && Lying(AlsoDowned)) Finish(null, $"DOUBLE KO {at}", true);
+                        else Finish(Other(Lying(Downed) ? Downed : AlsoDowned), $"KO {at}", true);
                     }
                     break;
 
@@ -278,10 +292,23 @@ namespace PoBox.Sim
             if (Phase == BoutPhase.Fight) judges.OnThrown(f == red ? 0 : 1);
         }
 
+        /// <summary>On the canvas and not yet back on its feet.</summary>
+        static bool Lying(Fighter f) => f != null && f.IsDown && !f.OnFeet;
+
         void OnKnockdown(Fighter f, HitEvent cause)
         {
-            if (Phase != BoutPhase.Fight) return;
-            judges.OnKnockdown(f == red ? 0 : 1);
+            // The physics runs in the intro too: a fall there is counted as one in the round.
+            bool live = Phase == BoutPhase.Fight || Phase == BoutPhase.Intro;
+            if (!live && !(Phase == BoutPhase.Count && f != Downed && AlsoDowned == null)) return;
+            int corner = f == red ? 0 : 1;
+            judges.OnKnockdown(corner);
+            if (stopAfterDowns > 0 && f.stats.downs >= stopAfterDowns)
+            {
+                Finish(Other(f), $"TKO R{Round} {ClockText(RoundTimeLeft)}", true);
+                return;
+            }
+            // Both down: one count over the two, which goes on from where it is.
+            if (Phase == BoutPhase.Count) { AlsoDowned = f; return; }
             Downed = f;
             Count = 0;
             _countTimer = 0f;
@@ -290,9 +317,12 @@ namespace PoBox.Sim
 
         void OnGotUp(Fighter f)
         {
-            if (Phase != BoutPhase.Count || f != Downed) return;
+            if (Phase != BoutPhase.Count) return;
+            if (f == AlsoDowned) { AlsoDowned = null; return; }
+            if (f != Downed) return;
+            // The other is still down: the count goes on over them. The count is left showing what it reached.
+            if (AlsoDowned != null) { Downed = AlsoDowned; AlsoDowned = null; return; }
             Downed = null;
-            Count = 0;
             SetPhase(BoutPhase.Fight);
         }
 
