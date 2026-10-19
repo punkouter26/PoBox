@@ -160,6 +160,7 @@ namespace PoBox.Sim
             GettingUp = true;
             _out = Out.None;
             boxer.SetPolicy(boxer.getUpPolicy);
+            boxer.SetSpeedShare(boxer.Config.getup_speed_share);
             // The get-up stage trained with the opponent in the ring (frozen in its guard, as the referee holds this
             // one's): it is shown that opponent as it is, as the trainer's spar env shows it.
             Vector3 them = fighter.opponent != null ? fighter.opponent.pelvis.transform.position : boxer.transform.position + boxer.Forward;
@@ -175,6 +176,7 @@ namespace PoBox.Sim
         void BackToTheBout()
         {
             GettingUp = false;
+            boxer.SetSpeedShare(1.0);
             _out = Out.None;
             // A boxer with no match policy boxes on its footwork policy (Sokol, until his boxing is trained).
             ModelAsset bout = boxer.matchPolicy != null ? boxer.matchPolicy : _footwork;

@@ -14,6 +14,8 @@ namespace PoBox.Mj
         public double[] default_joint_pos, lower, upper, velocity_limit, force_limit;
         /// <summary>The two rules of envs/boxing.py a policy may have been trained under; a config without them has neither.</summary>
         public bool speed_limit;
+        /// <summary>How much of the speed limit's damping is on while the get-up brain has the body (envs/getup.py's speed_share, fixed): 1 all of it.</summary>
+        public double getup_speed_share = 1.0;
         public double fatigue_j, fatigue_rec_s = 20.0, fatigue_weak = 0.4;
         /// <summary>Two more (2026-10-16): the share of a punch's impulse that pushes this boxer's trunk when it is hit (MjRing), and whether its policy reads its own state in the command's place.</summary>
         public double hit_push;
@@ -153,7 +155,8 @@ namespace PoBox.Mj
                 _act[i] = Id(MujocoLib.mjtObj.mjOBJ_ACTUATOR, Config.joint_order[i]);
                 // envs/boxing.py's speed limit: a drive pulling its hardest has nothing left over at the limit.
                 // The model is compiled afresh from the scene each time, so this is added once.
-                if (Config.speed_limit) _m->dof_damping[_jv[i]] += Config.force_limit[i] / Config.velocity_limit[i];
+                _speedExtra[i] = Config.speed_limit ? Config.force_limit[i] / Config.velocity_limit[i] : 0.0;
+                _m->dof_damping[_jv[i]] += _speedExtra[i];
                 // The fatigue ceiling's numbers, from the compiled model as the trainer reads them: a position drive's force is
                 // kp (target - q) - kv qdot, held inside its force range (models/v3's are not the same both ways).
                 _kp[i] = _m->actuator_gainprm[_act[i] * MujocoLib.mjNGAIN];
@@ -390,6 +393,16 @@ namespace PoBox.Mj
         }
 
         readonly double[] _held = new double[64];
+        readonly double[] _speedExtra = new double[64];
+        double _speedShare = 1.0;
+
+        /// <summary>The share of the speed limit's damping on this boxer's joints: base damping plus share x force / speed limit, as envs/getup.py sets it.</summary>
+        public void SetSpeedShare(double share)
+        {
+            if (!Bound || Math.Abs(share - _speedShare) < 1e-9) return;
+            for (int i = 0; i < Joints; i++) _m->dof_damping[_jv[i]] += (share - _speedShare) * _speedExtra[i];
+            _speedShare = share;
+        }
         readonly double[] _kp = new double[64], _kv = new double[64], _fLo = new double[64], _fHi = new double[64];
 
         /// <summary>
