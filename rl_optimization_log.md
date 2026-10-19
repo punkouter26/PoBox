@@ -1300,3 +1300,6 @@ Decision: one more match round for all eight, `m11_NAME` from m10 against the ot
   clip(default + 0.5 x clip(action, 3)) exactly, so the drive is at parity. The "12 kW" was the first 4 control steps' slope as
   the drives come back from 0.04. The real game/exam gap was the starting reserve (exam 1.0; game what was left, 0.39 in the test).
   Game rule kept: a get-up starts at reserve >= 0.5 and nothing drains while rising, as the --no-drain retrains.
+- **21:10 `u1_d10c_grandma_matt` started** (queue released by the Unity session). Iteration-0 jump 0.03 (was 61-404) with `--lr 3e-5`. First 80
+  iterations: from the floor 80-100%, unaided 62-100%, 1.7-2.2 s to stand, no help; the speed limit eased in to 32% (+0.5% an iteration,
+  full at ~215 if she keeps up). ~50-85k samples/s. Matt, Zombie, Nick get-ups, exams and exports follow in the queue.
