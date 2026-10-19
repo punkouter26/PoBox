@@ -1380,3 +1380,43 @@ Running status, one line a milestone: `training/logs/night_status.md`. Nothing p
 - Check: with every new flag off, tonight's envs/boxing.py and envs/getup.py give numbers identical to the committed ones
   (`tools/smoke_flags.py`, same models at fatigue 8000). `logs/smoke_baseline.npz` (2026-10-16) no longer matches either: the
   configs changed since (match obs/reward, getup obs 0.002); re-save it before the next flag change.
+
+## 2026-10-19 day (owner: "do all": m14 attack, head shots, the Melee's bodies in the observation, exams)
+
+Running status: `training/logs/night_status.md` (Day section). Nothing under Assets/ touched; the Unity session promotes.
+
+- **Baseline** is last night's mixed exam of the game's roster against itself (`logs/book_night_mix.json` = what Assets/Boxers ships since
+  e218acc; `logs/exam_nightmix_NAME.json`): attack fails for seven. Per opponent the quiet pairs are plain: Grandpa lands 0.00-0.04/s on
+  six of seven, Kim 0.00 on Grandpa and Zombie, Grandma 0.00 on Grandpa, Trump, Zombie; Sokol 0% to the head on every opponent.
+- **m14 recipe** (`tools/m14_job.py`): from the game's brain, against the game's roster, **under the game's daze line** (Fighter: hi 26,
+  lo 9, tau 3.5, body 0.45; new `train_gauntlet.py --daze-body`, the env already had it): the brains face that line in the game, and a
+  lower line makes taking punches dearer and putting someone down reachable. Landing paid more than m13 (hit 2.0 -> 3.0, seek 0.3 -> 0.5),
+  m13's guard and footing terms kept as they were (block 0.5, fall penalty 12-20, arms 0.01, self-contact), 3072 rings, 0.67 h cap, the
+  opponents each lands least on weighted 2. Grandpa: hit 3.5, slow-v 3, seek 0.6, std reset 0.3. Grandma from her shipped m11.
+- **Head shots, measured** (`tools/head_diag.py`, C MuJoCo 3.5.0, the game's roster, 2 rounds a pair; `logs/head_diag_NAME.out`):
+  range is not it: pelvis distance median Matt 0.76 m, Sokol 0.76, Nick 0.71, Zombie 0.72. Blocks are not it: their head punches
+  stopped 0.09-0.10/s. **Their punches are thrown at chest height**: at a body landing the head is 32 cm (Matt) and 41 cm (Sokol) above
+  the glove (Nick 23, Zombie 12) and 18/29 cm further off than the body (Nick 10, Zombie 4); a glove at punching speed comes within
+  10 cm of the head 0.17/s and 0.12/s (Nick 4.6, Zombie 1.7), its closest 10% within 21/28 cm (Nick 9, Zombie 6). So the doubled head
+  price was never met: exploration noise (std 0.18-0.3) never lifts a punch 30-40 cm. Fix in the m14 recipe for both: new
+  `--head-aim-w 0.05` (envs/boxing.py: pay per m/s a glove closes on the head while within 25 cm of it, a dense lead up to head height)
+  and `--body-mult` (body price x0.5 Sokol, x0.6 Matt), head price x2 kept.
+- **The Melee's bodies in the observation** (owner's exact spec, the game builds the same): match brains read **106** numbers, the 103
+  and then [x, y, seen]: x, y = to_heading(p - pos, yaw)[:2] clamped to [-3, 3], pos/yaw the boxer's pelvis, p the pelvis of the
+  nearest downed body by horizontal distance (never the opponent), seen = 1 if that body is within 3.0 m, else all three 0.
+  `envs/match.py MatchEnv(obs_bodies=True)` / `train_gauntlet.py --obs-bodies`; a lying body's pelvis is its mocap origin + 0.28 m
+  back along its length (`BODY_PELVIS_X`). A 103 checkpoint is widened on load (`PPO.load(widen=True)`: zero weights, unit scale, the
+  optimiser state dropped), so it acts exactly as before while the numbers are zero. Opponents keep their own size (a 103 brain reads
+  the first 103). `lying_bodies` moved to `envs/bodies.py` (no Warp: the C exams build the same model). Check
+  `tools/check_body_obs.py`: the torch numbers equal the spec written out in numpy on 96 fighter states (76 with a body in sight),
+  zeros with none. Footwork and get-up brains stay at 103.
+- **Melee exam** (`tools/melee_exam.py`, C MuJoCo 3.5.0): a boxer against each opponent, 2 lying bodies placed every round (clear of
+  both by 0.9 m), 4 rounds of 45 s, no daze: falls nobody caused a minute, trips (a fall within 1.5 s of touching a body), touches.
+  One round with Grandpa's m13 already shows it: falls 0.00 without bodies -> 0.38/min (worst 1.33), every one a trip.
+- **Melee round** (`mel1_NAME`, queued after the m14 runs): `m14_job.py NAME --from newest --bodies 2 --obs-bodies --ropes-start 0.3`,
+  0.42 h, from m14 where it passed its exam, else the game's brain (Nick keeps m13's hit 2.0 / seek 0.3: he passes everything).
+- **Exams** (`tools/day_exam.py NAME RUN`, CPU): waits for the run, examines the new brain against the game's roster exactly as
+  exam_nightmix did (12 rounds, 30 knockdowns, game get-up rule, 3.5.0), exports ONNX at the brain's own size only if it passes at least
+  as many lines. Mistake of mine: 8 melee exams + 4 diagnoses at once ran the machine out of memory (free RAM 0.9 of 31 GB; two
+  exams died "paging file too small"; the trainer fell from ~7.9k to 3.9k samples/s). The two hung pythons from last night hold 12 GB.
+  CPU work now 2 processes at a time, one thread each.

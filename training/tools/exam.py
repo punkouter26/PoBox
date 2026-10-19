@@ -76,8 +76,8 @@ def act(ppo: PPO, obs: np.ndarray) -> np.ndarray:
 
 
 class ExamRing(Ring):
-    def __init__(self, xml: str, cfg: dict, seed: int = 1):
-        super().__init__(xml, cfg, seed)
+    def __init__(self, xml: str, cfg: dict, seed: int = 1, model=None):
+        super().__init__(xml, cfg, seed, model)
         m = self.m
         base = m.dof_damping.copy()
         for p, c in zip(("a_", "b_"), self.cfgs):

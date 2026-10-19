@@ -22,7 +22,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(HERE, "tools"))
 import exam as E  # noqa: E402
-from ppo import PPO, PPOConfig  # noqa: E402
+from ppo import PPO, PPOConfig, obs_dim_of  # noqa: E402
 
 MODELS = os.path.join(HERE, "models", "v2")
 # Lil Matt was taken out of the game on 2026-10-03 (his models and checkpoints stay in training/). Trump came back the same day on a new mesh.
@@ -31,7 +31,7 @@ OBS = 103
 
 
 def load_policy(path: str, A: int) -> PPO:
-    ppo = PPO(OBS, A, 1, "cpu", PPOConfig())
+    ppo = PPO(obs_dim_of(path), A, 1, "cpu", PPOConfig())
     extra = ppo.load(path)
     ppo.obs_state = bool((extra or {}).get("env", {}).get("obs_state", False))
     return ppo
@@ -43,7 +43,11 @@ _act = E.act
 def act(ppo: PPO, obs: np.ndarray) -> np.ndarray:
     # The ring observes the match's 100 numbers; the command (vx, vy, wz) is zero in a bout.
     # A policy trained with obs_state reads its reserve, its daze and the opponent's there instead (exam.py sets ppo.state).
+    # A Melee brain (106) reads the nearest downed body after them: zeros in a 1v1 ring, tools/melee_exam.py sets ppo.bodies.
+    n = ppo.obs_rms.mean.shape[0]
     tail = ppo.state() if getattr(ppo, "state", None) else np.zeros(OBS - len(obs), obs.dtype)
+    if n > OBS:
+        tail = np.concatenate([tail, ppo.bodies() if getattr(ppo, "bodies", None) else np.zeros(n - OBS, obs.dtype)])
     return _act(ppo, np.concatenate([obs, tail]))
 
 

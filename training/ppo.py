@@ -248,15 +248,33 @@ class PPO:
         torch.save({"model": self.model.state_dict(), "obs_rms": self.obs_rms.state_dict(),
                     "opt": self.opt.state_dict(), "extra": extra or {}}, path)
 
-    def load(self, path: str) -> Dict:
+    def load(self, path: str, widen: bool = False) -> Dict:
+        """widen: a checkpoint that reads fewer numbers than this model gets zero weights (and a unit scale) on the new
+        ones, so it acts exactly as before while they are zero (tools/archive/widen_policy.py's rule); its optimiser state
+        is dropped, being shaped for the old layer."""
         ck = torch.load(path, map_location=self.device, weights_only=False)
+        add = self.model.actor[0].in_features - ck["model"]["actor.0.weight"].shape[1]
+        if widen and add > 0:
+            sd, rms = ck["model"], ck["obs_rms"]
+            for net in ("actor", "critic"):
+                w = sd[f"{net}.0.weight"]
+                sd[f"{net}.0.weight"] = torch.cat([w, torch.zeros(w.shape[0], add, device=w.device)], 1)
+            rms["mean"] = torch.cat([rms["mean"], torch.zeros(add, device=rms["mean"].device)])
+            rms["var"] = torch.cat([rms["var"], torch.ones(add, device=rms["var"].device)])
+            ck.pop("opt", None)
         self.model.load_state_dict(ck["model"])
         self.obs_rms.load_state_dict(ck["obs_rms"])
         try:
-            self.opt.load_state_dict(ck["opt"])
+            if "opt" in ck:
+                self.opt.load_state_dict(ck["opt"])
         except Exception:
             pass
         return ck.get("extra", {})
+
+
+def obs_dim_of(path: str) -> int:
+    """How many numbers a checkpoint's policy reads (103 for every brain before the Melee's bodies, 106 after)."""
+    return int(torch.load(path, map_location="cpu", weights_only=False)["model"]["actor.0.weight"].shape[1])
 
 
 class ExportPolicy(nn.Module):

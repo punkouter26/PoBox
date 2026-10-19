@@ -38,8 +38,8 @@ def heading(v, yaw):
 
 
 class Ring:
-    def __init__(self, xml: str, cfg: dict, seed: int = 1):
-        self.m = mujoco.MjModel.from_xml_path(xml)
+    def __init__(self, xml: str, cfg: dict, seed: int = 1, model=None):
+        self.m = model or mujoco.MjModel.from_xml_path(xml)       # model: the file's, changed (tools/melee_exam.py adds bodies)
         self.d = mujoco.MjData(self.m)
         m = self.m
         self.rng = np.random.default_rng(seed)

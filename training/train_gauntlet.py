@@ -38,7 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from envs.boxing import BoxingEnv  # noqa: E402
 from envs.match import MatchEnv  # noqa: E402
-from ppo import PPO, PPOConfig, export_onnx  # noqa: E402
+from ppo import PPO, PPOConfig, export_onnx, obs_dim_of  # noqa: E402
 
 
 def done_rule(text: str):
@@ -82,6 +82,8 @@ def main() -> None:
     ap.add_argument("--lr-max", type=float, default=5e-4)
     ap.add_argument("--bodies", type=int, default=0, help="the Melee: this many boxers down on the canvas as solid obstacles (envs/boxing.py)")
     ap.add_argument("--head-mult", type=float, default=1.0, help="the head's price (style head, 1.5) times this; try 2")
+    ap.add_argument("--body-mult", type=float, default=1.0, help="the body's price (style body) times this; Sokol's 0%% head: try 0.5")
+    ap.add_argument("--head-aim-w", type=float, default=0.0, help="pay per m/s a glove closes on the head within 25 cm of it (envs/boxing.py); try 0.05")
     ap.add_argument("--arms-w", type=float, default=0.0, help="pull of the shoulders and elbows to the guard pose, as the legs' 0.03; try 0.01")
     ap.add_argument("--gamma", type=float, default=0.99, help="0.99 at 50 Hz looks 2 s ahead; 0.995 looks 4 s")
     ap.add_argument("--entropy-coef", type=float, default=0.0)
@@ -100,6 +102,9 @@ def main() -> None:
     ap.add_argument("--daze-lo", type=float, default=14.0)
     ap.add_argument("--daze-hi", type=float, default=42.0)
     ap.add_argument("--daze-weak", type=float, default=0.45)
+    ap.add_argument("--daze-body", type=float, default=0.3, help="share of a body shot's speed that dazes (the game's Fighter: 0.45)")
+    ap.add_argument("--obs-bodies", action="store_true",
+                    help="match: three more inputs (106), the nearest downed body (envs/match.py); a 103 brain is widened with zero weights")
     ap.add_argument("--block-w", type=float, default=0.0)
     ap.add_argument("--rope-w", type=float, default=0.0,
                     help="ringcraft: charge a step for being on the ropes or in a corner while a close opponent holds the centre. Try 0.05")
@@ -169,11 +174,11 @@ def main() -> None:
     envs, side, foes = [], [], []
     for i, ((opp, ck), n) in enumerate(zip(opponents, counts)):
         xml = pair_xml(args.name, opp, args.models)
-        extra_env = {"randomise": args.randomise} if args.stage == "match" else {}
+        extra_env = {"randomise": args.randomise, "obs_bodies": args.obs_bodies} if args.stage == "match" else {}
         env = (MatchEnv if args.stage == "match" else BoxingEnv)(xml, int(n), device=dev, seed=args.seed + i, episode_len_s=args.episode_s, obs_noise=args.obs_noise,
                         push_vel=args.push_vel, hit_w=args.hit_w, taken_w=args.taken_w, fall_penalty=args.fall_penalty,
                         ko_bonus=args.ko_bonus, survivor_bootstrap=not args.no_survivor_bootstrap, daze=args.daze,
-                        daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, block_w=args.block_w,
+                        daze_tau=args.daze_tau, daze_lo=args.daze_lo, daze_hi=args.daze_hi, daze_weak=args.daze_weak, daze_body=args.daze_body, block_w=args.block_w,
                         handover={args.name: args.handover if os.path.isabs(args.handover) else os.path.join(HERE, args.handover)} if args.handover else None,
                         handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
                         rope_w=args.rope_w, cutoff_w=args.cutoff_w, clinch_w=args.clinch_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
@@ -182,12 +187,13 @@ def main() -> None:
                         obs_state=((args.name,) if args.obs_state else ()) + ((opp,) if args.foe_state and reads_state(ck) else ()),
                         selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay, combo_w=args.combo_w, combo_s=args.combo_s,
                         hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, slow_v=args.slow_v,
-                        head_mult=args.head_mult, arms_w=args.arms_w, bodies=args.bodies, **extra_env)
+                        head_mult=args.head_mult, arms_w=args.arms_w, bodies=args.bodies, body_mult=args.body_mult, head_aim_w=args.head_aim_w, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
-        foe = PPO(env.obs_dim, env.A, 1, dev, PPOConfig())
-        foe.load(ck if os.path.isabs(ck) else os.path.join(HERE, ck))
+        ck_path = ck if os.path.isabs(ck) else os.path.join(HERE, ck)
+        foe = PPO(min(env.obs_dim, obs_dim_of(ck_path)), env.A, 1, dev, PPOConfig())     # a 103 brain reads the first 103
+        foe.load(ck_path)
         foes.append(foe)
         print(f"  against {opp}: {int(n)} rings of {os.path.relpath(xml, HERE)}, its policy {ck}", flush=True)
     D, A = envs[0].obs_dim, envs[0].A
@@ -196,7 +202,7 @@ def main() -> None:
     cfg = PPOConfig(steps_per_env=args.steps, lr=args.lr, entropy_coef=args.entropy_coef, minibatches=minibatches, lr_adapt=1.2,
                     init_std=0.5, max_std=args.max_std, lr_max=args.lr_max, gamma=args.gamma)
     ppo = PPO(D, A, total_n, dev, cfg)
-    extra = ppo.load(args.resume if os.path.isabs(args.resume) else os.path.join(HERE, args.resume))
+    extra = ppo.load(args.resume if os.path.isabs(args.resume) else os.path.join(HERE, args.resume), widen=args.obs_bodies)
     cfg.lr = min(args.lr, args.lr_max)
     if args.obs_state and not extra.get("env", {}).get("obs_state", False):
         # First time with the state in the command's place: those three numbers were always zero, so their scale says
@@ -204,10 +210,11 @@ def main() -> None:
         # never trained. Give them a sensible scale and start
         # their weights at zero, so the policy begins exactly where it was and learns what the numbers mean.
         with torch.no_grad():
-            ppo.obs_rms.mean[-3:] = torch.tensor([0.7, 0.3, 0.3], device=ppo.obs_rms.mean.device)
-            ppo.obs_rms.var[-3:] = 0.05
-            ppo.model.actor[0].weight[:, -3:] = 0.0
-            ppo.model.critic[0].weight[:, -3:] = 0.0
+            s = slice(100, 103)          # the command's place (the Melee's three body numbers come after it)
+            ppo.obs_rms.mean[s] = torch.tensor([0.7, 0.3, 0.3], device=ppo.obs_rms.mean.device)
+            ppo.obs_rms.var[s] = 0.05
+            ppo.model.actor[0].weight[:, s] = 0.0
+            ppo.model.critic[0].weight[:, s] = 0.0
         print("[obs-state] the last three inputs start at zero weight", flush=True)
     if args.reset_std > 0.0:
         with torch.no_grad():
@@ -257,7 +264,7 @@ def main() -> None:
                 rews, dones, cuts = [], [], []
                 at = 0
                 for i, (e, k) in enumerate(zip(envs, side)):
-                    theirs = mine(e, 1 - k, obs[i])
+                    theirs = mine(e, 1 - k, obs[i])[:, :foes[i].obs_rms.mean.shape[0]]
                     a_foe = foes[i].model.actor(foes[i].obs_rms.normalize(theirs, 10.0))
                     pair = [None, None]
                     pair[k], pair[1 - k] = a_me[at:at + e.N], a_foe
@@ -322,7 +329,7 @@ def main() -> None:
                           "action_scale": envs[0].action_scale, "run_name": run, "career": career, "against": [o for o, _ in opponents],
                           "xml": os.path.abspath(pair_xml(args.name, opponents[0][0], args.models)),
                           "env": {"daze": args.daze, "daze_tau": args.daze_tau, "daze_lo": args.daze_lo, "daze_hi": args.daze_hi,
-                                  "daze_weak": args.daze_weak, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "clinch_w": args.clinch_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
+                                  "daze_weak": args.daze_weak, "daze_body": args.daze_body, "obs_bodies": args.obs_bodies, "bodies": args.bodies, "block_w": args.block_w, "rope_w": args.rope_w, "cutoff_w": args.cutoff_w, "clinch_w": args.clinch_w, "seek_w": args.seek_w, "speed_limit": envs[0].speed_limit, "fatigue_j": args.fatigue_j,
                                   "hit_push": args.hit_push, "stagger_v": args.stagger_v, "hurt_full": args.hurt_full, "body_drain": args.body_drain,
                                   "obs_state": args.obs_state, "selfcontact_w": args.selfcontact_w, "repeat_decay": args.repeat_decay,
                                   "combo_w": args.combo_w, "hurt_start": args.hurt_start, "fatigue_ceiling": args.fatigue_ceiling, "slow_v": args.slow_v}})

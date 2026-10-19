@@ -70,22 +70,7 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     return torch.stack([c * v[..., 0] + s * v[..., 1], -s * v[..., 0] + c * v[..., 1], v[..., 2]], dim=-1)
 
 
-def lying_bodies(xml_path: str, n: int):
-    """The model with n boxers down on the canvas: mocap bodies (static, solid) of a lying adult's capsules, along x."""
-    spec = mujoco.MjSpec.from_file(xml_path)
-    C, S = mujoco.mjtGeom.mjGEOM_CAPSULE, mujoco.mjtGeom.mjGEOM_SPHERE
-    parts = [(C, 0.13, (-0.25, 0, 0.13, 0.25, 0, 0.13)), (S, 0.10, (0.45, 0, 0.10)),
-             (C, 0.07, (-0.30, 0.10, 0.07, -1.10, 0.14, 0.07)), (C, 0.07, (-0.30, -0.10, 0.07, -1.10, -0.14, 0.07)),
-             (C, 0.05, (0.20, 0.22, 0.05, -0.30, 0.35, 0.05)), (C, 0.05, (0.20, -0.22, 0.05, -0.30, -0.35, 0.05))]
-    for j in range(n):
-        b = spec.worldbody.add_body(name=f"downed_{j}", mocap=True, pos=[30.0 + 5.0 * j, 30.0, 0.0])
-        for i, (kind, r, at) in enumerate(parts):
-            g = b.add_geom(name=f"downed_{j}_{i}", type=kind, size=[r, 0, 0], rgba=[0.5, 0.4, 0.35, 1])
-            if kind == C:
-                g.fromto = list(at)
-            else:
-                g.pos = list(at)
-    return spec.compile()
+from .bodies import lying_bodies  # noqa: E402,F401  (the Melee's downed bodies; plain mujoco, shared with the C exams)
 
 
 def punch_variety(landed, arriving, zone, last_kind, streak, since_hit, combo_s: float, pause_s: float = 2.0):
@@ -126,7 +111,7 @@ class BoxingEnv:
                  obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0,
                  selfcontact_w: float = 0.0, repeat_decay: float = 1.0, combo_w: float = 0.0, combo_s: float = 0.8,
                  hurt_start: float = 0.0, fatigue_ceiling: bool = False, slow_v: float = 0.0,
-                 head_mult: float = 1.0, arms_w: float = 0.0, bodies: int = 0):
+                 head_mult: float = 1.0, arms_w: float = 0.0, bodies: int = 0, body_mult: float = 1.0, head_aim_w: float = 0.0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -208,6 +193,12 @@ class BoxingEnv:
             self.TERMS = self.TERMS + ["combo"]
         if arms_w and not self.MODE:          # the bout's step only
             self.TERMS = self.TERMS + ["arms"]
+        # 2026-10-19 day (tools/head_diag.py): Matt and Sokol keep Nick's range but their fast gloves pass 21-28 cm below the
+        # head (Nick, Zombie 6-9 cm), so the head's price is never met. head_aim_w pays per m/s a glove closes on the head
+        # while within 25 cm of it (a dense lead to head height); body_mult scales the body's price as head_mult the head's.
+        self.head_aim_w = head_aim_w
+        if head_aim_w and not self.MODE:
+            self.TERMS = self.TERMS + ["aim"]
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -341,7 +332,7 @@ class BoxingEnv:
             return F([float(c.get("style", {}).get(key, default)) for c in self.cfgs])      # (K,)
 
         self.s_hit = style("hit", 1.0)             # what landing a punch is worth, as a multiple
-        self.s_head, self.s_body = style("head", 1.5) * head_mult, style("body", 1.0)
+        self.s_head, self.s_body = style("head", 1.5) * head_mult, style("body", 1.0) * body_mult
         self.s_hand = torch.stack([style("hand_l", 1.0), style("hand_r", 1.0)], -1)          # (K, 2)
         self.s_power = style("power", 1.0)         # above 1 a hard punch is worth more than its speed; below 1, less
         self.s_pace = style("pace_s", 0.6)         # the gap between punches that is paid in full
@@ -1064,6 +1055,8 @@ class BoxingEnv:
         r["clinch"] = self.clinch_w * clinch_q if self.clinch_w else none
         if self.combo_w:
             r["combo"] = self.combo_w * combo_q
+        if self.head_aim_w:
+            r["aim"] = self.head_aim_w * (closing[..., 0].clamp(0.0, 8.0) * (gap[..., 0] < 0.25).float()).max(-1).values
         self_q = self._selfcontact() if self.selfcontact_w else none
         if self.selfcontact_w:
             r["self"] = -self.selfcontact_w * 100.0 * self_q                  # per centimetre pressed in
