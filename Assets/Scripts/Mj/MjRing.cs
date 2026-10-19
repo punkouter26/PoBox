@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Mujoco;
 using UnityEngine;
 
@@ -75,6 +76,7 @@ namespace PoBox.Mj
         // Per boxer (the first index), and per hand or foot.
         bool[] _held, _ghost, _down, _has, _rising;
         int[] _body;                        // solid bodies: 0 standing, 1 lying, 2 getting up (-1 not yet set)
+        float[] _bodyAt;                    // when each one's last changed (the overlap measurement reads it)
         double[] _holdX, _holdY, _holdYaw, _ghostFor;
         int[] _target;                      // which boxer each one's punches were last measured against
         int[][] _geoms;
@@ -98,6 +100,7 @@ namespace PoBox.Mj
         {
             _held = new bool[n]; _ghost = new bool[n]; _down = new bool[n]; _has = new bool[n]; _rising = new bool[n];
             _body = new int[n];
+            _bodyAt = new float[n];
             for (int k = 0; k < n; k++) _body[k] = -1;
             _holdX = new double[n]; _holdY = new double[n]; _holdYaw = new double[n]; _ghostFor = new double[n];
             _target = new int[n];
@@ -320,12 +323,35 @@ namespace PoBox.Mj
         {
             if (_body[k] == state || _geoms[k] == null) return;
             _body[k] = state;
-            int type = state == 0 ? 1 : state == 1 ? 2 : 4, affinity = state == 0 ? 1 : state == 1 ? 3 : 5;
+            if (_bodyAt != null) _bodyAt[k] = Time.time;
+            int type = LayerType(state), affinity = LayerAffinity(state);
             foreach (int g in _geoms[k])
             {
                 _m->geom_contype[g] = type;
                 _m->geom_conaffinity[g] = affinity;
             }
+        }
+
+        // The solid-bodies layers (SetBody): standing, lying, getting up.
+        static int LayerType(int state) => state == 0 ? 1 : state == 1 ? 2 : 4;
+        static int LayerAffinity(int state) => state == 0 ? 1 : state == 1 ? 3 : 5;
+        static bool Touch(int a, int b) => (LayerType(a) & LayerAffinity(b)) != 0 || (LayerType(b) & LayerAffinity(a)) != 0;
+
+        /// <summary>On layer <paramref name="state"/>, boxer k would touch a boxer it does not touch now and is inside of.</summary>
+        bool SolidInside(int k, int state)
+        {
+            for (int j = 0; j < _b.Length; j++)
+            {
+                if (j == k || _body[j] < 0 || Touch(_body[k], _body[j]) || !Touch(state, _body[j])) continue;
+                foreach (int g in _geoms[k])
+                    foreach (int h in _geoms[j])
+                    {
+                        double* a = Geom(g), b = Geom(h);
+                        double dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2], reach = _m->geom_rbound[g] + _m->geom_rbound[h];
+                        if (dx * dx + dy * dy + dz * dz <= reach * reach && MujocoLib.mj_geomDistance(_m, _d, g, h, 0.0, null) < 0.0) return true;
+                    }
+            }
+            return false;
         }
 
         void SetGhost(int k, bool ghost)
@@ -351,20 +377,15 @@ namespace PoBox.Mj
                     // Held in its guard over a count it is put back on its spot every step, so it goes on the getting-up
                     // layer: put back inside a body lying across its feet, the contact would throw that body about.
                     int state = !_down[k] ? (_held[k] ? 2 : 0) : _rising[k] ? 2 : 1;
-                    // Just up through a pile, it passes through those still lying until it is clear of them (or three
-                    // seconds have gone): given its body back inside another's, the contact throws them apart.
-                    if (state == 0 && _body[k] == 2 && _ghostFor[k] < 3.0)
+                    // A new layer that would make it solid to a body it is still inside waits until they are clear (or three
+                    // seconds have gone): given its body back inside another's, the contact throws them apart (seen 15 cm
+                    // deep: two boxers getting up off the same pile, the getting-up layer solid to itself).
+                    if (_body[k] >= 0 && state != _body[k] && _ghostFor[k] < 3.0 && SolidInside(k, state))
                     {
                         _ghostFor[k] += _m->opt.timestep;
-                        for (int j = 0; j < _b.Length && state == 0; j++)
-                        {
-                            if (j == k || !_down[j]) continue;
-                            Vector3 apart = _pelvis[k].position - _pelvis[j].position;
-                            apart.y = 0f;
-                            if (apart.magnitude < 0.7f) state = 2;
-                        }
+                        state = _body[k];
                     }
-                    if (state != 2) _ghostFor[k] = 0.0;
+                    else _ghostFor[k] = 0.0;
                     SetBody(k, state);
                     if (_held[k]) _b[k].ResetToGuard(_holdX[k], _holdY[k], _holdYaw[k]);
                     continue;
@@ -440,6 +461,7 @@ namespace PoBox.Mj
                 if (_sub != 0) return;
                 TrackPunches();
                 TrackCanvas();
+                if (MeasureOverlap) MeasureOverlaps();
                 ControlStep?.Invoke();
                 return;
             }
@@ -454,6 +476,7 @@ namespace PoBox.Mj
             MujocoLib.mj_kinematics(_m, _d);
             TrackPunches();
             TrackCanvas();
+            if (MeasureOverlap) MeasureOverlaps();
             ControlStep?.Invoke();
         }
 
@@ -611,6 +634,74 @@ namespace PoBox.Mj
                 _load[g] = 0.0;
             }
         }
+
+        /// <summary>How far two boxers' shapes sink into each other, metres, worst seen since <see cref="MeasureOverlap"/> was
+        /// set: [0] pairs the rules keep solid, both on their feet; [1] solid, one of them held in its guard over a count (put
+        /// back on its spot every step, so it can be put inside the other); [2] pairs the rules let pass (down, or just up);
+        /// [3] solid with one on the canvas (a free-for-all: fallen on, trodden on).</summary>
+        public static bool MeasureOverlap;
+        public static readonly double[] DeepestOverlap = new double[4];
+        public static readonly string[] DeepestWhere = { "", "", "", "" };
+        /// <summary>Control steps measured, and those in which two boxing boxers ([0]) overlapped by more than 1 cm and 3 cm.</summary>
+        public static int OverlapSteps, Over1cm, Over3cm;
+        /// <summary>Which parts were in each other by more than 3 cm, both boxing: "forearm in forearm" and how many control steps.</summary>
+        public static readonly System.Collections.Generic.Dictionary<string, int> Deep = new System.Collections.Generic.Dictionary<string, int>();
+
+        public static void ResetOverlap()
+        {
+            Array.Clear(DeepestOverlap, 0, DeepestOverlap.Length);
+            for (int i = 0; i < DeepestWhere.Length; i++) DeepestWhere[i] = "";
+            OverlapSteps = Over1cm = Over3cm = 0;
+            Deep.Clear();
+        }
+
+        /// <summary>
+        /// Every shape of every boxer against every shape of every other, by MuJoCo's own distance (mj_geomDistance, signed:
+        /// negative is how deep they are in each other), split by whether the contact filter lets the pair touch at all.
+        /// </summary>
+        void MeasureOverlaps()
+        {
+            double solid = 0.0;
+            for (int k = 0; k < _b.Length; k++)
+                for (int j = k + 1; j < _b.Length; j++)
+                    foreach (int g in _geoms[k])
+                        foreach (int h in _geoms[j])
+                        {
+                            double* a = Geom(g), b = Geom(h);
+                            double dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2], reach = _m->geom_rbound[g] + _m->geom_rbound[h];
+                            if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
+                            double depth = -MujocoLib.mj_geomDistance(_m, _d, g, h, 0.0, null);
+                            if (depth <= 0.0) continue;
+                            bool touch = (_m->geom_contype[g] & _m->geom_conaffinity[h]) != 0 || (_m->geom_contype[h] & _m->geom_conaffinity[g]) != 0;
+                            int kind = !touch ? 2 : _held[k] || _held[j] ? 1 : _down[k] || _down[j] ? 3 : 0;
+                            if (kind == 0) solid = Math.Max(solid, depth);
+                            if (kind == 0 && depth > 0.03)
+                            {
+                                string a1 = Part(g), b1 = Part(h), key = string.CompareOrdinal(a1, b1) < 0 ? a1 + " in " + b1 : b1 + " in " + a1;
+                                if (solidBodies) key += Time.time - Math.Max(_bodyAt[k], _bodyAt[j]) < 0.5f ? " (just changed layer)" : _down[k] || _down[j] ? " (one down)" : "";
+                                Deep.TryGetValue(key, out int n);
+                                Deep[key] = n + 1;
+                            }
+                            if (depth > DeepestOverlap[kind])
+                            {
+                                DeepestOverlap[kind] = depth;
+                                DeepestWhere[kind] = $"{GeomName(g)} in {GeomName(h)} {depth * 100.0:0.0} cm (down {_down[k]}/{_down[j]}, rising {_rising[k]}/{_rising[j]}, held {_held[k]}/{_held[j]}, layers {_body[k]}/{_body[j]} changed {Time.time - _bodyAt[k]:0.0}/{Time.time - _bodyAt[j]:0.0} s ago)";
+                            }
+                        }
+            OverlapSteps++;
+            if (solid > 0.01) Over1cm++;
+            if (solid > 0.03) Over3cm++;
+        }
+
+        /// <summary>A shape's body without the boxer's prefix or its side: "forearm", "torso".</summary>
+        string Part(int g)
+        {
+            string n = GeomName(g);
+            n = n.Substring(n.IndexOf('_') + 1);
+            return n.EndsWith("_l") || n.EndsWith("_r") ? n.Substring(0, n.Length - 2) : n;
+        }
+
+        string GeomName(int g) => Marshal.PtrToStringAnsi((IntPtr)((byte*)_m->names + _m->name_bodyadr[_m->geom_bodyid[g]]));
 
         /// <summary>
         /// A punch stopped (envs/boxing.py, the block): a glove of a boxer whose opponent this one is, coming at this
