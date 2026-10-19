@@ -332,6 +332,28 @@ namespace PoBox.Mj
             }
         }
 
+        /// <summary>
+        /// Who each boxer sees on the canvas (MjBoxer.NearestDownPelvis, the body inputs of a brain that reads them): the
+        /// nearest boxer down by the distance of their pelvises on the floor, never its own opponent; -1 for none.
+        /// </summary>
+        void MarkBodies()
+        {
+            for (int k = 0; k < _b.Length; k++)
+            {
+                double* me = _d->xpos + 3 * _b[k].PelvisBody;
+                int best = -1, target = Target(k);
+                double nearest = double.MaxValue;
+                for (int j = 0; j < _b.Length; j++)
+                {
+                    if (j == k || j == target || !_down[j]) continue;
+                    double* p = _d->xpos + 3 * _b[j].PelvisBody;
+                    double dx = p[0] - me[0], dy = p[1] - me[1], d = dx * dx + dy * dy;
+                    if (d < nearest) { nearest = d; best = _b[j].PelvisBody; }
+                }
+                _b[k].NearestDownPelvis = best;
+            }
+        }
+
         // The solid-bodies layers (SetBody): standing, lying, getting up.
         static int LayerType(int state) => state == 0 ? 1 : state == 1 ? 2 : 4;
         static int LayerAffinity(int state) => state == 0 ? 1 : state == 1 ? 3 : 5;
@@ -418,6 +440,7 @@ namespace PoBox.Mj
                 // still observes, acts and holds its targets for 4 steps exactly as in training; only the phase
                 // differs, so eight inferences are not all paid on one physics step.
                 long t0 = _clock.ElapsedTicks;
+                MarkBodies();
                 for (int k = 0; k < _b.Length; k++)
                 {
                     if (k % _decimation != _sub) { _b[k].HoldTargets(); continue; }
@@ -435,6 +458,7 @@ namespace PoBox.Mj
             else if (_sub == 0)
             {
                 long t0 = _clock.ElapsedTicks;
+                MarkBodies();
                 foreach (MjBoxer b in _b)
                 {
                     b.Observe();

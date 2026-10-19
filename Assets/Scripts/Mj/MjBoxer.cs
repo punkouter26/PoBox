@@ -41,6 +41,11 @@ namespace PoBox.Mj
         /// BoxingEnv with the opponent frozen in it), so it is shown the real opponent and the bout's ring, as Match is.</summary>
         public const int Stand = 0, Walk = 1, Turn = 2, Match = 3, GetUp = 4;
         public const int ObservationSize = 103;
+        /// <summary>A match brain that sees bodies on the canvas reads three more (envs/boxing.py, the bodies): the nearest boxer
+        /// down, other than its opponent, in its own heading frame (x, y, each within 3 m), and 1 if that one is within 3 m.</summary>
+        public const int BodyInputs = 3, WideObservationSize = ObservationSize + BodyInputs;
+        /// <summary>The pelvis body of the nearest boxer down near this one (the ring sets it before each observation), or -1.</summary>
+        [NonSerialized] public int NearestDownPelvis = -1;
 
         [Tooltip("In front of every name of this boxer in the model: a_ for the red corner, b_ for the blue.")]
         public string prefix = "a_";
@@ -73,7 +78,7 @@ namespace PoBox.Mj
         public readonly double[] Cmd = new double[3];
         public readonly double[] Opp = new double[2];
 
-        public readonly double[] Obs = new double[ObservationSize];
+        public readonly double[] Obs = new double[WideObservationSize];
         public double[] Action { get; private set; }
         public float Value { get; private set; }
         /// <summary>Seconds every boxer's policy has spent thinking since the last <see cref="TakeInferSeconds"/>: for the telemetry.</summary>
@@ -98,7 +103,7 @@ namespace PoBox.Mj
         readonly double[] _headVel = new double[3], _prevHead = new double[3];
         Worker _worker;
         Tensor<float> _input;
-        float[] _obsF;
+        float[] _obsF, _obsWide;
 
         void Awake()
         {
@@ -106,10 +111,16 @@ namespace PoBox.Mj
             Joints = Config.joint_order.Length;
             Action = new double[Joints];
             _obsF = new float[ObservationSize];
+            _obsWide = new float[WideObservationSize];
             SetPolicy(policy);
         }
 
         readonly System.Collections.Generic.Dictionary<ModelAsset, Worker> _workers = new System.Collections.Generic.Dictionary<ModelAsset, Worker>();
+        readonly System.Collections.Generic.Dictionary<ModelAsset, int> _inputSizes = new System.Collections.Generic.Dictionary<ModelAsset, int>();
+        readonly System.Collections.Generic.Dictionary<int, Tensor<float>> _inputs = new System.Collections.Generic.Dictionary<int, Tensor<float>>();
+        int _inputSize = ObservationSize;
+        /// <summary>How many numbers the running policy reads: 103, or 106 for one that sees bodies.</summary>
+        public int InputSize => _inputSize;
 
         /// <summary>Another policy from here on. None is the zero action. Each policy's worker is made once and kept.</summary>
         public void SetPolicy(ModelAsset asset)
@@ -119,10 +130,14 @@ namespace PoBox.Mj
             if (asset == null) return;
             if (!_workers.TryGetValue(asset, out _worker))
             {
-                _worker = new Worker(ModelLoader.Load(asset), BackendType.CPU);
+                Model model = ModelLoader.Load(asset);
+                _worker = new Worker(model, BackendType.CPU);
                 _workers[asset] = _worker;
+                int size = model.inputs[0].shape.Get(model.inputs[0].shape.rank - 1);
+                _inputSizes[asset] = size == WideObservationSize ? WideObservationSize : ObservationSize;
             }
-            if (_input == null) _input = new Tensor<float>(new TensorShape(1, ObservationSize), false);
+            _inputSize = _inputSizes[asset];
+            if (!_inputs.TryGetValue(_inputSize, out _input)) _inputs[_inputSize] = _input = new Tensor<float>(new TensorShape(1, _inputSize), false);
         }
 
         /// <summary>The policy the boxer now runs.</summary>
@@ -130,7 +145,8 @@ namespace PoBox.Mj
 
         void OnDestroy()
         {
-            _input?.Dispose();
+            foreach (var t in _inputs.Values) t.Dispose();
+            _inputs.Clear();
             foreach (var w in _workers.Values) w.Dispose();
             _workers.Clear();
         }
@@ -332,7 +348,24 @@ namespace PoBox.Mj
             bool state = Kind == Match && Config.obs_state;
             o[at++] = state ? Reserve : Cmd[0]; o[at++] = state ? DazeShare : Cmd[1]; o[at++] = state ? OpponentDazeShare : Cmd[2];
             for (int i = 0; i < ObservationSize; i++) o[i] = Clamp(o[i], -100.0, 100.0);
+            Bodies(pos, yaw, o, ObservationSize);
         }
+
+        /// <summary>The bodies' three numbers (see <see cref="BodyInputs"/>): zeros with nobody down within 3 m.</summary>
+        void Bodies(double* pos, double yaw, double[] o, int at)
+        {
+            o[at] = o[at + 1] = o[at + 2] = 0.0;
+            if (NearestDownPelvis < 0) return;
+            double* p = _d->xpos + 3 * NearestDownPelvis;
+            double dx = p[0] - pos[0], dy = p[1] - pos[1];
+            if (dx * dx + dy * dy > 9.0) return;
+            double c = Math.Cos(yaw), s = Math.Sin(yaw);
+            o[at] = Clamp(c * dx + s * dy, -3.0, 3.0);
+            o[at + 1] = Clamp(-s * dx + c * dy, -3.0, 3.0);
+            o[at + 2] = 1.0;
+        }
+
+        public int PelvisBody => _pelvis;
 
         static double Clamp(double v, double lo, double hi) => v < lo ? lo : v > hi ? hi : v;
 
@@ -341,8 +374,9 @@ namespace PoBox.Mj
         {
             if (_worker == null) { Array.Clear(Action, 0, Joints); return; }
             long start = System.Diagnostics.Stopwatch.GetTimestamp();
-            for (int i = 0; i < ObservationSize; i++) _obsF[i] = (float)Obs[i];
-            _input.Upload(_obsF);
+            float[] buffer = _inputSize == WideObservationSize ? _obsWide : _obsF;
+            for (int i = 0; i < _inputSize; i++) buffer[i] = (float)Obs[i];
+            _input.Upload(buffer);
             _worker.Schedule(_input);
             if (_worker.PeekOutput("value") is Tensor<float> value)
             {
