@@ -1,0 +1,162 @@
+[
+ {
+  "run": "mel1_matt",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "matt",
+   "--run-name",
+   "mel1_matt",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_zombie",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "zombie",
+   "--run-name",
+   "mel1_zombie",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_nick",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "nick",
+   "--run-name",
+   "mel1_nick",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_sokol",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "sokol",
+   "--run-name",
+   "mel1_sokol",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_kim",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "kim",
+   "--run-name",
+   "mel1_kim",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_trump",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "trump",
+   "--run-name",
+   "mel1_trump",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_grandma",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "grandma",
+   "--run-name",
+   "mel1_grandma",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ },
+ {
+  "run": "mel1_grandpa",
+  "viewer": true,
+  "cmd": [
+   "tools/m13_job.py",
+   "grandpa",
+   "--run-name",
+   "mel1_grandpa",
+   "--from",
+   "newest",
+   "--bodies",
+   "2",
+   "--ropes-start",
+   "0.3",
+   "--max-hours",
+   "0.5",
+   "--more-iters",
+   "600"
+  ]
+ }
+]

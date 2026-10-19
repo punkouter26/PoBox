@@ -43,7 +43,7 @@ namespace PoBox.Sim
         public float walkOnSeconds = 5f;
         [Tooltip("Seconds per number of the referee's count.")]
         public float countInterval = 1f;
-        [Tooltip("Knockdowns in a bout that stop it: the referee waves it off at this one (TKO). 0 = never.")]
+        [Tooltip("Knockdowns of one fighter in one round that stop the bout: the referee waves it off at this one (TKO, the three-knockdown rule). 0 = never.")]
         public int stopAfterDowns = 3;
         [Tooltip("Real seconds between the end of one round and the start of the next.")]
         public float breakSeconds = 3f;
@@ -82,6 +82,7 @@ namespace PoBox.Sim
         public float ResultsTimeLeft => Mathf.Max(0f, resultsSeconds - PhaseAge);
 
         float _phaseTimer, _countTimer, _phaseAge;
+        readonly int[] _roundDowns = new int[2];
         bool _started;
 
         void Awake()
@@ -138,6 +139,7 @@ namespace PoBox.Sim
             AlsoDowned = null;
             Decision = false;
             judges.Reset();
+            Array.Clear(_roundDowns, 0, 2);
 
             if (league != null && !fixedEntrants && league.PickNext(out PolicyProfile a, out PolicyProfile b))
             {
@@ -160,6 +162,7 @@ namespace PoBox.Sim
             if (red == null || blue == null) return;
             BoutNumber++;
             Winner = null; Method = ""; EloDelta = 0f; Round = 1; Clock = 0f; Count = 0; Downed = null; AlsoDowned = null;
+            Array.Clear(_roundDowns, 0, 2);
             Decision = false;
             judges.Reset();
             Place(true);
@@ -261,6 +264,7 @@ namespace PoBox.Sim
                     if (PhaseAge > breakSeconds)
                     {
                         Round++;
+                        Array.Clear(_roundDowns, 0, 2);
                         Place(false);
                         SetPhase(BoutPhase.Intro);
                     }
@@ -302,7 +306,7 @@ namespace PoBox.Sim
             if (!live && !(Phase == BoutPhase.Count && f != Downed && AlsoDowned == null)) return;
             int corner = f == red ? 0 : 1;
             judges.OnKnockdown(corner);
-            if (stopAfterDowns > 0 && f.stats.downs >= stopAfterDowns)
+            if (stopAfterDowns > 0 && ++_roundDowns[corner] >= stopAfterDowns)
             {
                 Finish(Other(f), $"TKO R{Round} {ClockText(RoundTimeLeft)}", true);
                 return;

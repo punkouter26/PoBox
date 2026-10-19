@@ -22,6 +22,25 @@ import time
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def watched(cmd, csv_path: str, stale_s: float = 900.0) -> int:
+    """subprocess.call, except that a run whose CSV has not grown for stale_s once it has begun is taken for hung and ended
+    (2026-10-19: twice a CUDA out-of-memory left the trainer stuck in Warp's teardown, 11 MB and no progress, for good;
+    the queue behind it waited all night). Its exit code is then 99, a fault like any other."""
+    p = subprocess.Popen(cmd, cwd=HERE)
+    seen, since = -1, time.time()
+    while p.poll() is None:
+        time.sleep(30)
+        size = os.path.getsize(csv_path) if os.path.exists(csv_path) else -1
+        if size != seen:
+            seen, since = size, time.time()
+        elif size > 0 and time.time() - since > stale_s:
+            print(f"[resilient] no progress for {stale_s / 60:.0f} min: ending the hung run at {time.strftime('%H:%M:%S')}", flush=True)
+            subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True)
+            p.wait(60)
+            return 99
+    return p.returncode
+
+
 def main() -> None:
     args = sys.argv[1:]
     # --gauntlet: train_gauntlet.py, whose save is latest_NAME.pt; --getup: train_getup.py, which saves
@@ -45,7 +64,7 @@ def main() -> None:
         raise SystemExit(f"[resilient] {run} already has a save; start it under a new name")
     total = int(args[args.index("--more-iters") + 1]) if mode != "box" and "--more-iters" in args else 0
     for attempt in range(1, 9):
-        code = subprocess.call([sys.executable, os.path.join(HERE, script)] + args, cwd=HERE)
+        code = watched([sys.executable, os.path.join(HERE, script)] + args, os.path.join(HERE, "logs", f"{run}.csv"))
         if code == 0:
             return
         print(f"[resilient] attempt {attempt} of {run} ended with exit code {code} at {time.strftime('%H:%M:%S')}", flush=True)

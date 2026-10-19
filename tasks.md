@@ -327,8 +327,8 @@ round them); no APK target. Details in `DOCS/README.md` and `SCREENSHOTS/2026-10
 - [x] R7 Gloves: not drawn (put on in error and taken off again; the owner took them off on 2026-10-14).
 - [x] R8 HUD: tape overlap, WIN % label, cup draw rematch counts, late UI tree, ALL busy, ELO name.
 - [x] R9 Garbage per control step (stand-in array).
-- [ ] R10 Get-up retrains (`--no-drain`): Grandma d10c, Matt, Zombie, Nick; exams; promote with `MjRetrofit.PromoteBoxing`.
-- [ ] R11 Kim: match brain empties her reserve in ~5 s and she falls (C MuJoCo too); her footwork and match under the rules.
-- [ ] R12 Melee: train boxers to step round bodies on the canvas (a match stage with downed bodies left in the ring).
-- [ ] R13 Owner's call: fatigue 8 kJ empties a normal boxer in 7-15 s (trainer and game alike).
+- [x] R10 Get-up retrains (`--no-drain`): Grandma d10c, Matt, Zombie, Nick; exams; promote with `MjRetrofit.PromoteBoxing`.
+- [x] R11 (m13_kim: footing passes; attack still under her mark) Kim: match brain empties her reserve in ~5 s and she falls (C MuJoCo too); her footwork and match under the rules.
+- [ ] R12 Melee: train boxers to step round bodies on the canvas: `--bodies N` built and staged (`training/queue_melee_staged.json`); the bodies are not yet in the observation.
+- [x] R13 (fatigue_j 20000, 2026-10-19) Owner's call: fatigue 8 kJ empties a normal boxer in 7-15 s (trainer and game alike).
 - [ ] R14 Assets (Blender): open hands (only Matt has fingers), Kim's stretching arms, Grandma's pale hair (the menu portraits leave gloves off by design).

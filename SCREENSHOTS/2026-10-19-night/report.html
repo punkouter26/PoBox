@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight m13 training</title>
+<style>
+  :root { --bg: #f7f7f5; --ink: #1d1f22; --dim: #5d6168; --card: #fff; --line: #e2e2de; --good: #1f7a4d; --bad: #b3261e; --accent: #2b5fb8; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; } }
+  :root[data-theme="dark"] { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 16px; margin: 18px 0 6px; }
+  .sub { color: var(--dim); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  .up { color: var(--good); font-weight: 600; } .down { color: var(--bad); font-weight: 600; }
+  img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  .levels p { margin: 6px 0; } .levels b { display: inline-block; min-width: 64px; }
+  .tldr { border-left: 4px solid var(--accent); }
+  code { font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Overnight training: fatigue, Grandma's get-up, m13 for all eight</h1>
+<p class="sub">2026-10-18 22:55 to 2026-10-19 06:40 · v2 bodies · the game's punch rules · exams in C MuJoCo 3.5.0, 12 rounds, against the game's shipped roster</p>
+
+<div class="card tldr">
+<b>In short.</b> Fatigue is now <b>20 000 J x strength</b> (was 8 000): the median boxer has about half its reserve left at 40 s and even Kim,
+the busiest, lasts about 30 s. Grandma finally gets up on her own: 46 of 60 knockdowns at half the speed limit while rising, the game's rule.
+Zombie and Nick have new get-ups (56/60 each, were 6/30 and 14/30). One boxing round each (m13): seven of eight are at least as good as the
+brain the game ships, on the exam's four boxing lines, so seven are exported; Grandma's is worse and stays. Match lines 24 &rarr; 30 of 32 with
+that mix. Nothing is promoted: the Unity session does that.
+</div>
+
+<h2>Exam: boxing lines passed (footing, attack, guard, chin)</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>Shipped</th><th>Tonight</th><th>What changed</th><th>Ready to promote</th></tr>
+<tr><td>Matt</td><td>2</td><td class="up">4</td><td>guard 0% &rarr; 40% stopped, head shots taken 0.56 &rarr; 0.01/s; chin 1.65 &rarr; 0.02 legs/min; landed 1.31 &rarr; 0.63/s, head 0 &rarr; 3%</td><td><code>m13b_matt/latest_matt.onnx</code></td></tr>
+<tr><td>Zombie</td><td>4</td><td>4</td><td>guard 72% &rarr; 86%; landed 0.98 &rarr; 0.70/s at 4.8 m/s</td><td><code>m13_zombie/latest_zombie.onnx</code> (side-grade)</td></tr>
+<tr><td>Nick</td><td>2</td><td class="up">4</td><td>footing 1.11 &rarr; 0.00 falls/min; landed 0.78/s at 3.3 &rarr; 1.19/s at 4.5 m/s, 80% head</td><td><code>m13_nick/latest_nick.onnx</code></td></tr>
+<tr><td>Sokol</td><td>3</td><td class="up">4</td><td>guard: head shots taken 0.34 &rarr; 0.03/s; chin 0.48 &rarr; 0; landed 0.87 &rarr; 0.53/s, 0% head</td><td><code>m13_sokol/latest_sokol.onnx</code></td></tr>
+<tr><td>Kim</td><td>2</td><td class="up">3</td><td>footing 2.78 &rarr; 0.11 falls/min; landed 0.35 &rarr; 0.99/s at 4.1 m/s (mark 4.4, still fails on speed)</td><td><code>m13_kim/latest_kim.onnx</code></td></tr>
+<tr><td>Trump</td><td>4</td><td>4</td><td>landed 0.60/s at 4.4 &rarr; 0.67/s at 5.3 m/s; chin 0.87 &rarr; 0.08</td><td><code>m13_trump/latest_trump.onnx</code></td></tr>
+<tr><td>Grandma</td><td>4</td><td class="down">3</td><td>attack 0.54/s at 4.6 &rarr; 0.41/s at 3.2 m/s (under 0.5)</td><td>no (shipped stays)</td></tr>
+<tr><td>Grandpa</td><td>3</td><td>3</td><td>attack still fails: 0.02 &rarr; 0.14/s at 2.3 m/s; head shots taken 0.18 &rarr; 0</td><td><code>m13_grandpa/latest_grandpa.onnx</code></td></tr>
+<tr><th>All</th><th>24</th><th>29</th><th>with Grandma's shipped brain kept: 30</th><th></th></tr>
+</table>
+<p class="sub">Paths under <code>training/checkpoints/</code>. Shipped: <code>logs/exam_shipped_1018.json</code> (the eight Assets brains against each other).
+Tonight: <code>logs/exam_m13_NAME.json</code> (that boxer's m13 against the shipped seven), at fatigue 20 000, 12 rounds of 45 s each, plain and dazed.
+Export rule: at least as many lines as shipped (<code>tools/m13_compare.py</code>).</p>
+</div>
+
+<h2>Get-ups</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>Run</th><th>Getting up</th><th>Carrying on</th><th>ONNX</th></tr>
+<tr><td>Matt</td><td>u1_d10_matt_zombie</td><td>60/60, 1.7 s</td><td>pass</td><td><code>u1_d10_matt_zombie/latest_matt.onnx</code></td></tr>
+<tr><td>Zombie</td><td>u1_d10b_zombie_matt</td><td>56/60, 2.1 s (shipped 6/30)</td><td>56/56</td><td><code>u1_d10b_zombie_matt/latest_zombie.onnx</code></td></tr>
+<tr><td>Nick</td><td>u1_d10_nick_matt</td><td>56/60, 1.7 s (shipped 14/30)</td><td>54/56</td><td><code>u1_d10_nick_matt/latest_nick.onnx</code></td></tr>
+<tr><td>Grandma</td><td>u1_d11b_grandma_matt</td><td class="up">46/60, 4.3 s (frail mark 60% in 9 s)</td><td class="down">34/46 (mark 90%)</td><td><code>u1_d11b_grandma_matt/latest_grandma.onnx</code>; needs <code>"getup_speed_share": 0.5</code></td></tr>
+</table>
+<p class="sub">Grandma's exam runs as the game does: half the speed limit's damping while the get-up brain has the body, reserve 0.5 when it starts and
+nothing drained while rising (<code>exam_v2.py --getup-no-drain</code>). With the old exam's drain she gets up 26/60.</p>
+</div>
+
+<h2>Fatigue: 8 000 &rarr; 20 000 J x strength</h2>
+<div class="card">
+<table>
+<tr><th>fatigue_j</th><th>Median boxer at 40 s</th><th>Kim (busiest)</th><th>Nick</th><th>Trump</th><th>Matt</th></tr>
+<tr><td>8 000</td><td>0.20</td><td>empty at 7 s</td><td>empty at 15 s</td><td>empty at 16 s</td><td>0.31</td></tr>
+<tr><td>16 000</td><td>0.41</td><td>empty at 18 s (earliest 8)</td><td>0.19</td><td>0.23</td><td>0.48</td></tr>
+<tr><td><b>20 000</b></td><td><b>0.47</b></td><td>empty at 30 s (earliest 12)</td><td>0.23</td><td>0.31</td><td>0.53</td></tr>
+<tr><td>24 000</td><td>0.52</td><td>0.12 at 40 s</td><td>0.35</td><td>0.41</td><td>0.59</td></tr>
+</table>
+<p class="sub">The shipped match brains boxing 45 s from the marks, every pair with a model, 3 seeds (<code>tools/fatigue_sweep.py</code>, 588 bouts).
+16 000 hits the 0.3-0.4 median but empties Kim before 25 s; the game spends 1.5-2x the exam's power, so 20 000. Kim's m13 at 20 000: 0.12 at 40 s, not empty.</p>
+</div>
+
+<h2>The three charts that matter</h2>
+
+<h3>1. Falls per episode (env/falls), the m13 runs</h3>
+<img src="tb_falls.png" alt="TensorBoard chart of env/falls for the m13 runs">
+<div class="card levels">
+<p><b>Toddler</b> The orange line is Kim. She fell down a lot at first and then learned to stay on her feet.</p>
+<p><b>Child</b> Every line is one boxer practising. Lower is better. Kim fell in about half of her 12-second practice fights and ended near none;
+the others started low and went lower.</p>
+<p><b>Adult</b> Share of episodes ending in the learner's fall. Kim 0.41 &rarr; 0.04 (first and last 20 iterations), Nick 0.19 &rarr; 0.05, Sokol
+0.19 &rarr; 0.02. This is where the exam's footing gains come from (Kim 2.78 &rarr; 0.11, Nick 1.11 &rarr; 0.00 falls a minute). Compared with
+last night's m11: Kim then stayed at 0.60-0.74 for 500 iterations; the difference is the longer reserve (she no longer runs empty and folds)
+and a fall penalty of 20.</p>
+</div>
+
+<h3>2. Punches landed a second (env/hits_per_s), the m13 runs</h3>
+<img src="tb_hits.png" alt="TensorBoard chart of env/hits_per_s for the m13 runs">
+<div class="card levels">
+<p><b>Toddler</b> Some boxers learned to hit more often, some a little less.</p>
+<p><b>Child</b> Kim and Nick hit about three and two times more by the end. Matt and Sokol hit a bit less because they learned to cover up.</p>
+<p><b>Adult</b> Kim 0.25 &rarr; 0.75, Nick 0.43 &rarr; 1.00, Grandma 0.14 &rarr; 0.27, Matt 0.67 &rarr; 0.54, Sokol 0.68 &rarr; 0.61. The guard
+recipe (block pay, Matt's 1.0) traded punches for defence, as m12_zombie did. The head price x2 (x2.5 for Matt) did not move Matt or Sokol off the
+body (head share 0-5%): their punch only reaches the trunk from where they stand, so pricing the head does not pay until the stance changes.</p>
+</div>
+
+<h3>3. Grandma up from the floor (env/grandma_up_rate_from_floor)</h3>
+<img src="tb_grandma_getup.png" alt="TensorBoard chart of Grandma's up rate from the floor across the d10 and d11 runs">
+<div class="card levels">
+<p><b>Toddler</b> Grandma learned to get up. The grey line is the new one, and it is high.</p>
+<p><b>Child</b> The orange try (last evening) had to work against the full speed limit as it was turned up, and she only got up about half the time.
+With the limit held at half (the game's new rule), she gets up about nine times in ten in practice.</p>
+<p><b>Adult</b> d10c (orange) ramps the speed limit's damping in and holds at 92% with 40-60% up from the floor; it failed the exam 0/60.
+d11 (green) and d11b (grey) hold the share at 0.5: 88-94%. Training counts every episode that touched the floor; the exam only hard
+knockdowns (1.6-2.6 s slack), so d11b trains on those alone (<code>--slack-lo 1.2</code>). The exam then gave 46/60.</p>
+</div>
+
+<h2>What went wrong</h2>
+<div class="card">
+<p>Two training processes hit a CUDA out-of-memory (22:55 <code>u1_d10_zombie_matt</code>, 01:40 <code>m13_matt</code>) and hung in Warp's
+teardown; I was not allowed to kill them, so each time a new runner took over the rest (<code>logs/queue_night.json</code>,
+<code>logs/queue_night2.json</code>). Zombie's get-up and Matt's round carried on from their last saves. <code>tools/train_resilient.py</code>
+now ends a run whose CSV has not grown for 15 minutes and restarts it from its save. The two hung python processes are still there.</p>
+<p>Not measured: whether the small arm pull (<code>--arms-w 0.01</code>) keeps the hands near the chin; the exam has no line for it.</p>
+</div>
+
+<h2>Melee prep (staged, not run)</h2>
+<div class="card">
+<p><code>train_gauntlet.py --bodies 2</code>: two boxers lie on the canvas as solid bodies, each placed clear of the fighters, taken away a quarter of the
+time. Smoke-tested 2 iterations on the GPU. Eight jobs in <code>training/queue_melee_staged.json</code> (0.5 h each, from the newest exported brain,
+starts at the ropes 30% of the time). The bodies are not in the observation: a brain feels them, it does not see them.</p>
+</div>
+
+<h2>The roster the game would get, examined against itself (all six lines)</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>Lines</th><th>Fails</th><th>Getting up</th><th>Carrying on</th></tr>
+<tr><td>Matt</td><td>5</td><td>attack 0.50/s at 3.5 m/s</td><td>29/30</td><td>29/29</td></tr>
+<tr><td>Zombie</td><td>5</td><td>attack 0.34/s at 2.7 m/s</td><td>29/30</td><td>29/29</td></tr>
+<tr><td>Nick</td><td class="up">6</td><td>none: the first boxer to pass every line</td><td>30/30</td><td>29/30</td></tr>
+<tr><td>Sokol</td><td>5</td><td>attack 0.44/s</td><td>30/30</td><td>29/30</td></tr>
+<tr><td>Kim</td><td>5</td><td>attack 0.47/s at 2.9 m/s</td><td>30/30</td><td>29/30</td></tr>
+<tr><td>Trump</td><td>5</td><td>attack 0.24/s at 3.0 m/s</td><td>30/30</td><td>29/30</td></tr>
+<tr><td>Grandma</td><td>4</td><td>attack 0.13/s; carrying on</td><td>22/30</td><td>14/22</td></tr>
+<tr><td>Grandpa</td><td>4</td><td>attack 0.04/s; carrying on</td><td>22/30</td><td>13/22</td></tr>
+<tr><th>All</th><th>39 of 48</th><th></th><th></th><th></th></tr>
+</table>
+<p class="sub">Book <code>logs/book_night_mix.json</code>: the seven exported m13 brains and Grandma's shipped one; get-ups Matt d10, Zombie d10b, Nick d10,
+Grandma d11b, the others shipped; 12 rounds, 30 knockdowns, the game's get-up rule (<code>logs/exam_nightmix_NAME.json</code>). Footing, guard and
+chin pass for all eight. Attack fails for seven: when every boxer guards, less lands. Last night's mix was 34 of 48 under fatigue 8 000.
+Next for attack: a range or stance term (the punches land on the trunk from where they stand), not more head price.</p>
+</div>
+</main>
+</body>
+</html>

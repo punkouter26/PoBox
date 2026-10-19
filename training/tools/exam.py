@@ -61,6 +61,7 @@ DAZE = {"tau": 2.5, "lo": 14.0, "hi": 42.0, "weak": 0.45, "body": 0.3, "legs_out
 STAGGER = {"s": 0.3, "drive": 0.55}
 HURT = {"hi": 0.4, "weak": 0.25, "tau": 600.0}
 PUNCH_MASS = 2.2
+GETUP_NO_DRAIN = False      # --getup-no-drain: the get-up test under the game's rule (reserve 0.5 at the start, no drain while rising)
 
 
 def load_policy(path: str, A: int) -> PPO:
@@ -78,8 +79,14 @@ class ExamRing(Ring):
     def __init__(self, xml: str, cfg: dict, seed: int = 1):
         super().__init__(xml, cfg, seed)
         m = self.m
+        base = m.dof_damping.copy()
         for p, c in zip(("a_", "b_"), self.cfgs):
             speed_limit(m, p, c)
+        # The game's getup_speed_share (config, 2026-10-18): while the get-up brain has the body, a dof's damping is
+        # base + share * force / speed limit (envs/getup.py's speed_share); the full speed limit again once the match has it.
+        self.sl_extra = m.dof_damping - base
+        self.getup_share = [float(c.get("getup_speed_share", 1.0)) for c in self.cfgs]
+        self.no_drain = [False, False]        # the game's get-up (2026-10-18): nothing taken from the reserve while rising
         G = mujoco.mjtObj.mjOBJ_GEOM
         self.forearm = [[mujoco.mj_name2id(m, G, p + f"forearm_{s}_geom") for s in "lr"] for p in ("a_", "b_")]
         self.r_glove = [m.geom_size[self.glove[k][0]][0] for k in range(2)]
@@ -195,7 +202,7 @@ class ExamRing(Ring):
         self.push[:] = 0.0
         for k in range(2):
             joules = float(self.cfgs[k].get("fatigue_j", 0.0)) * float(self.cfgs[k].get("strength", 1.0))
-            if joules > 0.0:
+            if joules > 0.0 and not self.no_drain[k]:
                 n = self.A
                 spent = np.abs(d.actuator_force[k * n:(k + 1) * n] * d.qvel[self.jv[k]]).sum() / joules
                 self.reserve[k] = np.clip(self.reserve[k] + self.dt * ((1.0 - self.reserve[k]) / 20.0 - spent), 0.0, 1.0)
@@ -364,6 +371,14 @@ def getting_up(ring: ExamRing, k: int, getup: PPO, match, trials: int, within_s:
         d.qvel[rv:rv + 2] = rng.uniform(-2.5, 2.5, 2) * hard
         d.qvel[rv + 3:rv + 6] = rng.uniform(-2.5, 2.5, 3) * hard
         floored, stood_for, t, up_at = False, 0.0, 0.0, -1.0
+        full = ring.m.dof_damping.copy()
+        mine = np.zeros(ring.m.nv, bool)
+        mine[ring.rv[k]:ring.rv[k] + 6] = True
+        mine[ring.jv[k]] = True
+        ring.m.dof_damping[mine] = full[mine] - (1.0 - ring.getup_share[k]) * ring.sl_extra[mine]
+        if GETUP_NO_DRAIN:
+            # As the game: a get-up starts once the reserve is back to 0.5 and nothing drains while the get-up brain has the body.
+            ring.reserve[k], ring.no_drain[k] = 0.5, True
         while t < slack + within_s + (HANDOVER_S if up_at >= 0.0 else 0.0):
             here = d.xpos[ring.pelvis[k]]
             face = math.atan2(here[1] - their[1], here[0] - their[0])
@@ -386,6 +401,8 @@ def getting_up(ring: ExamRing, k: int, getup: PPO, match, trials: int, within_s:
             # at a second and a half, in one in fifteen. The game waits the same time (Sim/Fighter.cs).
             if stood_for >= HANDOVER_S:
                 break
+        ring.m.dof_damping[:] = full
+        ring.no_drain[k] = False
         res["trials"] += 1
         if not floored:
             continue
@@ -464,7 +481,10 @@ def main() -> None:
     ap.add_argument("--json", default="")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--walls", action="store_true", help="always the trainer's ring (walls), even where the game's (ropes) exists")
+    ap.add_argument("--getup-no-drain", action="store_true", help="the get-up test as the game runs it: reserve 0.5 at the start, nothing drained while rising")
     args = ap.parse_args()
+    global GETUP_NO_DRAIN
+    GETUP_NO_DRAIN = args.getup_no_drain
 
     book = policies()
     names = sorted(n for n in book if "match" in book[n])

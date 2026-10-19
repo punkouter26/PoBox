@@ -51,6 +51,8 @@ class GetUpEnv(BoxingEnv):
         self.slack_lo, self.slack_hi, self.shove, self.stand_share = slack_lo, slack_hi, shove, stand_share
         self.assist0 = assist
         speed_ramp = kw.pop("speed_ramp", -1.0)
+        # The game's getup_speed_share (2026-10-18): the share held where it starts, never moved by the controller below.
+        self.speed_fixed = kw.pop("speed_fixed", False)
         self.assist_max = kw.pop("assist_max", 0.75)
         # The game (2026-10-18) takes nothing from the reserve while the get-up brain has the body: off = no drain here either.
         self.drain = not kw.pop("no_drain", False)
@@ -315,7 +317,7 @@ class GetUpEnv(BoxingEnv):
             self.up_ema = 0.9 * self.up_ema + 0.1 * rate_k
             step = torch.where(self.up_ema > 0.6, -0.004, torch.where(self.up_ema < 0.3, 0.004, 0.0))
             self.assist = (self.assist + step).clamp(0.0, self.assist_max)
-        if self.speed_ramp:
+        if self.speed_ramp and not self.speed_fixed:
             w = self.speed_watch
             ends = float((self._gk_floor["ends"][w] + self._gk_raw["ends"][w]).sum().item())
             if ends >= 8.0:

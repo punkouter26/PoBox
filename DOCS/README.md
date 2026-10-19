@@ -69,6 +69,25 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
+## The night of 18-19 October: m13, get-ups for four, energy that lasts (2026-10-19, morning)
+
+Owner: "do all" to a ten-hour plan. Report `SCREENSHOTS/2026-10-19-night/report.html`; runs in `rl_optimization_log.md`.
+
+- **Energy**: `fatigue_j` 8000 -> 20000 (x strength) in every trainer and game config (`tools/fatigue_sweep.py`, 588 bouts
+  of the shipped brains in C MuJoCo: the median boxer has half its reserve at 40 s; Kim, the busiest, lasts to ~30 s).
+- **Get-ups in the game** (exam: 60 knockdowns, 3.5.0): Matt `u1_d10_matt_zombie` 60/60 in 1.7 s (shipped 24/30), Zombie
+  `u1_d10b_zombie_matt` 56/60 (6/30), Nick `u1_d10_nick_matt` 56/60 (14/30), and Grandma's first, `u1_d11b_grandma_matt`
+  46/60 in 4.3 s with the speed limit at half while she rises (`getup_speed_share` 0.5 in her config; `MjBoxer.SetSpeedShare`).
+- **m13 match brains** for seven (Grandma's got worse and stays m11), lines shipped -> m13: Matt 2 -> 4 (guard 0 -> 40%),
+  Nick 2 -> 4, Sokol 3 -> 4, Kim 2 -> 3 (footing 2.78 -> 0.11 falls a minute), Zombie, Trump 4 -> 4, Grandpa 3 -> 3. The
+  roster against itself: 39 of 48 lines, Nick all six. Attack fails for seven: with every boxer guarding, fewer land.
+- **The three-knockdown rule is per round** (`Bout.stopAfterDowns`), as in boxing: with get-ups that stand, three in a bout
+  ended most bouts inside 30 s. Now (fight log, 4x): Matt v Zombie a KO, four TKOs in R1-R2 and three decisions Matt
+  survived going down 2-4 times; Trump v Nick two KOs (R2, R3), three TKOs in R3, a decision.
+- **Melee prep**: `--bodies N` puts N downed boxers on the canvas as solid obstacles (smoke-tested); eight jobs staged
+  in `training/queue_melee_staged.json`, not run. The bodies are not in the observation yet.
+- Tests: MjGate 24/24, MjParity 3/3, MjCollision 2/2, StateFlow 2/2.
+
 ## Review fixes: punches that miss, knockdowns, get-ups that stand (2026-10-18, evening)
 
 The owner's review (every screen and scene played) found ten issues; the answers: accuracy realistic, KOs common, the

@@ -1303,3 +1303,80 @@ Decision: one more match round for all eight, `m11_NAME` from m10 against the ot
 - **21:10 `u1_d10c_grandma_matt` started** (queue released by the Unity session). Iteration-0 jump 0.03 (was 61-404) with `--lr 3e-5`. First 80
   iterations: from the floor 80-100%, unaided 62-100%, 1.7-2.2 s to stand, no help; the speed limit eased in to 32% (+0.5% an iteration,
   full at ~215 if she keeps up). ~50-85k samples/s. Matt, Zombie, Nick get-ups, exams and exports follow in the queue.
+
+## 2026-10-18 23:00, overnight (owner: "do all" to the 10-hour plan: fatigue, Grandma at half the speed limit, Kim, m13, exams, Melee prep)
+
+Running status, one line a milestone: `training/logs/night_status.md`. Nothing promoted (the Unity session promotes).
+
+- **Shipped brains rebuilt** from Assets/Boxers/*/{match,getup}.onnx into `checkpoints/onnx_1018/` (`tools/onnx_to_pt.py`, new
+  `--obs-state`: the match brains are marked as reading their state, or `train_gauntlet.py --obs-state` would zero those inputs' weights).
+- **Incident (mine)**: a 10-worker CPU sweep started 22:55 coincided with a CUDA out-of-memory in `u1_d10_zombie_matt` (iteration ~270);
+  its process hung in Warp's teardown and I may not kill it, so the old runner is stuck. CPU tools now run with CUDA_VISIBLE_DEVICES=-1
+  (the trainer kept 56k samples/s beside 8 such workers). `logs/queue.stop` and `logs/u1_d10_zombie_matt.stop` written; a second runner
+  (`tools/queue_runner.py --queue logs/queue_night.json`, new option: own state and stop file, same queue.log) took over: Zombie from
+  its iteration-250 save as `u1_d10b_zombie_matt` (350 more), Nick's d10 as staged, then tonight's jobs.
+- **Fatigue recalibrated: fatigue_j 8000 -> 20000** (x strength, rec_s 20). `tools/fatigue_sweep.py`: the shipped match brains, all 28
+  pairs with a model, 45 s from the marks under the punch rules and daze, 3 seeds, C MuJoCo 3.5.0, 588 bouts in 16 min on 8 CPU workers.
+  Median boxer's reserve at 40 s: 8000 0.20, 16000 0.41, 20000 0.47, 24000 0.52, 32000 0.54. At 16000 Kim (the busiest) is empty at
+  18 s (earliest 8 s); at 20000 at 30 s (earliest 12 s), Nick 0.23 and Trump 0.31 at 40 s, the grandparents and Zombie hardly tire.
+  The game spends ~1.5-2x the exam's power, so the larger of the two. Kim's brain is the outlier (its own job below).
+- **Exam option `--getup-no-drain`** (tools/exam.py): the get-up test as the game runs it (reserve 0.5 when the get-up starts,
+  nothing drained while rising). And the config key **`getup_speed_share`** is read by the exam's get-up test: while the get-up brain
+  has the body a dof's damping is base + share x force / speed limit (envs/getup.py's speed_share), full again for the match.
+  Checked on Grandma (20 knockdowns): shipped get-up 20/20 at share 0, 0/20 at 1 and 0/20 at 0.5; d10c 5/20 at 0 and 0/20 at 1 with
+  the drain, 12/20 at 0 and 8/20 at 0.5 (5.3 s) without it. So the exam's drain (her 8 kJ x 0.53 reserve gone in ~2 s at 2 kW) was
+  half of why d10c failed 0/60, and training's "from the floor 50% at 92% of the speed limit" does not carry to the C exam at 100%.
+- **Grandma's get-up at a fixed half speed limit** (`train_getup.py --speed-share 0.5`, new: held, not ramped, not read from the
+  checkpoint): `u1_d11_grandma_matt` from d10c, `--assist-max 0 --no-drain`, lr from d10c (6e-5), std 0.2, 1600 iterations capped at
+  0.8 h. Exams (60 knockdowns, 3.5.0) with the game's rule (`--getup-no-drain`) and with the old drain; exported only if the game-rule
+  exam passes the frail mark (60% within 9 s). `"getup_speed_share": 0.5` is in her 8 models/v2 configs.
+- **Kim**: her shipped footwork brain passes its ladder under the speed limit (stand 97%, walk 0.00 falls/min, turn 100%;
+  `logs/exam_fw_kim_shipped.json`), so no footwork top-up: straight to her m13 round, fall penalty 20, Nick and Sokol weighted 3.
+- **m13** (`tools/m13_job.py NAME`): from the shipped brain against the game's roster (each opponent its m13 once landed tonight, else
+  shipped), under fatigue 20000. m12_zombie's recipe (guard 1% -> 57%) plus: repeat decay 0.7, combo 0.1 (the log's advice) and
+  **`--head-mult 2`** (new: the head's style price 1.5 -> 3; Matt lands 0% to the head), **`--arms-w 0.01`** (new, small: r["legs"]'s
+  pull to the guard pose for shoulders and elbows, so the hands come back to the chin; no such term existed), **`--foe-state`** (new:
+  opponents whose brains read their reserve and daze get them, as in the game; until now every opponent saw zeros there, an empty
+  reserve), `--lr 3e-5` (the first-update KL fix), std 0.3, 700 iterations capped at 0.6 h, `--no-onnx` (exported after the exam only).
+  Per boxer: Matt block 1.0, head 2.5, hand-over 0.7; Nick and Sokol fall penalty 16; Grandma 16; Grandpa hit 2.5, slow-v 3, std 0.3.
+  CPU smoke (32 rings, 2 iterations, every new flag, `--bodies 2`): KL 0.02 at iteration 0; throwaway deleted.
+- **Melee prep** (`--bodies N`, envs/boxing.py `lying_bodies`): N boxers down on the canvas as solid mocap bodies (a lying adult's
+  capsules), each episode placed clear of both fighters (0.9 m) and each other, a quarter of the time taken away. ponytail: a fixed
+  shape, not a ragdoll, and not in the observation (a brain feels a body, it does not see one; seeing needs new inputs and the game's
+  observation changed with them). CPU check: 70-77% of episodes have each body in the ring, none nearer a fighter than 0.90 m.
+- **Two hangs.** 01:40 `m13_matt` (iteration ~157) hit a CUDA out-of-memory with nothing of mine on the GPU (5.6 GB held elsewhere) and
+  hung in Warp's teardown as 22:55's had. So the 22:55 fault may not have been the sweep either. Fix for the future:
+  `tools/train_resilient.py` now ends its own run when the run's CSV stops growing for 15 min (exit 99, restarted from its save).
+  Matt carried on as `m13b_matt` from the iteration-150 save; the remaining m13 runs use 3072 rings (from 4608) and 0.5 h.
+- **Grandma's get-up graduated**: `u1_d11b_grandma_matt` (d10c -> d11 218 iterations -> d11b 1400 on hard falls only, new
+  `train_getup.py --slack-lo 1.2`). Why hard falls: at d11's iteration 150 training read 82-88% up from the floor at the 0.5 share,
+  the C exam 9/20; training counts every episode that touched the floor (slack from 0.15 s, mostly stumbles), the exam only 1.6-2.6 s
+  slack after a hard shove. The trainer's env evaluated deterministically on hard falls only (MuJoCo Warp on the CPU, 63 falls):
+  70%, so most of the gap was the mix of falls, not physics. Exam, 60 knockdowns, share 0.5, game rule: 46/60 (77%) in 4.3 s, pass
+  (frail mark 60% in 9 s); with the old drain 26/60. Carrying on 34/46 (her m11 match brain). Exported at 103 inputs.
+- **Get-ups exported from the d10 queue**: Matt 60/60 (1.7 s), `u1_d10b_zombie_matt` 56/60 (2.1 s; shipped 6/30 under the game's
+  rules), `u1_d10_nick_matt` 56/60 (1.7 s; shipped 14/30); carrying on 56/56 and 54/56. Exams at fatigue 8000 with the drain.
+- **Shipped baseline at fatigue 20000** (`logs/exam_shipped_1018.json`, the game's roster against itself, 12 rounds, match lines
+  footing/attack/guard/chin): Matt 2, Zombie 4, Nick 2, Sokol 3, Kim 2, Trump 4, Grandma 4, Grandpa 3 = 24 of 32.
+- **m13_kim** (350 iterations, 0.6 h): training falls 0.50 -> 0.02 of episodes, landed 0.27 -> 0.77/s. Exam vs the shipped roster:
+  2 -> 3 lines; footing 2.78 -> 0.11 falls/min, attack 0.35/s at 3.7 -> 0.99/s at 4.1 m/s (mark 4.4: fails on speed), guard 67%,
+  chin 0. Reserve at 20000: 0.12 at 40 s and never empty in the median bout (shipped: empty at ~30 s). Exported.
+- **m13 results** (each against the shipped seven, fatigue 20000, 12 rounds; `logs/exam_m13_NAME.json`, `logs/compare_m13_NAME.log`).
+  Match lines (footing, attack, guard, chin) shipped -> m13: Matt 2 -> 4 (m13b; guard 0% -> 40%, head shots taken 0.56 -> 0.01/s, chin
+  1.65 -> 0.02; landed 1.31 -> 0.63/s), Zombie 4 -> 4 (guard 72 -> 86%), Nick 2 -> 4 (footing 1.11 -> 0, attack 0.78/s at 3.3 -> 1.19/s at
+  4.5 m/s), Sokol 3 -> 4 (head shots taken 0.34 -> 0.03/s; landed 0.87 -> 0.53), Kim 2 -> 3, Trump 4 -> 4 (all a little better),
+  Grandma 4 -> 3 (attack 0.54/s at 4.6 -> 0.41 at 3.2: not exported), Grandpa 3 -> 3 (attack 0.02 -> 0.14/s, still fails). 24 -> 29.
+  Seven exported (`tools/m13_compare.py`: not fewer lines than shipped) as `checkpoints/m13[b]_NAME/latest_NAME.onnx`, obs_state brains.
+- **What the recipe did**: the guard terms worked again (Matt, Sokol, Zombie, Grandpa take almost no head shots), at the price of
+  landing less for Matt and Sokol. The head price (x2, Matt x2.5) did not move Matt (0 -> 3% to the head) or Sokol (2 -> 0%): their
+  punches reach only the trunk from the range they keep; a stance or range term would be next, not more head price. Repeat share
+  rose with the punching (Kim 0.25 -> 0.52, Nick 0.27 -> 0.43) even at repeat decay 0.7; Nick's combinations 0.07 -> 0.25/s, the
+  only boxer to combine. The arm pull (`--arms-w 0.01`) is untested by any exam line (hands at the chin are not measured).
+- Report: `SCREENSHOTS/2026-10-19-night/report.html`. Melee jobs staged in `training/queue_melee_staged.json`, not run.
+- **Mixed exam, the roster the game would get** (`logs/book_night_mix.json`, against itself, 12 rounds, 30 knockdowns, game get-up
+  rule): 39 of 48 (last night's mix 34 under fatigue 8000). Nick passes all six lines, a first. Footing, guard, chin, getting up pass
+  for all eight; attack fails for seven (0.04-0.50/s: when every boxer guards, less lands); carrying on fails for the grandparents.
+  Next: a range/stance term for attack; the grandparents' hand-over. Nothing promoted; GPU idle from 05:43.
+- Check: with every new flag off, tonight's envs/boxing.py and envs/getup.py give numbers identical to the committed ones
+  (`tools/smoke_flags.py`, same models at fatigue 8000). `logs/smoke_baseline.npz` (2026-10-16) no longer matches either: the
+  configs changed since (match obs/reward, getup obs 0.002); re-save it before the next flag change.

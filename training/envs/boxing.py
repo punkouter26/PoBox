@@ -70,6 +70,24 @@ def to_heading(v: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     return torch.stack([c * v[..., 0] + s * v[..., 1], -s * v[..., 0] + c * v[..., 1], v[..., 2]], dim=-1)
 
 
+def lying_bodies(xml_path: str, n: int):
+    """The model with n boxers down on the canvas: mocap bodies (static, solid) of a lying adult's capsules, along x."""
+    spec = mujoco.MjSpec.from_file(xml_path)
+    C, S = mujoco.mjtGeom.mjGEOM_CAPSULE, mujoco.mjtGeom.mjGEOM_SPHERE
+    parts = [(C, 0.13, (-0.25, 0, 0.13, 0.25, 0, 0.13)), (S, 0.10, (0.45, 0, 0.10)),
+             (C, 0.07, (-0.30, 0.10, 0.07, -1.10, 0.14, 0.07)), (C, 0.07, (-0.30, -0.10, 0.07, -1.10, -0.14, 0.07)),
+             (C, 0.05, (0.20, 0.22, 0.05, -0.30, 0.35, 0.05)), (C, 0.05, (0.20, -0.22, 0.05, -0.30, -0.35, 0.05))]
+    for j in range(n):
+        b = spec.worldbody.add_body(name=f"downed_{j}", mocap=True, pos=[30.0 + 5.0 * j, 30.0, 0.0])
+        for i, (kind, r, at) in enumerate(parts):
+            g = b.add_geom(name=f"downed_{j}_{i}", type=kind, size=[r, 0, 0], rgba=[0.5, 0.4, 0.35, 1])
+            if kind == C:
+                g.fromto = list(at)
+            else:
+                g.pos = list(at)
+    return spec.compile()
+
+
 def punch_variety(landed, arriving, zone, last_kind, streak, since_hit, combo_s: float, pause_s: float = 2.0):
     """Which punch each fighter landed this step and how it follows the last one. landed, arriving, zone: (N,K,2), per
     glove; last_kind: (N,K) hand x 2 + zone of the last punch landed (-1 none); streak: how many in a row before this were
@@ -107,7 +125,8 @@ class BoxingEnv:
                  hurt_full: float = 0.0, hurt_hi: float = 0.4, hurt_weak: float = 0.25, hurt_tau: float = 600.0,
                  obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0,
                  selfcontact_w: float = 0.0, repeat_decay: float = 1.0, combo_w: float = 0.0, combo_s: float = 0.8,
-                 hurt_start: float = 0.0, fatigue_ceiling: bool = False, slow_v: float = 0.0):
+                 hurt_start: float = 0.0, fatigue_ceiling: bool = False, slow_v: float = 0.0,
+                 head_mult: float = 1.0, arms_w: float = 0.0, bodies: int = 0):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -180,10 +199,15 @@ class BoxingEnv:
         # slow_v: a landed punch slower than this (m/s) is worth (speed / slow_v)^2 of its pay, for the exam's attack line
         # (a mean landing speed of 4 m/s times the boxer's speed factor): pats stop paying. 0 = off.
         self.slow_v = slow_v
+        # 2026-10-19: head_mult scales every fighter's head price (style "head", 1.5 by default): Matt landed 0% to the head.
+        # arms_w: r["legs"]'s pull to the guard pose for the arms (shoulders, elbows), so the hands come back to the chin.
+        self.head_mult, self.arms_w = head_mult, arms_w
         if selfcontact_w and self.MODE != "getup":   # getting up leans on its own arms by design
             self.TERMS = self.TERMS + ["self"]
         if combo_w and not self.MODE:
             self.TERMS = self.TERMS + ["combo"]
+        if arms_w and not self.MODE:          # the bout's step only
+            self.TERMS = self.TERMS + ["arms"]
         # The share of the charges for effort (power, action size, action change) in force. The trainer holds it
         # at 0 while a skill is being found and brings it back (--effort-free-iters): charged from the first
         # step, a boxer that cannot punch yet learns that standing still is cheapest (bag_trump2, 2026-10-03).
@@ -197,7 +221,11 @@ class BoxingEnv:
         self.rng = torch.Generator(device=device)
         self.rng.manual_seed(seed)
 
-        self.m = mujoco.MjModel.from_xml_path(xml_path)
+        # bodies (2026-10-19, the Melee): that many boxers down on the canvas, solid, as the free-for-all leaves them; each
+        # episode each lies somewhere in the ring clear of the two fighters (or, a quarter of the time, is taken away).
+        # ponytail: a fixed lying shape on a mocap body, not a ragdoll, and not in the observation; a brain only feels it.
+        self.n_bodies = int(bodies)
+        self.m = lying_bodies(xml_path, self.n_bodies) if self.n_bodies else mujoco.MjModel.from_xml_path(xml_path)
         m = self.m
         self.spar = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "b_pelvis") >= 0
         self.K = 2 if self.spar else 1
@@ -245,7 +273,7 @@ class BoxingEnv:
         self.mw = mjw.put_model(m)
         self.mw.opt.warn_overflow = verbose
         # Two bodies touching each other, the floor and themselves need more room than one runner did.
-        nconmax = nconmax or (128 if self.spar else 64)
+        nconmax = (nconmax or (128 if self.spar else 64)) + 32 * self.n_bodies
         njmax = njmax or (512 if self.spar else 256)
         self.dw = mjw.put_data(m, d0, nworld=num_envs, nconmax=nconmax, njmax=njmax)
 
@@ -258,6 +286,8 @@ class BoxingEnv:
         self.geom_xpos = wp.to_torch(self.dw.geom_xpos)
         self.geom_xmat = wp.to_torch(self.dw.geom_xmat)
         self.act_force = wp.to_torch(self.dw.actuator_force)
+        if self.n_bodies:
+            self.mocap_pos, self.mocap_quat = wp.to_torch(self.dw.mocap_pos), wp.to_torch(self.dw.mocap_quat)
 
         def ids(kind, fmt_name):
             out = []
@@ -311,7 +341,7 @@ class BoxingEnv:
             return F([float(c.get("style", {}).get(key, default)) for c in self.cfgs])      # (K,)
 
         self.s_hit = style("hit", 1.0)             # what landing a punch is worth, as a multiple
-        self.s_head, self.s_body = style("head", 1.5), style("body", 1.0)
+        self.s_head, self.s_body = style("head", 1.5) * head_mult, style("body", 1.0)
         self.s_hand = torch.stack([style("hand_l", 1.0), style("hand_r", 1.0)], -1)          # (K, 2)
         self.s_power = style("power", 1.0)         # above 1 a hard punch is worth more than its speed; below 1, less
         self.s_pace = style("pace_s", 0.6)         # the gap between punches that is paid in full
@@ -399,6 +429,7 @@ class BoxingEnv:
             self.b_torso = L(ids(B, "torso"))
         leg =[i for i, n in enumerate(order) if n.split("_")[0] in ("hip", "knee", "ankle")]
         self.leg_idx = L(leg)
+        self.arm_idx = L([i for i, n in enumerate(order) if n.split("_")[0] in ("shoulder", "elbow")])
 
         N, K, A = self.N, self.K, self.A
         z = lambda *shape: torch.zeros(*shape, device=device)
@@ -581,6 +612,8 @@ class BoxingEnv:
         m1 = mask[:, None]
         self.qpos.copy_(torch.where(m1, q, self.qpos))
         self.qvel.copy_(torch.where(m1, v, self.qvel))
+        if self.n_bodies:
+            self._place_bodies(mask, q)
         ctrl = torch.cat([q[:, self.jq[k]] for k in range(self.K)], dim=-1)
         self.ctrl.copy_(torch.where(m1, ctrl, self.ctrl))
         m3 = mask[:, None, None]
@@ -613,6 +646,30 @@ class BoxingEnv:
             # Begun hurt: most of the way to the legs going, so a clinch (or a careful round) is worth something.
             hurt = m1 & (self._u(self.N, self.K) < self.hurt_start)
             self.daze = torch.where(hurt, self._u(self.N, self.K, lo=0.55, hi=0.9) * self.legs_at, self.daze)
+
+    def _place_bodies(self, mask: torch.Tensor, q: torch.Tensor) -> None:
+        """Each downed body somewhere in the ring at least 0.9 m from both fighters' spots and 1.2 m from the other
+        bodies (the first of 8 tries that is), turned any way; a quarter of the time, or with no try clear, parked away."""
+        N, dev = self.N, self.device
+        lim = self.ring_half - 0.7
+        feet = [q[:, self.root_q[k]:self.root_q[k] + 2] for k in range(self.K)]
+        placed = []
+        for j in range(self.n_bodies):
+            tries = self._u(N, 8, 2, lo=-lim, hi=lim)
+            ok = torch.ones(N, 8, dtype=torch.bool, device=dev)
+            for f in feet:
+                ok &= (tries - f[:, None]).norm(dim=-1) > 0.9
+            for p in placed:
+                ok &= (tries - p[:, None]).norm(dim=-1) > 1.2
+            pick = ok.float().argmax(-1)
+            xy = tries[torch.arange(N, device=dev), pick]
+            there = ok.any(-1) & (self._u(N) > 0.25)
+            away = torch.tensor([30.0 + 5.0 * j, 30.0], device=dev).expand(N, 2)
+            xy = torch.where(there[:, None], xy, away)
+            placed.append(torch.where(there[:, None], xy, torch.full_like(xy, 1e3)))
+            pos = torch.cat([xy, torch.zeros(N, 1, device=dev)], -1)
+            self.mocap_pos[:, j] = torch.where(mask[:, None], pos, self.mocap_pos[:, j])
+            self.mocap_quat[:, j] = torch.where(mask[:, None], yaw_quat(self._u(N, lo=-math.pi, hi=math.pi)), self.mocap_quat[:, j])
 
     def _reseed_trackers(self, mask: torch.Tensor) -> None:
         """Positions remembered for finite differences have to follow a reset, or the first step of
@@ -1022,6 +1079,8 @@ class BoxingEnv:
         r["slip"] = -0.2 * ((foot_v ** 2).sum(-1).clamp_max(25.0) * contact.float()).sum(-1)
         r["stance"] = -0.2 * (foot_sep - 0.30).abs()
         r["legs"] = -0.03 * ((jp - self.default_joint)[..., self.leg_idx] ** 2).sum(-1)
+        if self.arms_w:
+            r["arms"] = -self.arms_w * ((jp - self.default_joint)[..., self.arm_idx] ** 2).sum(-1)
         # Stand on your own feet. The dress rehearsal's fighters learned to prop themselves on the bag,
         # and then on each other, feet far behind and heads together like two cards. A head more than
         # 18 cm out from between the feet is leaning on something.

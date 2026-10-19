@@ -64,6 +64,8 @@ def main() -> None:
     ap.add_argument("--reset-std", type=float, default=0.5)
     ap.add_argument("--max-std", type=float, default=0.6)
     ap.add_argument("--slack-hi", type=float, default=2.6)
+    ap.add_argument("--slack-lo", type=float, default=0.15,
+                    help="shortest slack after the shove (s); the exam's knockdowns are 1.6-2.6 s, always a real fall")
     ap.add_argument("--shove", type=float, default=2.5)
     ap.add_argument("--assist", type=float, default=0.6)
     ap.add_argument("--fresh-assist", nargs="*", default=[],
@@ -77,6 +79,9 @@ def main() -> None:
                     help="ease the speed limit's damping in from this share (0 = none of it), up while the learners get up "
                          "from the floor over 60%% of the time, down under 40%%; --done-when then also needs all of it. "
                          "-1 = off (all of it, as before). A checkpoint that carries a share resumes from it")
+    ap.add_argument("--speed-share", type=float, default=-1.0,
+                    help="hold the speed limit's damping at this share the whole run (the game's config getup_speed_share, applied "
+                         "while the get-up brain has the body); not moved, not read from the checkpoint. -1 = off")
     ap.add_argument("--action-rate-w", type=float, default=0.0,
                     help="charge per squared change in action between control steps, on top of the stage's own small one; "
                          "0 = off. For smoother, less buzzy drives. Try 0.01 (doubles the stage's own)")
@@ -103,11 +108,12 @@ def main() -> None:
             args.num_envs = 2048
     xml, x, y = pair_xml(args.a, args.b, (args.models or os.path.join("models", "v2")) if args.stage == "v2" else "models")
     resume = dict(zip((args.a, args.b), args.resume))
-    env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
+    env = (GetUpMatchEnv if args.stage == "v2" else GetUpEnv)(xml, args.num_envs, device=args.device, seed=args.seed, slack_lo=args.slack_lo, slack_hi=args.slack_hi, shove=args.shove, assist=args.assist,
                                                               speed_limit=args.speed_limit, action_rate_w=args.action_rate_w,
                                                               obs_delay_max=args.obs_delay_max,
                                                               assist_max=args.assist_max, no_drain=args.no_drain,
-                                                              **({"speed_ramp": args.speed_ramp} if args.speed_ramp >= 0.0 else {}))
+                                                              **({"speed_ramp": args.speed_ramp} if args.speed_ramp >= 0.0 else {}),
+                                                              **({"speed_ramp": args.speed_share, "speed_fixed": True} if args.speed_share >= 0.0 else {}))
     N, K, A, D = env.N, env.K, env.A, env.obs_dim
     names = env.names
     assert names == [x, y], f"{xml} holds {names}"
@@ -127,7 +133,7 @@ def main() -> None:
             if "assist" in extra and n not in args.fresh_assist:
                 env.assist[k] = float(extra["assist"])
                 env.up_ema[k] = float(extra.get("up_ema", 0.0))
-            if env.speed_ramp and "speed_share" in extra:
+            if env.speed_ramp and not env.speed_fixed and "speed_share" in extra:
                 env.set_speed_share(float(extra["speed_share"]))
         else:
             cfg.lr = args.lr

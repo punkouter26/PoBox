@@ -76,7 +76,13 @@ def main() -> None:
     ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--lr", type=float, default=3e-4)
+    ap.add_argument("--foe-state", action="store_true",
+                    help="an opponent whose checkpoint was trained with obs_state reads its reserve and daze too, as in the game "
+                         "(without it an opponent sees zeros there: an empty reserve)")
     ap.add_argument("--lr-max", type=float, default=5e-4)
+    ap.add_argument("--bodies", type=int, default=0, help="the Melee: this many boxers down on the canvas as solid obstacles (envs/boxing.py)")
+    ap.add_argument("--head-mult", type=float, default=1.0, help="the head's price (style head, 1.5) times this; try 2")
+    ap.add_argument("--arms-w", type=float, default=0.0, help="pull of the shoulders and elbows to the guard pose, as the legs' 0.03; try 0.01")
     ap.add_argument("--gamma", type=float, default=0.99, help="0.99 at 50 Hz looks 2 s ahead; 0.995 looks 4 s")
     ap.add_argument("--entropy-coef", type=float, default=0.0)
     ap.add_argument("--reset-std", type=float, default=0.0)
@@ -155,6 +161,11 @@ def main() -> None:
     counts = np.maximum(16, np.round(args.num_envs * share / share.sum() / 16).astype(int) * 16)
     run = args.run_name or f"gauntlet_{args.name}"
 
+    def reads_state(ck):
+        # An opponent whose brain was trained reading its reserve and daze (as the game gives every shipped brain).
+        path = ck if os.path.isabs(ck) else os.path.join(HERE, ck)
+        return bool(torch.load(path, map_location="cpu", weights_only=False).get("extra", {}).get("env", {}).get("obs_state", False))
+
     envs, side, foes = [], [], []
     for i, ((opp, ck), n) in enumerate(zip(opponents, counts)):
         xml = pair_xml(args.name, opp, args.models)
@@ -167,9 +178,11 @@ def main() -> None:
                         handover_share=args.handover_share, start_spread=args.start_spread, sep_hi=args.sep_max, speed_limit=args.speed_limit, fatigue_j=args.fatigue_j,
                         rope_w=args.rope_w, cutoff_w=args.cutoff_w, clinch_w=args.clinch_w, action_rate_w=args.action_rate_w, obs_delay_max=args.obs_delay_max,
                         seek_w=args.seek_w, ropes_start=args.ropes_start, hit_push=args.hit_push, stagger_v=args.stagger_v,
-                        hurt_full=args.hurt_full, body_drain=args.body_drain, obs_state=(args.name,) if args.obs_state else (),
+                        hurt_full=args.hurt_full, body_drain=args.body_drain,
+                        obs_state=((args.name,) if args.obs_state else ()) + ((opp,) if args.foe_state and reads_state(ck) else ()),
                         selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay, combo_w=args.combo_w, combo_s=args.combo_s,
-                        hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, slow_v=args.slow_v, **extra_env)
+                        hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, slow_v=args.slow_v,
+                        head_mult=args.head_mult, arms_w=args.arms_w, bodies=args.bodies, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))

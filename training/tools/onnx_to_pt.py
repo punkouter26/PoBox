@@ -24,7 +24,7 @@ sys.path.insert(0, HERE)
 from ppo import ActorCritic  # noqa: E402
 
 
-def convert(src: str, dst: str, std: float, count: float) -> None:
+def convert(src: str, dst: str, std: float, count: float, obs_state: bool = False) -> None:
     w = {i.name: torch.from_numpy(onnx.numpy_helper.to_array(i).copy()) for i in onnx.load(src).graph.initializer}
     obs_dim, act_dim = w["actor.0.weight"].shape[1], w["actor.6.weight"].shape[0]
     model = ActorCritic(obs_dim, act_dim, init_std=std)
@@ -36,7 +36,9 @@ def convert(src: str, dst: str, std: float, count: float) -> None:
     var = w["std"].float() ** 2 - 1e-8
     torch.save({"model": model.state_dict(),
                 "obs_rms": {"mean": w["mean"].float(), "var": var.clamp(min=0.0), "count": torch.tensor(count)},
-                "opt": {}, "extra": {"iter": 0, "from_onnx": os.path.abspath(src)}}, dst)
+                "opt": {}, "extra": {"iter": 0, "from_onnx": os.path.abspath(src),
+                                          # a match brain that reads its reserve and daze (config obs_state): the gauntlet must not zero those inputs
+                                          **({"env": {"obs_state": True}} if obs_state else {})}}, dst)
 
     # The check: the rebuilt policy answers as the shipped graph does.
     import onnxruntime as ort
@@ -55,6 +57,7 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--std", type=float, default=0.3, help="action noise to start from (not in the graph)")
     ap.add_argument("--count", type=float, default=1e9, help="weight of the donor's observation statistics")
+    ap.add_argument("--obs-state", action="store_true", help="the brain reads its state in the command's place (the game's config obs_state)")
     a = ap.parse_args()
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-    convert(a.onnx, a.out, a.std, a.count)
+    convert(a.onnx, a.out, a.std, a.count, a.obs_state)

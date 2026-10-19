@@ -79,13 +79,19 @@ def gpu_busy() -> int:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--after", default="", help="do nothing until this file exists")
+    ap.add_argument("--queue", default="", help="another list (e.g. logs/queue_night.json), with its own NAME.state.json and NAME.stop")
     args = ap.parse_args()
+    global QUEUE, STATE
+    stop = os.path.join(LOGS, "queue.stop")
+    if args.queue:
+        QUEUE = args.queue if os.path.isabs(args.queue) else os.path.join(HERE, args.queue)
+        STATE, stop = QUEUE[:-5] + ".state.json", QUEUE[:-5] + ".stop"
     os.makedirs(LOGS, exist_ok=True)
     if args.after:
         path = args.after if os.path.isabs(args.after) else os.path.join(HERE, args.after)
         log(f"waiting for {os.path.relpath(path, HERE)}")
         while not os.path.exists(path):
-            if os.path.exists(os.path.join(LOGS, "queue.stop")):
+            if os.path.exists(stop):
                 log("stopped before it began")
                 return
             time.sleep(15.0)
@@ -100,7 +106,7 @@ def main() -> None:
 
     viewer = None
     idle_said = False
-    while not os.path.exists(os.path.join(LOGS, "queue.stop")):
+    while not os.path.exists(stop):
         state = read(STATE, {"done": []})
         todo = [j for j in read(QUEUE, []) if j.get("run") and j["run"] not in state["done"]]
         if not todo or os.path.exists(os.path.join(LOGS, "queue.hold")):
@@ -163,8 +169,8 @@ def main() -> None:
             json.dump(state, f, indent=1)
         with open(os.path.join(LOGS, f"{run}.done"), "w") as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
-    log("stopped (logs/queue.stop)")
-    os.remove(os.path.join(LOGS, "queue.stop"))
+    log(f"stopped ({os.path.relpath(stop, HERE)})")
+    os.remove(stop)
 
 
 if __name__ == "__main__":
