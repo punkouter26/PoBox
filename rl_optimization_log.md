@@ -1420,3 +1420,13 @@ Running status: `training/logs/night_status.md` (Day section). Nothing under Ass
   as many lines. Mistake of mine: 8 melee exams + 4 diagnoses at once ran the machine out of memory (free RAM 0.9 of 31 GB; two
   exams died "paging file too small"; the trainer fell from ~7.9k to 3.9k samples/s). The two hung pythons from last night hold 12 GB.
   CPU work now 2 processes at a time, one thread each.
+- **11:45 the session stopped** and took the runner, the exam watchers and the CPU exams with it (m14_kim at iteration ~120, saved at 100;
+  m14_grandpa's exam unfinished). The owner then killed last night's two hung pythons (12 GB back). Restarted 12:03 on the same day queue.
+- **m14_grandpa: no gain** (125 iterations, 0.67 h at ~4-8k samples/s; training landed 0.05 -> 0.06/s). Not examined: superseded.
+  Rethink: **his own style keeps him out of reach**. Grandpa's config style pays range_m 0.9 (pelvis to the opponent's trunk) and charges
+  crowd 0.5 a step for every metre inside 0.78 m; the boxers who land do it from 0.71-0.76 m (head_diag), and his arms are the roster's
+  shortest. So every attack term was fighting a range term. m14b_grandpa: the same recipe with `--style range_m=0.7 crowd=0` (new
+  `train_gauntlet.py --style KEY=VALUE`, envs/boxing.py `style_over`: the learner's style keys replaced for the run; the game has no
+  style, so nothing to change there). Grandma (range 0.8, attack 0.13/s) gets `range_m=0.72` in her m14.
+- m14b_kim carries m14_kim on from its iteration-100 save for 0.35 h. Melee runs cut to 0.33 h each to keep jobs 1-3 near 8 h.
+- **m14_sokol's head aim was too weak** (TensorBoard reward terms, first -> last 10 iterations): reward/aim +0.004 a step against range +0.20-0.26, face +0.25, energy -0.13-0.15, the arm pull -0.05; head share in training 1% -> 0.4% after 207 iterations, while hit fell 0.074 -> 0.036 (the body halved). So `--head-aim-w` 0.05 -> **0.25** for m14_matt (started 13:46) and for both boxers' melee rounds. m14_grandma and m14b_kim results in night_status.md.

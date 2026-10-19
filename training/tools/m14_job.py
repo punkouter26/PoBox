@@ -27,12 +27,16 @@ COMMON = GAME_DAZE + [
     "--done-when", "hits_per_s>=1.2,falls<=0.03,repeat_share<=0.6", "--done-window", "40", "--no-onnx"]
 # Later flags win (argparse keeps the last). Weights: the opponents each lands least on in exam_nightmix.
 RECIPE = {
-    "grandpa": ["--hit-w", "3.5", "--slow-v", "3.0", "--seek-w", "0.6", "--reset-std", "0.3", "--weights", "matt=2", "zombie=2", "grandma=2", "kim=2"],
+    # m14_grandpa (this recipe without --style): 125 iterations, landed 0.05 -> 0.06/s. His own style holds him out of reach: range_m
+    # 0.9 is paid and crowd 0.5 charges every step inside 0.78 m, while punches land from 0.71-0.76 m (tools/head_diag.py). m14b: the
+    # range of the boxers who land (0.70), no crowd charge.
+    "grandpa": ["--hit-w", "3.5", "--slow-v", "3.0", "--seek-w", "0.6", "--reset-std", "0.3", "--style", "range_m=0.7", "crowd=0",
+                "--weights", "matt=2", "zombie=2", "grandma=2", "kim=2"],
     "kim": ["--fall-penalty", "20", "--slow-v", "4.4", "--weights", "grandpa=2", "zombie=2", "matt=2", "sokol=2"],
-    "grandma": ["--fall-penalty", "16", "--slow-v", "3.0", "--weights", "grandpa=2", "trump=2", "zombie=2"],
+    "grandma": ["--fall-penalty", "16", "--slow-v", "3.0", "--style", "range_m=0.72", "--weights", "grandpa=2", "trump=2", "zombie=2"],
     # Head shots (tools/head_diag.py, logs/head_diag_*.out): same range as Nick, gloves 21-28 cm under the head; lead them up.
-    "sokol": ["--fall-penalty", "16", "--head-aim-w", "0.05", "--body-mult", "0.5", "--weights", "zombie=2", "trump=2", "grandma=2", "grandpa=2"],
-    "matt": ["--block-w", "1.0", "--handover-share", "0.7", "--head-aim-w", "0.05", "--body-mult", "0.6",
+    "sokol": ["--fall-penalty", "16", "--head-aim-w", "0.25", "--body-mult", "0.5", "--weights", "zombie=2", "trump=2", "grandma=2", "grandpa=2"],
+    "matt": ["--block-w", "1.0", "--handover-share", "0.7", "--head-aim-w", "0.25", "--body-mult", "0.6",
              "--weights", "grandpa=2", "zombie=2", "sokol=2"],
     "zombie": ["--weights", "grandma=2", "grandpa=2", "kim=2", "nick=2"],
     "nick": ["--fall-penalty", "16", "--weights", "sokol=2", "grandpa=2"],
@@ -47,8 +51,14 @@ def main() -> None:
     start = book[name]["match"]
     if "--from" in rest:
         i = rest.index("--from")
-        if rest[i + 1] == "newest" and os.path.exists(os.path.join(HERE, "checkpoints", f"m14_{name}", f"latest_{name}.onnx")):
-            start = f"checkpoints/m14_{name}/latest_{name}.pt"
+        if rest[i + 1] == "newest":
+            # The newest m14 that passed its exam (tools/day_exam.py exported its ONNX), else the game's.
+            for run in (f"m14b_{name}", f"m14_{name}"):
+                if os.path.exists(os.path.join(HERE, "checkpoints", run, f"latest_{name}.onnx")):
+                    start = f"checkpoints/{run}/latest_{name}.pt"
+                    break
+        elif rest[i + 1].endswith(".pt"):
+            start = rest[i + 1]          # a run carried on from its own save (m14_kim, stopped with the session at 11:45)
         del rest[i:i + 2]
     against = [f"{n}={e['match']}" for n, e in book.items() if n != name]
     cmd = [sys.executable, os.path.join(HERE, "tools", "train_resilient.py"), "--gauntlet", "--run-name", run, "--stage", "match",

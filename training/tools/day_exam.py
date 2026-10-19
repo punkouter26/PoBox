@@ -43,6 +43,8 @@ def main() -> None:
     with open(L(f"exam_{run}.log"), "w", encoding="utf-8") as log:
         subprocess.call([sys.executable, "tools/exam_v2.py", "--only", name, "--book", L(f"book_{run}.json"), "--rounds", "12", "--trials", "30",
                          "--getup-no-drain", "--json", out], cwd=HERE, env=env, stdout=log, stderr=subprocess.STDOUT)
+    if "--melee" in sys.argv:
+        melee.wait()          # two CPU exams at a time at most (RAM, 2026-10-19)
     p_old, old = passed(L(f"exam_nightmix_{name}.json"), name)
     p_new, new = passed(out, name)
     row = {"run": run, "game": p_old, "new": p_new, "export": p_new >= p_old,

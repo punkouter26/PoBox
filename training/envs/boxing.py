@@ -111,7 +111,8 @@ class BoxingEnv:
                  obs_state: tuple = (), body_drain: float = 0.0, clinch_w: float = 0.0,
                  selfcontact_w: float = 0.0, repeat_decay: float = 1.0, combo_w: float = 0.0, combo_s: float = 0.8,
                  hurt_start: float = 0.0, fatigue_ceiling: bool = False, slow_v: float = 0.0,
-                 head_mult: float = 1.0, arms_w: float = 0.0, bodies: int = 0, body_mult: float = 1.0, head_aim_w: float = 0.0):
+                 head_mult: float = 1.0, arms_w: float = 0.0, bodies: int = 0, body_mult: float = 1.0, head_aim_w: float = 0.0,
+                 style_over: dict = None):
         wp.init()
         wp.config.verbose_warnings = verbose
         if device == "cpu":
@@ -234,6 +235,8 @@ class BoxingEnv:
         # on the body (guard pose, joint limits, standing height, sizes) is therefore held per fighter.
         self.cfgs = cfg["fighters"] if "fighters" in cfg else [cfg] * self.K
         self.names = list(cfg["names"]) if "names" in cfg else [cfg.get("name", stem)] * self.K
+        # style_over {name: {key: value}} (2026-10-19, train_gauntlet.py --style): a fighter's style keys replaced for this run only.
+        self.cfgs = [dict(c, style={**c.get("style", {}), **style_over[n]}) if n in (style_over or {}) else c for n, c in zip(self.names, self.cfgs)]
         self.hetero = self.K == 2 and self.names[0] != self.names[1]
         self.cfg = self.cfgs[0]
         order = self.cfg["joint_order"]

@@ -84,6 +84,7 @@ def main() -> None:
     ap.add_argument("--head-mult", type=float, default=1.0, help="the head's price (style head, 1.5) times this; try 2")
     ap.add_argument("--body-mult", type=float, default=1.0, help="the body's price (style body) times this; Sokol's 0%% head: try 0.5")
     ap.add_argument("--head-aim-w", type=float, default=0.0, help="pay per m/s a glove closes on the head within 25 cm of it (envs/boxing.py); try 0.05")
+    ap.add_argument("--style", nargs="*", default=[], help="the learner's style keys replaced for this run, e.g. range_m=0.7 crowd=0 (its config's 'style')")
     ap.add_argument("--arms-w", type=float, default=0.0, help="pull of the shoulders and elbows to the guard pose, as the legs' 0.03; try 0.01")
     ap.add_argument("--gamma", type=float, default=0.99, help="0.99 at 50 Hz looks 2 s ahead; 0.995 looks 4 s")
     ap.add_argument("--entropy-coef", type=float, default=0.0)
@@ -187,7 +188,8 @@ def main() -> None:
                         obs_state=((args.name,) if args.obs_state else ()) + ((opp,) if args.foe_state and reads_state(ck) else ()),
                         selfcontact_w=args.selfcontact_w, repeat_decay=args.repeat_decay, combo_w=args.combo_w, combo_s=args.combo_s,
                         hurt_start=args.hurt_start, fatigue_ceiling=args.fatigue_ceiling, slow_v=args.slow_v,
-                        head_mult=args.head_mult, arms_w=args.arms_w, bodies=args.bodies, body_mult=args.body_mult, head_aim_w=args.head_aim_w, **extra_env)
+                        head_mult=args.head_mult, arms_w=args.arms_w, bodies=args.bodies, body_mult=args.body_mult, head_aim_w=args.head_aim_w,
+                        style_over={args.name: {s.split("=")[0]: float(s.split("=")[1]) for s in args.style}} if args.style else None, **extra_env)
         assert env.hetero and args.name in env.names and opp in env.names, f"{xml} holds {env.names}"
         envs.append(env)
         side.append(env.names.index(args.name))
