@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day m14 training</title>
+<style>
+  :root { --bg: #f7f7f5; --ink: #1d1f22; --dim: #5d6168; --card: #fff; --line: #e2e2de; --good: #1f7a4d; --bad: #b3261e; --accent: #2b5fb8; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; } }
+  :root[data-theme="dark"] { --bg: #15171a; --ink: #e8e9eb; --dim: #a2a6ad; --card: #1e2125; --line: #33373c; --good: #4cc38a; --bad: #ff7b72; --accent: #7aa7ff; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 36px 0 8px; } h3 { font-size: 16px; margin: 18px 0 6px; }
+  .sub { color: var(--dim); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  .up { color: var(--good); font-weight: 600; } .down { color: var(--bad); font-weight: 600; }
+  img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  .levels p { margin: 6px 0; } .levels b { display: inline-block; min-width: 64px; }
+  .tldr { border-left: 4px solid var(--accent); }
+  code { font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Day training: m14 attack round, head shots, the Melee's eyes</h1>
+<p class="sub">2026-10-19 10:00 to 14:30 · v2 bodies · trained under the game's daze line (26 / 9 / 3.5 s / body 0.45) · exams in C MuJoCo 3.5.0, 12 rounds, against the game's roster (<code>logs/book_night_mix.json</code>)</p>
+
+<div class="card tldr">
+<b>In short.</b> Two brains are better and exported: <b>Sokol</b> now passes all six exam lines (attack 0.44 &rarr; 0.58/s), and <b>Grandma</b> lands four
+times as often (0.13 &rarr; 0.57/s) and guards better (both already promoted by the Unity session). Kim's attack improved but she lost footing against
+Sokol, so hers was not exported. Grandpa did not move: his own style paid him to stand 0.9 m off, out of reach (fix written, not run). Matt and Sokol
+land almost nothing to the head because they <b>punch at chest height</b>, not because of reach or price. The 106-input body observation is built and
+checked, and the Melee exam shows today's brains trip over bodies 0.3-1.2 times a minute; the melee training round was not run (owner stopped the day).
+</div>
+
+<h2>Per boxer</h2>
+<div class="card">
+<table>
+<tr><th>Boxer</th><th>Run</th><th>Lines (game &rarr; new)</th><th>What changed</th><th>Export</th></tr>
+<tr><td>Sokol</td><td>m14_sokol</td><td class="up">5 &rarr; 6</td><td>attack 0.44/s at 4.6 &rarr; 0.58/s at 5.1 m/s (passes); head 0% &rarr; 0%; guard passes (head shots taken 0.08 &rarr; 0.06/s)</td><td><code>m14_sokol/latest_sokol.onnx</code> (103)</td></tr>
+<tr><td>Grandma</td><td>m14_grandma</td><td>4 &rarr; 4</td><td>attack 0.13/s at 2.3 &rarr; 0.57/s at 2.6 m/s (speed mark 3.0), head 15 &rarr; 48%; guard 51 &rarr; 80%; carrying on 14/22 &rarr; 17/23</td><td><code>m14_grandma/latest_grandma.onnx</code> (103)</td></tr>
+<tr><td>Kim</td><td>m14b_kim</td><td class="down">5 &rarr; 4</td><td>attack 0.47/s at 2.9 &rarr; 0.59/s at 4.0 m/s (mark 4.4); chin 0.59 &rarr; 0; <b>footing lost</b>: 1.67 falls/min against Sokol</td><td>no</td></tr>
+<tr><td>Grandpa</td><td>m14_grandpa</td><td>not examined</td><td>landed 0.05 &rarr; 0.06/s in training (125 iterations): no gain</td><td>no</td></tr>
+<tr><td>Matt</td><td>m14_matt</td><td>exam not finished by 14:35</td><td>training: landed 0.57 &rarr; 0.36/s (body price x0.6), head 2 &rarr; 3%</td><td>pending (<code>logs/compare_m14_matt.json</code> if the exam completes)</td></tr>
+<tr><td>Zombie, Nick, Trump</td><td>-</td><td>-</td><td>no m14 planned; their melee rounds not run</td><td>-</td></tr>
+</table>
+</div>
+
+<h2>Why Matt and Sokol do not hit the head</h2>
+<div class="card">
+<table>
+<tr><th></th><th>Matt</th><th>Sokol</th><th>Nick</th><th>Zombie</th></tr>
+<tr><td>pelvis distance kept (median)</td><td>0.76 m</td><td>0.76 m</td><td>0.71 m</td><td>0.72 m</td></tr>
+<tr><td>head above the glove at a body landing</td><td>32 cm</td><td>41 cm</td><td>23 cm</td><td>12 cm</td></tr>
+<tr><td>fast glove within 10 cm of the head</td><td>0.17/s</td><td>0.12/s</td><td>4.6/s</td><td>1.7/s</td></tr>
+<tr><td>their head punches blocked</td><td>0.10/s</td><td>0.09/s</td><td>1.48/s</td><td>0.03/s</td></tr>
+<tr><td>head share</td><td>5%</td><td>0%</td><td>77%</td><td>82%</td></tr>
+</table>
+<p class="sub"><code>tools/head_diag.py</code>, C MuJoCo 3.5.0, the game's roster. Same range, not blocked: the punch is thrown at the chest, so a higher head
+price is never met. Fix tried: <code>--head-aim-w</code> (pay for a glove closing on the head within 25 cm). At 0.05 it was 0.004 a step and did nothing
+(Sokol); at 0.25 (Matt) the gloves reach the head more (aim term 0.022 &rarr; 0.035 a step) but landings only 2 &rarr; 3%. Next: aim at the head in the
+footwork stage, or a punch-height term.</p>
+</div>
+
+<h2>The Melee: bodies in the observation (106 inputs)</h2>
+<div class="card">
+<p>Match brains read the 103 numbers and then <code>[x, y, seen]</code>: x, y = to_heading(p - pos, yaw)[:2] clamped to [-3, 3], pos/yaw the boxer's own
+pelvis, p the pelvis of the nearest downed body by horizontal distance (never the opponent), seen = 1 if within 3.0 m, else all three 0. Built
+(<code>envs/match.py</code>, <code>train_gauntlet.py --obs-bodies</code>, 103 brains widened with zero weights) and checked against the spec
+(<code>tools/check_body_obs.py</code>). Training round <code>mel1_NAME</code> staged in <code>logs/queue_day.json</code>, not run.</p>
+<table>
+<tr><th>Today's brains, 2 bodies down</th><th>Matt</th><th>Zombie</th><th>Nick</th><th>Sokol</th><th>Kim</th><th>Trump</th><th>Grandma</th><th>Grandpa</th></tr>
+<tr><td>falls nobody caused /min (1v1: 0.00)</td><td>1.24</td><td>0.67</td><td>0.67</td><td>0.38</td><td>0.57</td><td>0.57</td><td>0.38</td><td>0.29</td></tr>
+<tr><td>worst opponent</td><td>3.33</td><td>2.67</td><td>1.33</td><td>0.67</td><td>2.00</td><td>1.33</td><td>2.00</td><td>1.33</td></tr>
+</table>
+<p class="sub"><code>tools/melee_exam.py</code>, 2 rounds x 7 opponents; nearly every fall is a trip (a body touched in the last 1.5 s).</p>
+</div>
+
+<h2>The three charts that matter</h2>
+
+<h3>1. Punches landed a second (env/hits_per_s)</h3>
+<img src="tb_hits.png" alt="Chart of punches landed a second for the m14 runs">
+<div class="card levels">
+<p><b>Toddler</b> Grandma's line goes up: she learned to hit. Grandpa's stays at the bottom.</p>
+<p><b>Child</b> Each line is a boxer practising. Grandma hit three times more by the end, Kim a bit more, Sokol and Matt a little less, and Grandpa never found a way.</p>
+<p><b>Adult</b> First vs last 20 iterations: Grandma 0.10 &rarr; 0.33, Kim 0.35 &rarr; 0.42, Sokol 0.65 &rarr; 0.59, Matt 0.37 (the body price cut), Grandpa 0.07 &rarr; 0.06.
+Compared with m13 last night (hit 2.0), the extra landing pay (3.0) worked only where the range term let the boxer in: Grandma trained at range 0.72 (her
+style's 0.8 replaced), Grandpa at his style's 0.9 with a crowding charge.</p>
+</div>
+
+<h3>2. Share of punches to the head (env/head_share), Matt and Sokol</h3>
+<img src="tb_head.png" alt="Chart of the head share for m13 and m14 runs of Matt and Sokol">
+<div class="card levels">
+<p><b>Toddler</b> All the lines stay near the floor: they still hit the tummy, not the head.</p>
+<p><b>Child</b> We paid them more for aiming at the head, but their punches go to the chest, so the extra pay hardly helped.</p>
+<p><b>Adult</b> Matt m13b 1.6 &rarr; 4.7%, m14 1.7 &rarr; 3.3%; Sokol m13 2.1 &rarr; 0.7%, m14 0.9 &rarr; 0.8%. Worse than m13 for Matt because body landings were
+made cheaper (x0.6) before head landings existed to replace them. The cause is the punch's height (table above), so the next fix belongs in how the
+punch is aimed, not in the price.</p>
+</div>
+
+<h3>3. Falls per episode (env/falls), under the game's daze line</h3>
+<img src="tb_falls.png" alt="Chart of the fall share for the m14 runs">
+<div class="card levels">
+<p><b>Toddler</b> The lines go down for most: they fall over less. Kim's goes up.</p>
+<p><b>Child</b> With the game's softer chin, boxers get knocked down more in practice; most learned to stay up anyway, but Kim fell more as she attacked more.</p>
+<p><b>Adult</b> Grandma 0.17 &rarr; 0.10, Sokol 0.03 &rarr; 0.02, Matt 0.06 &rarr; 0.03, Grandpa 0.12 &rarr; 0.05, Kim 0.07 &rarr; 0.13. Kim's rise matches her exam: footing
+lost, all of it against Sokol (1.67 falls a minute). Training under the game's daze (legs at 26 instead of 42) did not cost the exam's chin line
+for anyone: chin went to 0.00 for Kim, Grandma and Sokol.</p>
+</div>
+
+<h2>What went wrong</h2>
+<div class="card">
+<p>Running 12 CPU processes beside training ran the machine out of memory (0.9 GB free; two exams failed "paging file too small") and cut training
+to ~4k samples a second; the two hung pythons from last night held 12 GB until the owner killed them. The session stopped at 11:45 and took the runner
+with it (Kim carried on from her save). Grandpa's first m14 spent 40 minutes against his own range term. Not run: <code>m14b_grandpa</code>
+(<code>--style range_m=0.7 crowd=0</code>) and the eight melee rounds; both stay in <code>training/logs/queue_day.json</code>.</p>
+</div>
+</main>
+</body>
+</html>

@@ -1430,3 +1430,17 @@ Running status: `training/logs/night_status.md` (Day section). Nothing under Ass
   style, so nothing to change there). Grandma (range 0.8, attack 0.13/s) gets `range_m=0.72` in her m14.
 - m14b_kim carries m14_kim on from its iteration-100 save for 0.35 h. Melee runs cut to 0.33 h each to keep jobs 1-3 near 8 h.
 - **m14_sokol's head aim was too weak** (TensorBoard reward terms, first -> last 10 iterations): reward/aim +0.004 a step against range +0.20-0.26, face +0.25, energy -0.13-0.15, the arm pull -0.05; head share in training 1% -> 0.4% after 207 iterations, while hit fell 0.074 -> 0.036 (the body halved). So `--head-aim-w` 0.05 -> **0.25** for m14_matt (started 13:46) and for both boxers' melee rounds. m14_grandma and m14b_kim results in night_status.md.
+- **Results** (each new brain against the game's roster, 12 rounds, 30 knockdowns, game get-up rule; `logs/compare_RUN.json`):
+  - `m14_sokol` **exported**, 5 -> 6 of 6: attack 0.44/s at 4.6 -> 0.58/s at 5.1 m/s; head still 0%; guard passes on head shots taken (0.06/s).
+  - `m14_grandma` **exported**, 4 -> 4, every line's number better: attack 0.13 -> 0.57/s (2.3 -> 2.6 m/s, mark 3.0), head 15 -> 48%; guard
+    51 -> 80% stopped; chin 0.21 -> 0; carrying on 14/22 -> 17/23. The range term (0.72 for her 0.8) is the likely half of it: she got in reach.
+  - `m14b_kim` not exported, 5 -> 4: attack 0.47/s at 2.9 -> 0.59/s at 4.0 (mark 4.4), chin 0.59 -> 0, footing lost against Sokol (1.67/min).
+  - `m14_grandpa` no gain, not examined. `m14_matt` (head aim 0.25, body x0.6): training landed 0.57 -> 0.36/s, head 2 -> 3%; exam unfinished
+    when the owner stopped the day (14:20).
+  - The Unity session promoted m14_sokol and m14_grandma.
+- **Daze line**: training under the game's (26/9/3.5/0.45) cost no exam chin line (Kim, Grandma, Sokol all 0.00 legs a minute).
+- **Melee baseline** (`logs/melee_game_NAME.json`): today's 103 brains with 2 bodies down fall 0.29-1.24 a minute (worst pair 3.33, Matt), nearly
+  all trips; in 1v1 the same brains fall 0.00. That is what mel1 would have to beat.
+- **Not run** (owner: "finish within 20 minutes"): m14b_grandpa and the eight mel1 rounds, staged in `logs/queue_day.json`. Next for head
+  shots: the aim term reaches the head (reward/aim 0.022 -> 0.035 a step for Matt) but landings stay ~3% against guarding opponents; teach the
+  punch's height earlier (footwork/bag stage) rather than price it in the match. Report: `SCREENSHOTS/2026-10-19-day/report.html`.
