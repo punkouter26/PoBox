@@ -69,7 +69,7 @@ Earlier in the day (Phase B):
   scene left behind (raw object names); on their own they pass (11 of 11). Run ours with the assembly filter
   `PoBox.Tests`.
 
-## Review fixes: punches that miss, knockdowns, get-ups that stand, gloves (2026-10-18, evening)
+## Review fixes: punches that miss, knockdowns, get-ups that stand (2026-10-18, evening)
 
 The owner's review (every screen and scene played) found ten issues; the answers: accuracy realistic, KOs common, the
 judges to weigh the centre each in their own way, Grandma to be trained to get up, a slip is a knockdown, a slow count
@@ -98,8 +98,8 @@ of ten, 45 s rounds kept, Back left as it is, bodies left in the Melee ring, no 
   100+ blocks a bout.
 - **Judges** (`Judges.Level`): VOLUME counts outright, POWER calls 4% level, CRAFT 10%; a level round goes to the centre.
   Matt v Grandma went from three unanimous 30-27 shutouts to split decisions.
-- **Gloves**: every boxer wears a ball the size of its physics glove (7.5 cm sphere) in its corner's colour, or its Melee
-  paint (`PoBox/Mj/Glove Every Boxer`, `FighterSkin`). Drawn only; the boxer check shows 0 differences for all eight.
+- **Gloves**: drawn gloves were put on and taken off again the same evening: the owner took the red and blue gloves
+  off on 2026-10-14, and the meshes' own hands show.
 - **HUD** (report: `SCREENSHOTS/2026-10-18-review/report.html`): the punch tape's counts no longer swell over the icon
   and each other; the win bar is labelled WIN %; a drawn cup bout's AGAIN counts for the cup; the HUD builds a UI tree
   that comes up late; ALL shows busy like FIGHT; the ELO line names red on a draw.

@@ -324,7 +324,7 @@ round them); no APK target. Details in `DOCS/README.md` and `SCREENSHOTS/2026-10
 - [x] R4 Fatigue: no refill on every placement; the stool gives a minute's worth; HUD tank and TIRED read the reserve.
 - [x] R5 Accuracy and blocks: body-bound punches thrown, blocks against the body.
 - [x] R6 Judges' own level: VOLUME 0, POWER 4%, CRAFT 10%.
-- [x] R7 Gloves on all eight (drawn only, corner or Melee colour).
+- [x] R7 Gloves: not drawn (put on in error and taken off again; the owner took them off on 2026-10-14).
 - [x] R8 HUD: tape overlap, WIN % label, cup draw rematch counts, late UI tree, ALL busy, ELO name.
 - [x] R9 Garbage per control step (stand-in array).
 - [ ] R10 Get-up retrains (`--no-drain`): Grandma d10c, Matt, Zombie, Nick; exams; promote with `MjRetrofit.PromoteBoxing`.

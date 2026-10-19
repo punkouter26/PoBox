@@ -62,11 +62,6 @@ namespace PoBox.Fx
         static readonly int BruiseId = Shader.PropertyToID("_Bruise");
         static readonly int SweatId = Shader.PropertyToID("_Sweat");
         static readonly int RimId = Shader.PropertyToID("_RimColor");
-        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        /// <summary>The boxing gloves' renderers (MjRetrofit.Glove puts one on each physics glove, drawn only), in the corner's colour.</summary>
-        public const string GloveName = "glove_visual";
-        Renderer[] _gloves;
-        MaterialPropertyBlock _gloveBlock;
         static readonly int MarksId = Shader.PropertyToID("_BruiseMarks");
         static readonly int MarkCountId = Shader.PropertyToID("_BruiseCount");
         static readonly int FlushId = Shader.PropertyToID("_Flush");
@@ -95,15 +90,6 @@ namespace PoBox.Fx
         Vector3 _snap, _snapRate;           // the head's turn and its rate, as world rotation vectors (degrees)
 
         public bool Visible => _visible;
-
-        Renderer[] Gloves()
-        {
-            if (_gloves != null) return _gloves;
-            var found = new System.Collections.Generic.List<Renderer>(2);
-            foreach (MeshRenderer r in GetComponentsInChildren<MeshRenderer>(true))
-                if (r.name == GloveName) found.Add(r);
-            return _gloves = found.ToArray();
-        }
 
         void OnEnable() => SimBus.Hit += OnHit;
         void OnDisable() => SimBus.Hit -= OnHit;
@@ -179,8 +165,6 @@ namespace PoBox.Fx
                 if (r != null) r.enabled = visible;
             foreach (Renderer r in overlayRenderers)
                 if (r != null) r.enabled = visible;
-            foreach (Renderer r in Gloves())
-                r.enabled = visible;
             foreach (TrailRenderer t in trails)
             {
                 if (t == null) continue;
@@ -205,10 +189,6 @@ namespace PoBox.Fx
                     foreach (BodyPart p in fighter.parts)
                         if (p != null && p.transform == parts[i].bone) { _source[i] = p; break; }
             }
-
-            if (_gloveBlock == null) _gloveBlock = new MaterialPropertyBlock();
-            _gloveBlock.SetColor(BaseColorId, fighter.cornerColor);
-            foreach (Renderer r in Gloves()) r.SetPropertyBlock(_gloveBlock);
 
             if (trails.Length >= 2)
             {
